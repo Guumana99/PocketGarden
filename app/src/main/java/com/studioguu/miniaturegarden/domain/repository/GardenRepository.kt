@@ -10,6 +10,9 @@ interface GardenRepository {
     /** Creates the default profile and empty inventory slots on first launch; no-op afterwards. */
     suspend fun ensureInitialized()
 
+    /** Runs [block] atomically: either all of its writes are stored or none are. */
+    suspend fun <T> runInTransaction(block: suspend () -> T): T
+
     fun observeUserProfile(): Flow<UserProfile?>
     suspend fun getUserProfile(): UserProfile?
 

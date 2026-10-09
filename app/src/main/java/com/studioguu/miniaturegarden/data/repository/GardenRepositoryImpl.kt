@@ -10,6 +10,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
 import com.studioguu.miniaturegarden.data.local.mapper.toDomain
 import com.studioguu.miniaturegarden.data.local.mapper.toEntity
 import com.studioguu.miniaturegarden.data.security.SecurityManager
+import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -28,9 +29,19 @@ class GardenRepositoryImpl @Inject constructor(
     private val securityManager: SecurityManager,
 ) : GardenRepository {
 
+    override suspend fun <T> runInTransaction(block: suspend () -> T): T = database.withTransaction { block() }
+
     override suspend fun ensureInitialized() = database.withTransaction {
-        val profile = userProfileDao.get()
-            ?: securityManager.stampAndSign(UserProfileEntity()).also { userProfileDao.upsert(it) }
+        val existing = userProfileDao.get()
+        val profile = existing
+            ?: securityManager.stampAndSign(UserProfileEntity(coins = UserProfile.STARTING_COINS))
+                .also { userProfileDao.upsert(it) }
+        if (existing == null) {
+            // Starter kit, so the very first session has something to plant.
+            inventorySlotDao.insertIfAbsent(
+                listOf(InventorySlotEntity(0, GardenItem.SEED_TULIP.itemId, STARTER_SEED_COUNT))
+            )
+        }
         inventorySlotDao.insertIfAbsent(
             (0 until profile.inventoryCapacity).map { InventorySlotEntity(slotIndex = it) }
         )
@@ -65,3 +76,5 @@ class GardenRepositoryImpl @Inject constructor(
     override suspend fun upsertInventorySlots(slots: List<InventorySlot>) =
         inventorySlotDao.upsertAll(slots.map { it.toEntity() })
 }
+
+private const val STARTER_SEED_COUNT = 3

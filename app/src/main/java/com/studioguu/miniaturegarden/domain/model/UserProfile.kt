@@ -12,5 +12,8 @@ data class UserProfile(
 ) {
     companion object {
         const val DEFAULT_INVENTORY_CAPACITY = 16
+
+        /** What a new player starts with: enough to buy and plant a first few seeds. */
+        const val STARTING_COINS = 100L
     }
 }
