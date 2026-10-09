@@ -14,6 +14,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
@@ -22,6 +23,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
+import com.studioguu.miniaturegarden.data.asset.GroundTile
+import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
@@ -31,6 +35,7 @@ import com.studioguu.miniaturegarden.ui.render.LayerPipeline
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TilePicker
+import com.studioguu.miniaturegarden.ui.render.drawSprite
 
 private val TILE_WIDTH = 128.dp
 private val TILE_HEIGHT = 64.dp
@@ -42,6 +47,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
 /**
  * The isometric garden view: pinch to zoom, drag to pan, tap to pick a tile.
  *
+ * @param atlas sprites to draw with; anything missing from it falls back to a placeholder shape.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
  */
 @Composable
@@ -50,6 +56,7 @@ fun GardenCanvas(
     selectedTile: TileCoord?,
     onTileTapped: (TileCoord?) -> Unit,
     modifier: Modifier = Modifier,
+    atlas: SpriteAtlas = SpriteAtlas.EMPTY,
     showGrid: Boolean = true,
 ) {
     val density = LocalDensity.current
@@ -60,6 +67,7 @@ fun GardenCanvas(
     }
     // Null until the first layout pass tells us how far to zoom out to fit the grid.
     var camera by remember { mutableStateOf<GardenCamera?>(null) }
+    val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     val pipeline = remember { LayerPipeline() }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
 
@@ -81,8 +89,15 @@ fun GardenCanvas(
             }
     ) {
         val transform = camera?.toTransform(metrics, size) ?: return@Canvas
+        val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
 
-        pipeline.submit(RenderLayer.BASE_TERRAIN) { drawTerrain(transform, metrics.gridSize) }
+        pipeline.submit(RenderLayer.BASE_TERRAIN) {
+            drawTerrain(transform, metrics.gridSize) { tile, center ->
+                val sprite = atlas[tile.assetId]
+                if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
+                sprite != null
+            }
+        }
         if (showGrid) {
             pipeline.submit(RenderLayer.GRID_OVERLAY) { drawIsometricGrid(transform, metrics.gridSize) }
         }
@@ -94,15 +109,18 @@ fun GardenCanvas(
             val depth = LayerPipeline.depthOf(obj.gridX, obj.gridY, obj.heightLevel)
             val base = transform.tileCenter(obj.gridX, obj.gridY, obj.heightLevel.toFloat())
             val unit = transform.tileWidth
-            if (obj.objectId.startsWith(GROUND_OBJECT_ID_PREFIX)) {
-                pipeline.submit(RenderLayer.BOTTOM_OBJECTS, depth) { drawGroundCover(obj, base, unit) }
-                continue
+            val isGroundCover = obj.objectId.startsWith(GROUND_OBJECT_ID_PREFIX)
+            // Null while the atlas has no sprite for this object; the placeholder is drawn instead.
+            val sprite = atlas[TileSetDefinition.assetIdFor(obj)]
+
+            if (!isGroundCover) {
+                pipeline.submit(RenderLayer.SHADOWS, depth) { drawShadow(obj, base, unit) }
             }
-            pipeline.submit(RenderLayer.SHADOWS, depth) { drawShadow(obj, base, unit) }
-            pipeline.submit(RenderLayer.GRID_OBJECTS, depth) {
-                // isFlipped mirrors the sprite around the vertical line through its tile center.
-                scale(scaleX = if (obj.isFlipped) -1f else 1f, scaleY = 1f, pivot = base) {
-                    if (obj.isPlant) drawPlant(obj, base, unit) else drawDecoration(base, unit)
+            pipeline.submit(if (isGroundCover) RenderLayer.BOTTOM_OBJECTS else RenderLayer.GRID_OBJECTS, depth) {
+                if (sprite != null && atlasImage != null) {
+                    drawSprite(atlasImage, sprite, base, spriteScale, flipped = obj.isFlipped)
+                } else {
+                    drawPlaceholder(obj, base, unit)
                 }
             }
             if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
@@ -120,7 +138,15 @@ private val GRASS_DARK = Color(0xFF8BC34A)
 private val SOIL_LEFT = Color(0xFF8D6E63)
 private val SOIL_RIGHT = Color(0xFF6D4C41)
 
-private fun DrawScope.drawTerrain(transform: IsometricTransform, gridSize: Int) {
+/**
+ * @param drawTileSprite draws the sprite for a ground tile centered on the given point and
+ *   returns true, or returns false when there is none and the flat-color tile should be used.
+ */
+private fun DrawScope.drawTerrain(
+    transform: IsometricTransform,
+    gridSize: Int,
+    drawTileSprite: DrawScope.(tile: GroundTile, center: Offset) -> Boolean,
+) {
     val max = gridSize.toFloat()
     val left = transform.worldToScreen(0f, max)
     val bottom = transform.worldToScreen(max, max)
@@ -131,9 +157,12 @@ private fun DrawScope.drawTerrain(transform: IsometricTransform, gridSize: Int) 
     drawPath(quad(left, bottom, bottom + thickness, left + thickness), SOIL_LEFT)
     drawPath(quad(bottom, right, right + thickness, bottom + thickness), SOIL_RIGHT)
 
-    drawPath(transform.tilePath(0, 0, spanX = gridSize, spanY = gridSize), GRASS_LIGHT)
+    // x-then-y order draws every tile before the two neighbours in front of it.
     for (x in 0 until gridSize) for (y in 0 until gridSize) {
-        if ((x + y) % 2 == 1) drawPath(transform.tilePath(x, y), GRASS_DARK)
+        val tile = TileSetDefinition.groundTileAt(x, y)
+        if (!drawTileSprite(tile, transform.tileCenter(x, y))) {
+            drawPath(transform.tilePath(x, y), if (tile == GroundTile.GRASS) GRASS_LIGHT else GRASS_DARK)
+        }
     }
 }
 
@@ -217,4 +246,16 @@ private fun DrawScope.drawStatusBubble(obj: GridObject, base: Offset, unit: Floa
     val icon = if (obj.status == PlantStatus.THIRSTY) Color(0xFF42A5F5) else Color(0xFFFFA726)
     drawCircle(Color.White, radius, center)
     drawCircle(icon, radius * 0.55f, center)
+}
+
+/** Shape drawn for an object whose sprite is not in the atlas. */
+private fun DrawScope.drawPlaceholder(obj: GridObject, base: Offset, unit: Float) {
+    if (obj.objectId.startsWith(GROUND_OBJECT_ID_PREFIX)) {
+        drawGroundCover(obj, base, unit)
+        return
+    }
+    // isFlipped mirrors the shape around the vertical line through its tile center.
+    scale(scaleX = if (obj.isFlipped) -1f else 1f, scaleY = 1f, pivot = base) {
+        if (obj.isPlant) drawPlant(obj, base, unit) else drawDecoration(base, unit)
+    }
 }
