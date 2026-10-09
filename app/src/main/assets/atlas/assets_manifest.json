@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "atlas": "atlas.png",
+  "atlasWidth": 1975,
+  "atlasHeight": 1424,
+  "tileWidth": 720,
+  "assets": [
+    {
+      "assetId": "plant_tulip_stage1",
+      "anchorX": 0.49,
+      "anchorY": 0.77,
+      "width": 663,
+      "height": 720,
+      "isFlippedAllowed": true,
+      "atlasX": 1310,
+      "atlasY": 2
+    },
+    {
+      "assetId": "plant_tulip_stage2",
+      "anchorX": 0.5,
+      "anchorY": 0.87,
+      "width": 611,
+      "height": 652,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 770
+    },
+    {
+      "assetId": "plant_tulip_stage3",
+      "anchorX": 0.57,
+      "anchorY": 0.85,
+      "width": 572,
+      "height": 743,
+      "isFlippedAllowed": true,
+      "atlasX": 736,
+      "atlasY": 2
+    },
+    {
+      "assetId": "plant_tulip_stage4",
+      "anchorX": 0.5,
+      "anchorY": 0.86,
+      "width": 732,
+      "height": 766,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 2
+    }
+  ]
+}
