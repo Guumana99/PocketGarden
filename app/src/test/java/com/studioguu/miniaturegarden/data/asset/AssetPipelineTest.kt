@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.data.asset
 
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -160,12 +161,10 @@ class AssetPipelineTest {
 
     @Test
     fun `definitions have unique ids and match the domain's plant prefix`() {
-        val objectIds = TileSetDefinition.placeables.map { it.objectId }
+        val objectIds = TileSetDefinition.objectIds
         assertEquals(objectIds.size, objectIds.toSet().size)
         assertEquals(GroundTile.entries.size, GroundTile.entries.map { it.assetId }.toSet().size)
         assertTrue(PlantSpecies.entries.all { it.objectId.startsWith(GridObject.PLANT_ID_PREFIX) })
-        assertEquals(PlantSpecies.TULIP, TileSetDefinition.find("plant_tulip"))
-        assertNull(TileSetDefinition.find("nope"))
     }
 
     @Test

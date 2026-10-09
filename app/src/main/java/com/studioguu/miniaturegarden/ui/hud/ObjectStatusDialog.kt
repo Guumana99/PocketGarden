@@ -22,7 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
-import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.ui.objectDisplayName
@@ -87,7 +87,7 @@ fun ObjectStatusDialog(
                         Text(stringResource(R.string.action_water))
                     }
                     Button(onClick = onHarvest, enabled = alive && gridObject.growthProgress >= 1f) {
-                        Text(stringResource(R.string.action_harvest, GardenItem.harvestCoinsFor(gridObject.objectId)))
+                        Text(stringResource(R.string.action_harvest, PlantSpecies.forObjectId(gridObject.objectId).harvestCoins))
                     }
                 }
                 Spacer(Modifier.weight(1f))

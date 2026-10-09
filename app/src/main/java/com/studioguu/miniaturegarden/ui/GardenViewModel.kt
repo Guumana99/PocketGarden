@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.data.asset.AssetRepository
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
@@ -16,6 +17,7 @@ import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
+import com.studioguu.miniaturegarden.ui.effects.GardenEffect
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -28,6 +30,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -77,12 +80,19 @@ class GardenViewModel @Inject constructor(
     /** String resource ids of one-off messages (failed actions) to show the player. */
     val messages: Flow<Int> = _messages.receiveAsFlow()
 
+    private val _effects = MutableStateFlow<List<GardenEffect>>(emptyList())
+
+    /** Floating feedback currently playing (rewards, level-ups). */
+    val effects: StateFlow<List<GardenEffect>> = _effects.asStateFlow()
+    private var nextEffectId = 0L
+
     // Sync and player actions all read-modify-write the same rows; run them one at a time.
     private val actionMutex = Mutex()
     private val initJob = viewModelScope.launch { gardenRepository.ensureInitialized() }
 
     init {
         viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
+        watchForLevelUps()
     }
 
     /** Advances every plant to the current time. Called on resume and on a timer while visible. */
@@ -129,21 +139,49 @@ class GardenViewModel @Inject constructor(
     }
 
     fun waterSelected() = withSelectedObject { obj ->
-        act { now, weather -> careForPlant.water(obj.instanceId, now, weather) }
-    }
-
-    fun fertilizeSelected() = withSelectedObject { obj ->
-        act { now, weather -> careForPlant.fertilize(obj.instanceId, now, weather) }
-    }
-
-    fun harvestSelected() = withSelectedObject { obj ->
-        act { now, weather ->
-            harvestPlant(obj.instanceId, now, weather).also { if (it == ActionResult.SUCCESS) clearSelection() }
+        act(onSuccess = { showEffect { GardenEffect.Xp(it, CareForPlantUseCase.WATER_XP) } }) { now, weather ->
+            careForPlant.water(obj.instanceId, now, weather)
         }
     }
 
+    fun fertilizeSelected() = withSelectedObject { obj ->
+        act(onSuccess = { showEffect { GardenEffect.Xp(it, CareForPlantUseCase.FERTILIZE_XP) } }) { now, weather ->
+            careForPlant.fertilize(obj.instanceId, now, weather)
+        }
+    }
+
+    fun harvestSelected() = withSelectedObject { obj ->
+        val species = PlantSpecies.forObjectId(obj.objectId)
+        act(
+            onSuccess = {
+                clearSelection()
+                showEffect { GardenEffect.Harvest(it, species.harvestCoins, species.harvestXp) }
+            }
+        ) { now, weather -> harvestPlant(obj.instanceId, now, weather) }
+    }
+
     fun removeSelected() = withSelectedObject { obj ->
-        act { _, _ -> removeObject(obj.instanceId).also { if (it == ActionResult.SUCCESS) clearSelection() } }
+        act(onSuccess = ::clearSelection) { _, _ -> removeObject(obj.instanceId) }
+    }
+
+    fun onEffectFinished(id: Long) {
+        _effects.update { list -> list.filterNot { it.id == id } }
+    }
+
+    private fun showEffect(create: (id: Long) -> GardenEffect) {
+        _effects.update { it + create(nextEffectId++) }
+    }
+
+    /** Announces a level-up whenever the stored level rises above the one last seen. */
+    private fun watchForLevelUps() {
+        viewModelScope.launch {
+            var lastLevel: Int? = null
+            gardenRepository.observeUserProfile().collect { profile ->
+                val level = profile?.playerLevel ?: return@collect
+                lastLevel?.let { previous -> if (level > previous) showEffect { GardenEffect.LevelUp(it, level) } }
+                lastLevel = level
+            }
+        }
     }
 
     private fun withSelectedObject(block: (GridObject) -> Unit) {
@@ -151,13 +189,17 @@ class GardenViewModel @Inject constructor(
         if (obj == null) _messages.trySend(R.string.msg_select_plant) else block(obj)
     }
 
-    private fun act(block: suspend (now: Long, weather: WeatherType) -> ActionResult) {
+    private fun act(
+        onSuccess: () -> Unit = {},
+        block: suspend (now: Long, weather: WeatherType) -> ActionResult,
+    ) {
         viewModelScope.launch {
             initJob.join()
             val result = actionMutex.withLock {
                 val now = System.currentTimeMillis()
                 block(now, currentWeather(now))
             }
+            if (result == ActionResult.SUCCESS) onSuccess()
             actionResultMessage(result)?.let { _messages.send(it) }
         }
     }

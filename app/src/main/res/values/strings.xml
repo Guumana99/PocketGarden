@@ -3,14 +3,15 @@
     <string name="app_name">ぽけっと庭園</string>
 
     <!-- Top status bar -->
-    <string name="status_level">Lv.%1$d</string>
+    <string name="status_level">Lv.%1$d　%2$d/%3$d XP</string>
+    <string name="status_level_max">Lv.%1$d　MAX</string>
     <string name="weather_sunny">晴れ</string>
     <string name="weather_cloudy">くもり</string>
     <string name="weather_rainy">雨</string>
 
     <!-- Quick action bar -->
     <string name="action_water">水やり</string>
-    <string name="action_fertilize">肥料</string>
+    <string name="action_fertilize">肥料 🪙%1$d</string>
     <string name="action_inventory">もちもの</string>
     <string name="action_shop">ショップ</string>
 
@@ -30,10 +31,14 @@
 
     <!-- Objects and items -->
     <string name="object_plant_tulip">チューリップ</string>
+    <string name="object_plant_sunflower">ひまわり</string>
+    <string name="object_plant_rose">バラ</string>
     <string name="object_deco_rock">岩</string>
     <string name="object_ground_grass">芝生</string>
     <string name="object_ground_pebble">小石</string>
     <string name="item_seed_tulip">チューリップの種</string>
+    <string name="item_seed_sunflower">ひまわりの種</string>
+    <string name="item_seed_rose">バラの苗</string>
 
     <!-- Inventory -->
     <string name="inventory_title">もちもの</string>
@@ -52,10 +57,16 @@
     <string name="msg_not_a_plant">植物ではありません</string>
     <string name="msg_withered">枯れてしまっています</string>
     <string name="msg_not_ready">まだ収穫できません</string>
+    <string name="msg_already_moist">すでに潤っています</string>
     <string name="msg_tile_occupied">このマスには置けません</string>
     <string name="msg_out_of_bounds">庭の外には置けません</string>
     <string name="msg_slot_empty">アイテムがありません</string>
     <string name="msg_not_enough_coins">コインが足りません</string>
     <string name="msg_inventory_full">もちものがいっぱいです</string>
     <string name="msg_select_plant">先に植物をタップして選んでください</string>
+
+    <!-- Floating effects -->
+    <string name="effect_harvest">+%1$d 🪙　+%2$d XP</string>
+    <string name="effect_xp">+%1$d XP</string>
+    <string name="effect_level_up">レベルアップ！ Lv.%1$d</string>
 </resources>

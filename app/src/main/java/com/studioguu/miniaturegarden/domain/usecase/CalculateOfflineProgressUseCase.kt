@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import javax.inject.Inject
@@ -44,7 +45,9 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
             return gridObject.copy(lastUpdatedTimestamp = newTimestamp)
         }
 
-        val moistureDrain = MOISTURE_DRAIN_PER_TICK * weather.moistureDrainMultiplier
+        val species = PlantSpecies.forObjectId(gridObject.objectId)
+        val moistureDrain = weather.moistureDrainMultiplier / (species.dryOutHours * TICKS_PER_HOUR)
+        val growthPerTick = 1.0 / (species.growthHours * TICKS_PER_HOUR)
         val hydratedTicks = ticksAbove(gridObject.moistureLevel, THIRSTY_THRESHOLD, moistureDrain, ticks)
         val nourishedTicks = ticksAbove(gridObject.nutritionLevel, UNNOURISHED_THRESHOLD, NUTRITION_DRAIN_PER_TICK, ticks)
         val healthyTicks = min(hydratedTicks, nourishedTicks)
@@ -53,7 +56,7 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
 
         val moisture = (gridObject.moistureLevel - moistureDrain * ticks).coerceIn(0.0, 1.0)
         val nutrition = (gridObject.nutritionLevel - NUTRITION_DRAIN_PER_TICK * ticks).coerceIn(0.0, 1.0)
-        val growth = (gridObject.growthProgress + GROWTH_PER_TICK * healthyTicks).coerceIn(0.0, 1.0)
+        val growth = (gridObject.growthProgress + growthPerTick * healthyTicks).coerceIn(0.0, 1.0)
         // The healthy phase comes first, so recovery is applied before stress accumulates.
         val recovered = max(0.0, gridObject.stressRate - STRESS_RECOVERY_PER_TICK * healthyTicks)
         val stress = (recovered + STRESS_THIRSTY_PER_TICK * thirstyTicks + STRESS_UNNOURISHED_PER_TICK * starvedTicks)
@@ -100,18 +103,14 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         const val TICK_MILLIS = 60_000L
         const val MAX_OFFLINE_MILLIS = 7L * 24 * 60 * 60 * 1000 // 604,800,000 ms
 
-        private const val TICKS_PER_HOUR = 60.0
+        const val TICKS_PER_HOUR = 60.0
 
         /** At or below these levels a plant counts as thirsty / unnourished and gains stress. */
         const val THIRSTY_THRESHOLD = 0.2
         const val UNNOURISHED_THRESHOLD = 0.2
 
-        /** Full soil dries out in 24 h (sunny); nutrition lasts 72 h. */
-        const val MOISTURE_DRAIN_PER_TICK = 1.0 / (24 * TICKS_PER_HOUR)
+        /** Nutrition lasts 72 h. Growth and drying speed are per plant, see [PlantSpecies]. */
         const val NUTRITION_DRAIN_PER_TICK = 1.0 / (72 * TICKS_PER_HOUR)
-
-        /** A seed needs 48 healthy hours to mature. */
-        const val GROWTH_PER_TICK = 1.0 / (48 * TICKS_PER_HOUR)
 
         /** A thirsty plant withers after 24 h, an unnourished one after 48 h; both stack. */
         const val STRESS_THIRSTY_PER_TICK = 1.0 / (24 * TICKS_PER_HOUR)

@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 
 /**
  * Floating tool bar. Water and fertilizer act on the currently selected plant and are disabled
@@ -42,7 +43,7 @@ fun QuickActionBar(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             ActionButton("💧", stringResource(R.string.action_water), onWater, enabled = canCare)
-            ActionButton("🧪", stringResource(R.string.action_fertilize), onFertilize, enabled = canCare)
+            ActionButton("🧪", stringResource(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST), onFertilize, enabled = canCare)
             ActionButton("🎒", stringResource(R.string.action_inventory), onOpenInventory)
             ActionButton("🛒", stringResource(R.string.action_shop), onOpenShop)
         }

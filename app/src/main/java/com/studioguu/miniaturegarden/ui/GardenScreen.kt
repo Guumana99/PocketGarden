@@ -39,6 +39,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
+import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
@@ -60,6 +61,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
+    val effects by viewModel.effects.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
@@ -92,8 +94,15 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         TopStatusBar(
             coins = profile?.coins ?: 0L,
             playerLevel = profile?.playerLevel ?: 1,
+            currentXp = profile?.currentXp ?: 0L,
             weather = weather,
             modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
+        )
+
+        FloatingEffectsHost(
+            effects = effects,
+            onFinished = viewModel::onEffectFinished,
+            modifier = Modifier.align(Alignment.Center),
         )
 
         Column(
