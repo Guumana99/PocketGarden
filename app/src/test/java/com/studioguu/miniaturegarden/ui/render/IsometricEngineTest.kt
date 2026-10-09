@@ -1,0 +1,144 @@
+package com.studioguu.miniaturegarden.ui.render
+
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class IsometricEngineTest {
+
+    private val transform = IsometricTransform(
+        tileWidth = 128f,
+        tileHeight = 64f,
+        heightStep = 16f,
+        offsetX = 300f,
+        offsetY = 40f,
+    )
+    private val metrics = IsometricMetrics(tileWidth = 128f, tileHeight = 64f, heightStep = 16f, gridSize = 9)
+    private val viewport = Size(1000f, 2000f)
+
+    private fun assertOffset(expected: Offset, actual: Offset, delta: Float = 1e-3f) {
+        assertEquals(expected.x, actual.x, delta)
+        assertEquals(expected.y, actual.y, delta)
+    }
+
+    // --- IsometricTransform ---
+
+    @Test
+    fun `projection follows the spec formulas`() {
+        assertOffset(Offset(300f, 40f), transform.worldToScreen(0f, 0f))
+        assertOffset(Offset(300f + 64f, 40f + 32f), transform.worldToScreen(1f, 0f))
+        assertOffset(Offset(300f - 64f, 40f + 32f), transform.worldToScreen(0f, 1f))
+        // (3 - 5) * 64 + 300, (3 + 5) * 32 - 2 * 16 + 40
+        assertOffset(Offset(172f, 264f), transform.worldToScreen(3f, 5f, z = 2f))
+    }
+
+    @Test
+    fun `screenToWorld inverts worldToScreen on the ground plane`() {
+        for (x in listOf(0f, 0.25f, 4.5f, 8.99f)) for (y in listOf(0f, 3.7f, 9f)) {
+            assertOffset(Offset(x, y), transform.screenToWorld(transform.worldToScreen(x, y)))
+        }
+    }
+
+    // --- TilePicker ---
+
+    @Test
+    fun `every tile center picks its own tile`() {
+        for (x in 0 until 9) for (y in 0 until 9) {
+            assertEquals(TileCoord(x, y), TilePicker.pick(transform.tileCenter(x, y), transform))
+        }
+    }
+
+    @Test
+    fun `points just inside each diamond corner still pick that tile`() {
+        val inset = 0.01f
+        val corners = listOf(inset to inset, 1 - inset to inset, 1 - inset to 1 - inset, inset to 1 - inset)
+        for ((dx, dy) in corners) {
+            assertEquals(TileCoord(4, 7), TilePicker.pick(transform.worldToScreen(4 + dx, 7 + dy), transform))
+        }
+    }
+
+    @Test
+    fun `points outside the grid pick nothing`() {
+        assertNull(TilePicker.pick(transform.worldToScreen(-0.1f, 4f), transform))
+        assertNull(TilePicker.pick(transform.worldToScreen(4f, -0.1f), transform))
+        assertNull(TilePicker.pick(transform.worldToScreen(9.1f, 4f), transform))
+        assertNull(TilePicker.pick(transform.worldToScreen(4f, 9.1f), transform))
+        // Inside the grid's bounding rectangle but outside the diamond.
+        assertNull(TilePicker.pick(Offset(transform.offsetX - 400f, transform.offsetY + 10f), transform))
+    }
+
+    // --- LayerPipeline ---
+
+    @Test
+    fun `commands are ordered by layer, then depth, then submission`() {
+        val pipeline = LayerPipeline()
+        val order = mutableListOf<String>()
+        fun submit(name: String, layer: RenderLayer, depth: Float = 0f) =
+            pipeline.submit(layer, depth) { order += name }
+
+        submit("hud", RenderLayer.HUD_OVERLAY)
+        submit("plant-front", RenderLayer.GRID_OBJECTS, LayerPipeline.depthOf(8, 8))
+        submit("effect", RenderLayer.TOP_EFFECTS)
+        submit("plant-back", RenderLayer.GRID_OBJECTS, LayerPipeline.depthOf(0, 0))
+        submit("shadow", RenderLayer.SHADOWS)
+        submit("plant-mid-a", RenderLayer.GRID_OBJECTS, LayerPipeline.depthOf(3, 4))
+        submit("plant-mid-b", RenderLayer.GRID_OBJECTS, LayerPipeline.depthOf(4, 3))
+        submit("pebble", RenderLayer.BOTTOM_OBJECTS)
+        submit("grid", RenderLayer.GRID_OVERLAY)
+        submit("terrain", RenderLayer.BASE_TERRAIN)
+
+        val sorted = pipeline.sortedCommands()
+        assertEquals(RenderLayer.entries.map { it.zIndex }, (0..6).toList())
+        assertEquals(
+            listOf(0, 1, 2, 3, 4, 4, 4, 4, 5, 6),
+            sorted.map { it.layer.zIndex },
+        )
+        assertEquals(listOf(0f, 7f, 7f, 16f), sorted.filter { it.layer == RenderLayer.GRID_OBJECTS }.map { it.depth })
+    }
+
+    // --- GardenCamera ---
+
+    @Test
+    fun `camera at rest centers the grid in the viewport`() {
+        val t = GardenCamera().toTransform(metrics, viewport)
+        assertOffset(Offset(500f, 1000f), t.worldToScreen(4.5f, 4.5f))
+    }
+
+    @Test
+    fun `zoom is limited to the allowed range`() {
+        val center = Offset(500f, 1000f)
+        val zoomedIn = GardenCamera().transformedBy(center, Offset.Zero, 100f, viewport, metrics)
+        val zoomedOut = GardenCamera().transformedBy(center, Offset.Zero, 0.001f, viewport, metrics)
+        assertEquals(GardenCamera.MAX_SCALE, zoomedIn.scale, 0f)
+        assertEquals(GardenCamera.MIN_SCALE, zoomedOut.scale, 0f)
+    }
+
+    @Test
+    fun `the world point under the pinch centroid stays under it`() {
+        val start = GardenCamera(scale = 1f, pan = Offset(40f, -25f))
+        val centroid = Offset(620f, 1130f)
+        val worldBefore = start.toTransform(metrics, viewport).screenToWorld(centroid)
+
+        val zoomed = start.transformedBy(centroid, Offset.Zero, 1.6f, viewport, metrics)
+
+        assertEquals(1.6f, zoomed.scale, 1e-6f)
+        assertOffset(worldBefore, zoomed.toTransform(metrics, viewport).screenToWorld(centroid))
+    }
+
+    @Test
+    fun `pan is clamped so the viewport center stays over the grid's bounds`() {
+        val farAway = Offset(1e6f, -1e6f)
+        val camera = GardenCamera(scale = 2f).transformedBy(Offset.Zero, farAway, 1f, viewport, metrics)
+        // Half of the 9-tile bounding box at 2x: 9 * 128 * 2 / 2 and 9 * 64 * 2 / 2.
+        assertOffset(Offset(1152f, -576f), camera.pan)
+    }
+
+    @Test
+    fun `initial camera zooms out to fit but not below the minimum`() {
+        assertEquals(1f, GardenCamera.fitting(Size(4000f, 4000f), metrics).scale, 0f)
+        assertEquals(800f / 1152f, GardenCamera.fitting(Size(800f, 2000f), metrics).scale, 1e-6f)
+        assertEquals(GardenCamera.MIN_SCALE, GardenCamera.fitting(Size(300f, 2000f), metrics).scale, 0f)
+    }
+}
