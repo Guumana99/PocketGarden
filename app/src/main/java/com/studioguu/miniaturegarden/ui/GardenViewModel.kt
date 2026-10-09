@@ -2,6 +2,8 @@ package com.studioguu.miniaturegarden.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.studioguu.miniaturegarden.data.asset.AssetRepository
+import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.ui.render.TileCoord
@@ -17,6 +19,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class GardenViewModel @Inject constructor(
     private val gardenRepository: GardenRepository,
+    private val assetRepository: AssetRepository,
 ) : ViewModel() {
 
     val gridObjects: StateFlow<List<GridObject>> = gardenRepository.observeGridObjects()
@@ -25,7 +28,12 @@ class GardenViewModel @Inject constructor(
     private val _selectedTile = MutableStateFlow<TileCoord?>(null)
     val selectedTile: StateFlow<TileCoord?> = _selectedTile.asStateFlow()
 
+    /** Empty until the atlas has loaded, and for good when no artwork is bundled. */
+    private val _atlas = MutableStateFlow(SpriteAtlas.EMPTY)
+    val atlas: StateFlow<SpriteAtlas> = _atlas.asStateFlow()
+
     init {
+        viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
         viewModelScope.launch { gardenRepository.ensureInitialized() }
     }
 

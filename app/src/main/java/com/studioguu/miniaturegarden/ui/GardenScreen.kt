@@ -26,12 +26,14 @@ private val SKY = Color(0xFFDCEFF5)
 fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val gridObjects by viewModel.gridObjects.collectAsStateWithLifecycle()
     val selectedTile by viewModel.selectedTile.collectAsStateWithLifecycle()
+    val atlas by viewModel.atlas.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize().background(SKY)) {
         GardenCanvas(
             gridObjects = gridObjects,
             selectedTile = selectedTile,
             onTileTapped = viewModel::onTileTapped,
+            atlas = atlas,
             modifier = Modifier.fillMaxSize(),
         )
         selectedTile?.let { tile ->
