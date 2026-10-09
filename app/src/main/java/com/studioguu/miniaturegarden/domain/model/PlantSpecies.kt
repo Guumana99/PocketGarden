@@ -22,6 +22,9 @@ enum class PlantSpecies(
     SUNFLOWER("plant_sunflower", growthHours = 72, dryOutHours = 16, harvestCoins = 90, harvestXp = 80),
     ROSE("plant_rose", growthHours = 120, dryOutHours = 36, harvestCoins = 160, harvestXp = 140);
 
+    /** Growth progress (0..1) gained per healthy hour. */
+    val growthPerHour: Float get() = 1f / growthHours
+
     companion object {
         /** Used for plant ids that have no entry here. */
         val DEFAULT = TULIP

@@ -35,24 +35,28 @@ class CareForPlantUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
-    /** Refills moisture to 100% for [WATER_XP]. Refused while the soil is still full. */
+    /** Refills moisture to 100% for [WATER_XP]. Only allowed below [WATERING_THRESHOLD]. */
     suspend fun water(instanceId: String, now: Long, weather: WeatherType): ActionResult =
         care(
             instanceId, now, weather,
             coinCost = 0,
             xp = WATER_XP,
-            refuse = { if (it.moistureLevel >= FULL_MOISTURE) ActionResult.ALREADY_MOIST else null },
+            refuse = { if (it.moistureLevel >= WATERING_THRESHOLD) ActionResult.ALREADY_MOIST else null },
         ) { it.copy(moistureLevel = 1f) }
 
     /**
-     * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, jumps growth ahead by
-     * [FERTILIZER_GROWTH_BOOST] and earns [FERTILIZE_XP].
+     * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, advances growth by what the plant
+     * would grow in [FERTILIZER_GROWTH_HOURS] healthy hours and earns [FERTILIZE_XP]. Being a fixed
+     * amount of time, it is worth proportionally less on slow, valuable plants.
      */
     suspend fun fertilize(instanceId: String, now: Long, weather: WeatherType): ActionResult =
         care(instanceId, now, weather, coinCost = FERTILIZER_COST, xp = FERTILIZE_XP, refuse = { null }) {
             it.copy(
                 nutritionLevel = 1f,
-                growthProgress = min(1f, it.growthProgress + FERTILIZER_GROWTH_BOOST),
+                growthProgress = min(
+                    1f,
+                    it.growthProgress + FERTILIZER_GROWTH_HOURS * PlantSpecies.forObjectId(it.objectId).growthPerHour,
+                ),
             )
         }
 
@@ -95,11 +99,11 @@ class CareForPlantUseCase @Inject constructor(
     companion object {
         const val WATER_XP = 5
         const val FERTILIZE_XP = 10
-        const val FERTILIZER_COST = 10
-        const val FERTILIZER_GROWTH_BOOST = 0.1f
+        const val FERTILIZER_COST = 15
+        const val FERTILIZER_GROWTH_HOURS = 2
 
-        /** Moisture that the status panel shows as 100%; watering at or above it is pointless. */
-        const val FULL_MOISTURE = 0.995f
+        /** Watering is only possible while moisture is below this. */
+        const val WATERING_THRESHOLD = 0.8f
     }
 }
 
@@ -226,4 +230,22 @@ class SyncGardenUseCase @Inject constructor(
         }
         return integrity
     }
+}
+
+/**
+ * Development aid: makes every object [millis] older and applies the resulting offline progress,
+ * as if that much time had passed with the app closed. Only object timestamps move; the
+ * profile's clocks are left alone, so this does not look like clock tampering.
+ */
+class SkipTimeUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+    private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
+) {
+    suspend operator fun invoke(millis: Long, now: Long, weather: WeatherType): ActionResult =
+        gardenRepository.runInTransaction {
+            val aged = gardenRepository.getGridObjects()
+                .map { it.copy(lastUpdatedTimestamp = it.lastUpdatedTimestamp - millis) }
+            gardenRepository.upsertGridObjects(calculateOfflineProgress(aged, now, weather))
+            ActionResult.SUCCESS
+        }
 }

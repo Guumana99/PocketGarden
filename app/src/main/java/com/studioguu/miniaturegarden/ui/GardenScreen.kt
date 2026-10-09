@@ -38,7 +38,9 @@ import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
+import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
@@ -65,6 +67,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
+    var showDebugMenu by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -98,6 +101,13 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             weather = weather,
             modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
         )
+
+        if (BuildConfig.DEBUG) {
+            TextButton(
+                onClick = { showDebugMenu = true },
+                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 56.dp, end = 4.dp),
+            ) { Text("🛠") }
+        }
 
         FloatingEffectsHost(
             effects = effects,
@@ -148,6 +158,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             },
             onDismiss = { showInventory = false },
         )
+    }
+    if (showDebugMenu) {
+        DebugMenuDialog(onSkipTime = viewModel::debugSkipTime, onDismiss = { showDebugMenu = false })
     }
     if (showShop) {
         ShopDialog(onDismiss = { showShop = false })
