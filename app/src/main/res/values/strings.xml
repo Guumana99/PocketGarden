@@ -1,5 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ぽけっと庭園</string>
-    <string name="selected_tile">マス (%1$d, %2$d)</string>
+
+    <!-- Top status bar -->
+    <string name="status_level">Lv.%1$d</string>
+    <string name="weather_sunny">晴れ</string>
+    <string name="weather_cloudy">くもり</string>
+    <string name="weather_rainy">雨</string>
+
+    <!-- Quick action bar -->
+    <string name="action_water">水やり</string>
+    <string name="action_fertilize">肥料</string>
+    <string name="action_inventory">もちもの</string>
+    <string name="action_shop">ショップ</string>
+
+    <!-- Object status popup -->
+    <string name="tile_position">マス (%1$d, %2$d)</string>
+    <string name="label_growth">成長</string>
+    <string name="label_moisture">水分</string>
+    <string name="label_nutrition">栄養</string>
+    <string name="label_percent">%1$d%%</string>
+    <string name="status_healthy">元気</string>
+    <string name="status_thirsty">水不足</string>
+    <string name="status_unnourished">栄養不足</string>
+    <string name="status_withered">枯れた</string>
+    <string name="action_harvest">収穫 (+%1$d)</string>
+    <string name="action_remove">撤去</string>
+    <string name="action_close">閉じる</string>
+
+    <!-- Objects and items -->
+    <string name="object_plant_tulip">チューリップ</string>
+    <string name="object_deco_rock">岩</string>
+    <string name="object_ground_grass">芝生</string>
+    <string name="object_ground_pebble">小石</string>
+    <string name="item_seed_tulip">チューリップの種</string>
+
+    <!-- Inventory -->
+    <string name="inventory_title">もちもの</string>
+    <string name="inventory_hint">置きたいアイテムをタップ</string>
+    <string name="placing_banner">配置中: %1$s ×%2$d　空いているマスをタップ</string>
+    <string name="placing_cancel">やめる</string>
+
+    <!-- Shop -->
+    <string name="shop_title">ショップ</string>
+    <string name="shop_coins">所持コイン: %1$d</string>
+    <string name="shop_buy">%1$d で買う</string>
+    <string name="shop_bought">%1$s を買いました</string>
+
+    <!-- Action results -->
+    <string name="msg_not_found">対象が見つかりません</string>
+    <string name="msg_not_a_plant">植物ではありません</string>
+    <string name="msg_withered">枯れてしまっています</string>
+    <string name="msg_not_ready">まだ収穫できません</string>
+    <string name="msg_tile_occupied">このマスには置けません</string>
+    <string name="msg_out_of_bounds">庭の外には置けません</string>
+    <string name="msg_slot_empty">アイテムがありません</string>
+    <string name="msg_not_enough_coins">コインが足りません</string>
+    <string name="msg_inventory_full">もちものがいっぱいです</string>
+    <string name="msg_select_plant">先に植物をタップして選んでください</string>
 </resources>

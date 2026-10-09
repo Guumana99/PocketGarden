@@ -59,12 +59,7 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         val stress = (recovered + STRESS_THIRSTY_PER_TICK * thirstyTicks + STRESS_UNNOURISHED_PER_TICK * starvedTicks)
             .coerceIn(0.0, 1.0)
 
-        val status = when {
-            stress >= 1.0 -> PlantStatus.WITHERED
-            moisture <= THIRSTY_THRESHOLD -> PlantStatus.THIRSTY
-            nutrition <= UNNOURISHED_THRESHOLD -> PlantStatus.UNNOURISHED
-            else -> PlantStatus.HEALTHY
-        }
+        val status = statusOf(moisture, nutrition, stress)
 
         return gridObject.copy(
             growthProgress = growth.toFloat(),
@@ -94,6 +89,14 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
     }
 
     companion object {
+        /** Status implied by the three levels; withering wins over everything else. */
+        fun statusOf(moisture: Double, nutrition: Double, stress: Double): PlantStatus = when {
+            stress >= 1.0 -> PlantStatus.WITHERED
+            moisture <= THIRSTY_THRESHOLD -> PlantStatus.THIRSTY
+            nutrition <= UNNOURISHED_THRESHOLD -> PlantStatus.UNNOURISHED
+            else -> PlantStatus.HEALTHY
+        }
+
         const val TICK_MILLIS = 60_000L
         const val MAX_OFFLINE_MILLIS = 7L * 24 * 60 * 60 * 1000 // 604,800,000 ms
 
