@@ -1,10 +1,60 @@
 {
   "version": 1,
   "atlas": "atlas.png",
-  "atlasWidth": 1814,
-  "atlasHeight": 2783,
+  "atlasWidth": 1893,
+  "atlasHeight": 3425,
   "tileWidth": 720,
   "assets": [
+    {
+      "assetId": "plant_rose_stage1",
+      "anchorX": 0.51,
+      "anchorY": 0.85,
+      "width": 357,
+      "height": 584,
+      "isFlippedAllowed": true,
+      "atlasX": 1453,
+      "atlasY": 2236
+    },
+    {
+      "assetId": "plant_rose_stage2",
+      "anchorX": 0.47,
+      "anchorY": 0.83,
+      "width": 632,
+      "height": 748,
+      "isFlippedAllowed": true,
+      "atlasX": 736,
+      "atlasY": 2
+    },
+    {
+      "assetId": "plant_rose_stage3",
+      "anchorX": 0.485,
+      "anchorY": 0.88,
+      "width": 907,
+      "height": 727,
+      "isFlippedAllowed": true,
+      "atlasX": 984,
+      "atlasY": 770
+    },
+    {
+      "assetId": "plant_rose_stage4",
+      "anchorX": 0.5,
+      "anchorY": 0.84,
+      "width": 548,
+      "height": 708,
+      "isFlippedAllowed": true,
+      "atlasX": 393,
+      "atlasY": 1518
+    },
+    {
+      "assetId": "plant_rose_withered",
+      "anchorX": 0.5,
+      "anchorY": 0.88,
+      "width": 479,
+      "height": 748,
+      "isFlippedAllowed": true,
+      "atlasX": 1370,
+      "atlasY": 2
+    },
     {
       "assetId": "plant_sunflower_stage1",
       "anchorX": 0.5,
@@ -13,27 +63,27 @@
       "height": 533,
       "isFlippedAllowed": true,
       "atlasX": 2,
-      "atlasY": 2248
+      "atlasY": 2890
     },
     {
       "assetId": "plant_sunflower_stage2",
-      "anchorX": 0.57,
-      "anchorY": 0.8,
-      "width": 828,
-      "height": 756,
+      "anchorX": 0.48,
+      "anchorY": 0.845,
+      "width": 401,
+      "height": 588,
       "isFlippedAllowed": true,
-      "atlasX": 2,
-      "atlasY": 772
+      "atlasX": 1050,
+      "atlasY": 2236
     },
     {
       "assetId": "plant_sunflower_stage3",
-      "anchorX": 0.52,
-      "anchorY": 0.9,
-      "width": 815,
-      "height": 768,
+      "anchorX": 0.475,
+      "anchorY": 0.88,
+      "width": 433,
+      "height": 637,
       "isFlippedAllowed": true,
-      "atlasX": 2,
-      "atlasY": 2
+      "atlasX": 615,
+      "atlasY": 2236
     },
     {
       "assetId": "plant_sunflower_stage4",
@@ -42,8 +92,8 @@
       "width": 406,
       "height": 746,
       "isFlippedAllowed": true,
-      "atlasX": 832,
-      "atlasY": 772
+      "atlasX": 2,
+      "atlasY": 770
     },
     {
       "assetId": "plant_sunflower_withered",
@@ -53,7 +103,7 @@
       "height": 716,
       "isFlippedAllowed": true,
       "atlasX": 2,
-      "atlasY": 1530
+      "atlasY": 1518
     },
     {
       "assetId": "plant_tulip_stage1",
@@ -63,7 +113,7 @@
       "height": 516,
       "isFlippedAllowed": true,
       "atlasX": 549,
-      "atlasY": 2248
+      "atlasY": 2890
     },
     {
       "assetId": "plant_tulip_stage2",
@@ -72,8 +122,8 @@
       "width": 611,
       "height": 652,
       "isFlippedAllowed": true,
-      "atlasX": 1009,
-      "atlasY": 1530
+      "atlasX": 2,
+      "atlasY": 2236
     },
     {
       "assetId": "plant_tulip_stage3",
@@ -82,8 +132,8 @@
       "width": 572,
       "height": 743,
       "isFlippedAllowed": true,
-      "atlasX": 1240,
-      "atlasY": 772
+      "atlasX": 410,
+      "atlasY": 770
     },
     {
       "assetId": "plant_tulip_stage4",
@@ -92,7 +142,7 @@
       "width": 732,
       "height": 766,
       "isFlippedAllowed": true,
-      "atlasX": 819,
+      "atlasX": 2,
       "atlasY": 2
     },
     {
@@ -102,8 +152,8 @@
       "width": 614,
       "height": 707,
       "isFlippedAllowed": true,
-      "atlasX": 393,
-      "atlasY": 1530
+      "atlasX": 943,
+      "atlasY": 1518
     }
   ]
 }
