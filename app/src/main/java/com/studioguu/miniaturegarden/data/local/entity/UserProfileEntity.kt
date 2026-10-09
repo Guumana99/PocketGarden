@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -9,6 +10,8 @@ data class UserProfileEntity(
     @PrimaryKey val id: Int = SINGLETON_ID,
     val coins: Long = 0L,
     val playerLevel: Int = 1,
+    /** Total experience earned. Added in schema version 2. */
+    @ColumnInfo(defaultValue = "0") val currentXp: Long = 0L,
     val inventoryCapacity: Int = 16,
     /** Epoch millis (System.currentTimeMillis) at the last save. */
     val lastUpdatedTimestamp: Long = 0L,

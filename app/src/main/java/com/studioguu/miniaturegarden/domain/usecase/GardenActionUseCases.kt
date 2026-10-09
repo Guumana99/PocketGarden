@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
@@ -17,6 +18,7 @@ enum class ActionResult {
     NOT_A_PLANT,
     WITHERED,
     NOT_READY,
+    ALREADY_MOIST,
     TILE_OCCUPIED,
     OUT_OF_BOUNDS,
     SLOT_EMPTY,
@@ -33,13 +35,21 @@ class CareForPlantUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
-    /** Refills moisture to 100%. */
+    /** Refills moisture to 100% for [WATER_XP]. Refused while the soil is still full. */
     suspend fun water(instanceId: String, now: Long, weather: WeatherType): ActionResult =
-        care(instanceId, now, weather) { it.copy(moistureLevel = 1f) }
+        care(
+            instanceId, now, weather,
+            coinCost = 0,
+            xp = WATER_XP,
+            refuse = { if (it.moistureLevel >= FULL_MOISTURE) ActionResult.ALREADY_MOIST else null },
+        ) { it.copy(moistureLevel = 1f) }
 
-    /** Refills nutrition to 100% and jumps growth ahead by [FERTILIZER_GROWTH_BOOST]. */
+    /**
+     * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, jumps growth ahead by
+     * [FERTILIZER_GROWTH_BOOST] and earns [FERTILIZE_XP].
+     */
     suspend fun fertilize(instanceId: String, now: Long, weather: WeatherType): ActionResult =
-        care(instanceId, now, weather) {
+        care(instanceId, now, weather, coinCost = FERTILIZER_COST, xp = FERTILIZE_XP, refuse = { null }) {
             it.copy(
                 nutritionLevel = 1f,
                 growthProgress = min(1f, it.growthProgress + FERTILIZER_GROWTH_BOOST),
@@ -50,6 +60,9 @@ class CareForPlantUseCase @Inject constructor(
         instanceId: String,
         now: Long,
         weather: WeatherType,
+        coinCost: Int,
+        xp: Int,
+        refuse: (GridObject) -> ActionResult?,
         treat: (GridObject) -> GridObject,
     ): ActionResult = gardenRepository.runInTransaction {
         val stored = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
@@ -61,6 +74,10 @@ class CareForPlantUseCase @Inject constructor(
             gardenRepository.upsertGridObject(current)
             return@runInTransaction ActionResult.WITHERED
         }
+        refuse(current)?.let { return@runInTransaction it }
+        val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
+        if (profile.coins < coinCost) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
+
         val treated = treat(current)
         gardenRepository.upsertGridObject(
             treated.copy(
@@ -71,11 +88,18 @@ class CareForPlantUseCase @Inject constructor(
                 )
             )
         )
+        gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - coinCost).gainXp(xp))
         ActionResult.SUCCESS
     }
 
     companion object {
+        const val WATER_XP = 5
+        const val FERTILIZE_XP = 10
+        const val FERTILIZER_COST = 10
         const val FERTILIZER_GROWTH_BOOST = 0.1f
+
+        /** Moisture that the status panel shows as 100%; watering at or above it is pointless. */
+        const val FULL_MOISTURE = 0.995f
     }
 }
 
@@ -112,7 +136,7 @@ class PlaceItemUseCase @Inject constructor(
         }
 }
 
-/** Sells a fully grown plant: removes it and credits its coins to the (re-signed) profile. */
+/** Sells a fully grown plant: removes it and credits its coins and XP to the (re-signed) profile. */
 class HarvestPlantUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
@@ -129,8 +153,9 @@ class HarvestPlantUseCase @Inject constructor(
             val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
 
             gardenRepository.deleteGridObject(instanceId)
+            val species = PlantSpecies.forObjectId(current.objectId)
             gardenRepository.saveUserProfile(
-                profile.copy(coins = profile.coins + GardenItem.harvestCoinsFor(current.objectId))
+                profile.copy(coins = profile.coins + species.harvestCoins).gainXp(species.harvestXp)
             )
             ActionResult.SUCCESS
         }

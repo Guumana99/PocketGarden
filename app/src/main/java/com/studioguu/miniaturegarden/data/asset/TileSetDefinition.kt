@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.data.asset
 
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 
 /** Ground tiles. Their sprites are anchored at the center of the tile's top face. */
@@ -10,36 +11,23 @@ enum class GroundTile(val assetId: String) {
     SOIL("tile_soil"),
 }
 
-/** Everything that can be stored in a grid cell; [objectId] is what the database holds. */
-sealed interface PlaceableDefinition {
-    val objectId: String
-}
-
-/**
- * @property growthStages number of growth sprites, named `<objectId>_stage1` .. `_stage<N>`.
- */
-enum class PlantSpecies(override val objectId: String, val growthStages: Int) : PlaceableDefinition {
-    TULIP("plant_tulip", growthStages = 4),
-}
-
-enum class Decoration(override val objectId: String) : PlaceableDefinition {
+enum class Decoration(val objectId: String) {
     ROCK("deco_rock"),
 }
 
 /** Flat ground cover, drawn below plants and decorations. */
-enum class GroundCover(override val objectId: String) : PlaceableDefinition {
+enum class GroundCover(val objectId: String) {
     PEBBLE("ground_pebble"),
     GRASS_TUFT("ground_grass"),
 }
 
+/** Maps what is on the grid to the sprites that draw it. Plants themselves are [PlantSpecies]. */
 object TileSetDefinition {
 
-    /** Stage count assumed for plant ids that have no [PlantSpecies] entry yet. */
-    const val DEFAULT_GROWTH_STAGES = 4
-
-    val placeables: List<PlaceableDefinition> = PlantSpecies.entries + Decoration.entries + GroundCover.entries
-
-    fun find(objectId: String): PlaceableDefinition? = placeables.firstOrNull { it.objectId == objectId }
+    /** Every object id that can be stored in a grid cell. */
+    val objectIds: List<String> =
+        PlantSpecies.entries.map { it.objectId } + Decoration.entries.map { it.objectId } +
+            GroundCover.entries.map { it.objectId }
 
     /** The two-tone checkerboard used for the lawn. */
     fun groundTileAt(gridX: Int, gridY: Int): GroundTile =
@@ -52,7 +40,7 @@ object TileSetDefinition {
     fun assetIdFor(gridObject: GridObject): String {
         if (!gridObject.isPlant) return gridObject.objectId
         if (gridObject.status == PlantStatus.WITHERED) return "${gridObject.objectId}_withered"
-        val stages = (find(gridObject.objectId) as? PlantSpecies)?.growthStages ?: DEFAULT_GROWTH_STAGES
+        val stages = PlantSpecies.forObjectId(gridObject.objectId).growthStages
         return "${gridObject.objectId}_stage${growthStage(gridObject.growthProgress, stages)}"
     }
 

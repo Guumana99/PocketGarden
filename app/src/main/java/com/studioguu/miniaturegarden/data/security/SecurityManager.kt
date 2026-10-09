@@ -63,7 +63,10 @@ class SecurityManager @Inject constructor(
     }
 
     fun verifySignature(profile: UserProfileEntity): Boolean =
-        CryptoUtils.verify(signaturePayload(profile), profile.signature)
+        CryptoUtils.verify(signaturePayload(profile), profile.signature) ||
+            // A profile migrated from schema v1 still carries its old signature until the next
+            // save; it can only have the 0 XP the migration gave it.
+            (profile.currentXp == 0L && CryptoUtils.verify(legacySignaturePayload(profile), profile.signature))
 
     /**
      * SQLCipher passphrase: 32 random bytes, generated once and stored wrapped by a Keystore key.
@@ -97,6 +100,18 @@ class SecurityManager @Inject constructor(
         profile.id,
         profile.coins,
         profile.playerLevel,
+        profile.currentXp,
+        profile.inventoryCapacity,
+        profile.lastUpdatedTimestamp,
+        profile.lastMonoClockTime,
+    ).joinToString("|")
+
+    /** Payload as signed before schema v2, i.e. without the experience points. */
+    private fun legacySignaturePayload(profile: UserProfileEntity): String = listOf(
+        LEGACY_SIGNATURE_VERSION,
+        profile.id,
+        profile.coins,
+        profile.playerLevel,
         profile.inventoryCapacity,
         profile.lastUpdatedTimestamp,
         profile.lastMonoClockTime,
@@ -112,7 +127,8 @@ class SecurityManager @Inject constructor(
         private const val KEY_DB_PASSPHRASE = "db_passphrase"
         private const val UNKNOWN_BOOT_COUNT = -1
         private const val DB_PASSPHRASE_BYTES = 32
-        private const val SIGNATURE_VERSION = "v1"
+        private const val SIGNATURE_VERSION = "v2"
+        private const val LEGACY_SIGNATURE_VERSION = "v1"
 
         /**
          * 1. Wall clock earlier than the last save -> rolled back.

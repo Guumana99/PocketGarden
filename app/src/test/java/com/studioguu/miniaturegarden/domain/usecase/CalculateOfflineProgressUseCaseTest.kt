@@ -1,11 +1,10 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherType
-import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.GROWTH_PER_TICK
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.MAX_OFFLINE_MILLIS
-import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.MOISTURE_DRAIN_PER_TICK
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.NUTRITION_DRAIN_PER_TICK
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.STRESS_RECOVERY_PER_TICK
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.STRESS_THIRSTY_PER_TICK
@@ -22,6 +21,10 @@ class CalculateOfflineProgressUseCaseTest {
     private val useCase = CalculateOfflineProgressUseCase()
     private val t0 = 1_700_000_000_000L
     private val hour = 3_600_000L
+
+    // plant() below is a tulip, so its rates are the reference for the expected values.
+    private val GROWTH_PER_TICK = 1.0 / (PlantSpecies.TULIP.growthHours * 60.0)
+    private val MOISTURE_DRAIN_PER_TICK = 1.0 / (PlantSpecies.TULIP.dryOutHours * 60.0)
 
     private fun plant(
         growth: Float = 0f,

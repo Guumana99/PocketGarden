@@ -11,6 +11,7 @@ import com.studioguu.miniaturegarden.domain.model.UserProfile
 fun UserProfileEntity.toDomain() = UserProfile(
     coins = coins,
     playerLevel = playerLevel,
+    currentXp = currentXp,
     inventoryCapacity = inventoryCapacity,
     lastUpdatedTimestamp = lastUpdatedTimestamp,
     lastMonoClockTime = lastMonoClockTime,
@@ -20,6 +21,7 @@ fun UserProfileEntity.toDomain() = UserProfile(
 fun UserProfile.toEntity() = UserProfileEntity(
     coins = coins,
     playerLevel = playerLevel,
+    currentXp = currentXp,
     inventoryCapacity = inventoryCapacity,
     lastUpdatedTimestamp = lastUpdatedTimestamp,
     lastMonoClockTime = lastMonoClockTime,

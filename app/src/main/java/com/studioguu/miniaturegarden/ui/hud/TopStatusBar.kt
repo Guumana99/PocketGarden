@@ -13,12 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.weatherEmoji
 import com.studioguu.miniaturegarden.ui.weatherLabel
 
 /**
- * Coins, level and today's weather.
+ * Coins, level with progress toward the next one, and today's weather.
  *
  * Deliberately built without Surface or any clickable: those install pointer-input handlers
  * that swallow touches, and this bar must let drags and taps fall through to the garden below.
@@ -27,6 +28,7 @@ import com.studioguu.miniaturegarden.ui.weatherLabel
 fun TopStatusBar(
     coins: Long,
     playerLevel: Int,
+    currentXp: Long,
     weather: WeatherType,
     modifier: Modifier = Modifier,
 ) {
@@ -36,7 +38,13 @@ fun TopStatusBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StatusChip("🪙 $coins")
-        StatusChip(stringResource(R.string.status_level, playerLevel))
+        StatusChip(
+            if (playerLevel >= LevelTable.MAX_LEVEL) {
+                stringResource(R.string.status_level_max, playerLevel)
+            } else {
+                stringResource(R.string.status_level, playerLevel, currentXp, LevelTable.xpForLevel(playerLevel + 1))
+            }
+        )
         StatusChip("${weatherEmoji(weather)} ${stringResource(weatherLabel(weather))}")
     }
 }

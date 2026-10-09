@@ -3,6 +3,8 @@ package com.studioguu.miniaturegarden.domain.usecase
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.LevelTable
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -13,7 +15,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -23,7 +24,7 @@ class GardenActionUseCasesTest {
     private val hour = 3_600_000L
     private val sunny = WeatherType.SUNNY
 
-    private val repo = FakeGardenRepository()
+    private val repo = FakeGardenRepository().apply { profile = UserProfile(coins = 100) }
     private val security = FakeSecurityRepository()
     private val calc = CalculateOfflineProgressUseCase()
     private val care = CareForPlantUseCase(repo, calc)
@@ -114,6 +115,106 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.WITHERED, care.water("p3", t0 + 24 * hour, sunny))
         assertEquals(PlantStatus.WITHERED, stored("p3").status)
         assertEquals(0f, stored("p3").moistureLevel, 0f)
+    }
+
+    @Test
+    fun `watering is refused while the soil is still full`() = runBlocking {
+        repo.put(tulip())
+
+        assertEquals(ActionResult.ALREADY_MOIST, care.water("p1", t0, sunny))
+        // One minute later the panel still shows 100%.
+        assertEquals(ActionResult.ALREADY_MOIST, care.water("p1", t0 + 60_000, sunny))
+        assertEquals(0L, repo.profile?.currentXp)
+        assertEquals(0, repo.profileSaves)
+
+        assertEquals(ActionResult.SUCCESS, care.water("p1", t0 + hour, sunny))
+    }
+
+    @Test
+    fun `watering and fertilizing earn experience`() = runBlocking {
+        repo.put(tulip(moisture = 0.5f))
+
+        care.water("p1", t0, sunny)
+        assertEquals(5L, repo.profile?.currentXp)
+        care.fertilize("p1", t0, sunny)
+        assertEquals(15L, repo.profile?.currentXp)
+    }
+
+    @Test
+    fun `fertilizer costs coins and is refused without them`() = runBlocking {
+        repo.profile = UserProfile(coins = 15)
+        repo.put(tulip(growth = 0.2f))
+
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
+        assertEquals(5L, repo.profile?.coins)
+        assertEquals(ActionResult.NOT_ENOUGH_COINS, care.fertilize("p1", t0, sunny))
+
+        assertEquals(5L, repo.profile?.coins)
+        assertEquals(0.3f, stored().growthProgress, 1e-4f)
+        assertEquals(10L, repo.profile?.currentXp)
+    }
+
+    // --- Levels ---
+
+    @Test
+    fun `level thresholds follow 100 x N to the power of 1_5`() {
+        assertEquals(0L, LevelTable.xpForLevel(1))
+        assertEquals(282L, LevelTable.xpForLevel(2))
+        assertEquals(519L, LevelTable.xpForLevel(3))
+        assertEquals(800L, LevelTable.xpForLevel(4))
+
+        assertEquals(1, LevelTable.levelForXp(0))
+        assertEquals(1, LevelTable.levelForXp(281))
+        assertEquals(2, LevelTable.levelForXp(282))
+        assertEquals(3, LevelTable.levelForXp(799))
+        assertEquals(4, LevelTable.levelForXp(800))
+        assertEquals(LevelTable.MAX_LEVEL, LevelTable.levelForXp(Long.MAX_VALUE))
+    }
+
+    @Test
+    fun `gaining enough experience raises the level, possibly by several`() {
+        val almost = UserProfile(currentXp = 280)
+        assertEquals(1, almost.gainXp(1).playerLevel)
+        assertEquals(2, almost.gainXp(5).playerLevel)
+        assertEquals(285L, almost.gainXp(5).currentXp)
+        assertEquals(4, UserProfile().gainXp(800).playerLevel)
+    }
+
+    @Test
+    fun `harvest pays the species' own coins and experience and can level the player up`() = runBlocking {
+        repo.profile = UserProfile(coins = 0, currentXp = 200)
+        repo.put(tulip(growth = 1f).copy(objectId = PlantSpecies.ROSE.objectId))
+
+        assertEquals(ActionResult.SUCCESS, harvest("p1", t0, sunny))
+
+        assertEquals(160L, repo.profile?.coins)
+        assertEquals(340L, repo.profile?.currentXp)
+        assertEquals(2, repo.profile?.playerLevel)
+    }
+
+    // --- Species ---
+
+    @Test
+    fun `each species grows and dries at its own pace`() {
+        fun after12h(species: PlantSpecies) =
+            calc(tulip().copy(objectId = species.objectId), t0 + 12 * hour, sunny)
+
+        for (species in PlantSpecies.entries) {
+            val plant = after12h(species)
+            assertEquals(species.name, 12f / species.growthHours, plant.growthProgress, 1e-4f)
+            assertEquals(species.name, 1f - 12f / species.dryOutHours, plant.moistureLevel, 1e-4f)
+        }
+        // Slower plants are worth more.
+        val byGrowth = PlantSpecies.entries.sortedBy { it.growthHours }
+        assertEquals(byGrowth, PlantSpecies.entries.sortedBy { it.harvestCoins })
+        assertEquals(byGrowth, PlantSpecies.entries.sortedBy { it.harvestXp })
+    }
+
+    @Test
+    fun `every seed in the shop grows into a known species`() {
+        val seeds = GardenItem.entries.filter { it.objectId.startsWith(GridObject.PLANT_ID_PREFIX) }
+        assertEquals(PlantSpecies.entries.toSet(), seeds.map { PlantSpecies.fromObjectId(it.objectId) }.toSet())
+        assertEquals(GardenItem.entries.size, GardenItem.entries.map { it.itemId }.toSet().size)
     }
 
     // --- Placing ---
@@ -299,7 +400,7 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `sync before the profile exists is harmless`() = runBlocking {
-        assertNull(repo.profile)
+        repo.profile = null
         assertTrue(sync(t0, sunny).isTrusted)
         assertEquals(0, repo.profileSaves)
     }

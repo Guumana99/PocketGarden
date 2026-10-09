@@ -15,6 +15,8 @@ import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 @Composable
 fun objectDisplayName(objectId: String): String = when (objectId) {
     "plant_tulip" -> stringResource(R.string.object_plant_tulip)
+    "plant_sunflower" -> stringResource(R.string.object_plant_sunflower)
+    "plant_rose" -> stringResource(R.string.object_plant_rose)
     "deco_rock" -> stringResource(R.string.object_deco_rock)
     "ground_grass" -> stringResource(R.string.object_ground_grass)
     "ground_pebble" -> stringResource(R.string.object_ground_pebble)
@@ -24,11 +26,15 @@ fun objectDisplayName(objectId: String): String = when (objectId) {
 @Composable
 fun itemDisplayName(item: GardenItem): String = when (item) {
     GardenItem.SEED_TULIP -> stringResource(R.string.item_seed_tulip)
+    GardenItem.SEED_SUNFLOWER -> stringResource(R.string.item_seed_sunflower)
+    GardenItem.SEED_ROSE -> stringResource(R.string.item_seed_rose)
     else -> objectDisplayName(item.objectId)
 }
 
 fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_TULIP -> "🌷"
+    GardenItem.SEED_SUNFLOWER -> "🌻"
+    GardenItem.SEED_ROSE -> "🌹"
     GardenItem.DECO_ROCK -> "🪨"
     GardenItem.GROUND_GRASS -> "🌿"
     GardenItem.GROUND_PEBBLE -> "⚪"
@@ -63,6 +69,7 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.NOT_A_PLANT -> R.string.msg_not_a_plant
     ActionResult.WITHERED -> R.string.msg_withered
     ActionResult.NOT_READY -> R.string.msg_not_ready
+    ActionResult.ALREADY_MOIST -> R.string.msg_already_moist
     ActionResult.TILE_OCCUPIED -> R.string.msg_tile_occupied
     ActionResult.OUT_OF_BOUNDS -> R.string.msg_out_of_bounds
     ActionResult.SLOT_EMPTY -> R.string.msg_slot_empty
