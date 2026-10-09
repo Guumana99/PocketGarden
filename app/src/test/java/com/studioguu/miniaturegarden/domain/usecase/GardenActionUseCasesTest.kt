@@ -32,6 +32,7 @@ class GardenActionUseCasesTest {
     private val harvest = HarvestPlantUseCase(repo, calc)
     private val remove = RemoveObjectUseCase(repo)
     private val purchase = PurchaseItemUseCase(repo)
+    private val skip = SkipTimeUseCase(repo, calc)
     private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, security), calc)
 
     private fun tulip(
@@ -91,13 +92,13 @@ class GardenActionUseCasesTest {
     @Test
     fun `fertilizer refills nutrition and boosts growth, capped at fully grown`() = runBlocking {
         repo.put(tulip(growth = 0.5f, nutrition = 0.1f, status = PlantStatus.UNNOURISHED))
-        repo.put(tulip(id = "p2", x = 1, growth = 0.95f))
+        repo.put(tulip(id = "p2", x = 1, growth = 0.99f))
 
         assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
         assertEquals(ActionResult.SUCCESS, care.fertilize("p2", t0, sunny))
 
         assertEquals(1f, stored("p1").nutritionLevel, 0f)
-        assertEquals(0.6f, stored("p1").growthProgress, 1e-4f)
+        assertEquals(0.5f + 2f / 48f, stored("p1").growthProgress, 1e-4f)  // two of a tulip's 48 hours
         assertEquals(PlantStatus.HEALTHY, stored("p1").status)
         assertEquals(1f, stored("p2").growthProgress, 0f)
     }
@@ -122,12 +123,13 @@ class GardenActionUseCasesTest {
         repo.put(tulip())
 
         assertEquals(ActionResult.ALREADY_MOIST, care.water("p1", t0, sunny))
-        // One minute later the panel still shows 100%.
-        assertEquals(ActionResult.ALREADY_MOIST, care.water("p1", t0 + 60_000, sunny))
+        // 96% an hour later: still above the 80% line.
+        assertEquals(ActionResult.ALREADY_MOIST, care.water("p1", t0 + hour, sunny))
         assertEquals(0L, repo.profile?.currentXp)
         assertEquals(0, repo.profileSaves)
 
-        assertEquals(ActionResult.SUCCESS, care.water("p1", t0 + hour, sunny))
+        // 75% after six hours.
+        assertEquals(ActionResult.SUCCESS, care.water("p1", t0 + 6 * hour, sunny))
     }
 
     @Test
@@ -142,7 +144,7 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `fertilizer costs coins and is refused without them`() = runBlocking {
-        repo.profile = UserProfile(coins = 15)
+        repo.profile = UserProfile(coins = 20)
         repo.put(tulip(growth = 0.2f))
 
         assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
@@ -150,7 +152,7 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.NOT_ENOUGH_COINS, care.fertilize("p1", t0, sunny))
 
         assertEquals(5L, repo.profile?.coins)
-        assertEquals(0.3f, stored().growthProgress, 1e-4f)
+        assertEquals(0.2f + 2f / 48f, stored().growthProgress, 1e-4f)
         assertEquals(10L, repo.profile?.currentXp)
     }
 
@@ -215,6 +217,61 @@ class GardenActionUseCasesTest {
         val seeds = GardenItem.entries.filter { it.objectId.startsWith(GridObject.PLANT_ID_PREFIX) }
         assertEquals(PlantSpecies.entries.toSet(), seeds.map { PlantSpecies.fromObjectId(it.objectId) }.toSet())
         assertEquals(GardenItem.entries.size, GardenItem.entries.map { it.itemId }.toSet().size)
+    }
+
+    @Test
+    fun `watering is allowed only below 80 percent moisture`() = runBlocking {
+        repo.put(tulip(moisture = 0.8f))
+        repo.put(tulip(id = "p2", x = 1, moisture = 0.79f))
+
+        assertEquals(ActionResult.ALREADY_MOIST, care.water("p1", t0, sunny))
+        assertEquals(ActionResult.SUCCESS, care.water("p2", t0, sunny))
+
+        assertEquals(0.8f, stored("p1").moistureLevel, 0f)
+        assertEquals(1f, stored("p2").moistureLevel, 0f)
+    }
+
+    @Test
+    fun `fertilizer is worth two hours of growth, so less on slower plants`() = runBlocking {
+        repo.profile = UserProfile(coins = 1_000)
+        PlantSpecies.entries.forEachIndexed { index, species ->
+            repo.put(tulip(id = species.name, x = index).copy(objectId = species.objectId))
+            care.fertilize(species.name, t0, sunny)
+            assertEquals(species.name, 2f / species.growthHours, stored(species.name).growthProgress, 1e-5f)
+        }
+        assertEquals(2f / 120f, stored("ROSE").growthProgress, 1e-5f)
+
+        // Fertilizing a rose from seed to harvest costs far more than the harvest pays.
+        val usesToMature = PlantSpecies.ROSE.growthHours / CareForPlantUseCase.FERTILIZER_GROWTH_HOURS
+        assertTrue(usesToMature * CareForPlantUseCase.FERTILIZER_COST > PlantSpecies.ROSE.harvestCoins)
+    }
+
+    // --- Debug time skip ---
+
+    @Test
+    fun `skipping time advances plants exactly like waiting`() = runBlocking {
+        repo.put(tulip())
+        repo.put(tulip(id = "p2", x = 1, moisture = 0.3f))
+        val waited = listOf(calc(stored("p1"), t0 + 6 * hour, sunny), calc(stored("p2"), t0 + 6 * hour, sunny))
+
+        assertEquals(ActionResult.SUCCESS, skip(6 * hour, t0, sunny))
+
+        // Same levels as waiting six hours, but anchored at the present.
+        assertEquals(waited.map { it.copy(lastUpdatedTimestamp = t0) }, listOf(stored("p1"), stored("p2")))
+        assertEquals(0.125f, stored("p1").growthProgress, 1e-4f)
+        assertEquals(0, repo.profileSaves)
+    }
+
+    @Test
+    fun `repeated skips add up and stop at the seven day cap per skip`() = runBlocking {
+        repo.put(tulip())
+
+        skip(hour, t0, sunny)
+        skip(hour, t0, sunny)
+        assertEquals(2f / 48f, stored().growthProgress, 1e-4f)
+
+        skip(30 * 24 * hour, t0, sunny)
+        assertEquals(PlantStatus.WITHERED, stored().status)
     }
 
     // --- Placing ---

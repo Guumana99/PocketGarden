@@ -16,6 +16,7 @@ import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
+import com.studioguu.miniaturegarden.domain.usecase.SkipTimeUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
 import com.studioguu.miniaturegarden.ui.render.TileCoord
@@ -44,6 +45,7 @@ class GardenViewModel @Inject constructor(
     private val placeItem: PlaceItemUseCase,
     private val harvestPlant: HarvestPlantUseCase,
     private val removeObject: RemoveObjectUseCase,
+    private val skipTime: SkipTimeUseCase,
 ) : ViewModel() {
 
     val gridObjects: StateFlow<List<GridObject>> = gardenRepository.observeGridObjects()
@@ -163,6 +165,9 @@ class GardenViewModel @Inject constructor(
     fun removeSelected() = withSelectedObject { obj ->
         act(onSuccess = ::clearSelection) { _, _ -> removeObject(obj.instanceId) }
     }
+
+    /** Debug menu: pretend [millis] passed for everything in the garden. */
+    fun debugSkipTime(millis: Long) = act { now, weather -> skipTime(millis, now, weather) }
 
     fun onEffectFinished(id: Long) {
         _effects.update { list -> list.filterNot { it.id == id } }
