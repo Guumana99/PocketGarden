@@ -1,10 +1,60 @@
 {
   "version": 1,
   "atlas": "atlas.png",
-  "atlasWidth": 1926,
-  "atlasHeight": 1424,
+  "atlasWidth": 1814,
+  "atlasHeight": 2783,
   "tileWidth": 720,
   "assets": [
+    {
+      "assetId": "plant_sunflower_stage1",
+      "anchorX": 0.5,
+      "anchorY": 0.74,
+      "width": 545,
+      "height": 533,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 2248
+    },
+    {
+      "assetId": "plant_sunflower_stage2",
+      "anchorX": 0.57,
+      "anchorY": 0.8,
+      "width": 828,
+      "height": 756,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 772
+    },
+    {
+      "assetId": "plant_sunflower_stage3",
+      "anchorX": 0.52,
+      "anchorY": 0.9,
+      "width": 815,
+      "height": 768,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 2
+    },
+    {
+      "assetId": "plant_sunflower_stage4",
+      "anchorX": 0.5,
+      "anchorY": 0.885,
+      "width": 406,
+      "height": 746,
+      "isFlippedAllowed": true,
+      "atlasX": 832,
+      "atlasY": 772
+    },
+    {
+      "assetId": "plant_sunflower_withered",
+      "anchorX": 0.54,
+      "anchorY": 0.91,
+      "width": 389,
+      "height": 716,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 1530
+    },
     {
       "assetId": "plant_tulip_stage1",
       "anchorX": 0.5,
@@ -12,8 +62,8 @@
       "width": 473,
       "height": 516,
       "isFlippedAllowed": true,
-      "atlasX": 615,
-      "atlasY": 770
+      "atlasX": 549,
+      "atlasY": 2248
     },
     {
       "assetId": "plant_tulip_stage2",
@@ -22,8 +72,8 @@
       "width": 611,
       "height": 652,
       "isFlippedAllowed": true,
-      "atlasX": 2,
-      "atlasY": 770
+      "atlasX": 1009,
+      "atlasY": 1530
     },
     {
       "assetId": "plant_tulip_stage3",
@@ -32,8 +82,8 @@
       "width": 572,
       "height": 743,
       "isFlippedAllowed": true,
-      "atlasX": 736,
-      "atlasY": 2
+      "atlasX": 1240,
+      "atlasY": 772
     },
     {
       "assetId": "plant_tulip_stage4",
@@ -42,7 +92,7 @@
       "width": 732,
       "height": 766,
       "isFlippedAllowed": true,
-      "atlasX": 2,
+      "atlasX": 819,
       "atlasY": 2
     },
     {
@@ -52,8 +102,8 @@
       "width": 614,
       "height": 707,
       "isFlippedAllowed": true,
-      "atlasX": 1310,
-      "atlasY": 2
+      "atlasX": 393,
+      "atlasY": 1530
     }
   ]
 }

@@ -3,5 +3,10 @@
   "plant_tulip_stage2": {"anchorX": 0.50, "anchorY": 0.87},
   "plant_tulip_stage3": {"anchorX": 0.57, "anchorY": 0.85},
   "plant_tulip_stage4": {"anchorX": 0.50, "anchorY": 0.86},
-  "plant_tulip_withered": {"anchorX": 0.33, "anchorY": 0.87}
+  "plant_tulip_withered": {"anchorX": 0.33, "anchorY": 0.87},
+  "plant_sunflower_stage1": {"anchorX": 0.50, "anchorY": 0.74},
+  "plant_sunflower_stage2": {"anchorX": 0.57, "anchorY": 0.80},
+  "plant_sunflower_stage3": {"anchorX": 0.52, "anchorY": 0.90},
+  "plant_sunflower_stage4": {"anchorX": 0.50, "anchorY": 0.885},
+  "plant_sunflower_withered": {"anchorX": 0.54, "anchorY": 0.91}
 }
