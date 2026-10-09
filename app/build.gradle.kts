@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "com.studioguu.minituregarden"
+    namespace = "com.studioguu.miniaturegarden"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.studioguu.minituregarden"
+        applicationId = "com.studioguu.miniaturegarden"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
