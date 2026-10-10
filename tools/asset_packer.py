@@ -15,6 +15,16 @@ Usage:
 
 The file name (without .png) becomes the assetId, e.g. plant_tulip_stage3.png -> "plant_tulip_stage3".
 
+Scaling
+  --tile-width is how many atlas pixels one grid tile spans. If the source art is drawn larger
+  than that, also pass --source-tile-width and every sprite is shrunk to match, e.g. art drawn
+  at 720 px per tile packed into a lighter 512 px-per-tile atlas:
+
+    python tools/asset_packer.py raw_assets/ out/ --tile-width 512 --source-tile-width 720
+
+  Changing --tile-width alone does not resize anything; it only changes how large the sprites
+  are drawn in the app.
+
 Anchors
   The anchor is the point of the sprite that stands on the ground. After cropping it defaults
   to the bottom center (0.5, 1.0). Override it per sprite in the overrides file, e.g. for a
@@ -79,7 +89,20 @@ def crop_to_alpha(image: Image.Image, alpha_threshold: int = 0) -> Image.Image |
     return None if box is None else rgba.crop(box)
 
 
-def load_sprites(input_dir: Path, alpha_threshold: int = 0) -> list[Sprite]:
+def scale_image(image: Image.Image, scale: float) -> Image.Image:
+    """Resample an RGBA image by `scale`.
+
+    The resize runs on premultiplied alpha: otherwise the colour stored in fully transparent
+    pixels (usually white or black) bleeds into the sprite's edges as a halo.
+    """
+    if scale == 1.0:
+        return image
+    size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
+    return image.convert("RGBa").resize(size, Image.LANCZOS).convert("RGBA")
+
+
+def load_sprites(input_dir: Path, alpha_threshold: int = 0, scale: float = 1.0) -> list[Sprite]:
+    """Load, crop and (when scale != 1) resample every PNG in input_dir."""
     sprites = []
     for path in sorted(input_dir.glob("*.png")):
         with Image.open(path) as source:
@@ -87,7 +110,7 @@ def load_sprites(input_dir: Path, alpha_threshold: int = 0) -> list[Sprite]:
         if cropped is None:
             print(f"warning: {path.name} is fully transparent, skipped", file=sys.stderr)
             continue
-        sprites.append(Sprite(asset_id=path.stem, image=cropped))
+        sprites.append(Sprite(asset_id=path.stem, image=scale_image(cropped, scale)))
     return sprites
 
 
@@ -173,13 +196,21 @@ def run(
     output_dir: Path,
     *,
     tile_width: int = 256,
+    source_tile_width: int | None = None,
     max_width: int = 2048,
     padding: int = 2,
     alpha_threshold: int = 0,
     overrides_path: Path | None = None,
 ) -> dict:
-    """Run the whole pipeline and return the manifest that was written."""
-    sprites = load_sprites(input_dir, alpha_threshold)
+    """Run the whole pipeline and return the manifest that was written.
+
+    tile_width is how wide one grid tile is in the atlas. When the source art was drawn at a
+    different size (source_tile_width), every sprite is resampled by tile_width / source_tile_width.
+    """
+    if tile_width <= 0 or (source_tile_width is not None and source_tile_width <= 0):
+        raise ValueError("tile widths must be positive")
+    scale = 1.0 if source_tile_width is None else tile_width / source_tile_width
+    sprites = load_sprites(input_dir, alpha_threshold, scale)
     if not sprites:
         raise ValueError(f"no usable .png files in {input_dir}")
     if overrides_path is not None:
@@ -199,7 +230,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("input_dir", type=Path, help="folder of transparent .png files")
     parser.add_argument("output_dir", type=Path, help=f"where {ATLAS_NAME} and {MANIFEST_NAME} are written")
     parser.add_argument("--tile-width", type=int, default=256,
-                        help="pixel width of one grid tile in the source art (default: 256)")
+                        help="pixel width of one grid tile in the atlas (default: 256)")
+    parser.add_argument("--source-tile-width", type=int, default=None,
+                        help="pixel width of one grid tile in the source art, if different from "
+                             "--tile-width; sprites are resampled by tile-width / source-tile-width")
     parser.add_argument("--max-width", type=int, default=2048, help="maximum atlas width in pixels (default: 2048)")
     parser.add_argument("--padding", type=int, default=2, help="transparent pixels around each sprite (default: 2)")
     parser.add_argument("--alpha-threshold", type=int, default=0,
@@ -213,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
             args.input_dir,
             args.output_dir,
             tile_width=args.tile_width,
+            source_tile_width=args.source_tile_width,
             max_width=args.max_width,
             padding=args.padding,
             alpha_threshold=args.alpha_threshold,

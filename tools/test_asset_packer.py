@@ -117,6 +117,41 @@ class AssetPackerTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             asset_packer.apply_overrides(sprites, {"a": {"anchor_y": 0.5}})
 
+    def test_source_tile_width_shrinks_sprites_and_keeps_anchor_fractions(self):
+        make_png(self.src / "plant.png", (400, 400), (100, 40, 300, 360))  # 200x320 of content
+        overrides = self.root / "overrides.json"
+        overrides.write_text(json.dumps({"plant": {"anchorX": 0.4, "anchorY": 0.9}}))
+
+        manifest = asset_packer.run(
+            self.src, self.out, tile_width=128, source_tile_width=256, overrides_path=overrides)
+
+        plant = manifest["assets"][0]
+        self.assertEqual(128, manifest["tileWidth"])
+        self.assertEqual((100, 160), (plant["width"], plant["height"]))
+        self.assertEqual((0.4, 0.9), (plant["anchorX"], plant["anchorY"]))
+        with Image.open(self.out / "atlas.png") as atlas:
+            self.assertEqual((manifest["atlasWidth"], manifest["atlasHeight"]), atlas.size)
+
+    def test_tile_width_alone_does_not_resize(self):
+        make_png(self.src / "plant.png", (400, 400), (100, 40, 300, 360))
+        manifest = asset_packer.run(self.src, self.out, tile_width=128)
+        self.assertEqual((200, 320), (manifest["assets"][0]["width"], manifest["assets"][0]["height"]))
+
+    def test_scaling_does_not_bleed_the_transparent_background_colour(self):
+        # Opaque red on fully transparent *white*: a naive resize would turn the edge pink.
+        image = Image.new("RGBA", (64, 64), (255, 255, 255, 0))
+        image.paste((255, 0, 0, 255), (16, 16, 48, 48))
+
+        scaled = asset_packer.scale_image(image, 0.5)
+
+        self.assertEqual((32, 32), scaled.size)
+        for x in range(32):
+            for y in range(32):
+                r, g, b, a = scaled.getpixel((x, y))
+                if a > 16:
+                    self.assertLess(g, 40, f"green leaked in at {(x, y)}: {(r, g, b, a)}")
+                    self.assertLess(b, 40, f"blue leaked in at {(x, y)}: {(r, g, b, a)}")
+
     def test_sprite_wider_than_atlas_is_an_error(self):
         make_png(self.src / "wide.png", (300, 10), (0, 0, 300, 10))
         with self.assertRaises(ValueError):
