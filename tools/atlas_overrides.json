@@ -11,7 +11,7 @@
   "plant_sunflower_withered": {"anchorX": 0.54, "anchorY": 0.91},
   "plant_rose_stage1": {"anchorX": 0.51, "anchorY": 0.85},
   "plant_rose_stage2": {"anchorX": 0.47, "anchorY": 0.83},
-  "plant_rose_stage3": {"anchorX": 0.485, "anchorY": 0.88},
-  "plant_rose_stage4": {"anchorX": 0.50, "anchorY": 0.84},
+  "plant_rose_stage3": {"anchorX": 0.50, "anchorY": 0.79},
+  "plant_rose_stage4": {"anchorX": 0.515, "anchorY": 0.80},
   "plant_rose_withered": {"anchorX": 0.50, "anchorY": 0.88}
 }
