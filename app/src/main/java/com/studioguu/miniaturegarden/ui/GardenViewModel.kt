@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import com.studioguu.miniaturegarden.data.audio.AudioManager
+import com.studioguu.miniaturegarden.data.audio.BgmTrack
+import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -46,6 +49,7 @@ class GardenViewModel @Inject constructor(
     private val harvestPlant: HarvestPlantUseCase,
     private val removeObject: RemoveObjectUseCase,
     private val skipTime: SkipTimeUseCase,
+    private val audio: AudioManager,
 ) : ViewModel() {
 
     val gridObjects: StateFlow<List<GridObject>> = gardenRepository.observeGridObjects()
@@ -94,7 +98,22 @@ class GardenViewModel @Inject constructor(
 
     init {
         viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
+        audio.preload()
         watchForLevelUps()
+    }
+
+    /** The garden came to the foreground: start (or continue) its music. */
+    fun onForeground() {
+        audio.playBgm(BgmTrack.GARDEN)
+        audio.resumeBgm()
+    }
+
+    fun onBackground() {
+        audio.pauseBgm()
+    }
+
+    override fun onCleared() {
+        audio.stopBgm()
     }
 
     /** Advances every plant to the current time. Called on resume and on a timer while visible. */
@@ -115,9 +134,10 @@ class GardenViewModel @Inject constructor(
     fun onTileTapped(tile: TileCoord?) {
         val slotIndex = _placingSlotIndex.value
         if (slotIndex == null) {
+            if (tile != null) audio.play(SoundEffect.TAP)
             _selectedTile.value = tile.takeIf { it != _selectedTile.value }
         } else if (tile != null) {
-            act { now, _ ->
+            act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ ->
                 placeItem(slotIndex, tile.x, tile.y, now).also {
                     val slotNowEmpty = gardenRepository.getInventory()
                         .none { it.slotIndex == slotIndex && !it.isEmpty }
@@ -141,15 +161,21 @@ class GardenViewModel @Inject constructor(
     }
 
     fun waterSelected() = withSelectedObject { obj ->
-        act(onSuccess = { showEffect { GardenEffect.Xp(it, CareForPlantUseCase.WATER_XP) } }) { now, weather ->
-            careForPlant.water(obj.instanceId, now, weather)
-        }
+        act(
+            onSuccess = {
+                audio.play(SoundEffect.WATER)
+                showEffect { GardenEffect.Xp(it, CareForPlantUseCase.WATER_XP) }
+            }
+        ) { now, weather -> careForPlant.water(obj.instanceId, now, weather) }
     }
 
     fun fertilizeSelected() = withSelectedObject { obj ->
-        act(onSuccess = { showEffect { GardenEffect.Xp(it, CareForPlantUseCase.FERTILIZE_XP) } }) { now, weather ->
-            careForPlant.fertilize(obj.instanceId, now, weather)
-        }
+        act(
+            onSuccess = {
+                audio.play(SoundEffect.FERTILIZE)
+                showEffect { GardenEffect.Xp(it, CareForPlantUseCase.FERTILIZE_XP) }
+            }
+        ) { now, weather -> careForPlant.fertilize(obj.instanceId, now, weather) }
     }
 
     fun harvestSelected() = withSelectedObject { obj ->
@@ -157,6 +183,7 @@ class GardenViewModel @Inject constructor(
         act(
             onSuccess = {
                 clearSelection()
+                audio.play(SoundEffect.HARVEST)
                 showEffect { GardenEffect.Harvest(it, species.harvestCoins, species.harvestXp) }
             }
         ) { now, weather -> harvestPlant(obj.instanceId, now, weather) }
@@ -183,7 +210,12 @@ class GardenViewModel @Inject constructor(
             var lastLevel: Int? = null
             gardenRepository.observeUserProfile().collect { profile ->
                 val level = profile?.playerLevel ?: return@collect
-                lastLevel?.let { previous -> if (level > previous) showEffect { GardenEffect.LevelUp(it, level) } }
+                lastLevel?.let { previous ->
+                    if (level > previous) {
+                        audio.play(SoundEffect.LEVEL_UP)
+                        showEffect { GardenEffect.LevelUp(it, level) }
+                    }
+                }
                 lastLevel = level
             }
         }
@@ -204,7 +236,7 @@ class GardenViewModel @Inject constructor(
                 val now = System.currentTimeMillis()
                 block(now, currentWeather(now))
             }
-            if (result == ActionResult.SUCCESS) onSuccess()
+            if (result == ActionResult.SUCCESS) onSuccess() else audio.play(SoundEffect.ERROR)
             actionResultMessage(result)?.let { _messages.send(it) }
         }
     }

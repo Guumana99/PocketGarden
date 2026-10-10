@@ -2,6 +2,8 @@ package com.studioguu.miniaturegarden.ui.shop
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.studioguu.miniaturegarden.data.audio.AudioManager
+import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
@@ -23,6 +25,7 @@ data class PurchaseFeedback(val item: GardenItem, val result: ActionResult)
 class ShopViewModel @Inject constructor(
     gardenRepository: GardenRepository,
     private val purchaseItem: PurchaseItemUseCase,
+    private val audio: AudioManager,
 ) : ViewModel() {
 
     val items: List<GardenItem> = GardenItem.entries
@@ -35,7 +38,11 @@ class ShopViewModel @Inject constructor(
     val feedback: StateFlow<PurchaseFeedback?> = _feedback.asStateFlow()
 
     fun buy(item: GardenItem) {
-        viewModelScope.launch { _feedback.value = PurchaseFeedback(item, purchaseItem(item)) }
+        viewModelScope.launch {
+            val result = purchaseItem(item)
+            audio.play(if (result == ActionResult.SUCCESS) SoundEffect.COIN else SoundEffect.ERROR)
+            _feedback.value = PurchaseFeedback(item, result)
+        }
     }
 
     fun clearFeedback() {

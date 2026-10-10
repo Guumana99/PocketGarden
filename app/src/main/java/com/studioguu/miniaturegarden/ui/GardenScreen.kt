@@ -73,11 +73,17 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // Catch up on time away whenever the app returns to the foreground, then keep ticking.
+    // Music follows the same window: it plays only while the garden is in front.
     LaunchedEffect(lifecycleOwner, viewModel) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            while (true) {
-                viewModel.sync()
-                delay(SYNC_INTERVAL_MILLIS)
+            viewModel.onForeground()
+            try {
+                while (true) {
+                    viewModel.sync()
+                    delay(SYNC_INTERVAL_MILLIS)
+                }
+            } finally {
+                viewModel.onBackground()
             }
         }
     }

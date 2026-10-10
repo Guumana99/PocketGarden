@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sound files go in this folder: se_*.ogg for effects, bgm_*.ogg for music (mp3 / wav also work).
+  AudioManager looks them up by name at runtime, so the resource shrinker cannot see that they
+  are used; this file tells it to keep them.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/se_*,@raw/bgm_*" />
