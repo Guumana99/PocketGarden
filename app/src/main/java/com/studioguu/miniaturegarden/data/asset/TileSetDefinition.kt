@@ -3,12 +3,15 @@ package com.studioguu.miniaturegarden.data.asset
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.StructureData
+import com.studioguu.miniaturegarden.domain.model.TileType
 
 /** Ground tiles. Their sprites are anchored at the center of the tile's top face. */
 enum class GroundTile(val assetId: String) {
     GRASS("tile_grass"),
     GRASS_DARK("tile_grass_dark"),
     SOIL("tile_soil"),
+    WATER("tile_water"),
 }
 
 enum class Decoration(val objectId: String) {
@@ -27,11 +30,13 @@ object TileSetDefinition {
     /** Every object id that can be stored in a grid cell. */
     val objectIds: List<String> =
         PlantSpecies.entries.map { it.objectId } + Decoration.entries.map { it.objectId } +
-            GroundCover.entries.map { it.objectId }
+            GroundCover.entries.map { it.objectId } + StructureData.entries.map { it.objectId }
 
-    /** The two-tone checkerboard used for the lawn. */
-    fun groundTileAt(gridX: Int, gridY: Int): GroundTile =
-        if ((gridX + gridY) % 2 == 0) GroundTile.GRASS else GroundTile.GRASS_DARK
+    /** Ground sprite for a cell: water for the river, a two-tone checkerboard for the lawn. */
+    fun groundTileFor(type: TileType, gridX: Int, gridY: Int): GroundTile = when (type) {
+        TileType.RIVER -> GroundTile.WATER
+        TileType.GRASS -> if ((gridX + gridY) % 2 == 0) GroundTile.GRASS else GroundTile.GRASS_DARK
+    }
 
     /**
      * Sprite id for an object in its current state. Plants resolve to a growth-stage sprite

@@ -17,6 +17,8 @@ enum class GardenItem(
     SEED_SUNFLOWER("seed_sunflower", price = 35, objectId = PlantSpecies.SUNFLOWER.objectId),
     SEED_ROSE("seed_rose", price = 60, objectId = PlantSpecies.ROSE.objectId),
     DECO_ROCK("deco_rock", price = 30, objectId = "deco_rock"),
+    STRUCT_HUT("struct_hut", price = 150, objectId = StructureData.HUT.objectId),
+    STRUCT_WELL("struct_well", price = 80, objectId = StructureData.WELL.objectId),
     GROUND_GRASS("ground_grass", price = 10, objectId = "ground_grass"),
     GROUND_PEBBLE("ground_pebble", price = 10, objectId = "ground_pebble");
 

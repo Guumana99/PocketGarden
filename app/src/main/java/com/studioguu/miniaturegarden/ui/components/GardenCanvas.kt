@@ -26,8 +26,12 @@ import androidx.compose.ui.unit.toSize
 import com.studioguu.miniaturegarden.data.asset.GroundTile
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.StructureData
+import com.studioguu.miniaturegarden.domain.model.TileType
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
@@ -48,6 +52,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * The isometric garden view: pinch to zoom, drag to pan, tap to pick a tile.
  *
  * @param atlas sprites to draw with; anything missing from it falls back to a placeholder shape.
+ * @param gardenMap the terrain under the objects.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
  */
 @Composable
@@ -57,6 +62,7 @@ fun GardenCanvas(
     onTileTapped: (TileCoord?) -> Unit,
     modifier: Modifier = Modifier,
     atlas: SpriteAtlas = SpriteAtlas.EMPTY,
+    gardenMap: GardenMap = GardenMap.allGrass(),
     showGrid: Boolean = true,
 ) {
     val density = LocalDensity.current
@@ -69,6 +75,7 @@ fun GardenCanvas(
     var camera by remember { mutableStateOf<GardenCamera?>(null) }
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     val pipeline = remember { LayerPipeline() }
+    val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
 
     Canvas(
@@ -92,7 +99,7 @@ fun GardenCanvas(
         val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
 
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, metrics.gridSize) { tile, center ->
+            drawTerrain(transform, gardenMap) { tile, center ->
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
                 sprite != null
@@ -102,23 +109,44 @@ fun GardenCanvas(
             pipeline.submit(RenderLayer.GRID_OVERLAY) { drawIsometricGrid(transform, metrics.gridSize) }
         }
         if (selectedTile != null) {
-            pipeline.submit(RenderLayer.GRID_OVERLAY, depth = 1f) { drawTileHighlight(transform, selectedTile) }
-            pipeline.submit(RenderLayer.HUD_OVERLAY) { drawTileOutline(transform, selectedTile) }
+            // Selecting any cell of a structure marks its whole footprint.
+            val selected = grid.objectAt(selectedTile.x, selectedTile.y)
+            val origin = selected?.let { TileCoord(it.gridX, it.gridY) } ?: selectedTile
+            val spanX = selected?.footprint?.width ?: 1
+            val spanY = selected?.footprint?.height ?: 1
+            pipeline.submit(RenderLayer.GRID_OVERLAY, depth = 1f) {
+                drawTileHighlight(transform, origin, spanX, spanY)
+            }
+            pipeline.submit(RenderLayer.HUD_OVERLAY) { drawTileOutline(transform, origin, spanX, spanY) }
         }
         for (obj in gridObjects) {
-            val depth = LayerPipeline.depthOf(obj.gridX, obj.gridY, obj.heightLevel)
-            val base = transform.tileCenter(obj.gridX, obj.gridY, obj.heightLevel.toFloat())
+            val footprint = obj.footprint
+            val structure = StructureData.fromObjectId(obj.objectId)
+            // Sorted by its front-most cell, so things standing behind a wide object stay behind it.
+            val depth = LayerPipeline.depthOf(
+                obj.gridX + footprint.width - 1,
+                obj.gridY + footprint.height - 1,
+                obj.heightLevel,
+            )
+            // Ground point under the middle of the footprint: the tile center for a 1x1 object.
+            val base = transform.worldToScreen(
+                obj.gridX + footprint.width / 2f,
+                obj.gridY + footprint.height / 2f,
+                obj.heightLevel.toFloat(),
+            )
             val unit = transform.tileWidth
             val isGroundCover = obj.objectId.startsWith(GROUND_OBJECT_ID_PREFIX)
             // Null while the atlas has no sprite for this object; the placeholder is drawn instead.
             val sprite = atlas[TileSetDefinition.assetIdFor(obj)]
 
-            if (!isGroundCover) {
+            if (!isGroundCover && structure == null) {
                 pipeline.submit(RenderLayer.SHADOWS, depth) { drawShadow(obj, base, unit) }
             }
             pipeline.submit(if (isGroundCover) RenderLayer.BOTTOM_OBJECTS else RenderLayer.GRID_OBJECTS, depth) {
                 if (sprite != null && atlasImage != null) {
                     drawSprite(atlasImage, sprite, base, spriteScale, flipped = obj.isFlipped)
+                } else if (structure != null) {
+                    drawStructure(transform, obj, structure)
                 } else {
                     drawPlaceholder(obj, base, unit)
                 }
@@ -144,9 +172,10 @@ private val SOIL_RIGHT = Color(0xFF6D4C41)
  */
 private fun DrawScope.drawTerrain(
     transform: IsometricTransform,
-    gridSize: Int,
+    gardenMap: GardenMap,
     drawTileSprite: DrawScope.(tile: GroundTile, center: Offset) -> Boolean,
 ) {
+    val gridSize = gardenMap.size
     val max = gridSize.toFloat()
     val left = transform.worldToScreen(0f, max)
     val bottom = transform.worldToScreen(max, max)
@@ -159,11 +188,40 @@ private fun DrawScope.drawTerrain(
 
     // x-then-y order draws every tile before the two neighbours in front of it.
     for (x in 0 until gridSize) for (y in 0 until gridSize) {
-        val tile = TileSetDefinition.groundTileAt(x, y)
-        if (!drawTileSprite(tile, transform.tileCenter(x, y))) {
-            drawPath(transform.tilePath(x, y), if (tile == GroundTile.GRASS) GRASS_LIGHT else GRASS_DARK)
+        val type = gardenMap.tileAt(x, y) ?: TileType.GRASS
+        val tile = TileSetDefinition.groundTileFor(type, x, y)
+        if (drawTileSprite(tile, transform.tileCenter(x, y))) continue
+        when (tile) {
+            GroundTile.WATER -> drawWaterTile(transform, x, y)
+            GroundTile.GRASS -> drawPath(transform.tilePath(x, y), GRASS_LIGHT)
+            else -> drawPath(transform.tilePath(x, y), GRASS_DARK)
         }
     }
+}
+
+private val WATER = Color(0xFF4FB3E8)
+private val WATER_RIPPLE = Color(0xFFB3E5FC)
+
+/** Flat water with two short ripples running along the tile. */
+private fun DrawScope.drawWaterTile(transform: IsometricTransform, x: Int, y: Int) {
+    drawPath(transform.tilePath(x, y), WATER)
+    val stroke = transform.tileWidth * 0.02f
+    for ((offsetX, offsetY) in listOf(0.2f to 0.35f, 0.5f to 0.7f)) {
+        drawLine(
+            color = WATER_RIPPLE,
+            start = transform.worldToScreen(x + offsetX, y + offsetY),
+            end = transform.worldToScreen(x + offsetX + 0.3f, y + offsetY),
+            strokeWidth = stroke,
+            cap = StrokeCap.Round,
+        )
+    }
+}
+
+private fun triangle(a: Offset, b: Offset, c: Offset) = Path().apply {
+    moveTo(a.x, a.y)
+    lineTo(b.x, b.y)
+    lineTo(c.x, c.y)
+    close()
 }
 
 private fun quad(a: Offset, b: Offset, c: Offset, d: Offset) = Path().apply {
@@ -257,5 +315,67 @@ private fun DrawScope.drawPlaceholder(obj: GridObject, base: Offset, unit: Float
     // isFlipped mirrors the shape around the vertical line through its tile center.
     scale(scaleX = if (obj.isFlipped) -1f else 1f, scaleY = 1f, pivot = base) {
         if (obj.isPlant) drawPlant(obj, base, unit) else drawDecoration(base, unit)
+    }
+}
+
+// --- Structures -------------------------------------------------------------------------------
+
+private val HUT_WALL_LEFT = Color(0xFFD7B98E)
+private val HUT_WALL_RIGHT = Color(0xFFB8956A)
+private val HUT_ROOF_LIGHT = Color(0xFFC0563F)
+private val HUT_ROOF_DARK = Color(0xFF9C3F2E)
+private val WELL_WALL_LEFT = Color(0xFFBDBDBD)
+private val WELL_WALL_RIGHT = Color(0xFF9E9E9E)
+private val WELL_RIM = Color(0xFFE0E0E0)
+private val WELL_WATER = Color(0xFF3F8FC4)
+
+/** How far the walls stand back from the edge of the footprint, in tiles. */
+private const val STRUCTURE_INSET = 0.12f
+
+/**
+ * Placeholder for a structure without a sprite: a box standing on its whole footprint, with a
+ * pitched roof for the hut and an open, water-filled top for the well. Heights are in height
+ * steps, like [GridObject.heightLevel].
+ */
+private fun DrawScope.drawStructure(transform: IsometricTransform, obj: GridObject, structure: StructureData) {
+    val x0 = obj.gridX + STRUCTURE_INSET
+    val y0 = obj.gridY + STRUCTURE_INSET
+    val x1 = obj.gridX + structure.footprint.width - STRUCTURE_INSET
+    val y1 = obj.gridY + structure.footprint.height - STRUCTURE_INSET
+    val ground = obj.heightLevel.toFloat()
+    val isHut = structure == StructureData.HUT
+    val top = ground + if (isHut) 4f else 1.8f
+
+    // Corners of the box, named by where they appear on screen.
+    val leftLow = transform.worldToScreen(x0, y1, ground)
+    val frontLow = transform.worldToScreen(x1, y1, ground)
+    val rightLow = transform.worldToScreen(x1, y0, ground)
+    val back = transform.worldToScreen(x0, y0, top)
+    val left = transform.worldToScreen(x0, y1, top)
+    val front = transform.worldToScreen(x1, y1, top)
+    val right = transform.worldToScreen(x1, y0, top)
+
+    drawPath(quad(leftLow, frontLow, front, left), if (isHut) HUT_WALL_LEFT else WELL_WALL_LEFT)
+    drawPath(quad(frontLow, rightLow, right, front), if (isHut) HUT_WALL_RIGHT else WELL_WALL_RIGHT)
+
+    if (isHut) {
+        val apex = transform.worldToScreen((x0 + x1) / 2f, (y0 + y1) / 2f, top + 3f)
+        // Back slopes first, then the two facing the viewer.
+        drawPath(triangle(back, left, apex), HUT_ROOF_DARK)
+        drawPath(triangle(back, right, apex), HUT_ROOF_DARK)
+        drawPath(triangle(left, front, apex), HUT_ROOF_LIGHT)
+        drawPath(triangle(front, right, apex), HUT_ROOF_DARK)
+    } else {
+        drawPath(quad(back, right, front, left), WELL_RIM)
+        val rim = 0.14f
+        drawPath(
+            quad(
+                transform.worldToScreen(x0 + rim, y0 + rim, top),
+                transform.worldToScreen(x1 - rim, y0 + rim, top),
+                transform.worldToScreen(x1 - rim, y1 - rim, top),
+                transform.worldToScreen(x0 + rim, y1 - rim, top),
+            ),
+            WELL_WATER,
+        )
     }
 }

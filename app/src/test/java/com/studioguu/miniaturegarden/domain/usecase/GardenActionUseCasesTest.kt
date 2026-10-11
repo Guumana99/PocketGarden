@@ -1,6 +1,8 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.LevelTable
@@ -28,7 +30,7 @@ class GardenActionUseCasesTest {
     private val security = FakeSecurityRepository()
     private val calc = CalculateOfflineProgressUseCase()
     private val care = CareForPlantUseCase(repo, calc)
-    private val place = PlaceItemUseCase(repo)
+    private val place = PlaceItemUseCase(repo, GardenMap.allGrass())
     private val harvest = HarvestPlantUseCase(repo, calc)
     private val remove = RemoveObjectUseCase(repo)
     private val purchase = PurchaseItemUseCase(repo)
@@ -317,6 +319,90 @@ class GardenActionUseCasesTest {
 
         assertEquals(1, repo.objects.size)
         assertEquals(1, repo.slots.getValue(0).amount)
+    }
+
+    // --- Terrain and multi-tile structures ---
+
+    /** 9x9 with a river down column 6, like the real garden's upper half. */
+    private val riverMap = GardenMap.parse(*Array(9) { "......~.." })
+    private val placeOnRiverMap = PlaceItemUseCase(repo, riverMap)
+
+    @Test
+    fun `nothing can be placed on the river`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 2))
+        repo.putSlot(InventorySlot(1, GardenItem.DECO_ROCK.itemId, 1))
+
+        assertEquals(ActionResult.TILE_NOT_BUILDABLE, placeOnRiverMap(0, 6, 3, t0))
+        assertEquals(ActionResult.TILE_NOT_BUILDABLE, placeOnRiverMap(1, 6, 0, t0))
+        assertTrue(repo.objects.isEmpty())
+        assertEquals(2, repo.slots.getValue(0).amount)
+
+        // The bank right next to it is fine.
+        assertEquals(ActionResult.SUCCESS, placeOnRiverMap(0, 5, 3, t0))
+        assertEquals(ActionResult.SUCCESS, placeOnRiverMap(0, 7, 3, t0))
+    }
+
+    @Test
+    fun `a hut takes four cells and uses up one item`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
+
+        assertEquals(ActionResult.SUCCESS, place(0, 2, 3, t0))
+
+        val hut = repo.objects.values.single()
+        assertEquals("struct_hut", hut.objectId)
+        assertEquals(2 to 3, hut.gridX to hut.gridY)
+        assertEquals(
+            setOf(GridCell(2, 3), GridCell(3, 3), GridCell(2, 4), GridCell(3, 4)),
+            hut.occupiedCells().toSet(),
+        )
+        assertTrue(repo.slots.getValue(0).isEmpty)
+    }
+
+    @Test
+    fun `a structure is refused unless its whole footprint is free, buildable and inside`() = runBlocking {
+        repo.put(tulip(x = 3, y = 4))
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
+        repo.putSlot(InventorySlot(1, GardenItem.STRUCT_WELL.itemId, 1))
+
+        // The tulip is under the hut's far corner.
+        assertEquals(ActionResult.TILE_OCCUPIED, placeOnRiverMap(0, 2, 3, t0))
+        // The hut's right-hand column would be in the river.
+        assertEquals(ActionResult.TILE_NOT_BUILDABLE, placeOnRiverMap(0, 5, 0, t0))
+        // Starts on the last row / column, so half of it is off the map.
+        assertEquals(ActionResult.OUT_OF_BOUNDS, placeOnRiverMap(0, 0, 8, t0))
+        assertEquals(ActionResult.OUT_OF_BOUNDS, placeOnRiverMap(0, 8, 0, t0))
+        // The well is one wide and two deep: its second cell is the tulip's.
+        assertEquals(ActionResult.TILE_OCCUPIED, placeOnRiverMap(1, 3, 3, t0))
+
+        assertEquals(1, repo.objects.size)
+        assertEquals(1, repo.slots.getValue(0).amount)
+        assertEquals(1, repo.slots.getValue(1).amount)
+
+        assertEquals(ActionResult.SUCCESS, placeOnRiverMap(1, 4, 3, t0))
+    }
+
+    @Test
+    fun `nothing can be placed on any cell of an existing structure`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
+        repo.putSlot(InventorySlot(1, GardenItem.SEED_TULIP.itemId, 5))
+        place(0, 4, 4, t0)
+
+        for ((x, y) in listOf(4 to 4, 5 to 4, 4 to 5, 5 to 5)) {
+            assertEquals(ActionResult.TILE_OCCUPIED, place(1, x, y, t0))
+        }
+        assertEquals(ActionResult.SUCCESS, place(1, 6, 4, t0))
+        assertEquals(2, repo.objects.size)
+    }
+
+    @Test
+    fun `structures are left alone by plant care, offline progress and harvesting`() = runBlocking {
+        val hut = tulip(id = "hut").copy(objectId = "struct_hut")
+        repo.put(hut)
+
+        assertEquals(ActionResult.NOT_A_PLANT, care.water("hut", t0 + hour, sunny))
+        assertEquals(ActionResult.NOT_A_PLANT, harvest("hut", t0 + hour, sunny))
+        assertEquals(hut.copy(lastUpdatedTimestamp = t0 + 48 * hour), calc(hut, t0 + 48 * hour, sunny))
+        assertEquals(ActionResult.SUCCESS, remove("hut"))
     }
 
     // --- Harvest / remove ---
