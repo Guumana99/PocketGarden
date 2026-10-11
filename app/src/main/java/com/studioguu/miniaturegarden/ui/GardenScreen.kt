@@ -92,6 +92,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
+    val terrain by viewModel.terrain.collectAsStateWithLifecycle()
     val effects by viewModel.effects.collectAsStateWithLifecycle()
     val rainRemaining by viewModel.rainRemaining.collectAsStateWithLifecycle()
     val adReady by viewModel.adReady.collectAsStateWithLifecycle()
@@ -154,6 +155,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 selectedTile = selectedTile,
                 onTileTapped = viewModel::onTileTapped,
                 atlas = atlas,
+                terrain = terrain,
                 gardenMap = viewModel.gardenMap,
                 modifier = Modifier.fillMaxSize(),
             )

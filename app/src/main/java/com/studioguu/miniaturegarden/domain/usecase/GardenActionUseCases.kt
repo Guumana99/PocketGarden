@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
+import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -117,7 +118,8 @@ class CareForPlantUseCase @Inject constructor(
 /**
  * Takes one item out of an inventory slot and puts its object on the garden with its first cell
  * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
- * ground (not the river) and free. Building a structure earns its [GardenItem.placeXp], and a
+ * ground (not the river) and free in its own layer: paving goes under things, and things can
+ * be stood on paving. Building a structure earns its [GardenItem.placeXp], and a
  * first placement fills in its page of the encyclopedia.
  */
 class PlaceItemUseCase @Inject constructor(
@@ -132,7 +134,8 @@ class PlaceItemUseCase @Inject constructor(
                 ?: return@runInTransaction ActionResult.SLOT_EMPTY
 
             val grid = GardenGrid(gardenMap, gardenRepository.getGridObjects())
-            when (grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY)) {
+            val kind = PlacementKind.forObjectId(item.objectId)
+            when (grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY, kind)) {
                 PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
                 PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
                 PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED

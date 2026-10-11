@@ -32,6 +32,21 @@ class SpriteAtlas(
 }
 
 /**
+ * Flat, seen-from-above pictures that are laid onto the ground. Each is optional: with one
+ * missing, that kind of tile is drawn as a plain shape instead.
+ *
+ * @property riverAutotile 4 x 4 atlas of river tiles, one per neighbour mask (see RiverAutotile).
+ */
+class TerrainTextures(
+    val riverAutotile: Bitmap? = null,
+    val cobblestone: Bitmap? = null,
+) {
+    companion object {
+        val EMPTY = TerrainTextures()
+    }
+}
+
+/**
  * Loads the sprite atlas from the APK's `assets/atlas/` directory, off the main thread, and
  * keeps it in memory for the life of the process.
  */
@@ -48,6 +63,24 @@ class AssetRepository @Inject constructor(
      */
     suspend fun loadAtlas(): SpriteAtlas = mutex.withLock {
         cached ?: withContext(Dispatchers.IO) { readAtlas() }.also { cached = it }
+    }
+
+    private var cachedTerrain: TerrainTextures? = null
+
+    /** Returns the ground textures from `assets/tiles/`, loading them on first use. */
+    suspend fun loadTerrainTextures(): TerrainTextures = mutex.withLock {
+        cachedTerrain ?: withContext(Dispatchers.IO) {
+            TerrainTextures(
+                riverAutotile = readOptionalBitmap("$TILES_DIR/river_autotile.png"),
+                cobblestone = readOptionalBitmap("$TILES_DIR/floor_cobblestone.png"),
+            )
+        }.also { cachedTerrain = it }
+    }
+
+    private fun readOptionalBitmap(path: String): Bitmap? = try {
+        context.assets.open(path).use(BitmapFactory::decodeStream)
+    } catch (_: FileNotFoundException) {
+        null
     }
 
     private fun readAtlas(): SpriteAtlas {
@@ -68,6 +101,7 @@ class AssetRepository @Inject constructor(
 
     companion object {
         const val ATLAS_DIR = "atlas"
+        const val TILES_DIR = "tiles"
         const val MANIFEST_FILE = "assets_manifest.json"
     }
 }

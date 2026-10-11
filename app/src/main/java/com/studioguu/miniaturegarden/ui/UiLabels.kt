@@ -23,6 +23,8 @@ fun objectDisplayName(objectId: String): String = when (objectId) {
     "ground_grass" -> stringResource(R.string.object_ground_grass)
     "ground_pebble" -> stringResource(R.string.object_ground_pebble)
     "terrain_river" -> stringResource(R.string.object_terrain_river)
+    "floor_cobblestone" -> stringResource(R.string.object_floor_cobblestone)
+    "struct_fence" -> stringResource(R.string.object_struct_fence)
     else -> objectId
 }
 
@@ -45,6 +47,8 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.GROUND_GRASS -> "🌿"
     GardenItem.GROUND_PEBBLE -> "⚪"
     GardenItem.TILE_RIVER -> "🌊"
+    GardenItem.FLOOR_COBBLESTONE -> "🧱"
+    GardenItem.STRUCT_FENCE -> "🪵"
 }
 
 fun weatherEmoji(weather: WeatherType): String = when (weather) {

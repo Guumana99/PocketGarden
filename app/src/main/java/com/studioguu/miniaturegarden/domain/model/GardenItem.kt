@@ -24,6 +24,8 @@ enum class ItemCategory {
  *     grass       Lv.1      10   decoration
  *     pebble      Lv.1      10   decoration
  *     river tile  Lv.1      10   terrain; nothing can stand on it
+ *     cobblestone Lv.1      10   paving; things can stand on it
+ *     fence       Lv.1      15   structure, one tile
  *     rock        Lv.2      30   decoration
  *     well        Lv.3      80   30 XP when built
  *     hut         Lv.5     150   60 XP when built
@@ -70,6 +72,14 @@ enum class GardenItem(
     ),
     GROUND_GRASS("ground_grass", price = 10, objectId = "ground_grass", category = ItemCategory.DECORATION),
     GROUND_PEBBLE("ground_pebble", price = 10, objectId = "ground_pebble", category = ItemCategory.DECORATION),
+
+    /** Paving for paths. Goes under things rather than in their place. */
+    FLOOR_COBBLESTONE(
+        "floor_cobblestone", price = 10, objectId = GridObject.COBBLESTONE_OBJECT_ID, category = ItemCategory.DECORATION,
+    ),
+
+    /** A one-tile section of fence, for edging beds and paths. */
+    STRUCT_FENCE("struct_fence", price = 15, objectId = GridObject.FENCE_OBJECT_ID, category = ItemCategory.STRUCTURE),
 
     /** Turns the tile it is placed on into river; removing it turns the tile back into lawn. */
     TILE_RIVER("tile_river", price = 10, objectId = GridObject.RIVER_OBJECT_ID, category = ItemCategory.DECORATION);

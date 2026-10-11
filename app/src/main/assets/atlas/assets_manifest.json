@@ -154,6 +154,16 @@
       "isFlippedAllowed": true,
       "atlasX": 690,
       "atlasY": 549
+    },
+    {
+      "assetId": "struct_fence",
+      "anchorX": 0.5,
+      "anchorY": 0.93,
+      "width": 370,
+      "height": 157,
+      "isFlippedAllowed": true,
+      "atlasX": 1583,
+      "atlasY": 1079
     }
   ]
 }

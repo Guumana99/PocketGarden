@@ -14,32 +14,70 @@ enum class PlacementCheck {
     OCCUPIED,
 }
 
+/** Which layer of a cell something goes into. */
+enum class PlacementKind {
+    /** Stands on the ground: plants, decorations, structures. One per cell. */
+    OBJECT,
+
+    /** Paving laid on the ground. One per cell, and objects may stand on it. */
+    FLOOR,
+
+    /** Replaces the ground itself (river). Takes the whole cell: no floor, nothing on top. */
+    TERRAIN;
+
+    companion object {
+        fun forObjectId(objectId: String): PlacementKind = when {
+            objectId.startsWith(GridObject.TERRAIN_ID_PREFIX) -> TERRAIN
+            objectId.startsWith(GridObject.FLOOR_ID_PREFIX) -> FLOOR
+            else -> OBJECT
+        }
+    }
+}
+
 /**
- * The garden as a whole: the terrain plus everything standing on it. Answers the questions that
- * need both, with every object counted on all the cells of its footprint.
+ * The garden as a whole: the terrain plus everything on it. A cell has two layers, a floor
+ * (paving) and an occupant (whatever stands there); every object counts on all the cells of
+ * its footprint.
  */
 class GardenGrid(
     val map: GardenMap,
     objects: List<GridObject>,
 ) {
+    private val floors: Map<GridCell, GridObject> = buildMap {
+        for (obj in objects) if (obj.isFloor) for (cell in obj.occupiedCells()) put(cell, obj)
+    }
     private val occupants: Map<GridCell, GridObject> = buildMap {
-        for (obj in objects) for (cell in obj.occupiedCells()) put(cell, obj)
+        for (obj in objects) if (!obj.isFloor) for (cell in obj.occupiedCells()) put(cell, obj)
     }
 
-    /** The object covering (x, y), whichever of its cells that is. */
-    fun objectAt(x: Int, y: Int): GridObject? = occupants[GridCell(x, y)]
+    /** What stands on (x, y), or the river tile there; whichever of the object's cells that is. */
+    fun occupantAt(x: Int, y: Int): GridObject? = occupants[GridCell(x, y)]
+
+    /** The paving on (x, y), if any. */
+    fun floorAt(x: Int, y: Int): GridObject? = floors[GridCell(x, y)]
+
+    /** What a tap on (x, y) means: the thing standing there, or else the paving under it. */
+    fun objectAt(x: Int, y: Int): GridObject? = occupantAt(x, y) ?: floorAt(x, y)
 
     /**
-     * Whether an object with [footprint] fits with its first cell at (originX, originY): every
-     * cell must be inside the grid, buildable and free.
+     * Whether something of [kind] with [footprint] fits with its first cell at
+     * (originX, originY). Every cell must be inside the grid and not river, and its layer must
+     * be free: paving only needs the floor layer, so it can go under something already standing
+     * there, and anything can be stood on paving.
      */
-    fun checkPlacement(footprint: Footprint, originX: Int, originY: Int): PlacementCheck {
+    fun checkPlacement(
+        footprint: Footprint,
+        originX: Int,
+        originY: Int,
+        kind: PlacementKind = PlacementKind.OBJECT,
+    ): PlacementCheck {
         val cells = footprint.cells(originX, originY)
         return when {
             cells.any { !map.isInside(it.x, it.y) } -> PlacementCheck.OUT_OF_BOUNDS
             cells.any { !map.isBuildable(it.x, it.y) } -> PlacementCheck.NOT_BUILDABLE
             cells.any { occupants[it]?.isTerrain == true } -> PlacementCheck.NOT_BUILDABLE
-            cells.any { it in occupants } -> PlacementCheck.OCCUPIED
+            kind != PlacementKind.OBJECT && cells.any { it in floors } -> PlacementCheck.OCCUPIED
+            kind != PlacementKind.FLOOR && cells.any { it in occupants } -> PlacementCheck.OCCUPIED
             else -> PlacementCheck.OK
         }
     }

@@ -27,6 +27,8 @@ enum class CollectionEntry(
     PEBBLE("ground_pebble", CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     ROCK("deco_rock", CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     RIVER(GridObject.RIVER_OBJECT_ID, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
+    PATH(GridObject.COBBLESTONE_OBJECT_ID, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
+    FENCE(GridObject.FENCE_OBJECT_ID, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     WELL(StructureData.WELL.objectId, CollectionTrigger.PLACEMENT, discoveryCoins = 40),
     HUT(StructureData.HUT.objectId, CollectionTrigger.PLACEMENT, discoveryCoins = 80);
 
