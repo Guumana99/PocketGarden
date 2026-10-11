@@ -76,6 +76,24 @@
     <string name="effect_xp">+%1$d XP</string>
     <string name="effect_level_up">レベルアップ！ Lv.%1$d</string>
 
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_section_sound">音量</string>
+    <string name="settings_bgm">BGM</string>
+    <string name="settings_se">効果音</string>
+    <string name="settings_volume_description">%1$s の音量</string>
+    <string name="settings_notifications">通知</string>
+    <string name="settings_notifications_caption">今後のアップデートで対応予定です</string>
+    <string name="settings_section_about">アプリ情報</string>
+    <string name="settings_app_version">%1$s　v%2$s</string>
+    <string name="settings_licenses">ライセンス</string>
+    <string name="settings_policy">免責事項・プライバシーポリシー</string>
+    <!-- TODO before release: replace the last line with the real credits for the music and the
+         sound effects, as each source's licence requires. -->
+    <string name="licenses_body">■ オープンソースライブラリ\n\nAndroidX / Jetpack（Compose、Room、DataStore、Lifecycle、Navigation、Activity、Core）\nCopyright The Android Open Source Project\nApache License 2.0\n\nKotlin、kotlinx.coroutines、kotlinx.serialization\nCopyright JetBrains s.r.o. and contributors\nApache License 2.0\n\nDagger / Hilt\nCopyright The Dagger Authors\nApache License 2.0\n\nSQLCipher for Android\nCopyright Zetetic LLC\nBSD-style License\n\nApache License 2.0 の全文:\nhttps://www.apache.org/licenses/LICENSE-2.0\nSQLCipher のライセンス全文:\nhttps://www.zetetic.net/sqlcipher/license/\n\n■ 使用音源\n\nBGM・効果音の提供元表記は準備中です。</string>
+    <!-- Draft. Have it reviewed before release, and update it if the app ever goes online. -->
+    <string name="policy_body">■ プライバシーポリシー\n\n本アプリは、氏名・連絡先・位置情報などの個人情報を収集しません。\n\nゲームの進行データと設定は、お使いの端末内にのみ保存されます。本アプリはインターネット通信を行わず、データを外部へ送信しません。\n\nアプリを削除すると、保存されたデータはすべて消去されます。\n\n■ 免責事項\n\n本アプリは現状のまま提供されます。本アプリの利用、または利用できなかったことにより生じた損害について、開発者は責任を負いかねます。\n\nゲームデータはバックアップされません。端末の故障、機種変更、アプリの削除などで失われたデータは復元できません。\n\n本アプリの内容は、予告なく変更または提供を終了する場合があります。</string>
+
     <!-- Debug menu (debug builds only) -->
     <string name="debug_menu_title">開発者メニュー</string>
     <string name="debug_menu_hint">全オブジェクトの時間を進めます</string>

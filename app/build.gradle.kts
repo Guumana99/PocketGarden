@@ -89,6 +89,9 @@ dependencies {
     implementation(libs.androidx.sqlite.ktx)
     implementation(libs.sqlcipher.android)
 
+    // Settings
+    implementation(libs.androidx.datastore.preferences)
+
     // Coroutines / Serialization
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
