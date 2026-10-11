@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
-import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -186,7 +187,7 @@ class FloorAndFenceTest {
     }
 
     @Test
-    fun `first placements fill in the new encyclopedia pages`() = runBlocking {
+    fun `first placements make the new encyclopedia pages ready`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.FLOOR_COBBLESTONE.itemId, 1))
         repo.putSlot(InventorySlot(1, GardenItem.STRUCT_FENCE.itemId, 1))
 
@@ -195,10 +196,79 @@ class FloorAndFenceTest {
 
         assertEquals(1, repo.collection[GridObject.COBBLESTONE_OBJECT_ID]?.count)
         assertEquals(1, repo.collection[GridObject.FENCE_OBJECT_ID]?.count)
-        assertEquals(
-            100L + CollectionEntry.PATH.discoveryCoins + CollectionEntry.FENCE.discoveryCoins,
-            repo.profile?.coins,
-        )
+        assertEquals(100L, repo.profile?.coins) // the coins come when the pages are filled in
+    }
+
+    // --- Fence parts ---
+
+    @Test
+    fun `a new fence is a section and switching goes round its parts`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_FENCE.itemId, 1))
+        place(0, 3, 3, t0)
+        val fence = repo.objects.values.single()
+        assertEquals(FencePart.SECTION.objectId, fence.objectId)
+        val switch = SwitchFencePartUseCase(repo)
+
+        val seen = (1..3).map {
+            assertEquals(ActionResult.SUCCESS, switch(fence.instanceId))
+            repo.objects.getValue(fence.instanceId).objectId
+        }
+
+        assertEquals(listOf("struct_fence_rail", "struct_fence_post", "struct_fence"), seen)
+        // Nothing but the part changes: same cell, same object, no cost.
+        assertEquals(fence, repo.objects.getValue(fence.instanceId))
+        assertEquals(100L, repo.profile?.coins)
+    }
+
+    @Test
+    fun `only fences have parts to switch`() = runBlocking {
+        repo.put(GridObject(instanceId = "rock", gridX = 0, gridY = 0, objectId = "deco_rock", lastUpdatedTimestamp = t0))
+        val switch = SwitchFencePartUseCase(repo)
+
+        assertEquals(ActionResult.NOT_FOUND, switch("rock"))
+        assertEquals(ActionResult.NOT_FOUND, switch("nothing"))
+        assertEquals("deco_rock", repo.objects.getValue("rock").objectId)
+    }
+
+    @Test
+    fun `every fence part is a fence, takes one cell and stands on paving like any object`() {
+        for (part in FencePart.entries) {
+            val fence = GridObject(instanceId = part.name, gridX = 0, gridY = 0, objectId = part.objectId, lastUpdatedTimestamp = t0)
+            assertTrue(part.name, fence.isFence)
+            assertFalse(part.name, fence.isPlant || fence.isFloor || fence.isTerrain)
+            assertEquals(part.name, Footprint.SINGLE, fence.footprint)
+            assertEquals(part.name, PlacementKind.OBJECT, PlacementKind.forObjectId(part.objectId))
+            assertTrue(part.name, part.objectId in TileSetDefinition.objectIds)
+        }
+        assertEquals(3, FencePart.entries.map { it.objectId }.toSet().size)
+        assertFalse(GridObject(instanceId = "r", gridX = 0, gridY = 0, objectId = "deco_rock", lastUpdatedTimestamp = t0).isFence)
+    }
+
+    // --- River animation frames ---
+
+    @Test
+    fun `an atlas holds one square block of cells per animation frame`() {
+        assertEquals(1, RiverAutotile.frameCount(512, 512))
+        assertEquals(4, RiverAutotile.frameCount(512, 2048))
+        assertEquals(1, RiverAutotile.frameCount(512, 300)) // never less than one
+    }
+
+    @Test
+    fun `each frame shows the same mask from its own block and the loop wraps round`() {
+        val width = 512
+        val height = 2048
+        // Mask 10 sits in row 2: 2 x 128 px down inside its block.
+        assertEquals(256, RiverAutotile.cellTop(10, frame = 0, width, height))
+        assertEquals(512 + 256, RiverAutotile.cellTop(10, frame = 1, width, height))
+        assertEquals(3 * 512 + 256, RiverAutotile.cellTop(10, frame = 3, width, height))
+        assertEquals(256, RiverAutotile.cellTop(10, frame = 4, width, height))
+        assertEquals(512 + 256, RiverAutotile.cellTop(10, frame = 73, width, height))
+        // A sheet without animation is one block, whatever frame is asked for.
+        assertEquals(256, RiverAutotile.cellTop(10, frame = 7, 512, 512))
+        // Every cell of every frame lies inside the atlas.
+        for (frame in 0 until 4) for (mask in 0..15) {
+            assertTrue(RiverAutotile.cellTop(mask, frame, width, height) + 128 <= height)
+        }
     }
 
     // --- River autotiling ---

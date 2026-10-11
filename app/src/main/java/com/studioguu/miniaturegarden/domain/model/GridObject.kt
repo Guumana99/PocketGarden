@@ -22,6 +22,9 @@ data class GridObject(
     /** Paving. It lies under whatever stands on the cell and does not take the cell up. */
     val isFloor: Boolean get() = objectId.startsWith(FLOOR_ID_PREFIX)
 
+    /** A fence, whichever of its parts. */
+    val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
+
     /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
     val footprint: Footprint get() = Footprint.forObjectId(objectId)
 
@@ -35,5 +38,27 @@ data class GridObject(
         const val FLOOR_ID_PREFIX = "floor_"
         const val COBBLESTONE_OBJECT_ID = "floor_cobblestone"
         const val FENCE_OBJECT_ID = "struct_fence"
+    }
+}
+
+/**
+ * The pieces a fence can be shown as. Every piece stands upright on its one cell, facing the
+ * viewer; none of them looks at its neighbours or changes shape to join them. A newly placed
+ * fence is a [SECTION], and the player can switch a standing fence to another piece.
+ */
+enum class FencePart(val objectId: String) {
+    /** Five pickets on one rail. */
+    SECTION(GridObject.FENCE_OBJECT_ID),
+
+    /** Two posts joined by two rails. */
+    RAIL("struct_fence_rail"),
+
+    /** A single post, for corners and ends. */
+    POST("struct_fence_post");
+
+    fun next(): FencePart = entries[(ordinal + 1) % entries.size]
+
+    companion object {
+        fun fromObjectId(objectId: String): FencePart? = entries.firstOrNull { it.objectId == objectId }
     }
 }

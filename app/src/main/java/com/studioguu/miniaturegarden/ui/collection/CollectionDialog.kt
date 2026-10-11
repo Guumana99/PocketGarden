@@ -1,9 +1,21 @@
 package com.studioguu.miniaturegarden.ui.collection
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,11 +25,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LinearProgressIndicator
@@ -25,24 +40,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -50,20 +67,19 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
-import com.studioguu.miniaturegarden.data.asset.AssetManifest
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import com.studioguu.miniaturegarden.data.asset.TerrainTextures
+import com.studioguu.miniaturegarden.domain.model.CollectionCategory
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
-import com.studioguu.miniaturegarden.domain.model.GardenItem
-import com.studioguu.miniaturegarden.domain.model.GridObject
-import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PageState
+import com.studioguu.miniaturegarden.ui.components.ObjectPreview
 import com.studioguu.miniaturegarden.ui.components.popIn
-import com.studioguu.miniaturegarden.ui.itemEmoji
+import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.objectDisplayName
-import kotlin.math.min
-import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // The book's own colours: a leather cover, aged paper, brown ink.
@@ -74,13 +90,21 @@ private val Paper = Color(0xFFF4E6C3)
 private val PaperShade = Color(0xFFE2CFA0)
 private val Ink = Color(0xFF3E2A1E)
 private val InkFaded = Color(0xFF8A6F55)
+private val ReadyMark = Color(0xFFD8442F)
 
 private val BookFont = FontFamily.Serif
 private val SPREAD_HEIGHT = 330.dp
+private const val REVEAL_MILLIS = 900
+private const val NOTICE_MILLIS = 2600L
 
 /**
- * The garden encyclopedia, laid out as an open book: one spread per entry, with its picture on
- * the left page and its description on the right. Swipe, or use the arrows, to turn the page.
+ * The garden encyclopedia, laid out as an open book with a chapter per category: one spread per
+ * entry, its picture on the left page and its description on the right. Swipe, or use the
+ * arrows, to turn the page.
+ *
+ * A page does not fill itself in. Once its condition is met it is marked as ready, and it is the
+ * player's tap on that page that turns its "？" into the picture.
+ *
  * The text is written the way an old cartridge game would have put it, in kana with spaces.
  */
 @Composable
@@ -90,10 +114,16 @@ fun CollectionDialog(
 ) {
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
-    val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
-    val entries = CollectionEntry.entries
-    val pagerState = rememberPagerState(pageCount = { entries.size })
-    val scope = rememberCoroutineScope()
+    val terrain by viewModel.terrain.collectAsStateWithLifecycle()
+    val notice by viewModel.notice.collectAsStateWithLifecycle()
+
+    // Opening the book is what earns the day's bonus.
+    LaunchedEffect(Unit) { viewModel.onOpened() }
+    LaunchedEffect(notice?.id) {
+        val shown = notice ?: return@LaunchedEffect
+        delay(NOTICE_MILLIS)
+        viewModel.onNoticeShown(shown.id)
+    }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
@@ -105,34 +135,27 @@ fun CollectionDialog(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Cover(progress)
-
-            HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().height(SPREAD_HEIGHT)) { page ->
-                Spread(
-                    number = page + 1,
-                    entry = entries[page],
-                    record = progress.recordOf(entries[page]),
-                    atlas = atlas,
-                    atlasImage = atlasImage,
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                PageButton("◀", enabled = pagerState.currentPage > 0) {
-                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+            val loaded = progress
+            Cover(loaded)
+            NoticeStrip(notice)
+            if (loaded == null) {
+                Spacer(Modifier.height(SPREAD_HEIGHT))
+            } else {
+                // Open at a chapter that has a page waiting, if there is one.
+                var category by rememberSaveable {
+                    mutableStateOf(CollectionCategory.entries.firstOrNull { loaded.readyIn(it) > 0 } ?: CollectionCategory.CROPS)
                 }
-                Text(
-                    text = stringResource(R.string.collection_page, pagerState.currentPage + 1, entries.size),
-                    color = GoldLeaf,
-                    fontFamily = BookFont,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                PageButton("▶", enabled = pagerState.currentPage < entries.lastIndex) {
-                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                }
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onDismiss) {
-                    Text(stringResource(R.string.action_close), color = GoldLeaf, fontFamily = BookFont)
+                CategoryTabs(selected = category, progress = loaded, onSelect = { category = it })
+                // Each chapter keeps its own place in the book.
+                key(category) {
+                    Chapter(
+                        entries = remember(category) { CollectionEntry.inCategory(category) },
+                        progress = loaded,
+                        atlas = atlas,
+                        terrain = terrain,
+                        onReveal = viewModel::reveal,
+                        onDismiss = onDismiss,
+                    )
                 }
             }
         }
@@ -141,7 +164,7 @@ fun CollectionDialog(
 
 /** Title and progress, stamped on the cover in gold. */
 @Composable
-private fun Cover(progress: CollectionProgress) {
+private fun Cover(progress: CollectionProgress?) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = stringResource(R.string.collection_title),
@@ -150,45 +173,167 @@ private fun Cover(progress: CollectionProgress) {
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.titleLarge,
         )
+        val revealed = progress?.revealed ?: 0
+        val total = progress?.total ?: CollectionEntry.entries.size
         Text(
-            text = stringResource(R.string.collection_progress, progress.discovered, progress.total, progress.percent),
+            text = stringResource(R.string.collection_progress, revealed, total, progress?.percent ?: 0),
             color = GoldLeaf,
             fontFamily = BookFont,
             style = MaterialTheme.typography.bodyMedium,
         )
         LinearProgressIndicator(
-            progress = { progress.discovered.toFloat() / progress.total },
+            progress = { revealed.toFloat() / total },
             color = GoldLeaf,
             trackColor = LeatherDark,
             modifier = Modifier.fillMaxWidth(),
         )
-        Text(
-            text = if (progress.isComplete) {
-                stringResource(R.string.collection_complete)
-            } else {
-                stringResource(
-                    R.string.collection_complete_reward,
-                    CollectionEntry.COMPLETION_COINS,
-                    CollectionEntry.COMPLETION_XP,
+        val ready = progress?.ready ?: 0
+        if (ready > 0) {
+            Text(
+                text = stringResource(R.string.collection_ready_count, ready),
+                color = GoldLeaf.copy(alpha = 0.85f),
+                fontFamily = BookFont,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+/** Slides in under the cover when coins were paid, and away again a moment later. */
+@Composable
+private fun NoticeStrip(notice: BookNotice?) {
+    // Keeps the words while the strip slides away.
+    var last by remember { mutableStateOf<BookNotice?>(null) }
+    if (notice != null) last = notice
+    AnimatedVisibility(
+        visible = notice != null,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        last?.let {
+            Text(
+                text = stringResource(it.message, it.coins),
+                color = Ink,
+                fontFamily = BookFont,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(GoldLeaf, RoundedCornerShape(6.dp))
+                    .padding(vertical = 6.dp),
+            )
+        }
+    }
+}
+
+/** The chapters, as bookmarks. A red dot marks a chapter with a page waiting to be filled in. */
+@Composable
+private fun CategoryTabs(selected: CollectionCategory, progress: CollectionProgress, onSelect: (CollectionCategory) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (category in CollectionCategory.entries) {
+            val isSelected = category == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                    .background(if (isSelected) Paper else LeatherDark)
+                    .clickable(onClick = withTick { onSelect(category) })
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(categoryLabel(category)),
+                    color = if (isSelected) Ink else GoldLeaf,
+                    fontFamily = BookFont,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
                 )
-            },
-            color = GoldLeaf.copy(alpha = 0.85f),
-            fontFamily = BookFont,
-            style = MaterialTheme.typography.bodySmall,
+                if (progress.readyIn(category) > 0) {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-4).dp, y = (-4).dp)
+                            .size(8.dp)
+                            .background(ReadyMark, CircleShape)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The pages of one category, with the controls for turning them. */
+@Composable
+private fun Chapter(
+    entries: List<CollectionEntry>,
+    progress: CollectionProgress,
+    atlas: SpriteAtlas,
+    terrain: TerrainTextures,
+    onReveal: (CollectionEntry) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // Open at the first page that is waiting to be filled in.
+    val firstReady = remember { entries.indexOfFirst { progress.stateOf(it) == PageState.READY }.coerceAtLeast(0) }
+    val pagerState = rememberPagerState(initialPage = firstReady, pageCount = { entries.size })
+    val scope = rememberCoroutineScope()
+
+    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().height(SPREAD_HEIGHT)) { page ->
+        val entry = entries[page]
+        Spread(
+            entry = entry,
+            state = progress.stateOf(entry),
+            record = progress.recordOf(entry),
+            atlas = atlas,
+            terrain = terrain,
+            onReveal = { onReveal(entry) },
         )
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        PageButton("◀", enabled = pagerState.currentPage > 0) {
+            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+        }
+        Text(
+            text = stringResource(R.string.collection_page, pagerState.currentPage + 1, entries.size),
+            color = GoldLeaf,
+            fontFamily = BookFont,
+            style = MaterialTheme.typography.titleSmall,
+        )
+        PageButton("▶", enabled = pagerState.currentPage < entries.lastIndex) {
+            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+        }
+        Spacer(Modifier.weight(1f))
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(R.string.action_close), color = GoldLeaf, fontFamily = BookFont)
+        }
     }
 }
 
 /** Two facing pages with a shaded gutter between them. */
 @Composable
 private fun Spread(
-    number: Int,
     entry: CollectionEntry,
+    state: PageState,
     record: CollectionRecord?,
     atlas: SpriteAtlas,
-    atlasImage: ImageBitmap?,
+    terrain: TerrainTextures,
+    onReveal: () -> Unit,
 ) {
-    val discovered = record != null
+    // 0 while the page shows its question mark, 1 once the picture is in. A page that is already
+    // filled in when it comes on screen starts at 1; one that is filled in while on screen runs
+    // from 0 to 1, and that run is the reveal.
+    val reveal = remember { Animatable(if (state == PageState.REVEALED) 1f else 0f) }
+    LaunchedEffect(state) {
+        if (state == PageState.REVEALED) {
+            reveal.animateTo(1f, tween(REVEAL_MILLIS, easing = FastOutSlowInEasing))
+        } else {
+            reveal.snapTo(0f)
+        }
+    }
+    val ready = state == PageState.READY
+
     Row(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp))) {
         // Left page: the picture, in a frame.
         Box(
@@ -203,11 +348,13 @@ private fun Spread(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(PaperShade.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
-                    .border(2.dp, InkFaded, RoundedCornerShape(4.dp))
+                    .border(2.dp, if (ready) GoldLeaf else InkFaded, RoundedCornerShape(4.dp))
+                    .clip(RoundedCornerShape(4.dp))
+                    .then(if (ready) Modifier.clickable(onClick = onReveal) else Modifier)
                     .padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Illustration(entry, discovered, atlas, atlasImage)
+                Illustration(entry, state, reveal.value, atlas, terrain)
             }
         }
         // The gutter.
@@ -223,41 +370,69 @@ private fun Spread(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = stringResource(R.string.collection_number, number),
+                text = stringResource(R.string.collection_number, entry.ordinal + 1),
                 color = InkFaded,
                 fontFamily = FontFamily.Monospace,
                 style = MaterialTheme.typography.labelMedium,
             )
             Text(
-                text = if (discovered) objectDisplayName(entry.objectId) else stringResource(R.string.collection_unknown),
+                text = if (state == PageState.REVEALED) objectDisplayName(entry.objectId) else stringResource(R.string.collection_unknown),
                 color = Ink,
                 fontFamily = BookFont,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,
             )
             Box(Modifier.fillMaxWidth().height(1.dp).background(InkFaded))
-            if (record != null) {
-                Text(
-                    text = stringResource(flavorText(entry)),
-                    color = Ink,
-                    fontFamily = BookFont,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    text = stringResource(
-                        if (entry.trigger == CollectionTrigger.HARVEST) {
-                            R.string.collection_count_harvest
-                        } else {
-                            R.string.collection_count_placement
-                        },
-                        record.count,
-                    ),
-                    color = InkFaded,
-                    fontFamily = BookFont,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            } else {
-                Text(
+            when (state) {
+                PageState.REVEALED -> Column(
+                    // The words come in with the picture.
+                    modifier = Modifier.graphicsLayer { alpha = reveal.value },
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = stringResource(flavorText(entry)),
+                        color = Ink,
+                        fontFamily = BookFont,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = stringResource(
+                            if (entry.trigger == CollectionTrigger.HARVEST) {
+                                R.string.collection_count_harvest
+                            } else {
+                                R.string.collection_count_placement
+                            },
+                            record?.count ?: 0,
+                        ),
+                        color = InkFaded,
+                        fontFamily = BookFont,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+                PageState.READY -> {
+                    Text(
+                        text = stringResource(R.string.collection_ready_hint),
+                        color = Ink,
+                        fontFamily = BookFont,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.collection_reveal_button, entry.discoveryCoins),
+                        color = Ink,
+                        fontFamily = BookFont,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(GoldLeaf)
+                            .border(2.dp, Ink, RoundedCornerShape(8.dp))
+                            .clickable(onClick = withTick(onReveal))
+                            .padding(vertical = 10.dp, horizontal = 6.dp),
+                    )
+                }
+                PageState.LOCKED -> Text(
                     text = stringResource(
                         if (entry.trigger == CollectionTrigger.HARVEST) {
                             R.string.collection_hint_harvest
@@ -275,41 +450,68 @@ private fun Spread(
 }
 
 /**
- * The entry's picture: its sprite from the atlas when there is one (a full-grown plant, for
- * plants), otherwise its emoji. An undiscovered entry shows only a dark silhouette or a "？".
+ * The entry's picture: the thing itself as the garden draws it, standing on a patch of lawn.
+ * Until the page is filled in there is only a "？", which beats gently once the page is ready.
+ *
+ * @param reveal 0 = question mark, 1 = picture; in between, the question mark swells and fades
+ *   while a ring of gold spreads from the middle and the picture pops up out of it.
  */
 @Composable
-private fun Illustration(entry: CollectionEntry, discovered: Boolean, atlas: SpriteAtlas, atlasImage: ImageBitmap?) {
-    val sprite = atlas[illustrationAssetId(entry)]
-    if (sprite != null && atlasImage != null) {
-        Canvas(Modifier.fillMaxSize()) { drawFitted(atlasImage, sprite, if (discovered) null else Ink) }
+private fun Illustration(entry: CollectionEntry, state: PageState, reveal: Float, atlas: SpriteAtlas, terrain: TerrainTextures) {
+    val beat = if (state == PageState.READY) {
+        val transition = rememberInfiniteTransition(label = "ready")
+        transition.animateFloat(
+            initialValue = 0.92f,
+            targetValue = 1.1f,
+            animationSpec = infiniteRepeatable(tween(700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "beat",
+        ).value
     } else {
-        Text(
-            text = if (discovered) entryEmoji(entry) else "？",
-            fontSize = 64.sp,
-            color = Ink,
-            fontFamily = BookFont,
-        )
+        1f
     }
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFitted(
-    atlasImage: ImageBitmap,
-    sprite: AssetManifest,
-    silhouette: Color?,
-) {
-    val scale = min(size.width / sprite.width, size.height / sprite.height)
-    val width = (sprite.width * scale).roundToInt().coerceAtLeast(1)
-    val height = (sprite.height * scale).roundToInt().coerceAtLeast(1)
-    drawImage(
-        image = atlasImage,
-        srcOffset = IntOffset(sprite.atlasX, sprite.atlasY),
-        srcSize = IntSize(sprite.width, sprite.height),
-        dstOffset = IntOffset(((size.width - width) / 2).roundToInt(), ((size.height - height) / 2).roundToInt()),
-        dstSize = IntSize(width, height),
-        colorFilter = silhouette?.let { ColorFilter.tint(it, BlendMode.SrcIn) },
-        filterQuality = FilterQuality.Medium,
-    )
+    Box(
+        modifier = Modifier.fillMaxSize().drawBehind {
+            if (reveal > 0f && reveal < 1f) {
+                val reach = size.maxDimension * 0.75f
+                drawCircle(GoldLeaf.copy(alpha = (1f - reveal) * 0.9f), radius = reach * reveal)
+                drawCircle(
+                    color = Color.White.copy(alpha = 1f - reveal),
+                    radius = reach * reveal,
+                    style = Stroke(width = 6.dp.toPx() * (1f - reveal)),
+                )
+            }
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (reveal > 0f) {
+            ObjectPreview(
+                objectId = entry.objectId,
+                atlas = atlas,
+                terrain = terrain,
+                modifier = Modifier.fillMaxSize().graphicsLayer {
+                    // Up from small, a little past full size, and back.
+                    val pop = if (reveal < 0.7f) 0.4f + 0.7f * (reveal / 0.7f) else 1.1f - 0.1f * ((reveal - 0.7f) / 0.3f)
+                    scaleX = pop
+                    scaleY = pop
+                    alpha = (reveal / 0.4f).coerceAtMost(1f)
+                },
+            )
+        }
+        if (reveal < 0.5f) {
+            Text(
+                text = "？",
+                fontSize = 64.sp,
+                color = if (state == PageState.READY) Leather else InkFaded,
+                fontFamily = BookFont,
+                modifier = Modifier.graphicsLayer {
+                    val grow = beat * (1f + reveal * 2f)
+                    scaleX = grow
+                    scaleY = grow
+                    alpha = 1f - reveal / 0.5f
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -319,15 +521,12 @@ private fun PageButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Plants are shown in full bloom; everything else by its own sprite. */
-private fun illustrationAssetId(entry: CollectionEntry): String {
-    if (!entry.objectId.startsWith(GridObject.PLANT_ID_PREFIX)) return entry.objectId
-    return "${entry.objectId}_stage${PlantSpecies.forObjectId(entry.objectId).growthStages}"
+@StringRes
+private fun categoryLabel(category: CollectionCategory): Int = when (category) {
+    CollectionCategory.CROPS -> R.string.collection_tab_crops
+    CollectionCategory.TERRAIN -> R.string.collection_tab_terrain
+    CollectionCategory.STRUCTURES -> R.string.collection_tab_structures
 }
-
-/** The shop item for the same object carries the emoji. */
-private fun entryEmoji(entry: CollectionEntry): String =
-    GardenItem.entries.firstOrNull { it.objectId == entry.objectId }?.let(::itemEmoji) ?: "？"
 
 @StringRes
 private fun flavorText(entry: CollectionEntry): Int = when (entry) {

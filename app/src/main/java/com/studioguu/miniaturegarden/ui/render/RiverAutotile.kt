@@ -15,7 +15,9 @@ import androidx.compose.ui.graphics.nativeCanvas
  *
  * The four neighbours give a mask: [NORTH] = 1, [EAST] = 2, [SOUTH] = 4, [WEST] = 8, each bit
  * set when that neighbour is river as well. North is the cell at gridY - 1, east at gridX + 1.
- * The picture for a mask sits at column `mask % 4`, row `mask / 4` of a 4 x 4 atlas.
+ * The picture for a mask sits at column `mask % 4`, row `mask / 4` of a 4 x 4 block of square
+ * cells. The atlas holds one such block per animation frame, stacked top to bottom; played in a
+ * loop they make the water flow.
  */
 object RiverAutotile {
     const val NORTH = 1
@@ -36,6 +38,20 @@ object RiverAutotile {
     fun column(mask: Int): Int = mask % COLUMNS
 
     fun row(mask: Int): Int = mask / COLUMNS
+
+    /** Milliseconds each animation frame is shown for. */
+    const val FRAME_MILLIS = 260L
+
+    /** Animation frames in an atlas of the given size: one per square block, at least one. */
+    fun frameCount(atlasWidth: Int, atlasHeight: Int): Int =
+        if (atlasWidth <= 0) 1 else (atlasHeight / atlasWidth).coerceAtLeast(1)
+
+    /** Top edge, in atlas pixels, of the cell for [mask] in animation frame [frame] (wraps round). */
+    fun cellTop(mask: Int, frame: Int, atlasWidth: Int, atlasHeight: Int): Int {
+        val frames = frameCount(atlasWidth, atlasHeight)
+        val blockHeight = atlasHeight / frames
+        return Math.floorMod(frame, frames) * blockHeight + row(mask) * (blockHeight / ROWS)
+    }
 }
 
 // Reused between draws; all drawing happens on the main thread.
@@ -46,12 +62,16 @@ private val groundTarget = FloatArray(8)
 private val groundSourceRect = Rect()
 private val groundDestination = RectF()
 
-/** Draws the river tile for [mask] out of a 4 x 4 [atlas] onto the ground of tile (x, y). */
-fun DrawScope.drawRiverTile(atlas: Bitmap, mask: Int, transform: IsometricTransform, x: Int, y: Int) {
+/**
+ * Draws the river tile for [mask] out of [atlas] onto the ground of tile (x, y).
+ *
+ * @param frame which animation frame to show; any number, it wraps round.
+ */
+fun DrawScope.drawRiverTile(atlas: Bitmap, mask: Int, frame: Int, transform: IsometricTransform, x: Int, y: Int) {
     val cellWidth = atlas.width / RiverAutotile.COLUMNS
-    val cellHeight = atlas.height / RiverAutotile.ROWS
+    val cellHeight = atlas.height / RiverAutotile.frameCount(atlas.width, atlas.height) / RiverAutotile.ROWS
     val left = RiverAutotile.column(mask) * cellWidth
-    val top = RiverAutotile.row(mask) * cellHeight
+    val top = RiverAutotile.cellTop(mask, frame, atlas.width, atlas.height)
     drawGroundTexture(atlas, transform, x, y, left, top, left + cellWidth, top + cellHeight)
 }
 

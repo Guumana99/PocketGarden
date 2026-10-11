@@ -1,6 +1,5 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
-import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -109,14 +108,15 @@ class RiverAndWeatherTest {
     }
 
     @Test
-    fun `the first river tile fills in its page of the encyclopedia`() = runBlocking {
+    fun `the first river tile makes its page of the encyclopedia ready`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.TILE_RIVER.itemId, 2))
 
         place(0, 1, 1, t0)
         place(0, 1, 2, t0)
 
         assertEquals(2, repo.collection[GridObject.RIVER_OBJECT_ID]?.count)
-        assertEquals(100L + CollectionEntry.RIVER.discoveryCoins, repo.profile?.coins)
+        assertEquals(false, repo.collection[GridObject.RIVER_OBJECT_ID]?.revealed)
+        assertEquals(100L, repo.profile?.coins) // the coins come when the page is filled in
     }
 
     // --- Shop shelves ---

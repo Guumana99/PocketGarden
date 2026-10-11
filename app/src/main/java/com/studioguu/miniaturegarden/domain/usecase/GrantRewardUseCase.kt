@@ -15,9 +15,9 @@ enum class RewardResult {
 }
 
 /**
- * Hands out a reward once its ad has been watched to the end. Each call uses up one of the
- * day's claims; if none are left, nothing is given. Nothing here runs when the ad is abandoned,
- * so an abandoned ad costs the player nothing.
+ * Hands out the rewards that are limited per day. Each call uses up one of the day's claims; if
+ * none are left, nothing is given. The ad rewards are only asked for once their ad has been
+ * watched to the end, so an abandoned ad costs the player nothing.
  */
 class GrantRewardUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -45,11 +45,21 @@ class GrantRewardUseCase @Inject constructor(
     }
 
     /** Coin bonus: [RewardType.COIN_BONUS_AMOUNT] coins, through a signed profile save. */
-    suspend fun coinBonus(today: Long): RewardResult {
-        if (!rewardLimits.tryConsume(RewardType.COIN_BONUS, today)) return RewardResult.LIMIT_REACHED
+    suspend fun coinBonus(today: Long): RewardResult =
+        payCoins(RewardType.COIN_BONUS, RewardType.COIN_BONUS_AMOUNT, today)
+
+    /**
+     * Opening the encyclopedia: [RewardType.BOOK_OPEN_AMOUNT] coins, the first time each day.
+     * Opening it again the same day gives nothing, so there is no point in flipping it open and
+     * shut.
+     */
+    suspend fun bookOpen(today: Long): RewardResult = payCoins(RewardType.BOOK_OPEN, RewardType.BOOK_OPEN_AMOUNT, today)
+
+    private suspend fun payCoins(type: RewardType, amount: Int, today: Long): RewardResult {
+        if (!rewardLimits.tryConsume(type, today)) return RewardResult.LIMIT_REACHED
         gardenRepository.runInTransaction {
             gardenRepository.getUserProfile()?.let {
-                gardenRepository.saveUserProfile(it.copy(coins = it.coins + RewardType.COIN_BONUS_AMOUNT))
+                gardenRepository.saveUserProfile(it.copy(coins = it.coins + amount))
             }
         }
         return RewardResult.GRANTED

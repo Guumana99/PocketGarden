@@ -1,7 +1,8 @@
 package com.studioguu.miniaturegarden.domain.model
 
 /**
- * Bonuses the player can claim by watching a rewarded ad to the end.
+ * Bonuses that can only be claimed so many times a day. The first two are earned by watching a
+ * rewarded ad to the end; the last is simply for opening the encyclopedia.
  *
  * @property dailyLimit how many times a day it can be claimed.
  */
@@ -10,10 +11,15 @@ enum class RewardType(val dailyLimit: Int) {
     BLESSED_RAIN(dailyLimit = 3),
 
     /** Pays [COIN_BONUS_AMOUNT] coins. */
-    COIN_BONUS(dailyLimit = 5);
+    COIN_BONUS(dailyLimit = 5),
+
+    /** Pays [BOOK_OPEN_AMOUNT] coins the first time the encyclopedia is opened each day. */
+    BOOK_OPEN(dailyLimit = 1);
 
     companion object {
         const val COIN_BONUS_AMOUNT = 50
+
+        const val BOOK_OPEN_AMOUNT = 10
 
         /** The share of a plant's remaining growth that the blessed rain takes away. */
         const val BLESSED_RAIN_REDUCTION = 0.5f

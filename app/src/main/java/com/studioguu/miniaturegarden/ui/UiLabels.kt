@@ -25,6 +25,8 @@ fun objectDisplayName(objectId: String): String = when (objectId) {
     "terrain_river" -> stringResource(R.string.object_terrain_river)
     "floor_cobblestone" -> stringResource(R.string.object_floor_cobblestone)
     "struct_fence" -> stringResource(R.string.object_struct_fence)
+    "struct_fence_rail" -> stringResource(R.string.object_struct_fence_rail)
+    "struct_fence_post" -> stringResource(R.string.object_struct_fence_post)
     else -> objectId
 }
 

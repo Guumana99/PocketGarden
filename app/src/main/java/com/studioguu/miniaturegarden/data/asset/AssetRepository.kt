@@ -3,6 +3,8 @@ package com.studioguu.miniaturegarden.data.asset
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.annotation.DrawableRes
+import com.studioguu.miniaturegarden.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.FileNotFoundException
 import javax.inject.Inject
@@ -35,7 +37,8 @@ class SpriteAtlas(
  * Flat, seen-from-above pictures that are laid onto the ground. Each is optional: with one
  * missing, that kind of tile is drawn as a plain shape instead.
  *
- * @property riverAutotile 4 x 4 atlas of river tiles, one per neighbour mask (see RiverAutotile).
+ * @property riverAutotile river tiles, one per neighbour mask, in one 4 x 4 block per animation
+ *   frame with the blocks stacked top to bottom (see RiverAutotile).
  */
 class TerrainTextures(
     val riverAutotile: Bitmap? = null,
@@ -67,21 +70,23 @@ class AssetRepository @Inject constructor(
 
     private var cachedTerrain: TerrainTextures? = null
 
-    /** Returns the ground textures from `assets/tiles/`, loading them on first use. */
+    /**
+     * Returns the ground textures, loading them on first use. They are drawable resources
+     * (`res/drawable-nodpi`), named here through `R.drawable`, so a missing or renamed file is a
+     * build error rather than a tile that silently fails to appear.
+     */
     suspend fun loadTerrainTextures(): TerrainTextures = mutex.withLock {
         cachedTerrain ?: withContext(Dispatchers.IO) {
             TerrainTextures(
-                riverAutotile = readOptionalBitmap("$TILES_DIR/river_autotile.png"),
-                cobblestone = readOptionalBitmap("$TILES_DIR/floor_cobblestone.png"),
+                riverAutotile = decodeUnscaled(R.drawable.tile_river_autotile),
+                cobblestone = decodeUnscaled(R.drawable.tile_path_cobblestone),
             )
         }.also { cachedTerrain = it }
     }
 
-    private fun readOptionalBitmap(path: String): Bitmap? = try {
-        context.assets.open(path).use(BitmapFactory::decodeStream)
-    } catch (_: FileNotFoundException) {
-        null
-    }
+    /** Decodes at the file's own pixel size, whatever the screen density. */
+    private fun decodeUnscaled(@DrawableRes id: Int): Bitmap? =
+        BitmapFactory.decodeResource(context.resources, id, BitmapFactory.Options().apply { inScaled = false })
 
     private fun readAtlas(): SpriteAtlas {
         val manifestText = try {
@@ -101,7 +106,6 @@ class AssetRepository @Inject constructor(
 
     companion object {
         const val ATLAS_DIR = "atlas"
-        const val TILES_DIR = "tiles"
         const val MANIFEST_FILE = "assets_manifest.json"
     }
 }

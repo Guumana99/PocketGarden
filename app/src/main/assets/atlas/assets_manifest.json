@@ -2,7 +2,7 @@
   "version": 1,
   "atlas": "atlas.png",
   "atlasWidth": 2043,
-  "atlasHeight": 1534,
+  "atlasHeight": 1686,
   "tileWidth": 512,
   "assets": [
     {
@@ -159,8 +159,28 @@
       "assetId": "struct_fence",
       "anchorX": 0.5,
       "anchorY": 0.93,
-      "width": 370,
-      "height": 157,
+      "width": 353,
+      "height": 150,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 1534
+    },
+    {
+      "assetId": "struct_fence_post",
+      "anchorX": 0.5,
+      "anchorY": 0.93,
+      "width": 56,
+      "height": 119,
+      "isFlippedAllowed": true,
+      "atlasX": 357,
+      "atlasY": 1534
+    },
+    {
+      "assetId": "struct_fence_rail",
+      "anchorX": 0.5,
+      "anchorY": 0.93,
+      "width": 274,
+      "height": 176,
       "isFlippedAllowed": true,
       "atlasX": 1583,
       "atlasY": 1079
