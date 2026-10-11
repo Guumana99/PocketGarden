@@ -1,6 +1,6 @@
 package com.studioguu.miniaturegarden.domain.model
 
-/** What the player has to do with something for it to count towards the garden encyclopedia. */
+/** What the player has to do with something for its page of the garden encyclopedia to open up. */
 enum class CollectionTrigger {
     /** Grow it and harvest it. Merely planting the seed does not count. */
     HARVEST,
@@ -9,44 +9,73 @@ enum class CollectionTrigger {
     PLACEMENT,
 }
 
+/** The chapters of the encyclopedia. */
+enum class CollectionCategory {
+    /** Things that are grown and harvested. */
+    CROPS,
+
+    /** The ground itself and what is laid on it: lawn, pebbles, paths, river. */
+    TERRAIN,
+
+    /** Things that are built or stood on the ground: rocks, fences, buildings. */
+    STRUCTURES,
+}
+
 /**
  * One page of the garden encyclopedia.
  *
  * @property objectId the grid object this page is about; also the key it is stored under.
- * @property discoveryCoins paid once, the first time the page is filled in.
+ * @property discoveryCoins paid once, when the player fills the page in.
  */
 enum class CollectionEntry(
     val objectId: String,
+    val category: CollectionCategory,
     val trigger: CollectionTrigger,
     val discoveryCoins: Int,
 ) {
-    TULIP(PlantSpecies.TULIP.objectId, CollectionTrigger.HARVEST, discoveryCoins = 20),
-    SUNFLOWER(PlantSpecies.SUNFLOWER.objectId, CollectionTrigger.HARVEST, discoveryCoins = 40),
-    ROSE(PlantSpecies.ROSE.objectId, CollectionTrigger.HARVEST, discoveryCoins = 80),
-    GRASS("ground_grass", CollectionTrigger.PLACEMENT, discoveryCoins = 10),
-    PEBBLE("ground_pebble", CollectionTrigger.PLACEMENT, discoveryCoins = 10),
-    ROCK("deco_rock", CollectionTrigger.PLACEMENT, discoveryCoins = 15),
-    RIVER(GridObject.RIVER_OBJECT_ID, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
-    PATH(GridObject.COBBLESTONE_OBJECT_ID, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
-    FENCE(GridObject.FENCE_OBJECT_ID, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
-    WELL(StructureData.WELL.objectId, CollectionTrigger.PLACEMENT, discoveryCoins = 40),
-    HUT(StructureData.HUT.objectId, CollectionTrigger.PLACEMENT, discoveryCoins = 80);
+    TULIP(PlantSpecies.TULIP.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 20),
+    SUNFLOWER(PlantSpecies.SUNFLOWER.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 40),
+    ROSE(PlantSpecies.ROSE.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 80),
+    GRASS("ground_grass", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
+    PEBBLE("ground_pebble", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
+    RIVER(GridObject.RIVER_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
+    PATH(GridObject.COBBLESTONE_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
+    ROCK("deco_rock", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
+    FENCE(GridObject.FENCE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
+    WELL(StructureData.WELL.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 40),
+    HUT(StructureData.HUT.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 80);
 
     companion object {
-        /** Paid once, when the last page is filled in. */
-        const val COMPLETION_COINS = 300
-        const val COMPLETION_XP = 300
-
         fun fromObjectId(objectId: String): CollectionEntry? = entries.firstOrNull { it.objectId == objectId }
+
+        fun inCategory(category: CollectionCategory): List<CollectionEntry> = entries.filter { it.category == category }
     }
 }
 
-/** What is stored about one page: how often, and since when. Absent means not discovered yet. */
+/** Where a page stands. */
+enum class PageState {
+    /** The player has not harvested / placed it yet: the page shows a question mark. */
+    LOCKED,
+
+    /** The condition is met, but the page still shows a question mark until the player fills it in. */
+    READY,
+
+    /** The player filled the page in: it shows the picture and the text. */
+    REVEALED,
+}
+
+/**
+ * What is stored about one page. Absent means the condition has not been met yet.
+ *
+ * @property revealed whether the player has filled the page in. Meeting the condition does not
+ *   do that by itself; it takes a tap in the book.
+ */
 data class CollectionRecord(
     val entryId: String,
     val count: Int,
     /** Epoch millis of the first harvest / placement. */
     val firstObtainedAt: Long,
+    val revealed: Boolean = false,
 )
 
 /** The encyclopedia as a whole. */
@@ -54,29 +83,23 @@ data class CollectionProgress(private val records: List<CollectionRecord>) {
     private val byId = records.associateBy { it.entryId }
 
     val total: Int get() = CollectionEntry.entries.size
-    val discovered: Int get() = CollectionEntry.entries.count { it.objectId in byId }
-    val isComplete: Boolean get() = discovered == total
+
+    /** Pages the player has filled in. */
+    val revealed: Int get() = CollectionEntry.entries.count { stateOf(it) == PageState.REVEALED }
+
+    /** Pages waiting to be filled in. */
+    val ready: Int get() = CollectionEntry.entries.count { stateOf(it) == PageState.READY }
 
     /** 0 .. 100, rounded down, so 100 means every page and nothing less. */
-    val percent: Int get() = discovered * 100 / total
+    val percent: Int get() = revealed * 100 / total
 
     fun recordOf(entry: CollectionEntry): CollectionRecord? = byId[entry.objectId]
-    fun isDiscovered(entry: CollectionEntry): Boolean = entry.objectId in byId
-}
 
-/**
- * What recording one harvest / placement earned.
- *
- * @property discovered the page that was just filled in for the first time, if any.
- * @property completed true when that page was the last one missing.
- */
-data class CollectionReward(
-    val coins: Int = 0,
-    val xp: Int = 0,
-    val discovered: CollectionEntry? = null,
-    val completed: Boolean = false,
-) {
-    companion object {
-        val NONE = CollectionReward()
+    fun stateOf(entry: CollectionEntry): PageState {
+        val record = byId[entry.objectId] ?: return PageState.LOCKED
+        return if (record.revealed) PageState.REVEALED else PageState.READY
     }
+
+    fun readyIn(category: CollectionCategory): Int =
+        CollectionEntry.inCategory(category).count { stateOf(it) == PageState.READY }
 }

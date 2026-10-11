@@ -7,14 +7,19 @@ Inputs (tools/source_art):
   tile_river_atlas.png       reference only, see below
 
 Outputs:
-  app/src/main/assets/tiles/river_autotile.png   4x4 atlas, one cell per neighbour mask
-  app/src/main/assets/tiles/floor_cobblestone.png
-  tools/raw_assets/struct_fence.png              picked up by asset_packer.py like any sprite
+  app/src/main/res/drawable-nodpi/tile_river_autotile.png   river atlas, see below
+  app/src/main/res/drawable-nodpi/tile_path_cobblestone.png
+  tools/raw_assets/struct_fence*.png   fence parts, picked up by asset_packer.py like any sprite
+
+  The two tiles go into drawable-nodpi so the app can name them as R.drawable.*: a missing or
+  misnamed file then fails the build instead of silently drawing nothing, and nodpi keeps
+  Android from rescaling them per screen density.
 
 River autotile
   The game draws a river tile by looking at its four neighbours and building a mask:
   N = 1, E = 2, S = 4, W = 8 (a bit is set when that neighbour is river too). The cell for a
-  mask sits at column mask % 4, row mask // 4 of river_autotile.png. Cells are seen from
+  mask sits at column mask % 4, row mask // 4 of a 4x4 block. The file holds FRAMES such
+  blocks stacked top to bottom, one per animation frame; the game plays them in a loop. Cells are seen from
   straight above, north up; the game lays them onto the isometric ground itself. Whatever is
   not water or bank is transparent, so the lawn shows through.
 
@@ -22,7 +27,8 @@ River autotile
   The pieces in tile_river_atlas.png do not: each leaves its edges at a different position and
   width, the sheet has no piece for several masks (no lone pond, no T-junctions), and it is not
   laid out by mask. So the atlas is drawn here instead, in that sheet's colours. To use
-  hand-drawn art, replace river_autotile.png with a sheet that follows the layout above.
+  hand-drawn art, replace tile_river_autotile.png with a sheet that follows the layout above
+  (a single 4x4 block is fine: it is then shown without animation).
 
 Usage:
   python tools/build_terrain_assets.py
@@ -40,7 +46,7 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "tools" / "source_art"
-TILES_OUT = ROOT / "app" / "src" / "main" / "assets" / "tiles"
+TILES_OUT = ROOT / "app" / "src" / "main" / "res" / "drawable-nodpi"
 RAW_ASSETS = ROOT / "tools" / "raw_assets"
 
 CELL = 128                # size of one cell in the generated river atlas
@@ -86,6 +92,7 @@ SUPERSAMPLE = 4       # drawn this many times larger, then scaled down, for smoo
 CHANNEL = 0.29        # half-width of the water, as a fraction of the tile
 BANK_WIDTH = 0.06
 POND = 0.35           # radius of a tile with no river neighbours
+FRAMES = 4            # animation frames; ripples travel one full step over the loop
 
 
 def _channel(draw: ImageDraw.ImageDraw, mask: int, half: float, colour) -> None:
@@ -105,7 +112,7 @@ def _channel(draw: ImageDraw.ImageDraw, mask: int, half: float, colour) -> None:
         draw.rectangle((c, c - h, n, c + h), fill=colour)
 
 
-def river_cell(mask: int) -> Image.Image:
+def river_cell(mask: int, frame: int = 0) -> Image.Image:
     n = CELL * SUPERSAMPLE
     cell = Image.new("RGBA", (n, n), (0, 0, 0, 0))
     draw = ImageDraw.Draw(cell)
@@ -113,32 +120,45 @@ def river_cell(mask: int) -> Image.Image:
     _channel(draw, mask, CHANNEL, WATER_DEEP)
     _channel(draw, mask, CHANNEL - 0.045, WATER)
 
-    # A few short ripples: two in the pool, one along each arm.
+    # Ripples. Along each arm two of them, half an arm apart, drift from the edge towards the
+    # pool and wrap round, so the last frame leads back into the first; the two in the pool sway
+    # from side to side. Every arm moves the same way relative to its edge, which is what lets
+    # neighbouring tiles of any shape line up.
     c, w = n / 2, max(2, n // 48)
+    t = frame / FRAMES
+
     def ripple(x: float, y: float, length: float, vertical: bool) -> None:
         x, y, half = x * n, y * n, length * n / 2
         end = (x, y + half) if vertical else (x + half, y)
         start = (x, y - half) if vertical else (x - half, y)
         draw.line((start, end), fill=RIPPLE, width=w)
-    ripple(0.44, 0.46, 0.12, False)
-    ripple(0.57, 0.56, 0.10, False)
-    if mask & NORTH:
-        ripple(0.45, 0.16, 0.12, True)
-    if mask & SOUTH:
-        ripple(0.56, 0.84, 0.12, True)
-    if mask & WEST:
-        ripple(0.16, 0.55, 0.12, False)
-    if mask & EAST:
-        ripple(0.84, 0.45, 0.12, False)
+
+    sway = 0.03 * (1 if frame % 2 == 0 else -1) * (1 if frame < 2 else 0.4)
+    ripple(0.44 + sway, 0.46, 0.12, False)
+    ripple(0.57 - sway, 0.56, 0.10, False)
+    arm = 0.36  # how far in from the edge a ripple travels
+    for k in (0, 1):
+        d = ((t + k / 2) % 1.0) * arm + 0.05
+        side = 0.06 if k == 0 else -0.06
+        if mask & NORTH:
+            ripple(0.5 + side, d, 0.10, True)
+        if mask & SOUTH:
+            ripple(0.5 - side, 1 - d, 0.10, True)
+        if mask & WEST:
+            ripple(d, 0.5 - side, 0.10, False)
+        if mask & EAST:
+            ripple(1 - d, 0.5 + side, 0.10, False)
     return cell.resize((CELL, CELL), Image.LANCZOS)
 
 
 def build_river_atlas() -> None:
-    atlas = Image.new("RGBA", (CELL * 4, CELL * 4), (0, 0, 0, 0))
-    for mask in range(16):
-        atlas.paste(river_cell(mask), ((mask % 4) * CELL, (mask // 4) * CELL))
+    block = CELL * 4
+    atlas = Image.new("RGBA", (block, block * FRAMES), (0, 0, 0, 0))
+    for frame in range(FRAMES):
+        for mask in range(16):
+            atlas.paste(river_cell(mask, frame), ((mask % 4) * CELL, frame * block + (mask // 4) * CELL))
     TILES_OUT.mkdir(parents=True, exist_ok=True)
-    atlas.save(TILES_OUT / "river_autotile.png")
+    atlas.save(TILES_OUT / "tile_river_autotile.png")
 
 
 def build_cobblestone() -> None:
@@ -147,26 +167,37 @@ def build_cobblestone() -> None:
     half = texture.width // 2
     tile = texture.crop((0, 0, half, half)).resize((256, 256), Image.LANCZOS)
     TILES_OUT.mkdir(parents=True, exist_ok=True)
-    tile.save(TILES_OUT / "floor_cobblestone.png")
+    tile.save(TILES_OUT / "tile_path_cobblestone.png")
+
+
+# Fence parts cut from the sheet: output name -> (left, top, right, bottom) on the 1024 px sheet.
+# Each is drawn upright, facing the viewer, exactly as on the sheet: none is sheared or rotated.
+FENCE_PARTS = {
+    "struct_fence": (20, 30, 585, 290),        # picket section, five pickets on one rail
+    "struct_fence_rail": (40, 705, 460, 990),  # two posts joined by two rails
+    "struct_fence_post": (590, 790, 690, 990), # a single capped post
+}
+
+# Atlas pixels per source pixel. One value for all parts, so they keep the sizes they have
+# relative to each other on the sheet (the sprite atlas is drawn at 720 px per tile).
+FENCE_SCALE = 520 / 545
 
 
 def build_fence() -> None:
     sheet = clear_background(Image.open(SOURCE / "item_fence_wood.png"), tolerance=14, flood=False)
-    # The five-picket section in the top-left corner of the sheet.
-    region = sheet.crop((20, 30, 585, 290))
-    section = region.crop(opaque_bbox(region))
-    # Sized for the sprite atlas, where one tile is 720 px wide before packing.
-    width = 520
-    section = section.resize((width, round(section.height * width / section.width)), Image.LANCZOS)
-    section.save(RAW_ASSETS / "struct_fence.png")
+    for name, box in FENCE_PARTS.items():
+        region = sheet.crop(box)
+        part = region.crop(opaque_bbox(region))
+        size = (round(part.width * FENCE_SCALE), round(part.height * FENCE_SCALE))
+        part.resize(size, Image.LANCZOS).save(RAW_ASSETS / f"{name}.png")
 
 
 def main() -> int:
     build_river_atlas()
     build_cobblestone()
     build_fence()
-    print("written:", TILES_OUT / "river_autotile.png", TILES_OUT / "floor_cobblestone.png",
-          RAW_ASSETS / "struct_fence.png", sep="\n  ")
+    print("written:", TILES_OUT / "tile_river_autotile.png", TILES_OUT / "tile_path_cobblestone.png",
+          *(RAW_ASSETS / f"{name}.png" for name in FENCE_PARTS), sep="\n  ")
     return 0
 
 

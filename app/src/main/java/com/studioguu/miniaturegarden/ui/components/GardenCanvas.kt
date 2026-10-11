@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
@@ -47,6 +49,7 @@ import com.studioguu.miniaturegarden.ui.render.TilePicker
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
 import com.studioguu.miniaturegarden.ui.render.drawRiverTile
 import com.studioguu.miniaturegarden.ui.render.drawSprite
+import kotlin.math.min
 import kotlinx.coroutines.delay
 
 private val TILE_WIDTH = 128.dp
@@ -92,15 +95,7 @@ fun GardenCanvas(
     var camera by rememberSaveable(stateSaver = CameraSaver) { mutableStateOf<GardenCamera?>(null) }
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     val pipeline = remember { LayerPipeline() }
-    // Without a river texture the water is drawn here, and its ripples step along a few times a
-    // second, but only while there is water to show.
-    val hasWater = terrain.riverAutotile == null && gridObjects.any { it.isTerrain }
-    val waterPhase by produceState(0, hasWater) {
-        while (hasWater) {
-            delay(WATER_FRAME_MILLIS)
-            value = (value + 1) % WATER_PHASES
-        }
-    }
+    val waterTick by rememberWaterTick(running = gridObjects.any { it.isTerrain })
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
 
@@ -145,70 +140,184 @@ fun GardenCanvas(
             }
             pipeline.submit(RenderLayer.HUD_OVERLAY) { drawTileOutline(transform, origin, spanX, spanY) }
         }
-        for (obj in gridObjects) {
-            if (obj.isTerrain) {
-                // River: part of the ground, drawn with the terrain right after the lawn. Its
-                // picture depends on which neighbours are river too, so the tiles join up.
-                val isRiver = { x: Int, y: Int -> grid.occupantAt(x, y)?.isTerrain == true }
-                val autotile = terrain.riverAutotile
-                pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
-                    if (autotile != null) {
-                        val mask = RiverAutotile.maskAt(obj.gridX, obj.gridY, isRiver)
-                        drawRiverTile(autotile, mask, transform, obj.gridX, obj.gridY)
-                    } else {
-                        drawWaterTile(transform, obj.gridX, obj.gridY, waterPhase, isRiver)
-                    }
-                }
-                continue
-            }
-            if (obj.isFloor) {
-                // Paving: also ground. Whatever stands on the cell is a separate object and is
-                // drawn later, in the object layer, so it always appears on top.
-                val paving = terrain.cobblestone
-                pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
-                    if (paving != null) {
-                        drawGroundTexture(paving, transform, obj.gridX, obj.gridY)
-                    } else {
-                        drawPath(transform.tilePath(obj.gridX, obj.gridY), PAVING_FALLBACK)
-                    }
-                }
-                continue
-            }
-            val footprint = obj.footprint
-            val structure = StructureData.fromObjectId(obj.objectId)
-            // Sorted by its front-most cell, so things standing behind a wide object stay behind it.
-            val depth = LayerPipeline.depthOf(
-                obj.gridX + footprint.width - 1,
-                obj.gridY + footprint.height - 1,
-                obj.heightLevel,
-            )
-            // Ground point under the middle of the footprint: the tile center for a 1x1 object.
-            val base = transform.worldToScreen(
-                obj.gridX + footprint.width / 2f,
-                obj.gridY + footprint.height / 2f,
-                obj.heightLevel.toFloat(),
-            )
-            val unit = transform.tileWidth
-            val isGroundCover = obj.objectId.startsWith(GROUND_OBJECT_ID_PREFIX)
-            // Null while the atlas has no sprite for this object; the placeholder is drawn instead.
-            val sprite = atlas[TileSetDefinition.assetIdFor(obj)]
+        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick)
+        pipeline.render(this)
+    }
+}
 
-            if (!isGroundCover && structure == null) {
-                pipeline.submit(RenderLayer.SHADOWS, depth) { drawShadow(obj, base, unit) }
-            }
-            pipeline.submit(if (isGroundCover) RenderLayer.BOTTOM_OBJECTS else RenderLayer.GRID_OBJECTS, depth) {
-                if (sprite != null && atlasImage != null) {
-                    drawSprite(atlasImage, sprite, base, spriteScale, flipped = obj.isFlipped)
-                } else if (structure != null) {
-                    drawStructure(transform, obj, structure)
+/**
+ * A counter that steps while there is water on show, a few times a second, and stands still
+ * otherwise. River tiles take their animation frame from it, so every tile moves in step.
+ */
+@Composable
+private fun rememberWaterTick(running: Boolean): State<Int> = produceState(0, running) {
+    while (running) {
+        delay(RiverAutotile.FRAME_MILLIS)
+        value = (value + 1) % WATER_TICK_CYCLE
+    }
+}
+
+/**
+ * Queues everything lying or standing on the garden: river and paving with the ground, the rest
+ * in the object layers, sorted by depth.
+ *
+ * @param waterTick animation counter for the river, see [rememberWaterTick].
+ */
+private fun submitObjects(
+    pipeline: LayerPipeline,
+    gridObjects: List<GridObject>,
+    grid: GardenGrid,
+    transform: IsometricTransform,
+    atlas: SpriteAtlas,
+    atlasImage: ImageBitmap?,
+    terrain: TerrainTextures,
+    waterTick: Int,
+) {
+    val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
+    for (obj in gridObjects) {
+        if (obj.isTerrain) {
+            // River: part of the ground, drawn with the terrain right after the lawn. Its
+            // picture depends on which neighbours are river too, so the tiles join up.
+            val isRiver = { x: Int, y: Int -> grid.occupantAt(x, y)?.isTerrain == true }
+            val autotile = terrain.riverAutotile
+            pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
+                if (autotile != null) {
+                    val mask = RiverAutotile.maskAt(obj.gridX, obj.gridY, isRiver)
+                    drawRiverTile(autotile, mask, waterTick, transform, obj.gridX, obj.gridY)
                 } else {
-                    drawPlaceholder(obj, base, unit)
+                    drawWaterTile(transform, obj.gridX, obj.gridY, waterTick % WATER_PHASES, isRiver)
                 }
             }
-            if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
-                pipeline.submit(RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit) }
+            continue
+        }
+        if (obj.isFloor) {
+            // Paving: also ground. Whatever stands on the cell is a separate object and is
+            // drawn later, in the object layer, so it always appears on top.
+            val paving = terrain.cobblestone
+            pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
+                if (paving != null) {
+                    drawGroundTexture(paving, transform, obj.gridX, obj.gridY)
+                } else {
+                    drawPath(transform.tilePath(obj.gridX, obj.gridY), PAVING_FALLBACK)
+                }
+            }
+            continue
+        }
+        val footprint = obj.footprint
+        val structure = StructureData.fromObjectId(obj.objectId)
+        // Sorted by its front-most cell, so things standing behind a wide object stay behind it.
+        val depth = LayerPipeline.depthOf(
+            obj.gridX + footprint.width - 1,
+            obj.gridY + footprint.height - 1,
+            obj.heightLevel,
+        )
+        // Ground point under the middle of the footprint: the tile center for a 1x1 object.
+        val base = transform.worldToScreen(
+            obj.gridX + footprint.width / 2f,
+            obj.gridY + footprint.height / 2f,
+            obj.heightLevel.toFloat(),
+        )
+        val unit = transform.tileWidth
+        val isGroundCover = obj.objectId.startsWith(GROUND_OBJECT_ID_PREFIX)
+        // Null while the atlas has no sprite for this object; the placeholder is drawn instead.
+        val sprite = atlas[TileSetDefinition.assetIdFor(obj)]
+
+        // A fence is drawn with its feet on the ground already; a round shadow under it only
+        // looks like a stain.
+        if (!isGroundCover && structure == null && !obj.isFence) {
+            pipeline.submit(RenderLayer.SHADOWS, depth) { drawShadow(obj, base, unit) }
+        }
+        pipeline.submit(if (isGroundCover) RenderLayer.BOTTOM_OBJECTS else RenderLayer.GRID_OBJECTS, depth) {
+            if (sprite != null && atlasImage != null) {
+                drawSprite(atlasImage, sprite, base, spriteScale, flipped = obj.isFlipped)
+            } else if (structure != null) {
+                drawStructure(transform, obj, structure)
+            } else {
+                drawPlaceholder(obj, base, unit)
             }
         }
+        if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
+            pipeline.submit(RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit) }
+        }
+    }
+}
+
+// --- Pictures of single objects ---------------------------------------------------------------
+
+/**
+ * A small patch of lawn with one kind of object on it, enough of it to show what it looks like
+ * in the garden: a stretch of river rather than one tile, a paved square rather than one stone.
+ *
+ * @property gridSize the patch is this many tiles each way.
+ * @property headroom space to leave above the far corner of the patch, in tile widths, for
+ *   whatever stands taller than that.
+ */
+private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: List<GridObject>) {
+    companion object {
+        fun of(objectId: String): PreviewScene {
+            fun at(x: Int, y: Int) = GridObject(
+                instanceId = "preview_${x}_$y",
+                gridX = x,
+                gridY = y,
+                objectId = objectId,
+                growthProgress = 1f,
+                lastUpdatedTimestamp = 0L,
+            )
+            return when {
+                objectId == GridObject.RIVER_OBJECT_ID -> PreviewScene(3, 0.1f, listOf(at(0, 1), at(1, 1), at(2, 1)))
+                objectId.startsWith(GridObject.FLOOR_ID_PREFIX) ->
+                    PreviewScene(2, 0.1f, listOf(at(0, 0), at(1, 0), at(0, 1), at(1, 1)))
+                objectId.startsWith(GridObject.PLANT_ID_PREFIX) -> PreviewScene(1, 1.05f, listOf(at(0, 0)))
+                StructureData.fromObjectId(objectId) != null -> PreviewScene(2, 0.45f, listOf(at(0, 0)))
+                else -> PreviewScene(1, 0.3f, listOf(at(0, 0)))
+            }
+        }
+    }
+}
+
+/** The lawn of a preview sits on a slab of soil this thick, in tile heights (see drawTerrain). */
+private const val PREVIEW_SOIL = 0.6f
+
+/**
+ * A picture of the object with id [objectId] as it appears in the garden, drawn by the very code
+ * that draws the garden, so the two cannot drift apart. Fitted into whatever size it is given.
+ */
+@Composable
+fun ObjectPreview(
+    objectId: String,
+    atlas: SpriteAtlas,
+    terrain: TerrainTextures,
+    modifier: Modifier = Modifier,
+) {
+    val scene = remember(objectId) { PreviewScene.of(objectId) }
+    val map = remember(scene) { GardenMap.allGrass(scene.gridSize) }
+    val grid = remember(scene) { GardenGrid(map, scene.objects) }
+    val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
+    val pipeline = remember { LayerPipeline() }
+    val waterTick by rememberWaterTick(running = scene.objects.any { it.isTerrain })
+
+    Canvas(modifier) {
+        val n = scene.gridSize
+        // On screen the patch is n tiles wide and n half-tiles tall, with the soil under it and
+        // the headroom above. Heights are in tile widths; a tile is half as tall as it is wide.
+        val heightInTiles = scene.headroom + (n + PREVIEW_SOIL) / 2f
+        val tileWidth = min(size.width / n, size.height / heightInTiles)
+        val transform = IsometricTransform(
+            tileWidth = tileWidth,
+            tileHeight = tileWidth / 2f,
+            heightStep = tileWidth * (HEIGHT_STEP / TILE_WIDTH),
+            offsetX = size.width / 2f,
+            offsetY = (size.height - heightInTiles * tileWidth) / 2f + scene.headroom * tileWidth,
+        )
+        val spriteScale = tileWidth / atlas.manifest.tileWidth
+        pipeline.submit(RenderLayer.BASE_TERRAIN) {
+            drawTerrain(transform, map) { tile, center ->
+                val sprite = atlas[tile.assetId]
+                if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
+                sprite != null
+            }
+        }
+        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, waterTick)
         pipeline.render(this)
     }
 }
@@ -262,7 +371,9 @@ private fun DrawScope.drawTerrain(
 // of the pixel's position, so neighbouring tiles line up into one continuous stream.
 private const val WATER_PIXELS = 8
 private const val WATER_PHASES = 6
-private const val WATER_FRAME_MILLIS = 450L
+
+/** The water counter wraps here: a multiple of every frame count in use, so no loop ever jumps. */
+private const val WATER_TICK_CYCLE = 12 * WATER_PHASES
 private val WATER_DEEP = Color(0xFF2B6CA3)
 private val WATER_MID = Color(0xFF3F8CCB)
 private val WATER_LIGHT = Color(0xFF6BB5E6)

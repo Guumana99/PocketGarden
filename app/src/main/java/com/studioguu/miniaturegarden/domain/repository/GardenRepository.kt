@@ -34,7 +34,7 @@ interface GardenRepository {
     suspend fun upsertInventorySlot(slot: InventorySlot)
     suspend fun upsertInventorySlots(slots: List<InventorySlot>)
 
-    /** Discovered pages of the garden encyclopedia; undiscovered ones have no record. */
+    /** Pages of the garden encyclopedia whose condition has been met; the others have no record. */
     fun observeCollection(): Flow<List<CollectionRecord>>
     suspend fun getCollection(): List<CollectionRecord>
     suspend fun upsertCollectionRecord(record: CollectionRecord)

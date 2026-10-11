@@ -41,6 +41,9 @@
     <string name="object_terrain_river">川</string>
     <string name="object_floor_cobblestone">石畳</string>
     <string name="object_struct_fence">ウッドフェンス</string>
+    <string name="object_struct_fence_rail">ウッドフェンス（横木）</string>
+    <string name="object_struct_fence_post">ウッドフェンス（支柱）</string>
+    <string name="action_switch_part">パーツ切替</string>
     <string name="item_seed_tulip">チューリップの種</string>
     <string name="item_seed_sunflower">ひまわりの種</string>
     <string name="item_seed_rose">バラの苗</string>
@@ -86,8 +89,14 @@
     <!-- Garden encyclopedia. Written like an old cartridge game: kana, with spaces. -->
     <string name="collection_title">ガーデンずかん</string>
     <string name="collection_progress">あつめた かず　%1$d / %2$d　（%3$d%%）</string>
-    <string name="collection_complete_reward">ぜんぶ あつめると　🪙%1$d と %2$d XP が もらえる！</string>
-    <string name="collection_complete">ずかん コンプリート！　おめでとう！</string>
+    <string name="collection_ready_count">とうろく まちの ページ　%1$d</string>
+    <string name="collection_tab_crops">さくもつ</string>
+    <string name="collection_tab_terrain">ちけい・みち</string>
+    <string name="collection_tab_structures">たてもの・さく</string>
+    <string name="collection_ready_hint">じょうけん たっせい！\nボタンを おして　ずかんに とうろく しよう。</string>
+    <string name="collection_reveal_button">✨ とうろく する　+%1$d 🪙</string>
+    <string name="collection_revealed_coins">とうろく かんりょう！　+%1$d 🪙</string>
+    <string name="collection_daily_reward">きょうの ずかん ボーナス　+%1$d 🪙</string>
     <string name="collection_page">%1$d / %2$d</string>
     <string name="collection_number">No.%1$02d</string>
     <string name="collection_unknown">？？？</string>
@@ -106,8 +115,7 @@
     <string name="flavor_fence">きを くんだ　そぼくな さく。\nはなばたけを　ぐるりと かこもう。</string>
     <string name="flavor_well">つめたい みずが　こんこんと わく。\nのぞきこむと　じぶんの かおが ゆれる。</string>
     <string name="flavor_hut">ちいさいけれど　ゆめの つまった こや。\nどうぐも　ひるねも　ここで。</string>
-    <string name="effect_discovery">ずかんに とうろく！　%1$s　+%2$d 🪙</string>
-    <string name="effect_collection_complete">ずかん コンプリート！　+%1$d 🪙　+%2$d XP</string>
+    <string name="effect_discovery">📖 ずかんに とうろく できるよ！</string>
 
     <!-- Sharing -->
     <string name="share_button">庭をシェア</string>

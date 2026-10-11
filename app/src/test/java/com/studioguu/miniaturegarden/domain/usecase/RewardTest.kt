@@ -130,6 +130,33 @@ class RewardTest {
         assertEquals(4, limits.usage.first().remaining(RewardType.COIN_BONUS, today))
     }
 
+    // --- Opening the encyclopedia ---
+
+    @Test
+    fun `opening the encyclopedia pays once a day`() = runBlocking {
+        assertEquals(1, RewardType.BOOK_OPEN.dailyLimit)
+
+        assertEquals(RewardResult.GRANTED, grant.bookOpen(today))
+        assertEquals(100L + RewardType.BOOK_OPEN_AMOUNT, repo.profile?.coins)
+
+        // Opening it again and again the same day earns nothing more.
+        repeat(5) { assertEquals(RewardResult.LIMIT_REACHED, grant.bookOpen(today)) }
+        assertEquals(100L + RewardType.BOOK_OPEN_AMOUNT, repo.profile?.coins)
+        assertEquals(1, repo.profileSaves)
+
+        assertEquals(RewardResult.GRANTED, grant.bookOpen(today + 1))
+        assertEquals(100L + 2 * RewardType.BOOK_OPEN_AMOUNT, repo.profile?.coins)
+    }
+
+    @Test
+    fun `the encyclopedia bonus has its own count`() = runBlocking {
+        grant.bookOpen(today)
+
+        assertEquals(3, limits.usage.first().remaining(RewardType.BLESSED_RAIN, today))
+        assertEquals(5, limits.usage.first().remaining(RewardType.COIN_BONUS, today))
+        assertEquals(0, limits.usage.first().remaining(RewardType.BOOK_OPEN, today))
+    }
+
     // --- Coin bonus ---
 
     @Test

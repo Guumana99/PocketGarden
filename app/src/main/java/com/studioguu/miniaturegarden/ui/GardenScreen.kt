@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -44,6 +47,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -97,6 +102,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val rainRemaining by viewModel.rainRemaining.collectAsStateWithLifecycle()
     val adReady by viewModel.adReady.collectAsStateWithLifecycle()
     val blessedRainFalling by viewModel.blessedRainFalling.collectAsStateWithLifecycle()
+    val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
@@ -186,7 +192,25 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
-            SideButton("📖", stringResource(R.string.collection_title)) { showCollection = true }
+            Box {
+                SideButton("📖", stringResource(R.string.collection_title)) { showCollection = true }
+                // Pages waiting to be filled in.
+                if (collectionReady > 0) {
+                    Text(
+                        text = collectionReady.toString(),
+                        color = Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 4.dp, end = 4.dp)
+                            .size(18.dp)
+                            .background(MaterialTheme.colorScheme.error, CircleShape)
+                            .wrapContentSize(),
+                    )
+                }
+            }
             SideButton("📷", stringResource(R.string.share_button)) {
                 scope.launch {
                     // Drop the selection frame first and let that frame be drawn, so it is not in the picture.
@@ -245,6 +269,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         onWater = viewModel::waterSelected,
                         onHarvest = viewModel::harvestSelected,
                         onRemove = viewModel::removeSelected,
+                        onSwitchPart = viewModel::switchSelectedFencePart,
                         onDismiss = viewModel::clearSelection,
                         modifier = Modifier.fillMaxWidth(),
                     )

@@ -20,7 +20,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         InventorySlotEntity::class,
         CollectionEntryEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -47,6 +47,17 @@ abstract class AppDatabase : RoomDatabase() {
                         "`entryId` TEXT NOT NULL, `count` INTEGER NOT NULL, " +
                         "`firstObtainedAt` INTEGER NOT NULL, PRIMARY KEY(`entryId`))"
                 )
+            }
+        }
+
+        /**
+         * v4: pages are filled in by the player instead of by themselves. Pages that exist
+         * already were filled in (and paid for) under the old rule, so they stay filled in.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE collection_entries ADD COLUMN revealed INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE collection_entries SET revealed = 1")
             }
         }
     }

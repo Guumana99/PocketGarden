@@ -22,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
-import com.studioguu.miniaturegarden.ui.objectDisplayName
 
 /** A short-lived piece of feedback. [id] must be unique among the effects on screen. */
 sealed interface GardenEffect {
@@ -32,19 +31,16 @@ sealed interface GardenEffect {
     data class Xp(override val id: Long, val amount: Int) : GardenEffect
     data class LevelUp(override val id: Long, val level: Int) : GardenEffect
 
-    /** A page of the encyclopedia was filled in for the first time. */
-    data class Discovery(override val id: Long, val objectId: String, val coins: Int) : GardenEffect
-
-    /** The last page of the encyclopedia was filled in. */
-    data class CollectionComplete(override val id: Long, val coins: Int, val xp: Int) : GardenEffect
+    /** A page of the encyclopedia became ready to be filled in. */
+    data class Discovery(override val id: Long) : GardenEffect
 }
 
 private const val DURATION_MILLIS = 1600
 private val RISE = 96.dp
 
 /**
- * One action can set off several effects at once (harvest, first discovery, level-up, completed
- * encyclopedia). Each kind starts one step higher than the last so they stack instead of overlap.
+ * One action can set off several effects at once (harvest, first discovery, level-up). Each kind
+ * starts one step higher than the last so they stack instead of overlap.
  */
 private val LIFT_STEP = 60.dp
 
@@ -52,7 +48,6 @@ private fun liftSteps(effect: GardenEffect): Int = when (effect) {
     is GardenEffect.Harvest, is GardenEffect.Xp -> 0
     is GardenEffect.Discovery -> 1
     is GardenEffect.LevelUp -> 2
-    is GardenEffect.CollectionComplete -> 3
 }
 
 /**
@@ -82,16 +77,13 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
     }
 
     // The big moments get the larger, filled style.
-    val isLevelUp = effect is GardenEffect.LevelUp || effect is GardenEffect.CollectionComplete
+    val isLevelUp = effect is GardenEffect.LevelUp
     val lift = LIFT_STEP * liftSteps(effect)
     val text = when (effect) {
         is GardenEffect.Harvest -> stringResource(R.string.effect_harvest, effect.coins, effect.xp)
         is GardenEffect.Xp -> stringResource(R.string.effect_xp, effect.amount)
         is GardenEffect.LevelUp -> stringResource(R.string.effect_level_up, effect.level)
-        is GardenEffect.Discovery ->
-            stringResource(R.string.effect_discovery, objectDisplayName(effect.objectId), effect.coins)
-        is GardenEffect.CollectionComplete ->
-            stringResource(R.string.effect_collection_complete, effect.coins, effect.xp)
+        is GardenEffect.Discovery -> stringResource(R.string.effect_discovery)
     }
     Text(
         text = text,

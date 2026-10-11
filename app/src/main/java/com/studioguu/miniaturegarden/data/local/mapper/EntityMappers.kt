@@ -76,10 +76,12 @@ fun CollectionEntryEntity.toDomain() = CollectionRecord(
     entryId = entryId,
     count = count,
     firstObtainedAt = firstObtainedAt,
+    revealed = revealed,
 )
 
 fun CollectionRecord.toEntity() = CollectionEntryEntity(
     entryId = entryId,
     count = count,
     firstObtainedAt = firstObtainedAt,
+    revealed = revealed,
 )

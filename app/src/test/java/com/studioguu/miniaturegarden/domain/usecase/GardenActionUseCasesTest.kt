@@ -627,9 +627,9 @@ internal class FakeGardenRepository : GardenRepository {
 
     val collection = LinkedHashMap<String, CollectionRecord>()
 
-    /** Marks a page as already filled in, as if obtained once before. */
-    fun discover(entry: CollectionEntry) {
-        collection[entry.objectId] = CollectionRecord(entry.objectId, count = 1, firstObtainedAt = 0L)
+    /** Stores a page as obtained once before: filled in by the player, or still waiting for that. */
+    fun discover(entry: CollectionEntry, revealed: Boolean = true) {
+        collection[entry.objectId] = CollectionRecord(entry.objectId, count = 1, firstObtainedAt = 0L, revealed = revealed)
     }
 
     override fun observeCollection(): Flow<List<CollectionRecord>> = MutableStateFlow(collection.values.toList())

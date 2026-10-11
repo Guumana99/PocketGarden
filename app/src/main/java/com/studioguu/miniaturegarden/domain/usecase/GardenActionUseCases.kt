@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
+import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -120,7 +121,7 @@ class CareForPlantUseCase @Inject constructor(
  * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
  * ground (not the river) and free in its own layer: paving goes under things, and things can
  * be stood on paving. Building a structure earns its [GardenItem.placeXp], and a
- * first placement fills in its page of the encyclopedia.
+ * first placement makes its page of the encyclopedia ready to be filled in.
  */
 class PlaceItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -155,12 +156,9 @@ class PlaceItemUseCase @Inject constructor(
             gardenRepository.upsertInventorySlot(
                 if (remaining > 0) slot.copy(amount = remaining) else InventorySlot(slotIndex)
             )
-            val collection = recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
-            val xp = item.placeXp + collection.xp
-            if (xp > 0 || collection.coins > 0) {
-                gardenRepository.getUserProfile()?.let {
-                    gardenRepository.saveUserProfile(it.copy(coins = it.coins + collection.coins).gainXp(xp))
-                }
+            recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
+            if (item.placeXp > 0) {
+                gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
             }
             ActionResult.SUCCESS
         }
@@ -168,7 +166,7 @@ class PlaceItemUseCase @Inject constructor(
 
 /**
  * Sells a fully grown plant: removes it, notes it in the encyclopedia and credits its coins and
- * XP, plus anything the encyclopedia paid out, to the (re-signed) profile.
+ * XP to the (re-signed) profile.
  */
 class HarvestPlantUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -188,13 +186,28 @@ class HarvestPlantUseCase @Inject constructor(
 
             gardenRepository.deleteGridObject(instanceId)
             val species = PlantSpecies.forObjectId(current.objectId)
-            val collection = recordCollection(current.objectId, CollectionTrigger.HARVEST, now)
+            recordCollection(current.objectId, CollectionTrigger.HARVEST, now)
             gardenRepository.saveUserProfile(
-                profile.copy(coins = profile.coins + species.harvestCoins + collection.coins)
-                    .gainXp(species.harvestXp + collection.xp)
+                profile.copy(coins = profile.coins + species.harvestCoins).gainXp(species.harvestXp)
             )
             ActionResult.SUCCESS
         }
+}
+
+/**
+ * Swaps a fence standing on the garden for the next of its parts (see [FencePart]), in place and
+ * free of charge, so a run of fence can be put together from sections, rails and posts.
+ */
+class SwitchFencePartUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+) {
+    suspend operator fun invoke(instanceId: String): ActionResult = gardenRepository.runInTransaction {
+        val stored = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+            ?: return@runInTransaction ActionResult.NOT_FOUND
+        val part = FencePart.fromObjectId(stored.objectId) ?: return@runInTransaction ActionResult.NOT_FOUND
+        gardenRepository.upsertGridObject(stored.copy(objectId = part.next().objectId))
+        ActionResult.SUCCESS
+    }
 }
 
 /** Clears a tile. Nothing is refunded. */

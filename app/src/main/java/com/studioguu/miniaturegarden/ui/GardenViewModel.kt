@@ -34,6 +34,7 @@ import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SkipTimeUseCase
+import com.studioguu.miniaturegarden.domain.usecase.SwitchFencePartUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
@@ -68,6 +69,7 @@ class GardenViewModel @Inject constructor(
     private val harvestPlant: HarvestPlantUseCase,
     private val removeObject: RemoveObjectUseCase,
     private val skipTime: SkipTimeUseCase,
+    private val switchFencePart: SwitchFencePartUseCase,
     private val audio: AudioManager,
     val gardenMap: GardenMap,
     private val grantReward: GrantRewardUseCase,
@@ -92,6 +94,11 @@ class GardenViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val adReady: StateFlow<Boolean> = rewardedAds.isReady
+
+    /** Pages of the encyclopedia waiting for the player to fill them in. */
+    val collectionReady: StateFlow<Int> = gardenRepository.observeCollection()
+        .map { CollectionProgress(it).ready }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     private val _blessedRainFalling = MutableStateFlow(false)
 
@@ -293,6 +300,11 @@ class GardenViewModel @Inject constructor(
         act(onSuccess = ::clearSelection) { _, _ -> removeObject(obj.instanceId) }
     }
 
+    /** Shows the selected fence as the next of its parts. */
+    fun switchSelectedFencePart() = withSelectedObject { obj ->
+        act(onSuccess = { audio.play(SoundEffect.PLANT) }) { _, _ -> switchFencePart(obj.instanceId) }
+    }
+
     /** Debug menu: pretend [millis] passed for everything in the garden. */
     fun debugSkipTime(millis: Long) = act { now, weather -> skipTime(millis, now, weather) }
 
@@ -334,7 +346,10 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    /** Announces pages of the encyclopedia as they are filled in, and its completion. */
+    /**
+     * Says so when a page of the encyclopedia becomes ready. Filling it in, and the coins for
+     * that, happen in the book, at the player's tap.
+     */
     private fun watchCollection() {
         viewModelScope.launch {
             var known: Set<String>? = null
@@ -345,16 +360,8 @@ class GardenViewModel @Inject constructor(
                 // The first emission is what was already there, not news.
                 if (before == null) return@collect
 
-                val discovered = CollectionEntry.entries.filter { it.objectId in now && it.objectId !in before }
-                if (discovered.isEmpty()) return@collect
-                audio.play(SoundEffect.COIN)
-                discovered.forEach { entry ->
-                    showEffect { GardenEffect.Discovery(it, entry.objectId, entry.discoveryCoins) }
-                }
-                if (CollectionProgress(records).isComplete) {
-                    showEffect {
-                        GardenEffect.CollectionComplete(it, CollectionEntry.COMPLETION_COINS, CollectionEntry.COMPLETION_XP)
-                    }
+                if (CollectionEntry.entries.any { it.objectId in now && it.objectId !in before }) {
+                    showEffect { GardenEffect.Discovery(it) }
                 }
             }
         }
