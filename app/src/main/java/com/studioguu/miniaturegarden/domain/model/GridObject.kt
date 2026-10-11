@@ -16,6 +16,11 @@ data class GridObject(
 ) {
     val isPlant: Boolean get() = objectId.startsWith(PLANT_ID_PREFIX)
 
+    /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
+    val footprint: Footprint get() = Footprint.forObjectId(objectId)
+
+    fun occupiedCells(): List<GridCell> = footprint.cells(gridX, gridY)
+
     companion object {
         const val GRID_SIZE = 9
         const val PLANT_ID_PREFIX = "plant_"
