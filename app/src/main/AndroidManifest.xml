@@ -12,6 +12,11 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.PocketGarden">
+        <!-- Required by the Google Mobile Ads SDK; the value comes from app/build.gradle.kts. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">

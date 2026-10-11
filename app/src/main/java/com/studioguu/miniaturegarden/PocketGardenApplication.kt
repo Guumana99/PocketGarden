@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden
 
 import android.app.Application
+import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import dagger.hilt.android.HiltAndroidApp
@@ -15,6 +16,7 @@ class PocketGardenApplication : Application() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var audio: AudioManager
+    @Inject lateinit var rewardedAds: RewardedAdManager
 
     private val applicationScope = MainScope()
 
@@ -26,5 +28,7 @@ class PocketGardenApplication : Application() {
         audio.apply(runBlocking { settingsRepository.settings.first() })
         // From here on every saved change reaches the players as it happens.
         applicationScope.launch { settingsRepository.settings.collect(audio::apply) }
+        // Have a rewarded ad loading in the background, so its buttons are ready when wanted.
+        rewardedAds.start()
     }
 }

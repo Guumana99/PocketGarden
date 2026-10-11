@@ -1,8 +1,11 @@
 package com.studioguu.miniaturegarden.ui
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
+import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.audio.AudioManager
@@ -16,27 +19,37 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
+import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
+import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
+import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SkipTimeUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
+import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -56,6 +69,9 @@ class GardenViewModel @Inject constructor(
     private val skipTime: SkipTimeUseCase,
     private val audio: AudioManager,
     val gardenMap: GardenMap,
+    private val grantReward: GrantRewardUseCase,
+    private val rewardedAds: RewardedAdManager,
+    rewardLimits: RewardLimitRepository,
 ) : ViewModel() {
 
     val gridObjects: StateFlow<List<GridObject>> = gardenRepository.observeGridObjects()
@@ -68,6 +84,65 @@ class GardenViewModel @Inject constructor(
     val weather: StateFlow<WeatherType> = _weather.asStateFlow()
 
     private var debugWeather: WeatherType? = null
+
+    /** Blessed rains still available today. */
+    val rainRemaining: StateFlow<Int> = rewardLimits.usage
+        .map { it.remaining(RewardType.BLESSED_RAIN, todayEpochDay()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val adReady: StateFlow<Boolean> = rewardedAds.isReady
+
+    private val _blessedRainFalling = MutableStateFlow(false)
+
+    /** True for a few seconds after a blessed rain was granted, while its shower is shown. */
+    val blessedRainFalling: StateFlow<Boolean> = _blessedRainFalling.asStateFlow()
+
+    /** Whether there is anything the blessed rain could speed up. */
+    fun hasGrowingPlants(): Boolean = gridObjects.value.any {
+        it.isPlant && it.status != PlantStatus.WITHERED && it.growthProgress < 1f
+    }
+
+    /**
+     * Shows the ad and, only if it is watched to the end, lets the blessed rain fall. The plants
+     * are sped up as soon as the reward is earned; the shower and the message wait until the ad
+     * has closed, so the player sees them.
+     */
+    fun claimBlessedRain(activity: Activity) {
+        var grant: Deferred<RewardResult>? = null
+        rewardedAds.show(
+            activity,
+            onEarned = {
+                grant = viewModelScope.async {
+                    initJob.join()
+                    actionMutex.withLock {
+                        val now = System.currentTimeMillis()
+                        grantReward.blessedRain(now, currentWeather(now), todayEpochDay())
+                    }
+                }
+            },
+            onClosed = { result ->
+                when (result) {
+                    RewardedAdResult.EARNED -> viewModelScope.launch {
+                        if (grant?.await() != RewardResult.GRANTED) {
+                            _messages.send(R.string.msg_reward_limit)
+                            return@launch
+                        }
+                        audio.play(SoundEffect.WATER)
+                        _messages.send(R.string.msg_blessed_rain_done)
+                        _blessedRainFalling.value = true
+                        delay(BLESSED_RAIN_SHOWER_MILLIS)
+                        _blessedRainFalling.value = false
+                    }
+                    RewardedAdResult.CANCELLED -> _messages.trySend(R.string.msg_reward_cancelled)
+                    RewardedAdResult.UNAVAILABLE -> _messages.trySend(R.string.msg_reward_unavailable)
+                }
+            },
+        )
+    }
+
+    fun showMessage(message: Int) {
+        _messages.trySend(message)
+    }
 
     private val _selectedTile = MutableStateFlow<TileCoord?>(null)
     val selectedTile: StateFlow<TileCoord?> = _selectedTile.asStateFlow()
@@ -306,4 +381,8 @@ class GardenViewModel @Inject constructor(
     /** The object covering [tile]; for a structure that is any cell of its footprint. */
     private fun List<GridObject>.objectAt(tile: TileCoord?): GridObject? =
         if (tile == null) null else GardenGrid(gardenMap, this).objectAt(tile.x, tile.y)
+
+    private companion object {
+        const val BLESSED_RAIN_SHOWER_MILLIS = 4_000L
+    }
 }

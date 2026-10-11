@@ -55,9 +55,13 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.collection.CollectionDialog
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
+import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
+import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
@@ -87,12 +91,16 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
     val effects by viewModel.effects.collectAsStateWithLifecycle()
+    val rainRemaining by viewModel.rainRemaining.collectAsStateWithLifecycle()
+    val adReady by viewModel.adReady.collectAsStateWithLifecycle()
+    val blessedRainFalling by viewModel.blessedRainFalling.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
     var showDebugMenu by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCollection by rememberSaveable { mutableStateOf(false) }
+    var confirmRain by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -140,7 +148,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxSize(),
             )
             // Inside the recorded box, so a shared picture shows the rain too.
-            if (weather == WeatherType.RAINY) RainOverlay(Modifier.fillMaxSize())
+            if (weather == WeatherType.RAINY || blessedRainFalling) RainOverlay(Modifier.fillMaxSize())
         }
 
         TopStatusBar(
@@ -151,8 +159,18 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
         )
 
+        // Greyed out when today's rains are used up or none is ready to be shown.
+        WoodButton(
+            text = stringResource(R.string.reward_rain_button, rainRemaining, RewardType.BLESSED_RAIN.dailyLimit),
+            onClick = {
+                if (viewModel.hasGrowingPlants()) confirmRain = true else viewModel.showMessage(R.string.msg_no_growing_plants)
+            },
+            enabled = rainRemaining > 0 && adReady,
+            modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 58.dp),
+        )
+
         Column(
-            modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 56.dp, end = 4.dp),
+            modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 112.dp, end = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
@@ -242,6 +260,17 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     if (showSettings) {
         SettingsDialog(onDismiss = { showSettings = false })
+    }
+    if (confirmRain) {
+        RewardConfirmDialog(
+            message = stringResource(R.string.reward_rain_confirm),
+            confirmLabel = stringResource(R.string.reward_rain_confirm_ok),
+            onConfirm = {
+                confirmRain = false
+                context.findActivity()?.let(viewModel::claimBlessedRain)
+            },
+            onDismiss = { confirmRain = false },
+        )
     }
     if (showCollection) {
         CollectionDialog(onDismiss = { showCollection = false })

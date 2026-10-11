@@ -9,6 +9,12 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// AdMob ids. These are Google's public TEST ids: they always serve test ads and never earn or
+// cost anything. Before publishing, replace both with the app's own ids from the AdMob console.
+// Never tap real ads in a development build.
+val admobAppId = "ca-app-pub-3940256099942544~3347511713"
+val admobRewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
+
 android {
     namespace = "com.studioguu.miniaturegarden"
     compileSdk = 35
@@ -19,6 +25,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+
+        manifestPlaceholders["admobAppId"] = admobAppId
+        buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", "\"$admobRewardedAdUnitId\"")
     }
 
     buildTypes {
@@ -91,6 +100,9 @@ dependencies {
 
     // Settings
     implementation(libs.androidx.datastore.preferences)
+
+    // Rewarded ads
+    implementation(libs.play.services.ads)
 
     // Coroutines / Serialization
     implementation(libs.kotlinx.coroutines.android)

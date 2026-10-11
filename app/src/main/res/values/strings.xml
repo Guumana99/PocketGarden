@@ -111,6 +111,23 @@
     <string name="share_text">#ぽけっと庭園</string>
     <string name="share_failed">画像を共有できませんでした</string>
 
+    <!-- Rewards. By request, none of these texts uses the word 動画. -->
+    <string name="action_cancel">キャンセル</string>
+    <string name="reward_rain_button">☔ 恵みの雨を降らせる（本日あと %1$d/%2$d回）</string>
+    <string name="reward_rain_confirm" formatted="false">恵みの雨を降らせますか？\n（すべての作物の成長時間を50%短縮します）</string>
+    <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
+    <string name="reward_bonus_button">💰 臨時ボーナスを受け取る +%1$dG（本日あと %2$d/%3$d回）</string>
+    <string name="reward_bonus_short">💰 臨時ボーナス +%1$dG</string>
+    <string name="reward_bonus_confirm">臨時ボーナスを受け取りますか？\n（%1$dコインを獲得します）</string>
+    <string name="reward_bonus_confirm_ok">💰 受け取る</string>
+    <string name="shop_short_by">あと %1$d コイン足りません。</string>
+    <string name="msg_reward_cancelled">途中で終了したため、特典は付与されませんでした</string>
+    <string name="msg_reward_unavailable">ただいま準備中です。少し待ってからお試しください</string>
+    <string name="msg_reward_limit">本日の回数上限に達しました</string>
+    <string name="msg_blessed_rain_done">☔ 恵みの雨が降りました！ 作物の成長時間が半分になりました</string>
+    <string name="msg_bonus_done">💰 臨時ボーナス +%1$dG を受け取りました</string>
+    <string name="msg_no_growing_plants">育てている途中の作物がありません</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_tab_sound">音量</string>

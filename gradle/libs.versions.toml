@@ -17,6 +17,7 @@ sqlcipher = "4.9.0"
 coroutines = "1.9.0"
 kotlinxSerializationJson = "1.7.3"
 datastore = "1.1.1"
+googleMobileAds = "23.6.0"
 junit = "4.13.2"
 
 [libraries]
@@ -49,6 +50,8 @@ sqlcipher-android = { group = "net.zetetic", name = "sqlcipher-android", version
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "googleMobileAds" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 

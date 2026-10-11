@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,14 +33,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
+import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.ui.actionResultMessage
+import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
 import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.itemEmoji
 
-/** Buy seeds, structures and decorations with coins. Purchases go straight into the inventory. */
+/**
+ * Buy seeds, structures and decorations with coins; purchases go straight into the inventory.
+ * Also the place to claim the day's coin bonuses.
+ */
 @Composable
 fun ShopDialog(
     onDismiss: () -> Unit,
@@ -47,8 +54,16 @@ fun ShopDialog(
 ) {
     val coins by viewModel.coins.collectAsStateWithLifecycle()
     val feedback by viewModel.feedback.collectAsStateWithLifecycle()
+    val notice by viewModel.notice.collectAsStateWithLifecycle()
     val playerStats by viewModel.playerStats.collectAsStateWithLifecycle()
+    val bonusRemaining by viewModel.bonusRemaining.collectAsStateWithLifecycle()
+    val adReady by viewModel.adReady.collectAsStateWithLifecycle()
     var category by rememberSaveable { mutableStateOf(ItemCategory.SEED) }
+    var confirmBonus by rememberSaveable { mutableStateOf(false) }
+    /** Price of the item the player could not afford, while that dialog is open. */
+    var shortFor by rememberSaveable { mutableStateOf<Int?>(null) }
+    val activity = LocalContext.current.findActivity()
+    val bonusAvailable = bonusRemaining > 0 && adReady && activity != null
     // Start every visit without the previous visit's message.
     DisposableEffect(Unit) { onDispose { viewModel.clearFeedback() } }
 
@@ -78,19 +93,27 @@ fun ShopDialog(
                             item = item,
                             locked = !item.isUnlockedFor(playerStats),
                             affordable = coins >= item.price,
-                            onBuy = { viewModel.buy(item) },
+                            onBuy = { if (coins >= item.price) viewModel.buy(item) else shortFor = item.price },
                         )
                     }
                 }
-                feedback?.let { (item, result) ->
-                    val failure = actionResultMessage(result)
+                val purchase = feedback
+                val noticeText = notice
+                if (noticeText != null) {
+                    Text(
+                        text = noticeText.text(),
+                        color = if (noticeText.good) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else if (purchase != null) {
+                    val failure = actionResultMessage(purchase.result)
                     Text(
                         text = if (failure == null) {
-                            stringResource(R.string.shop_bought, itemDisplayName(item))
+                            stringResource(R.string.shop_bought, itemDisplayName(purchase.item))
                         } else {
                             stringResource(failure)
                         },
-                        color = if (result == ActionResult.SUCCESS) {
+                        color = if (purchase.result == ActionResult.SUCCESS) {
                             MaterialTheme.colorScheme.secondary
                         } else {
                             MaterialTheme.colorScheme.error
@@ -98,12 +121,58 @@ fun ShopDialog(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
+                // Greyed out when today's bonuses are used up or none is ready to be shown.
+                WoodButton(
+                    text = stringResource(
+                        R.string.reward_bonus_button,
+                        RewardType.COIN_BONUS_AMOUNT,
+                        bonusRemaining,
+                        RewardType.COIN_BONUS.dailyLimit,
+                    ),
+                    onClick = { confirmBonus = true },
+                    enabled = bonusAvailable,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
         },
     )
+
+    shortFor?.let { price ->
+        AlertDialog(
+            modifier = Modifier.popIn(),
+            onDismissRequest = { shortFor = null },
+            title = { Text(stringResource(R.string.msg_not_enough_coins)) },
+            text = { Text(stringResource(R.string.shop_short_by, price - coins)) },
+            dismissButton = {
+                TextButton(onClick = { shortFor = null }) { Text(stringResource(R.string.action_close)) }
+            },
+            confirmButton = {
+                WoodButton(
+                    text = stringResource(R.string.reward_bonus_short, RewardType.COIN_BONUS_AMOUNT),
+                    onClick = {
+                        shortFor = null
+                        confirmBonus = true
+                    },
+                    enabled = bonusAvailable,
+                )
+            },
+        )
+    }
+
+    if (confirmBonus) {
+        RewardConfirmDialog(
+            message = stringResource(R.string.reward_bonus_confirm, RewardType.COIN_BONUS_AMOUNT),
+            confirmLabel = stringResource(R.string.reward_bonus_confirm_ok),
+            onConfirm = {
+                confirmBonus = false
+                activity?.let(viewModel::claimBonus)
+            },
+            onDismiss = { confirmBonus = false },
+        )
+    }
 }
 
 @Composable
@@ -125,7 +194,12 @@ private fun ShopRow(item: GardenItem, locked: Boolean, affordable: Boolean, onBu
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            WoodButton(text = stringResource(R.string.shop_buy, item.price), onClick = onBuy, enabled = affordable)
+            // Stays tappable when the player is short: the tap then explains, and offers the bonus.
+            WoodButton(
+                text = stringResource(R.string.shop_buy, item.price),
+                onClick = onBuy,
+                modifier = Modifier.alpha(if (affordable) 1f else UNAFFORDABLE_ALPHA),
+            )
         }
     }
 }
@@ -138,4 +212,5 @@ private fun categoryLabel(category: ItemCategory): Int = when (category) {
 }
 
 private const val LOCKED_ALPHA = 0.5f
+private const val UNAFFORDABLE_ALPHA = 0.55f
 private val SHELF_MIN_HEIGHT = 200.dp
