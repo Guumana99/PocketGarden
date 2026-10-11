@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -45,6 +47,12 @@ private val TILE_WIDTH = 128.dp
 private val TILE_HEIGHT = 64.dp
 private val HEIGHT_STEP = 16.dp
 
+/** Stores a camera as [scale, pan.x, pan.y]; an empty list stands for "not set yet". */
+private val CameraSaver = Saver<GardenCamera?, List<Float>>(
+    save = { camera -> camera?.let { listOf(it.scale, it.pan.x, it.pan.y) } ?: emptyList() },
+    restore = { saved -> if (saved.size == 3) GardenCamera(saved[0], Offset(saved[1], saved[2])) else null },
+)
+
 /** Object ids with this prefix are flat ground cover and render below plants and decorations. */
 const val GROUND_OBJECT_ID_PREFIX = "ground_"
 
@@ -71,8 +79,9 @@ fun GardenCanvas(
             IsometricMetrics(TILE_WIDTH.toPx(), TILE_HEIGHT.toPx(), HEIGHT_STEP.toPx(), GridObject.GRID_SIZE)
         }
     }
-    // Null until the first layout pass tells us how far to zoom out to fit the grid.
-    var camera by remember { mutableStateOf<GardenCamera?>(null) }
+    // Null until the first layout pass tells us how far to zoom out to fit the grid. Saved, so a
+    // rotation or a return from the background comes back to the same view.
+    var camera by rememberSaveable(stateSaver = CameraSaver) { mutableStateOf<GardenCamera?>(null) }
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     val pipeline = remember { LayerPipeline() }
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }

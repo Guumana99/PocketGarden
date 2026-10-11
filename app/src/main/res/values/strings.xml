@@ -76,6 +76,34 @@
     <string name="effect_xp">+%1$d XP</string>
     <string name="effect_level_up">レベルアップ！ Lv.%1$d</string>
 
+    <!-- Garden encyclopedia. Written like an old cartridge game: kana, with spaces. -->
+    <string name="collection_title">ガーデンずかん</string>
+    <string name="collection_progress">あつめた かず　%1$d / %2$d　（%3$d%%）</string>
+    <string name="collection_complete_reward">ぜんぶ あつめると　🪙%1$d と %2$d XP が もらえる！</string>
+    <string name="collection_complete">ずかん コンプリート！　おめでとう！</string>
+    <string name="collection_unknown">？？？</string>
+    <string name="collection_hint_harvest">そだてて　しゅうかく すると　とうろく される。</string>
+    <string name="collection_hint_placement">にわに　おくと　とうろく される。</string>
+    <string name="collection_discovery_reward">はっけん ほうび　🪙%1$d</string>
+    <string name="collection_count_harvest">しゅうかく　%1$d かい</string>
+    <string name="collection_count_placement">せっち　%1$d かい</string>
+    <string name="flavor_tulip">はるの にわの　ていばん。\nそだてやすく　はじめての ひとにも やさしい。</string>
+    <string name="flavor_sunflower">おひさまを　おいかけて　せを のばす。\nのどが かわきやすいので　みずやりは こまめに。</string>
+    <string name="flavor_rose">はなの じょおう。\nてまは かかるが　さいたときの よろこびは ひとしお。</string>
+    <string name="flavor_grass">ふかふかの　みどりの じゅうたん。\nねころぶと　きもちいい。</string>
+    <string name="flavor_pebble">かわらで ひろった　まるい こいし。\nならべると　こみちに なる。</string>
+    <string name="flavor_rock">どっしり かまえた　おおきな いわ。\nにわの　ぬしの ような かお。</string>
+    <string name="flavor_well">つめたい みずが　こんこんと わく。\nのぞきこむと　じぶんの かおが ゆれる。</string>
+    <string name="flavor_hut">ちいさいけれど　ゆめの つまった こや。\nどうぐも　ひるねも　ここで。</string>
+    <string name="effect_discovery">ずかんに とうろく！　%1$s　+%2$d 🪙</string>
+    <string name="effect_collection_complete">ずかん コンプリート！　+%1$d 🪙　+%2$d XP</string>
+
+    <!-- Sharing -->
+    <string name="share_button">庭をシェア</string>
+    <string name="share_title">庭をシェア</string>
+    <string name="share_text">#ぽけっと庭園</string>
+    <string name="share_failed">画像を共有できませんでした</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_section_sound">音量</string>

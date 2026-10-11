@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.data.repository
 
 import androidx.room.withTransaction
 import com.studioguu.miniaturegarden.data.local.AppDatabase
+import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
@@ -10,6 +11,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
 import com.studioguu.miniaturegarden.data.local.mapper.toDomain
 import com.studioguu.miniaturegarden.data.local.mapper.toEntity
 import com.studioguu.miniaturegarden.data.security.SecurityManager
+import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
@@ -26,6 +28,7 @@ class GardenRepositoryImpl @Inject constructor(
     private val userProfileDao: UserProfileDao,
     private val gridObjectDao: GridObjectDao,
     private val inventorySlotDao: InventorySlotDao,
+    private val collectionEntryDao: CollectionEntryDao,
     private val securityManager: SecurityManager,
 ) : GardenRepository {
 
@@ -75,6 +78,14 @@ class GardenRepositoryImpl @Inject constructor(
 
     override suspend fun upsertInventorySlots(slots: List<InventorySlot>) =
         inventorySlotDao.upsertAll(slots.map { it.toEntity() })
+
+    override fun observeCollection(): Flow<List<CollectionRecord>> =
+        collectionEntryDao.observeAll().map { list -> list.map { it.toDomain() } }
+
+    override suspend fun getCollection(): List<CollectionRecord> = collectionEntryDao.getAll().map { it.toDomain() }
+
+    override suspend fun upsertCollectionRecord(record: CollectionRecord) =
+        collectionEntryDao.upsert(record.toEntity())
 }
 
 private const val STARTER_SEED_COUNT = 3
