@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.ui.actionResultMessage
@@ -40,6 +41,7 @@ fun ShopDialog(
     DisposableEffect(Unit) { onDispose { viewModel.clearFeedback() } }
 
     AlertDialog(
+        modifier = Modifier.popIn(),
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.shop_title)) },
         text = {

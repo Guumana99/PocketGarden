@@ -8,6 +8,8 @@ import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
+import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -104,6 +106,7 @@ class GardenViewModel @Inject constructor(
         viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
         audio.preload()
         watchForLevelUps()
+        watchCollection()
     }
 
     /** The garden came to the foreground: start (or continue) its music. */
@@ -112,8 +115,14 @@ class GardenViewModel @Inject constructor(
         audio.resumeBgm()
     }
 
+    /**
+     * The garden is leaving the foreground, and the process may be killed at any point after
+     * this. Every action is already stored as it happens; this brings the plants and the
+     * profile's clocks up to this very moment as well, so time away is measured from here.
+     */
     fun onBackground() {
         audio.pauseBgm()
+        sync()
     }
 
     override fun onCleared() {
@@ -232,6 +241,32 @@ class GardenViewModel @Inject constructor(
                     }
                 }
                 lastLevel = level
+            }
+        }
+    }
+
+    /** Announces pages of the encyclopedia as they are filled in, and its completion. */
+    private fun watchCollection() {
+        viewModelScope.launch {
+            var known: Set<String>? = null
+            gardenRepository.observeCollection().collect { records ->
+                val now = records.mapTo(HashSet()) { it.entryId }
+                val before = known
+                known = now
+                // The first emission is what was already there, not news.
+                if (before == null) return@collect
+
+                val discovered = CollectionEntry.entries.filter { it.objectId in now && it.objectId !in before }
+                if (discovered.isEmpty()) return@collect
+                audio.play(SoundEffect.COIN)
+                discovered.forEach { entry ->
+                    showEffect { GardenEffect.Discovery(it, entry.objectId, entry.discoveryCoins) }
+                }
+                if (CollectionProgress(records).isComplete) {
+                    showEffect {
+                        GardenEffect.CollectionComplete(it, CollectionEntry.COMPLETION_COINS, CollectionEntry.COMPLETION_XP)
+                    }
+                }
             }
         }
     }

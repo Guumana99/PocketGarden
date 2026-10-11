@@ -8,9 +8,11 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.ui.components.popIn
 
 private const val HOUR_MILLIS = 60L * 60 * 1000
 private const val DAY_MILLIS = 24 * HOUR_MILLIS
@@ -25,6 +27,7 @@ fun DebugMenuDialog(
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
+        modifier = Modifier.popIn(),
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.debug_menu_title)) },
         text = {

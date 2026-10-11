@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.ui.components.popIn
 import kotlin.math.roundToInt
 
 /** Volume and mute for music and effects, the notifications switch, and information about the app. */
@@ -42,6 +43,7 @@ fun SettingsDialog(
     var showPolicy by rememberSaveable { mutableStateOf(false) }
 
     AlertDialog(
+        modifier = Modifier.popIn(),
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.settings_title)) },
         text = {
@@ -170,6 +172,7 @@ private fun SwitchRow(label: String, caption: String, checked: Boolean, onChecke
 @Composable
 private fun InfoDialog(title: String, body: String, onDismiss: () -> Unit) {
     AlertDialog(
+        modifier = Modifier.popIn(),
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {

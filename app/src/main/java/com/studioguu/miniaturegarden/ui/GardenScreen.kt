@@ -1,6 +1,12 @@
 package com.studioguu.miniaturegarden.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,11 +27,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -37,12 +49,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
-import com.studioguu.miniaturegarden.BuildConfig
+import com.studioguu.miniaturegarden.ui.collection.CollectionDialog
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
+import com.studioguu.miniaturegarden.ui.components.pressScale
+import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
@@ -50,8 +66,10 @@ import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
 import com.studioguu.miniaturegarden.ui.settings.SettingsDialog
+import com.studioguu.miniaturegarden.ui.share.shareGardenImage
 import com.studioguu.miniaturegarden.ui.shop.ShopDialog
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val SKY = Color(0xFFDCEFF5)
 
@@ -73,9 +91,15 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var showShop by rememberSaveable { mutableStateOf(false) }
     var showDebugMenu by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showCollection by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
+
+    // Everything drawn inside the garden box below is also recorded into this layer, which is
+    // what a shared screenshot is made from: the garden and the sky, none of the controls.
+    val gardenLayer = rememberGraphicsLayer()
 
     // Catch up on time away whenever the app returns to the foreground, then keep ticking.
     // Music follows the same window: it plays only while the garden is in front.
@@ -96,15 +120,25 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(context.getString(it)) }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(SKY)) {
-        GardenCanvas(
-            gridObjects = gridObjects,
-            selectedTile = selectedTile,
-            onTileTapped = viewModel::onTileTapped,
-            atlas = atlas,
-            gardenMap = viewModel.gardenMap,
-            modifier = Modifier.fillMaxSize(),
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithContent {
+                    gardenLayer.record { this@drawWithContent.drawContent() }
+                    drawLayer(gardenLayer)
+                }
+                .background(SKY)
+        ) {
+            GardenCanvas(
+                gridObjects = gridObjects,
+                selectedTile = selectedTile,
+                onTileTapped = viewModel::onTileTapped,
+                atlas = atlas,
+                gardenMap = viewModel.gardenMap,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
 
         TopStatusBar(
             coins = profile?.coins ?: 0L,
@@ -114,21 +148,25 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
         )
 
-        val settingsLabel = stringResource(R.string.settings_title)
-        TextButton(
-            onClick = { showSettings = true },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .safeDrawingPadding()
-                .padding(top = 56.dp, end = 4.dp)
-                .semantics { contentDescription = settingsLabel },
-        ) { Text("⚙️", fontSize = 22.sp) }
-
-        if (BuildConfig.DEBUG) {
-            TextButton(
-                onClick = { showDebugMenu = true },
-                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 104.dp, end = 4.dp),
-            ) { Text("🛠") }
+        Column(
+            modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 56.dp, end = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
+            SideButton("📖", stringResource(R.string.collection_title)) { showCollection = true }
+            SideButton("📷", stringResource(R.string.share_button)) {
+                scope.launch {
+                    // Drop the selection frame first and let that frame be drawn, so it is not in the picture.
+                    viewModel.clearSelection()
+                    withFrameNanos { }
+                    withFrameNanos { }
+                    val shared = shareGardenImage(context, gardenLayer.toImageBitmap().asAndroidBitmap())
+                    if (!shared) snackbarHostState.showSnackbar(context.getString(R.string.share_failed))
+                }
+            }
+            if (BuildConfig.DEBUG) {
+                SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
+            }
         }
 
         FloatingEffectsHost(
@@ -149,17 +187,35 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
 
             val placing = placingSlot
             val target = selectedObject
-            if (placing != null) {
-                PlacingBanner(placing, onCancel = viewModel::cancelPlacing)
-            } else if (target != null) {
-                ObjectStatusDialog(
-                    gridObject = target,
-                    onWater = viewModel::waterSelected,
-                    onHarvest = viewModel::harvestSelected,
-                    onRemove = viewModel::removeSelected,
-                    onDismiss = viewModel::clearSelection,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            // The panels slide away rather than vanish, so they keep showing the last thing they
+            // held while they leave.
+            var lastPlacing by remember { mutableStateOf<InventorySlot?>(null) }
+            var lastTarget by remember { mutableStateOf<GridObject?>(null) }
+            if (placing != null) lastPlacing = placing
+            if (target != null) lastTarget = target
+
+            AnimatedVisibility(
+                visible = placing != null,
+                enter = slideInVertically { it / 2 } + fadeIn(),
+                exit = slideOutVertically { it / 2 } + fadeOut(),
+            ) {
+                lastPlacing?.let { PlacingBanner(it, onCancel = viewModel::cancelPlacing) }
+            }
+            AnimatedVisibility(
+                visible = placing == null && target != null,
+                enter = slideInVertically { it / 2 } + fadeIn(),
+                exit = slideOutVertically { it / 2 } + fadeOut(),
+            ) {
+                lastTarget?.let {
+                    ObjectStatusDialog(
+                        gridObject = it,
+                        onWater = viewModel::waterSelected,
+                        onHarvest = viewModel::harvestSelected,
+                        onRemove = viewModel::removeSelected,
+                        onDismiss = viewModel::clearSelection,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
 
             QuickActionBar(
@@ -184,12 +240,26 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     if (showSettings) {
         SettingsDialog(onDismiss = { showSettings = false })
     }
+    if (showCollection) {
+        CollectionDialog(onDismiss = { showCollection = false })
+    }
     if (showDebugMenu) {
         DebugMenuDialog(onSkipTime = viewModel::debugSkipTime, onDismiss = { showDebugMenu = false })
     }
     if (showShop) {
         ShopDialog(onDismiss = { showShop = false })
     }
+}
+
+/** One of the small round buttons down the right-hand edge. */
+@Composable
+private fun SideButton(emoji: String, label: String, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    TextButton(
+        onClick = withTick(onClick),
+        interactionSource = interactionSource,
+        modifier = Modifier.pressScale(interactionSource).semantics { contentDescription = label },
+    ) { Text(emoji, fontSize = 22.sp) }
 }
 
 /** Shown while an inventory item is waiting to be placed on a tile. */
