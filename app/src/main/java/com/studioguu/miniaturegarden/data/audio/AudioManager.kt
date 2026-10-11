@@ -18,20 +18,21 @@ import kotlin.math.min
  * Short sounds. [resourceName] is the file name in `res/raw` without its extension,
  * e.g. `res/raw/se_tap.mp3`.
  *
- * [gain] evens out the source files, which were recorded at very different levels. SoundPool
- * can only turn a sound down, so the hot files are trimmed and the quiet ones play at full
- * volume. The values come from the measured loudness of each file (loudest 400 ms, dBFS, see
- * `tools/measure_audio.py`) against a target per kind of sound: about -24 for the frequent
- * tap, -22 for ordinary actions, -18 for rewards. Re-measure when a file is replaced.
+ * [gain] takes the edge off the source files that were recorded hotter than the rest. SoundPool
+ * can only turn a sound down, so the quiet files play at full volume and the loud ones are
+ * trimmed a little, staying within 0.8 .. 1.0 so that every effect is clearly above the music.
+ * Measured loudness (loudest 400 ms, dBFS, see `tools/measure_audio.py`) is noted per file;
+ * re-measure when one is replaced.
  */
 enum class SoundEffect(val resourceName: String, val gain: Float = 1f) {
-    TAP("se_tap", gain = 0.58f),          // -19.2 dBFS -> -24
+    /** Not triggered by anything at the moment: selecting a tile on the map is silent. */
+    TAP("se_tap", gain = 0.80f),          // -19.2 dBFS
     WATER("se_water"),                    // -24.6 dBFS, already below target
     FERTILIZE("se_fertilize"),            // -22.6 dBFS
     PLANT("se_plant"),                    // -22.4 dBFS
-    HARVEST("se_harvest", gain = 0.50f),  // -12.0 dBFS -> -18
+    HARVEST("se_harvest", gain = 0.80f),  // -12.0 dBFS: by far the loudest file
     COIN("se_coin"),                      // -29.0 dBFS: the quietest file, needs every bit
-    LEVEL_UP("se_level_up", gain = 0.80f), // -16.1 dBFS -> -18
+    LEVEL_UP("se_level_up", gain = 0.90f), // -16.1 dBFS
     ERROR("se_error"),                    // -25.3 dBFS
 }
 
