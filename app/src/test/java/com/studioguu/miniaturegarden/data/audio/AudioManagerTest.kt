@@ -124,11 +124,11 @@ class AudioManagerTest {
     }
 
     @Test
-    fun `gains only ever turn an effect down, and the quiet files stay at full volume`() {
-        assertTrue(SoundEffect.entries.all { it.gain > 0f && it.gain <= 1f })
+    fun `every effect plays between 80 and 100 percent, the quiet files at full volume`() {
+        assertTrue(SoundEffect.entries.all { it.gain in 0.8f..1f })
         assertEquals(1f, SoundEffect.COIN.gain, 0f)
         // The hottest file is trimmed the most.
-        assertEquals(SoundEffect.HARVEST, SoundEffect.entries.minBy { it.gain })
+        assertEquals(SoundEffect.entries.minOf { it.gain }, SoundEffect.HARVEST.gain, 0f)
     }
 
     @Test

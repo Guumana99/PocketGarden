@@ -134,7 +134,6 @@ class GardenViewModel @Inject constructor(
     fun onTileTapped(tile: TileCoord?) {
         val slotIndex = _placingSlotIndex.value
         if (slotIndex == null) {
-            if (tile != null) audio.play(SoundEffect.TAP)
             _selectedTile.value = tile.takeIf { it != _selectedTile.value }
         } else if (tile != null) {
             act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ ->
