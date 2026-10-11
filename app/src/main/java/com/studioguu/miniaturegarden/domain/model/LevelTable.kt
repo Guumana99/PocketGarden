@@ -1,17 +1,24 @@
 package com.studioguu.miniaturegarden.domain.model
 
-import kotlin.math.pow
-
 /**
- * Experience needed for each player level: reaching Lv.N takes a cumulative
- * 100 x N^1.5 XP (Lv.2 = 282, Lv.3 = 519, Lv.4 = 800 ...). Everyone starts at Lv.1 with 0 XP.
+ * Experience needed for each player level. Reaching Lv.N takes a cumulative 50 x N x (N - 1) XP,
+ * so each level costs 100 more than the one before:
+ *
+ *     Lv.2 = 100   Lv.3 = 300   Lv.4 = 600   Lv.5 = 1,000   Lv.6 = 1,500   Lv.10 = 4,500
+ *
+ * The first step is deliberately short. A tulip is worth about 65 XP per two-day cycle (harvest
+ * plus waterings), so the three starter seeds reach Lv.2, and the first shop unlocks, with
+ * their first harvest. Everyone starts at Lv.1 with 0 XP.
  */
 object LevelTable {
     const val MAX_LEVEL = 99
 
     /** Cumulative XP at which [level] is reached. */
-    fun xpForLevel(level: Int): Long =
-        if (level <= 1) 0L else (100.0 * level.coerceAtMost(MAX_LEVEL).toDouble().pow(1.5)).toLong()
+    fun xpForLevel(level: Int): Long {
+        if (level <= 1) return 0L
+        val n = level.coerceAtMost(MAX_LEVEL).toLong()
+        return 50L * n * (n - 1)
+    }
 
     /** The level a player with [xp] total experience is at. */
     fun levelForXp(xp: Long): Int {

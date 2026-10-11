@@ -9,6 +9,7 @@ import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
@@ -139,7 +140,13 @@ class GardenViewModel @Inject constructor(
         if (slotIndex == null) {
             _selectedTile.value = tile.takeIf { it != _selectedTile.value }
         } else if (tile != null) {
-            act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ ->
+            val placeXp = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }?.placeXp ?: 0
+            act(
+                onSuccess = {
+                    audio.play(SoundEffect.PLANT)
+                    if (placeXp > 0) showEffect { GardenEffect.Xp(it, placeXp) }
+                }
+            ) { now, _ ->
                 placeItem(slotIndex, tile.x, tile.y, now).also {
                     val slotNowEmpty = gardenRepository.getInventory()
                         .none { it.slotIndex == slotIndex && !it.isEmpty }
@@ -206,7 +213,10 @@ class GardenViewModel @Inject constructor(
         _effects.update { it + create(nextEffectId++) }
     }
 
-    /** Announces a level-up whenever the stored level rises above the one last seen. */
+    /**
+     * Announces a level-up whenever the stored level rises above the one last seen, and says so
+     * when the new level opens something in the shop.
+     */
     private fun watchForLevelUps() {
         viewModelScope.launch {
             var lastLevel: Int? = null
@@ -216,6 +226,9 @@ class GardenViewModel @Inject constructor(
                     if (level > previous) {
                         audio.play(SoundEffect.LEVEL_UP)
                         showEffect { GardenEffect.LevelUp(it, level) }
+                        if (GardenItem.unlockedBetween(previous, level).isNotEmpty()) {
+                            _messages.trySend(R.string.msg_new_items_unlocked)
+                        }
                     }
                 }
                 lastLevel = level

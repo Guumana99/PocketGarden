@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.PlayerStats
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.PurchaseItemUseCase
@@ -34,6 +35,11 @@ class ShopViewModel @Inject constructor(
         .map { it?.coins ?: 0L }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
+    /** Decides which items are still locked. */
+    val playerStats: StateFlow<PlayerStats> = gardenRepository.observeUserProfile()
+        .map { it?.stats ?: NEW_PLAYER }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NEW_PLAYER)
+
     private val _feedback = MutableStateFlow<PurchaseFeedback?>(null)
     val feedback: StateFlow<PurchaseFeedback?> = _feedback.asStateFlow()
 
@@ -47,5 +53,9 @@ class ShopViewModel @Inject constructor(
 
     fun clearFeedback() {
         _feedback.value = null
+    }
+
+    private companion object {
+        val NEW_PLAYER = PlayerStats(level = 1, totalXp = 0L)
     }
 }

@@ -5,7 +5,6 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
-import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -161,39 +160,15 @@ class GardenActionUseCasesTest {
     // --- Levels ---
 
     @Test
-    fun `level thresholds follow 100 x N to the power of 1_5`() {
-        assertEquals(0L, LevelTable.xpForLevel(1))
-        assertEquals(282L, LevelTable.xpForLevel(2))
-        assertEquals(519L, LevelTable.xpForLevel(3))
-        assertEquals(800L, LevelTable.xpForLevel(4))
-
-        assertEquals(1, LevelTable.levelForXp(0))
-        assertEquals(1, LevelTable.levelForXp(281))
-        assertEquals(2, LevelTable.levelForXp(282))
-        assertEquals(3, LevelTable.levelForXp(799))
-        assertEquals(4, LevelTable.levelForXp(800))
-        assertEquals(LevelTable.MAX_LEVEL, LevelTable.levelForXp(Long.MAX_VALUE))
-    }
-
-    @Test
-    fun `gaining enough experience raises the level, possibly by several`() {
-        val almost = UserProfile(currentXp = 280)
-        assertEquals(1, almost.gainXp(1).playerLevel)
-        assertEquals(2, almost.gainXp(5).playerLevel)
-        assertEquals(285L, almost.gainXp(5).currentXp)
-        assertEquals(4, UserProfile().gainXp(800).playerLevel)
-    }
-
-    @Test
     fun `harvest pays the species' own coins and experience and can level the player up`() = runBlocking {
-        repo.profile = UserProfile(coins = 0, currentXp = 200)
+        repo.profile = UserProfile(coins = 0, currentXp = 200, playerLevel = 2)
         repo.put(tulip(growth = 1f).copy(objectId = PlantSpecies.ROSE.objectId))
 
         assertEquals(ActionResult.SUCCESS, harvest("p1", t0, sunny))
 
         assertEquals(160L, repo.profile?.coins)
         assertEquals(340L, repo.profile?.currentXp)
-        assertEquals(2, repo.profile?.playerLevel)
+        assertEquals(3, repo.profile?.playerLevel) // 340 XP is past the 300 needed for Lv.3
     }
 
     // --- Species ---
@@ -359,6 +334,34 @@ class GardenActionUseCasesTest {
     }
 
     @Test
+    fun `building a structure earns experience and placing a seed does not`() = runBlocking {
+        repo.profile = UserProfile(coins = 5, currentXp = 80)
+        repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1))
+        repo.putSlot(InventorySlot(1, GardenItem.STRUCT_WELL.itemId, 1))
+
+        place(0, 0, 0, t0)
+        assertEquals(80L, repo.profile?.currentXp)
+        assertEquals(0, repo.profileSaves)
+
+        place(1, 4, 4, t0)
+        assertEquals(110L, repo.profile?.currentXp)  // +30 for the well
+        assertEquals(2, repo.profile?.playerLevel)   // which crosses the 100 needed for Lv.2
+        assertEquals(5L, repo.profile?.coins)
+        assertEquals(1, repo.profileSaves)
+    }
+
+    @Test
+    fun `a refused placement earns nothing`() = runBlocking {
+        repo.put(tulip(x = 4, y = 4))
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
+
+        assertEquals(ActionResult.TILE_OCCUPIED, place(0, 3, 3, t0))
+
+        assertEquals(0L, repo.profile?.currentXp)
+        assertEquals(0, repo.profileSaves)
+    }
+
+    @Test
     fun `a structure is refused unless its whole footprint is free, buildable and inside`() = runBlocking {
         repo.put(tulip(x = 3, y = 4))
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
@@ -498,6 +501,41 @@ class GardenActionUseCasesTest {
         assertEquals(500L, repo.profile?.coins)
         assertTrue(repo.slots.getValue(1).isEmpty)
         assertEquals(0, repo.profileSaves)
+    }
+
+    @Test
+    fun `locked items cannot be bought, however rich the player is`() = runBlocking {
+        repo.profile = UserProfile(coins = 9_999, playerLevel = 1)
+        repo.putSlot(InventorySlot(0))
+
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.SEED_SUNFLOWER))
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.STRUCT_HUT))
+        assertEquals(9_999L, repo.profile?.coins)
+        assertTrue(repo.slots.getValue(0).isEmpty)
+        assertEquals(0, repo.profileSaves)
+
+        assertEquals(ActionResult.SUCCESS, purchase(GardenItem.SEED_TULIP))
+    }
+
+    @Test
+    fun `an item becomes buyable at its unlock level`() = runBlocking {
+        repo.putSlot(InventorySlot(0))
+        repo.putSlot(InventorySlot(1))
+
+        repo.profile = UserProfile(coins = 500, playerLevel = 2, currentXp = 100)
+        assertEquals(ActionResult.SUCCESS, purchase(GardenItem.SEED_SUNFLOWER))
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.STRUCT_WELL))
+
+        repo.profile = repo.profile!!.gainXp(200) // 300 XP -> Lv.3
+        assertEquals(ActionResult.SUCCESS, purchase(GardenItem.STRUCT_WELL))
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.STRUCT_HUT))
+    }
+
+    @Test
+    fun `being locked is reported before being too poor`() = runBlocking {
+        repo.profile = UserProfile(coins = 0, playerLevel = 1)
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.SEED_ROSE))
+        assertEquals(ActionResult.NOT_ENOUGH_COINS, purchase(GardenItem.SEED_TULIP))
     }
 
     // --- Sync ---

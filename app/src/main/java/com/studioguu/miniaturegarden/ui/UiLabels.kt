@@ -80,4 +80,5 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.SLOT_EMPTY -> R.string.msg_slot_empty
     ActionResult.NOT_ENOUGH_COINS -> R.string.msg_not_enough_coins
     ActionResult.INVENTORY_FULL -> R.string.msg_inventory_full
+    ActionResult.ITEM_LOCKED -> R.string.msg_item_locked
 }

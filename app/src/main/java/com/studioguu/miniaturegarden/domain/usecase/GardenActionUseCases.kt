@@ -29,6 +29,7 @@ enum class ActionResult {
     SLOT_EMPTY,
     NOT_ENOUGH_COINS,
     INVENTORY_FULL,
+    ITEM_LOCKED,
 }
 
 /**
@@ -115,7 +116,7 @@ class CareForPlantUseCase @Inject constructor(
 /**
  * Takes one item out of an inventory slot and puts its object on the garden with its first cell
  * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
- * ground (not the river) and free.
+ * ground (not the river) and free. Building a structure earns its [GardenItem.placeXp].
  */
 class PlaceItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -148,6 +149,9 @@ class PlaceItemUseCase @Inject constructor(
             gardenRepository.upsertInventorySlot(
                 if (remaining > 0) slot.copy(amount = remaining) else InventorySlot(slotIndex)
             )
+            if (item.placeXp > 0) {
+                gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
+            }
             ActionResult.SUCCESS
         }
 }
@@ -192,13 +196,15 @@ class RemoveObjectUseCase @Inject constructor(
 
 /**
  * Buys one [GardenItem]: tops up an existing stack of it if one has room, otherwise takes the
- * first empty slot. Coins are only spent when the item actually fits.
+ * first empty slot. Coins are only spent when the item actually fits. Items the player has not
+ * unlocked yet cannot be bought, whatever they can afford.
  */
 class PurchaseItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
 ) {
     suspend operator fun invoke(item: GardenItem): ActionResult = gardenRepository.runInTransaction {
         val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
+        if (!item.isUnlockedFor(profile.stats)) return@runInTransaction ActionResult.ITEM_LOCKED
         if (profile.coins < item.price) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
 
         val slots = gardenRepository.getInventory().filter { it.slotIndex < profile.inventoryCapacity }
