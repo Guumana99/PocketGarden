@@ -38,9 +38,11 @@
     <string name="object_struct_well">井戸</string>
     <string name="object_ground_grass">芝生</string>
     <string name="object_ground_pebble">小石</string>
+    <string name="object_terrain_river">川</string>
     <string name="item_seed_tulip">チューリップの種</string>
     <string name="item_seed_sunflower">ひまわりの種</string>
     <string name="item_seed_rose">バラの苗</string>
+    <string name="item_tile_river">川タイル</string>
 
     <!-- Inventory -->
     <string name="inventory_title">もちもの</string>
@@ -93,6 +95,7 @@
     <string name="flavor_grass">ふかふかの　みどりの じゅうたん。\nねころぶと　きもちいい。</string>
     <string name="flavor_pebble">かわらで ひろった　まるい こいし。\nならべると　こみちに なる。</string>
     <string name="flavor_rock">どっしり かまえた　おおきな いわ。\nにわの　ぬしの ような かお。</string>
+    <string name="flavor_river">さらさら ながれる　ちいさな おがわ。\nならべて つなげば　にわに せせらぎが うまれる。</string>
     <string name="flavor_well">つめたい みずが　こんこんと わく。\nのぞきこむと　じぶんの かおが ゆれる。</string>
     <string name="flavor_hut">ちいさいけれど　ゆめの つまった こや。\nどうぐも　ひるねも　ここで。</string>
     <string name="effect_discovery">ずかんに とうろく！　%1$s　+%2$d 🪙</string>

@@ -134,7 +134,7 @@ class CollectionTest {
             )
         )
         assertEquals(3, three.discovered)
-        assertEquals(37, three.percent) // 3 of 8, rounded down
+        assertEquals(33, three.percent) // 3 of 9, rounded down
         assertTrue(three.isDiscovered(CollectionEntry.ROCK))
         assertFalse(three.isDiscovered(CollectionEntry.HUT))
         assertEquals(4, three.recordOf(CollectionEntry.TULIP)?.count)
@@ -148,7 +148,7 @@ class CollectionTest {
 
         val allButOne = CollectionProgress(all.drop(1))
         assertFalse(allButOne.isComplete)
-        assertEquals(87, allButOne.percent)
+        assertEquals(88, allButOne.percent)
     }
 
     // --- Through the game actions ---

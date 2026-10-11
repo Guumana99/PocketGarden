@@ -119,7 +119,7 @@ class ProgressionTest {
         fun unlockedAt(level: Int) = GardenItem.entries.filter { it.isUnlockedFor(statsAt(level)) }.toSet()
 
         assertEquals(
-            setOf(GardenItem.SEED_TULIP, GardenItem.GROUND_GRASS, GardenItem.GROUND_PEBBLE),
+            setOf(GardenItem.SEED_TULIP, GardenItem.GROUND_GRASS, GardenItem.GROUND_PEBBLE, GardenItem.TILE_RIVER),
             unlockedAt(1),
         )
         assertEquals(unlockedAt(1) + GardenItem.SEED_SUNFLOWER + GardenItem.DECO_ROCK, unlockedAt(2))

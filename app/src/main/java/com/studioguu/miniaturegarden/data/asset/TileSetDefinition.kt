@@ -30,7 +30,8 @@ object TileSetDefinition {
     /** Every object id that can be stored in a grid cell. */
     val objectIds: List<String> =
         PlantSpecies.entries.map { it.objectId } + Decoration.entries.map { it.objectId } +
-            GroundCover.entries.map { it.objectId } + StructureData.entries.map { it.objectId }
+            GroundCover.entries.map { it.objectId } + StructureData.entries.map { it.objectId } +
+            GridObject.RIVER_OBJECT_ID
 
     /** Ground sprite for a cell: water for the river, a two-tone checkerboard for the lawn. */
     fun groundTileFor(type: TileType, gridX: Int, gridY: Int): GroundTile = when (type) {

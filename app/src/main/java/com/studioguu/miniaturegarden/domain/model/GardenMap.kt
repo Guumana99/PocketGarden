@@ -61,17 +61,7 @@ class GardenMap private constructor(
         fun allGrass(size: Int = GridObject.GRID_SIZE): GardenMap =
             GardenMap(size, List(size * size) { TileType.GRASS })
 
-        /** A river entering at the back and bending once on its way to the front edge. */
-        val DEFAULT: GardenMap = parse(
-            "......~..",
-            "......~..",
-            "......~..",
-            "......~..",
-            "......~~.",
-            ".......~.",
-            ".......~.",
-            ".......~.",
-            ".......~.",
-        )
+        /** Plain lawn. The river is no longer part of the map: the player lays it tile by tile. */
+        val DEFAULT: GardenMap = allGrass()
     }
 }

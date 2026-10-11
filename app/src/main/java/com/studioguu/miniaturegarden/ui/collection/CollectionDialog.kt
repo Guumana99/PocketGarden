@@ -151,6 +151,7 @@ private fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.GRASS -> R.string.flavor_grass
     CollectionEntry.PEBBLE -> R.string.flavor_pebble
     CollectionEntry.ROCK -> R.string.flavor_rock
+    CollectionEntry.RIVER -> R.string.flavor_river
     CollectionEntry.WELL -> R.string.flavor_well
     CollectionEntry.HUT -> R.string.flavor_hut
 }
