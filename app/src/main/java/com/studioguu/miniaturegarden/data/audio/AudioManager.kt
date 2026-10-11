@@ -2,25 +2,37 @@ package com.studioguu.miniaturegarden.data.audio
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.media.SoundPool
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Short sounds. [resourceName] is the file name in `res/raw` without its extension,
- * e.g. `res/raw/se_tap.ogg`.
+ * e.g. `res/raw/se_tap.mp3`.
+ *
+ * [gain] evens out the source files, which were recorded at very different levels. SoundPool
+ * can only turn a sound down, so the hot files are trimmed and the quiet ones play at full
+ * volume. The values come from the measured loudness of each file (loudest 400 ms, dBFS, see
+ * `tools/measure_audio.py`) against a target per kind of sound: about -24 for the frequent
+ * tap, -22 for ordinary actions, -18 for rewards. Re-measure when a file is replaced.
  */
-enum class SoundEffect(val resourceName: String) {
-    TAP("se_tap"),
-    WATER("se_water"),
-    FERTILIZE("se_fertilize"),
-    PLANT("se_plant"),
-    HARVEST("se_harvest"),
-    COIN("se_coin"),
-    LEVEL_UP("se_level_up"),
-    ERROR("se_error"),
+enum class SoundEffect(val resourceName: String, val gain: Float = 1f) {
+    TAP("se_tap", gain = 0.58f),          // -19.2 dBFS -> -24
+    WATER("se_water"),                    // -24.6 dBFS, already below target
+    FERTILIZE("se_fertilize"),            // -22.6 dBFS
+    PLANT("se_plant"),                    // -22.4 dBFS
+    HARVEST("se_harvest", gain = 0.50f),  // -12.0 dBFS -> -18
+    COIN("se_coin"),                      // -29.0 dBFS: the quietest file, needs every bit
+    LEVEL_UP("se_level_up", gain = 0.80f), // -16.1 dBFS -> -18
+    ERROR("se_error"),                    // -25.3 dBFS
 }
 
 /** Looping background music; [resourceName] works like [SoundEffect.resourceName]. */
@@ -34,6 +46,10 @@ enum class BgmTrack(val resourceName: String) {
  * Sound files are optional. They are looked up in `res/raw` by name at runtime rather than
  * through `R.raw`, so the app compiles and runs with none, some or all of them present: a
  * missing or unreadable file simply makes that sound a silent no-op.
+ *
+ * Effects and music are mixed by the system and never cut each other off. To keep effects
+ * clear, the music sits well below them by default and is briefly "ducked" (turned down
+ * further) for as long as an effect is sounding.
  *
  * Call from the main thread.
  */
@@ -50,7 +66,7 @@ class AudioManager internal constructor(
     )
 
     // A null value records that the effect is unavailable, so it is not looked up again.
-    private val effectHandles = HashMap<SoundEffect, Int?>()
+    private val loadedEffects = HashMap<SoundEffect, LoadedEffect?>()
 
     private var wantedTrack: BgmTrack? = null
     private var playingTrack: BgmTrack? = null
@@ -69,8 +85,8 @@ class AudioManager internal constructor(
             }
         }
 
-    /** 0.0 (silent) .. 1.0 (full). */
-    var soundEffectVolume: Float = 1f
+    /** Master level for all effects, 0.0 (silent) .. 1.0 (full); each effect's own gain applies on top. */
+    var soundEffectVolume: Float = DEFAULT_SOUND_EFFECT_VOLUME
         set(value) {
             field = value.coerceIn(0f, 1f)
         }
@@ -87,13 +103,20 @@ class AudioManager internal constructor(
      * an effect played before its load finishes makes no sound.
      */
     fun preload() {
-        SoundEffect.entries.forEach(::handleFor)
+        SoundEffect.entries.forEach(::loadedEffectFor)
     }
 
     fun play(effect: SoundEffect) {
         if (!soundEffectsEnabled) return
-        val handle = handleFor(effect) ?: return
-        engine.playEffect(handle, soundEffectVolume)
+        val loaded = loadedEffectFor(effect) ?: return
+        engine.playEffect(loaded.handle, soundEffectVolume * effect.gain)
+        if (playingTrack != null && !bgmPaused) {
+            engine.duckBgm(
+                duckedVolume = bgmVolume * BGM_DUCK_FACTOR,
+                restoreVolume = bgmVolume,
+                holdMillis = min(loaded.durationMillis, MAX_DUCK_MILLIS),
+            )
+        }
     }
 
     /** Loops [track] until [stopBgm] or another track is requested. Does nothing if it is already playing. */
@@ -122,16 +145,16 @@ class AudioManager internal constructor(
     /** Frees the native players. The manager can be used again afterwards. */
     fun release() {
         engine.release()
-        effectHandles.clear()
+        loadedEffects.clear()
         playingTrack = null
     }
 
-    private fun handleFor(effect: SoundEffect): Int? {
-        if (effect !in effectHandles) {
+    private fun loadedEffectFor(effect: SoundEffect): LoadedEffect? {
+        if (effect !in loadedEffects) {
             val resId = resolveRawId(effect.resourceName)
-            effectHandles[effect] = if (resId == 0) null else engine.loadEffect(resId)
+            loadedEffects[effect] = if (resId == 0) null else engine.loadEffect(resId)
         }
-        return effectHandles[effect]
+        return loadedEffects[effect]
     }
 
     private fun startBgmIfPossible() {
@@ -146,15 +169,29 @@ class AudioManager internal constructor(
     }
 
     companion object {
-        /** Music sits under the effects by default. */
-        const val DEFAULT_BGM_VOLUME = 0.6f
+        const val DEFAULT_SOUND_EFFECT_VOLUME = 1f
+
+        /**
+         * The music file is mastered loud (about -18 dBFS average, peaks at 0) while most effects
+         * sit around -22 to -29, so it has to come down a long way to stay in the background.
+         */
+        const val DEFAULT_BGM_VOLUME = 0.3f
+
+        /** While an effect sounds, the music plays at this fraction of its volume (about -6 dB). */
+        const val BGM_DUCK_FACTOR = 0.5f
+
+        /** Long effects only hold the music down for their opening, not their whole tail. */
+        const val MAX_DUCK_MILLIS = 2_500L
     }
 }
 
+/** An effect accepted by the engine: the handle to play it with and how long it lasts. */
+internal data class LoadedEffect(val handle: Int, val durationMillis: Long)
+
 /** The actual players, separated out so [AudioManager]'s rules can be tested without Android. */
 internal interface AudioEngine {
-    /** Starts loading an effect; returns its handle, or null if it cannot be loaded. */
-    fun loadEffect(resId: Int): Int?
+    /** Starts loading an effect; null if it cannot be loaded. */
+    fun loadEffect(resId: Int): LoadedEffect?
     fun playEffect(handle: Int, volume: Float)
 
     /** Replaces any current music with a looping [resId]; false if it could not be started. */
@@ -163,6 +200,12 @@ internal interface AudioEngine {
     fun resumeBgm()
     fun stopBgm()
     fun setBgmVolume(volume: Float)
+
+    /**
+     * Drops the music to [duckedVolume] now and brings it back to [restoreVolume] once
+     * [holdMillis] have passed. A call during an earlier duck extends it, never shortens it.
+     */
+    fun duckBgm(duckedVolume: Float, restoreVolume: Float, holdMillis: Long)
     fun release()
 }
 
@@ -171,6 +214,10 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
 
     private var soundPool: SoundPool? = null
     private var bgmPlayer: MediaPlayer? = null
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val duckToken = Any()
+    private var duckEndUptime = 0L
 
     private fun pool(): SoundPool = soundPool ?: SoundPool.Builder()
         .setMaxStreams(MAX_STREAMS)
@@ -183,8 +230,22 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
         .build()
         .also { soundPool = it }
 
-    override fun loadEffect(resId: Int): Int? =
-        runCatching { pool().load(context, resId, 1) }.getOrNull()?.takeIf { it != 0 }
+    override fun loadEffect(resId: Int): LoadedEffect? {
+        val handle = runCatching { pool().load(context, resId, 1) }.getOrNull()?.takeIf { it != 0 } ?: return null
+        return LoadedEffect(handle, durationOf(resId))
+    }
+
+    private fun durationOf(resId: Int): Long = runCatching {
+        context.resources.openRawResourceFd(resId).use { fd ->
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(fd.fileDescriptor, fd.startOffset, fd.length)
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()
+            } finally {
+                retriever.release()
+            }
+        }
+    }.getOrNull() ?: DEFAULT_EFFECT_MILLIS
 
     override fun playEffect(handle: Int, volume: Float) {
         runCatching { pool().play(handle, volume, volume, 1, 0, 1f) }
@@ -218,6 +279,7 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     }
 
     override fun stopBgm() {
+        cancelDuck()
         val player = bgmPlayer ?: return
         bgmPlayer = null
         runCatching { player.stop() }
@@ -225,6 +287,33 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     }
 
     override fun setBgmVolume(volume: Float) {
+        // An explicit volume change wins over a duck still waiting to restore the old one.
+        cancelDuck()
+        applyBgmVolume(volume)
+    }
+
+    override fun duckBgm(duckedVolume: Float, restoreVolume: Float, holdMillis: Long) {
+        if (bgmPlayer == null) return
+        handler.removeCallbacksAndMessages(duckToken)
+        applyBgmVolume(duckedVolume)
+        duckEndUptime = max(duckEndUptime, SystemClock.uptimeMillis() + holdMillis)
+        // Come back up in a few small steps; a single jump is audible as a "pump".
+        for (step in 1..RESTORE_STEPS) {
+            val volume = duckedVolume + (restoreVolume - duckedVolume) * step / RESTORE_STEPS
+            handler.postAtTime(
+                { applyBgmVolume(volume) },
+                duckToken,
+                duckEndUptime + RESTORE_MILLIS * step / RESTORE_STEPS,
+            )
+        }
+    }
+
+    private fun cancelDuck() {
+        handler.removeCallbacksAndMessages(duckToken)
+        duckEndUptime = 0L
+    }
+
+    private fun applyBgmVolume(volume: Float) {
         runCatching { bgmPlayer?.setVolume(volume, volume) }
     }
 
@@ -237,5 +326,11 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     private companion object {
         /** How many effects may overlap before the oldest is cut off. */
         const val MAX_STREAMS = 6
+
+        /** Assumed length of an effect whose duration cannot be read. */
+        const val DEFAULT_EFFECT_MILLIS = 600L
+
+        const val RESTORE_MILLIS = 300L
+        const val RESTORE_STEPS = 6
     }
 }

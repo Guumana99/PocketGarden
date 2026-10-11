@@ -61,6 +61,7 @@ class AudioManagerTest {
 
         assertEquals(listOf(11), engine.loaded)
         assertEquals(listOf(engine.handleFor(11) to 1f, engine.handleFor(11) to 1f), engine.played)
+        assertTrue(engine.ducks.isEmpty()) // no music playing, nothing to duck
     }
 
     @Test
@@ -101,7 +102,85 @@ class AudioManagerTest {
         audio.play(SoundEffect.TAP)
         audio.soundEffectVolume = -1f
         audio.play(SoundEffect.TAP)
-        assertEquals(listOf(1f, 0f), engine.played.map { it.second })
+        assertEquals(listOf(SoundEffect.TAP.gain, 0f), engine.played.map { it.second })
+    }
+
+    // --- Volume balance ---
+
+    @Test
+    fun `each effect plays at the master volume times its own gain`() {
+        rawFiles["se_harvest"] = 1
+        rawFiles["se_coin"] = 2
+
+        audio.play(SoundEffect.HARVEST)
+        audio.play(SoundEffect.COIN)
+        audio.soundEffectVolume = 0.5f
+        audio.play(SoundEffect.HARVEST)
+
+        assertEquals(
+            listOf(SoundEffect.HARVEST.gain, SoundEffect.COIN.gain, 0.5f * SoundEffect.HARVEST.gain),
+            engine.played.map { it.second },
+        )
+    }
+
+    @Test
+    fun `gains only ever turn an effect down, and the quiet files stay at full volume`() {
+        assertTrue(SoundEffect.entries.all { it.gain > 0f && it.gain <= 1f })
+        assertEquals(1f, SoundEffect.COIN.gain, 0f)
+        // The hottest file is trimmed the most.
+        assertEquals(SoundEffect.HARVEST, SoundEffect.entries.minBy { it.gain })
+    }
+
+    @Test
+    fun `default music volume sits well below the effects`() {
+        assertEquals(1f, audio.soundEffectVolume, 0f)
+        assertTrue(AudioManager.DEFAULT_BGM_VOLUME in 0.3f..0.4f)
+        assertEquals(AudioManager.DEFAULT_BGM_VOLUME, audio.bgmVolume, 0f)
+    }
+
+    @Test
+    fun `an effect ducks the music for its own length`() {
+        rawFiles["bgm_garden"] = 50
+        rawFiles["se_coin"] = 2
+        engine.durations[2] = 1_500L
+        audio.playBgm(BgmTrack.GARDEN)
+
+        audio.play(SoundEffect.COIN)
+
+        val volume = AudioManager.DEFAULT_BGM_VOLUME
+        assertEquals(listOf(Duck(volume * AudioManager.BGM_DUCK_FACTOR, volume, 1_500L)), engine.ducks)
+    }
+
+    @Test
+    fun `a long effect ducks the music only for the capped time`() {
+        rawFiles["bgm_garden"] = 50
+        rawFiles["se_level_up"] = 3
+        engine.durations[3] = 4_130L
+        audio.playBgm(BgmTrack.GARDEN)
+
+        audio.play(SoundEffect.LEVEL_UP)
+
+        assertEquals(AudioManager.MAX_DUCK_MILLIS, engine.ducks.single().holdMillis)
+    }
+
+    @Test
+    fun `ducking follows the current music volume and is skipped while music is not sounding`() {
+        rawFiles["bgm_garden"] = 50
+        rawFiles["se_tap"] = 1
+        audio.playBgm(BgmTrack.GARDEN)
+
+        audio.bgmVolume = 0.8f
+        audio.play(SoundEffect.TAP)
+        assertEquals(0.4f, engine.ducks.single().duckedVolume, 1e-6f)
+        assertEquals(0.8f, engine.ducks.single().restoreVolume, 1e-6f)
+
+        audio.pauseBgm()
+        audio.play(SoundEffect.TAP)
+        audio.resumeBgm()
+        audio.bgmEnabled = false
+        audio.play(SoundEffect.TAP)
+        assertEquals(1, engine.ducks.size)
+        assertEquals(3, engine.played.size) // the effects themselves still played
     }
 
     // --- Background music ---
@@ -186,6 +265,8 @@ class AudioManagerTest {
     }
 }
 
+private data class Duck(val duckedVolume: Float, val restoreVolume: Float, val holdMillis: Long)
+
 private class FakeAudioEngine : AudioEngine {
     val loaded = ArrayList<Int>()
     val failingLoads = HashSet<Int>()
@@ -194,12 +275,18 @@ private class FakeAudioEngine : AudioEngine {
     val bgmCalls = ArrayList<String>()
     val bgmVolumes = ArrayList<Float>()
     var bgmStartSucceeds = true
+    val durations = HashMap<Int, Long>()
+    val ducks = ArrayList<Duck>()
 
     fun handleFor(resId: Int) = resId + 1000
 
-    override fun loadEffect(resId: Int): Int? {
+    override fun loadEffect(resId: Int): LoadedEffect? {
         loaded += resId
-        return if (resId in failingLoads) null else handleFor(resId)
+        return if (resId in failingLoads) null else LoadedEffect(handleFor(resId), durations[resId] ?: 500L)
+    }
+
+    override fun duckBgm(duckedVolume: Float, restoreVolume: Float, holdMillis: Long) {
+        ducks += Duck(duckedVolume, restoreVolume, holdMillis)
     }
 
     override fun playEffect(handle: Int, volume: Float) {
