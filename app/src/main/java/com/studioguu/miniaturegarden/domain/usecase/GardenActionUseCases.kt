@@ -1,8 +1,12 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.Footprint
+import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -20,6 +24,7 @@ enum class ActionResult {
     NOT_READY,
     ALREADY_MOIST,
     TILE_OCCUPIED,
+    TILE_NOT_BUILDABLE,
     OUT_OF_BOUNDS,
     SLOT_EMPTY,
     NOT_ENOUGH_COINS,
@@ -107,20 +112,27 @@ class CareForPlantUseCase @Inject constructor(
     }
 }
 
-/** Takes one item out of an inventory slot and puts its object on an empty tile. */
+/**
+ * Takes one item out of an inventory slot and puts its object on the garden with its first cell
+ * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
+ * ground (not the river) and free.
+ */
 class PlaceItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
+    private val gardenMap: GardenMap,
 ) {
     suspend operator fun invoke(slotIndex: Int, gridX: Int, gridY: Int, now: Long): ActionResult =
         gardenRepository.runInTransaction {
-            val range = 0 until GridObject.GRID_SIZE
-            if (gridX !in range || gridY !in range) return@runInTransaction ActionResult.OUT_OF_BOUNDS
-
             val slot = gardenRepository.getInventory().firstOrNull { it.slotIndex == slotIndex }
             val item = slot?.takeUnless { it.isEmpty }?.let { GardenItem.fromItemId(it.itemId) }
                 ?: return@runInTransaction ActionResult.SLOT_EMPTY
-            if (gardenRepository.getGridObjects().any { it.gridX == gridX && it.gridY == gridY }) {
-                return@runInTransaction ActionResult.TILE_OCCUPIED
+
+            val grid = GardenGrid(gardenMap, gardenRepository.getGridObjects())
+            when (grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY)) {
+                PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
+                PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
+                PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED
+                PlacementCheck.OK -> Unit
             }
 
             gardenRepository.upsertGridObject(

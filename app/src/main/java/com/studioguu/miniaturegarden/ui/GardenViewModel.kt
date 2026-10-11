@@ -8,6 +8,8 @@ import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
+import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -50,6 +52,7 @@ class GardenViewModel @Inject constructor(
     private val removeObject: RemoveObjectUseCase,
     private val skipTime: SkipTimeUseCase,
     private val audio: AudioManager,
+    val gardenMap: GardenMap,
 ) : ViewModel() {
 
     val gridObjects: StateFlow<List<GridObject>> = gardenRepository.observeGridObjects()
@@ -242,6 +245,7 @@ class GardenViewModel @Inject constructor(
 
     private fun currentWeather(now: Long): WeatherType = WeatherType.forTime(now).also { _weather.value = it }
 
+    /** The object covering [tile]; for a structure that is any cell of its footprint. */
     private fun List<GridObject>.objectAt(tile: TileCoord?): GridObject? =
-        if (tile == null) null else firstOrNull { it.gridX == tile.x && it.gridY == tile.y }
+        if (tile == null) null else GardenGrid(gardenMap, this).objectAt(tile.x, tile.y)
 }

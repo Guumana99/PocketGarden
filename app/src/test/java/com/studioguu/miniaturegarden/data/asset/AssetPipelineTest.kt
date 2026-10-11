@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.data.asset
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.TileType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -169,8 +170,13 @@ class AssetPipelineTest {
 
     @Test
     fun `lawn alternates between the two grass tiles`() {
-        assertEquals(GroundTile.GRASS, TileSetDefinition.groundTileAt(0, 0))
-        assertEquals(GroundTile.GRASS_DARK, TileSetDefinition.groundTileAt(1, 0))
-        assertEquals(GroundTile.GRASS, TileSetDefinition.groundTileAt(1, 1))
+        assertEquals(GroundTile.GRASS, TileSetDefinition.groundTileFor(TileType.GRASS, 0, 0))
+        assertEquals(GroundTile.GRASS_DARK, TileSetDefinition.groundTileFor(TileType.GRASS, 1, 0))
+        assertEquals(GroundTile.GRASS, TileSetDefinition.groundTileFor(TileType.GRASS, 1, 1))
+        assertEquals(GroundTile.WATER, TileSetDefinition.groundTileFor(TileType.RIVER, 0, 0))
+        assertEquals(GroundTile.WATER, TileSetDefinition.groundTileFor(TileType.RIVER, 1, 0))
+        // Structures draw with a sprite named after their object id.
+        assertEquals("struct_hut", TileSetDefinition.assetIdFor(gridObject("struct_hut")))
+        assertTrue("struct_well" in TileSetDefinition.objectIds)
     }
 }

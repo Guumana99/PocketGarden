@@ -97,6 +97,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             selectedTile = selectedTile,
             onTileTapped = viewModel::onTileTapped,
             atlas = atlas,
+            gardenMap = viewModel.gardenMap,
             modifier = Modifier.fillMaxSize(),
         )
 

@@ -22,21 +22,28 @@ fun DrawScope.drawIsometricGrid(
     }
 }
 
-/** Translucent fill marking one tile; drawn under objects. */
+/**
+ * Translucent fill marking the block of tiles that starts at [tile] and spans [spanX] x [spanY]
+ * (one tile by default); drawn under objects.
+ */
 fun DrawScope.drawTileHighlight(
     transform: IsometricTransform,
     tile: TileCoord,
+    spanX: Int = 1,
+    spanY: Int = 1,
     color: Color = Color(0xFFFFF176).copy(alpha = 0.45f),
 ) {
-    drawPath(transform.tilePath(tile.x, tile.y), color)
+    drawPath(transform.tilePath(tile.x, tile.y, spanX = spanX, spanY = spanY), color)
 }
 
-/** Outline of one tile; drawn over objects so the selection stays visible behind tall sprites. */
+/** Outline of the same block; drawn over objects so the selection stays visible behind tall sprites. */
 fun DrawScope.drawTileOutline(
     transform: IsometricTransform,
     tile: TileCoord,
+    spanX: Int = 1,
+    spanY: Int = 1,
     color: Color = Color(0xFFFFF59D),
     strokeWidth: Float = 2.5.dp.toPx(),
 ) {
-    drawPath(transform.tilePath(tile.x, tile.y), color, style = Stroke(strokeWidth))
+    drawPath(transform.tilePath(tile.x, tile.y, spanX = spanX, spanY = spanY), color, style = Stroke(strokeWidth))
 }

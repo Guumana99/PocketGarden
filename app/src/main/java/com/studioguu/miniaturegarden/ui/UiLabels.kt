@@ -18,6 +18,8 @@ fun objectDisplayName(objectId: String): String = when (objectId) {
     "plant_sunflower" -> stringResource(R.string.object_plant_sunflower)
     "plant_rose" -> stringResource(R.string.object_plant_rose)
     "deco_rock" -> stringResource(R.string.object_deco_rock)
+    "struct_hut" -> stringResource(R.string.object_struct_hut)
+    "struct_well" -> stringResource(R.string.object_struct_well)
     "ground_grass" -> stringResource(R.string.object_ground_grass)
     "ground_pebble" -> stringResource(R.string.object_ground_pebble)
     else -> objectId
@@ -36,6 +38,8 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_SUNFLOWER -> "🌻"
     GardenItem.SEED_ROSE -> "🌹"
     GardenItem.DECO_ROCK -> "🪨"
+    GardenItem.STRUCT_HUT -> "🛖"
+    GardenItem.STRUCT_WELL -> "🪣"
     GardenItem.GROUND_GRASS -> "🌿"
     GardenItem.GROUND_PEBBLE -> "⚪"
 }
@@ -71,6 +75,7 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.NOT_READY -> R.string.msg_not_ready
     ActionResult.ALREADY_MOIST -> R.string.msg_already_moist
     ActionResult.TILE_OCCUPIED -> R.string.msg_tile_occupied
+    ActionResult.TILE_NOT_BUILDABLE -> R.string.msg_tile_not_buildable
     ActionResult.OUT_OF_BOUNDS -> R.string.msg_out_of_bounds
     ActionResult.SLOT_EMPTY -> R.string.msg_slot_empty
     ActionResult.NOT_ENOUGH_COINS -> R.string.msg_not_enough_coins
