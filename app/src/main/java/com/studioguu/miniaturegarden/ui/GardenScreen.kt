@@ -55,12 +55,15 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.collection.CollectionDialog
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
+import com.studioguu.miniaturegarden.ui.effects.RainOverlay
+import com.studioguu.miniaturegarden.ui.effects.skyColor
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
@@ -70,8 +73,6 @@ import com.studioguu.miniaturegarden.ui.share.shareGardenImage
 import com.studioguu.miniaturegarden.ui.shop.ShopDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-private val SKY = Color(0xFFDCEFF5)
 
 /** How often plants are advanced while the garden is on screen. */
 private const val SYNC_INTERVAL_MILLIS = 30_000L
@@ -128,7 +129,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     gardenLayer.record { this@drawWithContent.drawContent() }
                     drawLayer(gardenLayer)
                 }
-                .background(SKY)
+                .background(skyColor(weather))
         ) {
             GardenCanvas(
                 gridObjects = gridObjects,
@@ -138,6 +139,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 gardenMap = viewModel.gardenMap,
                 modifier = Modifier.fillMaxSize(),
             )
+            // Inside the recorded box, so a shared picture shows the rain too.
+            if (weather == WeatherType.RAINY) RainOverlay(Modifier.fillMaxSize())
         }
 
         TopStatusBar(
@@ -244,7 +247,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         CollectionDialog(onDismiss = { showCollection = false })
     }
     if (showDebugMenu) {
-        DebugMenuDialog(onSkipTime = viewModel::debugSkipTime, onDismiss = { showDebugMenu = false })
+        DebugMenuDialog(
+            onSkipTime = viewModel::debugSkipTime,
+            onCycleWeather = viewModel::debugCycleWeather,
+            onDismiss = { showDebugMenu = false },
+        )
     }
     if (showShop) {
         ShopDialog(onDismiss = { showShop = false })

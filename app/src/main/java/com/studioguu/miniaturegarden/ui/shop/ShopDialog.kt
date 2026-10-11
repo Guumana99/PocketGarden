@@ -1,34 +1,45 @@
 package com.studioguu.miniaturegarden.ui.shop
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
-import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.ui.actionResultMessage
+import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.itemEmoji
 
-/** Buy seeds and decorations with coins. Purchases go straight into the inventory. */
+/** Buy seeds, structures and decorations with coins. Purchases go straight into the inventory. */
 @Composable
 fun ShopDialog(
     onDismiss: () -> Unit,
@@ -37,6 +48,7 @@ fun ShopDialog(
     val coins by viewModel.coins.collectAsStateWithLifecycle()
     val feedback by viewModel.feedback.collectAsStateWithLifecycle()
     val playerStats by viewModel.playerStats.collectAsStateWithLifecycle()
+    var category by rememberSaveable { mutableStateOf(ItemCategory.SEED) }
     // Start every visit without the previous visit's message.
     DisposableEffect(Unit) { onDispose { viewModel.clearFeedback() } }
 
@@ -47,13 +59,28 @@ fun ShopDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.shop_coins, coins), style = MaterialTheme.typography.titleSmall)
-                for (item in viewModel.items) {
-                    ShopRow(
-                        item = item,
-                        locked = !item.isUnlockedFor(playerStats),
-                        affordable = coins >= item.price,
-                        onBuy = { viewModel.buy(item) },
-                    )
+                TabRow(selectedTabIndex = category.ordinal, containerColor = Color.Transparent) {
+                    for (tab in ItemCategory.entries) {
+                        Tab(
+                            selected = tab == category,
+                            onClick = { category = tab },
+                            text = { Text(stringResource(categoryLabel(tab)), maxLines = 1) },
+                        )
+                    }
+                }
+                // A fixed minimum keeps the dialog from jumping when a shelf has fewer items.
+                Column(
+                    modifier = Modifier.heightIn(min = SHELF_MIN_HEIGHT).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    for (item in viewModel.items.filter { it.category == category }) {
+                        ShopRow(
+                            item = item,
+                            locked = !item.isUnlockedFor(playerStats),
+                            affordable = coins >= item.price,
+                            onBuy = { viewModel.buy(item) },
+                        )
+                    }
                 }
                 feedback?.let { (item, result) ->
                     val failure = actionResultMessage(result)
@@ -64,7 +91,7 @@ fun ShopDialog(
                             stringResource(failure)
                         },
                         color = if (result == ActionResult.SUCCESS) {
-                            MaterialTheme.colorScheme.primary
+                            MaterialTheme.colorScheme.secondary
                         } else {
                             MaterialTheme.colorScheme.error
                         },
@@ -98,11 +125,17 @@ private fun ShopRow(item: GardenItem, locked: Boolean, affordable: Boolean, onBu
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            Button(onClick = onBuy, enabled = affordable) {
-                Text(stringResource(R.string.shop_buy, item.price))
-            }
+            WoodButton(text = stringResource(R.string.shop_buy, item.price), onClick = onBuy, enabled = affordable)
         }
     }
 }
 
+@StringRes
+private fun categoryLabel(category: ItemCategory): Int = when (category) {
+    ItemCategory.SEED -> R.string.shop_tab_seeds
+    ItemCategory.STRUCTURE -> R.string.shop_tab_structures
+    ItemCategory.DECORATION -> R.string.shop_tab_decorations
+}
+
 private const val LOCKED_ALPHA = 0.5f
+private val SHELF_MIN_HEIGHT = 200.dp

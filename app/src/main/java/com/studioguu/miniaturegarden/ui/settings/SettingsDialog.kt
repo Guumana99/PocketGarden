@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +14,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,6 +25,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -29,18 +34,26 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.ui.components.popIn
 import kotlin.math.roundToInt
 
-/** Volume and mute for music and effects, the notifications switch, and information about the app. */
+/** The settings, one tab per kind, so new ones have somewhere to go. */
+private enum class SettingsTab(val label: Int) {
+    SOUND(R.string.settings_tab_sound),
+    ABOUT(R.string.settings_tab_about),
+    OTHER(R.string.settings_tab_other),
+}
+
 @Composable
 fun SettingsDialog(
     onDismiss: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    var tab by rememberSaveable { mutableStateOf(SettingsTab.SOUND) }
     var showLicenses by rememberSaveable { mutableStateOf(false) }
-    var showPolicy by rememberSaveable { mutableStateOf(false) }
+    var showDisclaimer by rememberSaveable { mutableStateOf(false) }
 
     AlertDialog(
         modifier = Modifier.popIn(),
@@ -49,46 +62,34 @@ fun SettingsDialog(
         text = {
             // Nothing is drawn until the saved values are in, so no control starts in the wrong place.
             val current = settings ?: return@AlertDialog
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SectionTitle(stringResource(R.string.settings_section_sound))
-                VolumeControl(
-                    label = stringResource(R.string.settings_bgm),
-                    enabled = current.bgmEnabled,
-                    volume = current.bgmVolume,
-                    onEnabledChange = viewModel::setBgmEnabled,
-                    onVolumeChange = viewModel::setBgmVolume,
-                )
-                VolumeControl(
-                    label = stringResource(R.string.settings_se),
-                    enabled = current.soundEffectsEnabled,
-                    volume = current.soundEffectVolume,
-                    onEnabledChange = viewModel::setSoundEffectsEnabled,
-                    onVolumeChange = viewModel::setSoundEffectVolume,
-                    onVolumeChosen = viewModel::previewSoundEffect,
-                )
-
-                HorizontalDivider()
-                SwitchRow(
-                    label = stringResource(R.string.settings_notifications),
-                    caption = stringResource(R.string.settings_notifications_caption),
-                    checked = current.notificationsEnabled,
-                    onCheckedChange = viewModel::setNotificationsEnabled,
-                )
-
-                HorizontalDivider()
-                SectionTitle(stringResource(R.string.settings_section_about))
-                Text(
-                    text = stringResource(R.string.settings_app_version, stringResource(R.string.app_name), viewModel.versionName),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                OutlinedButton(onClick = { showLicenses = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.settings_licenses))
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                TabRow(selectedTabIndex = tab.ordinal, containerColor = Color.Transparent) {
+                    for (entry in SettingsTab.entries) {
+                        Tab(
+                            selected = entry == tab,
+                            onClick = { tab = entry },
+                            text = { Text(stringResource(entry.label), maxLines = 1) },
+                        )
+                    }
                 }
-                OutlinedButton(onClick = { showPolicy = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.settings_policy))
+                Column(
+                    modifier = Modifier.heightIn(min = TAB_MIN_HEIGHT).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    when (tab) {
+                        SettingsTab.SOUND -> SoundTab(current, viewModel)
+                        SettingsTab.ABOUT -> AboutTab(
+                            versionName = viewModel.versionName,
+                            onShowLicenses = { showLicenses = true },
+                            onShowDisclaimer = { showDisclaimer = true },
+                        )
+                        SettingsTab.OTHER -> SwitchRow(
+                            label = stringResource(R.string.settings_notifications),
+                            caption = stringResource(R.string.settings_notifications_caption),
+                            checked = current.notificationsEnabled,
+                            onCheckedChange = viewModel::setNotificationsEnabled,
+                        )
+                    }
                 }
             }
         },
@@ -104,36 +105,78 @@ fun SettingsDialog(
             onDismiss = { showLicenses = false },
         )
     }
-    if (showPolicy) {
+    if (showDisclaimer) {
         InfoDialog(
-            title = stringResource(R.string.settings_policy),
-            body = stringResource(R.string.policy_body),
-            onDismiss = { showPolicy = false },
+            title = stringResource(R.string.settings_disclaimer),
+            body = stringResource(R.string.disclaimer_body),
+            onDismiss = { showDisclaimer = false },
         )
     }
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+private fun SoundTab(current: AppSettings, viewModel: SettingsViewModel) {
+    VolumeControl(
+        label = stringResource(R.string.settings_bgm),
+        enabled = current.bgmEnabled,
+        volume = current.bgmVolume,
+        defaultVolume = AppSettings.DEFAULT_BGM_VOLUME,
+        onEnabledChange = viewModel::setBgmEnabled,
+        onVolumeChange = viewModel::setBgmVolume,
+    )
+    HorizontalDivider()
+    VolumeControl(
+        label = stringResource(R.string.settings_se),
+        enabled = current.soundEffectsEnabled,
+        volume = current.soundEffectVolume,
+        defaultVolume = AppSettings.DEFAULT_SOUND_EFFECT_VOLUME,
+        onEnabledChange = viewModel::setSoundEffectsEnabled,
+        onVolumeChange = viewModel::setSoundEffectVolume,
+        onVolumeChosen = viewModel::previewSoundEffect,
+    )
+}
+
+@Composable
+private fun AboutTab(versionName: String, onShowLicenses: () -> Unit, onShowDisclaimer: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
+    val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
+    Text(
+        text = stringResource(R.string.settings_app_version, stringResource(R.string.app_name), versionName),
+        style = MaterialTheme.typography.bodyLarge,
+    )
+    OutlinedButton(onClick = onShowLicenses, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.settings_licenses))
+    }
+    OutlinedButton(
+        // Opens in the browser. A device with no browser at all simply does nothing.
+        onClick = { runCatching { uriHandler.openUri(privacyPolicyUrl) } },
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(stringResource(R.string.settings_privacy))
+    }
+    OutlinedButton(onClick = onShowDisclaimer, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.settings_disclaimer))
+    }
 }
 
 /**
- * A mute switch with a volume slider under it. Muting greys the slider out but keeps its
- * position, so unmuting returns to the same volume.
+ * A mute switch with a volume slider under it, and a button that puts the volume back to
+ * [defaultVolume]. Muting greys the slider out but keeps its position.
  *
- * @param onVolumeChosen called when the finger leaves the slider.
+ * @param onVolumeChosen called when the finger leaves the slider, or the volume is reset.
  */
 @Composable
 private fun VolumeControl(
     label: String,
     enabled: Boolean,
     volume: Float,
+    defaultVolume: Float,
     onEnabledChange: (Boolean) -> Unit,
     onVolumeChange: (Float) -> Unit,
     onVolumeChosen: () -> Unit = {},
 ) {
     val percent = (volume * 100).roundToInt()
+    val defaultPercent = (defaultVolume * 100).roundToInt()
     val volumeDescription = stringResource(R.string.settings_volume_description, label)
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -153,6 +196,16 @@ private fun VolumeControl(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.width(48.dp),
             )
+        }
+        TextButton(
+            onClick = {
+                onVolumeChange(defaultVolume)
+                onVolumeChosen()
+            },
+            enabled = percent != defaultPercent,
+            modifier = Modifier.align(Alignment.End),
+        ) {
+            Text(stringResource(R.string.settings_reset_volume, defaultPercent))
         }
     }
 }
@@ -187,3 +240,5 @@ private fun InfoDialog(title: String, body: String, onDismiss: () -> Unit) {
         },
     )
 }
+
+private val TAB_MIN_HEIGHT = 240.dp
