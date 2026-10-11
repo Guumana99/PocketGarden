@@ -18,12 +18,15 @@ private const val HOUR_MILLIS = 60L * 60 * 1000
 private const val DAY_MILLIS = 24 * HOUR_MILLIS
 
 /**
- * Developer tools, reachable in debug builds only. The dialog stays open after a skip so the
- * buttons can be pressed repeatedly.
+ * Developer tools, reachable in debug builds only. The dialog stays open after a button is
+ * pressed so the buttons can be pressed repeatedly.
+ *
+ * @param onCycleWeather switches to the next kind of weather, overriding the day's own.
  */
 @Composable
 fun DebugMenuDialog(
     onSkipTime: (millis: Long) -> Unit,
+    onCycleWeather: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -40,6 +43,9 @@ fun DebugMenuDialog(
                     FilledTonalButton(onClick = { onSkipTime(DAY_MILLIS) }) {
                         Text(stringResource(R.string.debug_skip_day))
                     }
+                }
+                FilledTonalButton(onClick = onCycleWeather) {
+                    Text(stringResource(R.string.debug_cycle_weather))
                 }
             }
         },

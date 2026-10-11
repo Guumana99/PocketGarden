@@ -76,17 +76,13 @@ class GardenGridTest {
         assertThrows(IllegalArgumentException::class.java) { GardenMap.parse("..", ".x") }
     }
 
+
     @Test
-    fun `the default map is the garden's size and has a connected river that leaves most of it free`() {
+    fun `the default map is plain lawn the size of the garden`() {
         val m = GardenMap.DEFAULT
         assertEquals(GridObject.GRID_SIZE, m.size)
-        val river = m.cellsOf(TileType.RIVER)
-        assertTrue(river.isNotEmpty())
-        assertTrue(river.size < m.size * m.size / 4)
-        // Every river cell touches another one, so it reads as one stream.
-        assertTrue(river.all { m.isNextTo(it.x, it.y, TileType.RIVER) })
-        assertEquals(GardenMap.allGrass().size, m.size)
-        assertTrue(GardenMap.allGrass().cellsOf(TileType.RIVER).isEmpty())
+        assertTrue(m.cellsOf(TileType.RIVER).isEmpty())
+        assertTrue(m.isBuildable(0, 0) && m.isBuildable(8, 8))
     }
 
     // --- Footprint / StructureData ---

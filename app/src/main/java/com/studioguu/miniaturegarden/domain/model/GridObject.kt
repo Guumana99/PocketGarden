@@ -16,6 +16,9 @@ data class GridObject(
 ) {
     val isPlant: Boolean get() = objectId.startsWith(PLANT_ID_PREFIX)
 
+    /** Terrain laid by the player (river). It is part of the ground: nothing can stand on it. */
+    val isTerrain: Boolean get() = objectId.startsWith(TERRAIN_ID_PREFIX)
+
     /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
     val footprint: Footprint get() = Footprint.forObjectId(objectId)
 
@@ -24,5 +27,7 @@ data class GridObject(
     companion object {
         const val GRID_SIZE = 9
         const val PLANT_ID_PREFIX = "plant_"
+        const val TERRAIN_ID_PREFIX = "terrain_"
+        const val RIVER_OBJECT_ID = "terrain_river"
     }
 }

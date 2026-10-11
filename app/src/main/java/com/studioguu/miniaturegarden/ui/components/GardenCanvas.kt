@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
@@ -42,6 +43,7 @@ import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TilePicker
 import com.studioguu.miniaturegarden.ui.render.drawSprite
+import kotlinx.coroutines.delay
 
 private val TILE_WIDTH = 128.dp
 private val TILE_HEIGHT = 64.dp
@@ -84,6 +86,14 @@ fun GardenCanvas(
     var camera by rememberSaveable(stateSaver = CameraSaver) { mutableStateOf<GardenCamera?>(null) }
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     val pipeline = remember { LayerPipeline() }
+    // The water's ripples step along a few times a second, and only while there is water to show.
+    val hasWater = gridObjects.any { it.isTerrain }
+    val waterPhase by produceState(0, hasWater) {
+        while (hasWater) {
+            delay(WATER_FRAME_MILLIS)
+            value = (value + 1) % WATER_PHASES
+        }
+    }
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
 
@@ -129,6 +139,20 @@ fun GardenCanvas(
             pipeline.submit(RenderLayer.HUD_OVERLAY) { drawTileOutline(transform, origin, spanX, spanY) }
         }
         for (obj in gridObjects) {
+            if (obj.isTerrain) {
+                // Part of the ground: drawn with the terrain, right after the lawn it replaces.
+                val terrainSprite = atlas[TileSetDefinition.assetIdFor(obj)]
+                pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
+                    if (terrainSprite != null && atlasImage != null) {
+                        drawSprite(atlasImage, terrainSprite, transform.tileCenter(obj.gridX, obj.gridY), spriteScale)
+                    } else {
+                        drawWaterTile(transform, obj.gridX, obj.gridY, waterPhase) { x, y ->
+                            grid.objectAt(x, y)?.isTerrain == true
+                        }
+                    }
+                }
+                continue
+            }
             val footprint = obj.footprint
             val structure = StructureData.fromObjectId(obj.objectId)
             // Sorted by its front-most cell, so things standing behind a wide object stay behind it.
@@ -170,8 +194,10 @@ fun GardenCanvas(
 
 // --- Layer 0: terrain -------------------------------------------------------------------------
 
-private val GRASS_LIGHT = Color(0xFF9CCC65)
-private val GRASS_DARK = Color(0xFF8BC34A)
+// Muted, slightly olive greens: closer to the leaves of the plant sprites than a bright lime,
+// so the plants read as growing out of the lawn rather than sitting on top of it.
+private val GRASS_LIGHT = Color(0xFF86B26B)
+private val GRASS_DARK = Color(0xFF7AA661)
 private val SOIL_LEFT = Color(0xFF8D6E63)
 private val SOIL_RIGHT = Color(0xFF6D4C41)
 
@@ -201,29 +227,75 @@ private fun DrawScope.drawTerrain(
         val tile = TileSetDefinition.groundTileFor(type, x, y)
         if (drawTileSprite(tile, transform.tileCenter(x, y))) continue
         when (tile) {
-            GroundTile.WATER -> drawWaterTile(transform, x, y)
+            GroundTile.WATER -> drawWaterTile(transform, x, y, phase = 0)
             GroundTile.GRASS -> drawPath(transform.tilePath(x, y), GRASS_LIGHT)
             else -> drawPath(transform.tilePath(x, y), GRASS_DARK)
         }
     }
 }
 
-private val WATER = Color(0xFF4FB3E8)
-private val WATER_RIPPLE = Color(0xFFB3E5FC)
+// Pixel-art water. Each tile is cut into WATER_PIXELS x WATER_PIXELS little diamonds, coloured
+// from a four-step palette: mid blue as the base, diagonal bands of light blue with white
+// crests for the ripples, and scattered dark pixels for depth. The pattern is a fixed function
+// of the pixel's position, so neighbouring tiles line up into one continuous stream.
+private const val WATER_PIXELS = 8
+private const val WATER_PHASES = 6
+private const val WATER_FRAME_MILLIS = 450L
+private val WATER_DEEP = Color(0xFF2B6CA3)
+private val WATER_MID = Color(0xFF3F8CCB)
+private val WATER_LIGHT = Color(0xFF6BB5E6)
+private val WATER_CREST = Color(0xFFD6F0FF)
+private val WATER_EDGE = Color(0xFF1E4F7A)
 
-/** Flat water with two short ripples running along the tile. */
-private fun DrawScope.drawWaterTile(transform: IsometricTransform, x: Int, y: Int) {
-    drawPath(transform.tilePath(x, y), WATER)
-    val stroke = transform.tileWidth * 0.02f
-    for ((offsetX, offsetY) in listOf(0.2f to 0.35f, 0.5f to 0.7f)) {
-        drawLine(
-            color = WATER_RIPPLE,
-            start = transform.worldToScreen(x + offsetX, y + offsetY),
-            end = transform.worldToScreen(x + offsetX + 0.3f, y + offsetY),
-            strokeWidth = stroke,
-            cap = StrokeCap.Round,
+/**
+ * @param phase 0 until [WATER_PHASES]; each step moves the ripples one pixel downstream.
+ * @param isWater whether the given cell is water too; banks are only drawn against land.
+ */
+private fun DrawScope.drawWaterTile(
+    transform: IsometricTransform,
+    x: Int,
+    y: Int,
+    phase: Int,
+    isWater: (x: Int, y: Int) -> Boolean = { _, _ -> false },
+) {
+    val outline = transform.tilePath(x, y)
+    drawPath(outline, WATER_MID)
+    val step = 1f / WATER_PIXELS
+    for (i in 0 until WATER_PIXELS) for (j in 0 until WATER_PIXELS) {
+        // Position along the garden in pixels, so the pattern carries across tile borders.
+        val px = x * WATER_PIXELS + i
+        val py = y * WATER_PIXELS + j
+        val band = Math.floorMod(px + py + phase, WATER_PHASES)
+        val speckle = Math.floorMod(px * 7 + py * 13, 11)
+        val color = when {
+            band == 0 && speckle % 3 == 0 -> WATER_CREST
+            band == 0 || (band == 1 && speckle % 2 == 0) -> WATER_LIGHT
+            speckle == 0 || speckle == 5 -> WATER_DEEP
+            else -> continue
+        }
+        val x0 = x + i * step
+        val y0 = y + j * step
+        drawPath(
+            quad(
+                transform.worldToScreen(x0, y0),
+                transform.worldToScreen(x0 + step, y0),
+                transform.worldToScreen(x0 + step, y0 + step),
+                transform.worldToScreen(x0, y0 + step),
+            ),
+            color,
         )
     }
+    // A dark bank line keeps the water from bleeding into the lawn. Sides shared with another
+    // water tile get none, so a row of tiles reads as one stream.
+    val bank = transform.tileWidth * 0.025f
+    val top = transform.worldToScreen(x.toFloat(), y.toFloat())
+    val right = transform.worldToScreen(x + 1f, y.toFloat())
+    val bottom = transform.worldToScreen(x + 1f, y + 1f)
+    val left = transform.worldToScreen(x.toFloat(), y + 1f)
+    if (!isWater(x, y - 1)) drawLine(WATER_EDGE, top, right, bank, StrokeCap.Round)
+    if (!isWater(x + 1, y)) drawLine(WATER_EDGE, right, bottom, bank, StrokeCap.Round)
+    if (!isWater(x, y + 1)) drawLine(WATER_EDGE, bottom, left, bank, StrokeCap.Round)
+    if (!isWater(x - 1, y)) drawLine(WATER_EDGE, left, top, bank, StrokeCap.Round)
 }
 
 private fun triangle(a: Offset, b: Offset, c: Offset) = Path().apply {

@@ -141,7 +141,7 @@ class CalculateOfflineProgressUseCaseTest {
             val thirsty = moisture <= THIRSTY_THRESHOLD
             val starved = nutrition <= UNNOURISHED_THRESHOLD
             if (!thirsty && !starved) {
-                growth = (growth + GROWTH_PER_TICK).coerceAtMost(1.0)
+                growth = (growth + GROWTH_PER_TICK * weather.growthMultiplier).coerceAtMost(1.0)
                 stress = (stress - STRESS_RECOVERY_PER_TICK).coerceAtLeast(0.0)
             }
             if (thirsty) stress += STRESS_THIRSTY_PER_TICK

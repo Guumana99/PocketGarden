@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.data.audio
 
 import com.studioguu.miniaturegarden.domain.model.AppSettings
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -176,16 +177,19 @@ class AudioManagerTest {
         assertEquals(1, engine.bgmStarts.size) // adjusted in place, not restarted
     }
 
+
     @Test
-    fun `muting stops the music and unmuting brings it back at the saved volume`() {
+    fun `muting through settings pauses the music and unmuting continues it at the saved volume`() {
         rawFiles["bgm_garden"] = 50
         audio.playBgm(BgmTrack.GARDEN)
 
         audio.apply(AppSettings(bgmEnabled = false, bgmVolume = 0.6f))
-        assertEquals(listOf("stop"), engine.bgmCalls)
+        assertEquals(listOf("pause"), engine.bgmCalls)
 
         audio.apply(AppSettings(bgmEnabled = true, bgmVolume = 0.6f))
-        assertEquals(listOf(50 to AppSettings.DEFAULT_BGM_VOLUME, 50 to 0.6f), engine.bgmStarts)
+        assertEquals(listOf("pause", "resume"), engine.bgmCalls)
+        assertEquals(listOf(0.6f), engine.bgmVolumes)
+        assertEquals(1, engine.bgmStarts.size)
     }
 
     @Test
@@ -303,18 +307,34 @@ class AudioManagerTest {
         assertEquals(1, engine.bgmStarts.size)
     }
 
+
     @Test
-    fun `disabling bgm stops it and enabling starts it again`() {
+    fun `muting pauses the music and unmuting continues it from where it was`() {
         rawFiles["bgm_garden"] = 50
         audio.playBgm(BgmTrack.GARDEN)
 
         audio.bgmEnabled = false
-        assertEquals(listOf("stop"), engine.bgmCalls)
-        audio.playBgm(BgmTrack.GARDEN)
-        assertEquals(1, engine.bgmStarts.size)
+        assertEquals(listOf("pause"), engine.bgmCalls)
+        audio.playBgm(BgmTrack.GARDEN) // asking again while muted changes nothing
 
         audio.bgmEnabled = true
-        assertEquals(2, engine.bgmStarts.size)
+        assertEquals(listOf("pause", "resume"), engine.bgmCalls)
+        assertEquals(1, engine.bgmStarts.size) // never started over
+    }
+
+    @Test
+    fun `music muted in the background stays silent on return and continues when unmuted`() {
+        rawFiles["bgm_garden"] = 50
+        audio.playBgm(BgmTrack.GARDEN)
+        audio.bgmEnabled = false
+
+        audio.pauseBgm()  // app to the background
+        audio.resumeBgm() // and back
+        assertFalse("resume" in engine.bgmCalls)
+
+        audio.bgmEnabled = true
+        assertEquals("resume", engine.bgmCalls.last())
+        assertEquals(1, engine.bgmStarts.size)
     }
 
     @Test

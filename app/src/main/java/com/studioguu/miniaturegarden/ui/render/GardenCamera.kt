@@ -21,6 +21,8 @@ data class IsometricMetrics(
 data class GardenCamera(
     val scale: Float = 1f,
     val pan: Offset = Offset.Zero,
+    /** How far out this camera may zoom: far enough to show the whole grid on this screen. */
+    val minScale: Float = MIN_SCALE,
 ) {
     /**
      * Applies one transform-gesture step: zooms around [centroid] (the point under the fingers
@@ -33,11 +35,11 @@ data class GardenCamera(
         viewport: Size,
         metrics: IsometricMetrics,
     ): GardenCamera {
-        val newScale = (scale * zoomChange).coerceIn(MIN_SCALE, MAX_SCALE)
+        val newScale = (scale * zoomChange).coerceIn(minScale, MAX_SCALE)
         val factor = newScale / scale
         val centroidFromCenter = centroid - viewport.center()
         val newPan = centroidFromCenter + (pan - centroidFromCenter) * factor + panChange
-        return GardenCamera(newScale, newPan).clamped(metrics)
+        return GardenCamera(newScale, newPan, minScale).clamped(metrics)
     }
 
     /**
@@ -64,15 +66,23 @@ data class GardenCamera(
     }
 
     companion object {
+        /** Widest zoom on screens large enough not to need more; small screens may go further out. */
         const val MIN_SCALE = 0.5f
+
+        /** The fitted grid is drawn at this fraction of the screen, leaving a little air around it. */
+        const val FIT_MARGIN = 0.94f
         const val MAX_SCALE = 2.5f
 
-        /** Starts zoomed out far enough to show the whole grid, as far as the zoom range allows. */
+        /**
+         * Starts zoomed out so that every tile is on screen, and lets the player zoom back out
+         * that far later.
+         */
         fun fitting(viewport: Size, metrics: IsometricMetrics): GardenCamera {
             val bounds = metrics.gridBounds
             if (viewport.width <= 0f || viewport.height <= 0f) return GardenCamera()
-            val fit = minOf(viewport.width / bounds.width, viewport.height / bounds.height)
-            return GardenCamera(scale = fit.coerceIn(MIN_SCALE, 1f))
+            val fit = minOf(viewport.width / bounds.width, viewport.height / bounds.height) * FIT_MARGIN
+            val scale = fit.coerceAtMost(1f)
+            return GardenCamera(scale = scale, minScale = minOf(MIN_SCALE, scale))
         }
     }
 }

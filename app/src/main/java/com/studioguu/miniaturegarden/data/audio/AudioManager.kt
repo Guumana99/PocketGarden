@@ -82,8 +82,8 @@ class AudioManager internal constructor(
             if (value) {
                 startBgmIfPossible()
             } else {
-                engine.stopBgm()
-                playingTrack = null
+                // Paused, not stopped: turning the music back on continues from the same place.
+                engine.pauseBgm()
             }
         }
 
@@ -124,7 +124,7 @@ class AudioManager internal constructor(
         if (!soundEffectsEnabled) return
         val loaded = loadedEffectFor(effect) ?: return
         engine.playEffect(loaded.handle, soundEffectVolume * effect.gain)
-        if (playingTrack != null && !bgmPaused) {
+        if (playingTrack != null && !bgmPaused && bgmEnabled) {
             engine.duckBgm(
                 duckedVolume = bgmVolume * BGM_DUCK_FACTOR,
                 restoreVolume = bgmVolume,

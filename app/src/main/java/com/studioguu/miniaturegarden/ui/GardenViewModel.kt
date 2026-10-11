@@ -67,6 +67,8 @@ class GardenViewModel @Inject constructor(
     private val _weather = MutableStateFlow(WeatherType.forTime(System.currentTimeMillis()))
     val weather: StateFlow<WeatherType> = _weather.asStateFlow()
 
+    private var debugWeather: WeatherType? = null
+
     private val _selectedTile = MutableStateFlow<TileCoord?>(null)
     val selectedTile: StateFlow<TileCoord?> = _selectedTile.asStateFlow()
 
@@ -214,6 +216,13 @@ class GardenViewModel @Inject constructor(
     /** Debug menu: pretend [millis] passed for everything in the garden. */
     fun debugSkipTime(millis: Long) = act { now, weather -> skipTime(millis, now, weather) }
 
+    /** Debug menu: switch to the next kind of weather, in place of the day's own, until restart. */
+    fun debugCycleWeather() {
+        val next = WeatherType.entries[(weather.value.ordinal + 1) % WeatherType.entries.size]
+        debugWeather = next
+        _weather.value = next
+    }
+
     fun onEffectFinished(id: Long) {
         _effects.update { list -> list.filterNot { it.id == id } }
     }
@@ -291,7 +300,8 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    private fun currentWeather(now: Long): WeatherType = WeatherType.forTime(now).also { _weather.value = it }
+    private fun currentWeather(now: Long): WeatherType =
+        (debugWeather ?: WeatherType.forTime(now)).also { _weather.value = it }
 
     /** The object covering [tile]; for a structure that is any cell of its footprint. */
     private fun List<GridObject>.objectAt(tile: TileCoord?): GridObject? =

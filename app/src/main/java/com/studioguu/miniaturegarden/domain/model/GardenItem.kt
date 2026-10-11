@@ -1,5 +1,17 @@
 package com.studioguu.miniaturegarden.domain.model
 
+/** The shop's shelves. */
+enum class ItemCategory {
+    /** Seeds and seedlings. */
+    SEED,
+
+    /** Buildings: things with a footprint larger than one tile. */
+    STRUCTURE,
+
+    /** Decorations and terrain tiles. */
+    DECORATION,
+}
+
 /**
  * Everything that can sit in an inventory slot and be bought in the shop.
  *
@@ -11,6 +23,7 @@ package com.studioguu.miniaturegarden.domain.model
  *     rose        Lv.4      60   160 coins + 140 XP after 120 h
  *     grass       Lv.1      10   decoration
  *     pebble      Lv.1      10   decoration
+ *     river tile  Lv.1      10   terrain; nothing can stand on it
  *     rock        Lv.2      30   decoration
  *     well        Lv.3      80   30 XP when built
  *     hut         Lv.5     150   60 XP when built
@@ -30,29 +43,36 @@ enum class GardenItem(
     val itemId: String,
     val price: Int,
     val objectId: String,
+    val category: ItemCategory,
     val unlock: UnlockCondition = UnlockCondition.None,
     val placeXp: Int = 0,
 ) {
-    SEED_TULIP("seed_tulip", price = 20, objectId = PlantSpecies.TULIP.objectId),
+    SEED_TULIP("seed_tulip", price = 20, objectId = PlantSpecies.TULIP.objectId, category = ItemCategory.SEED),
     SEED_SUNFLOWER(
-        "seed_sunflower", price = 35, objectId = PlantSpecies.SUNFLOWER.objectId,
+        "seed_sunflower", price = 35, objectId = PlantSpecies.SUNFLOWER.objectId, category = ItemCategory.SEED,
         unlock = UnlockCondition.PlayerLevel(2),
     ),
     SEED_ROSE(
-        "seed_rose", price = 60, objectId = PlantSpecies.ROSE.objectId,
+        "seed_rose", price = 60, objectId = PlantSpecies.ROSE.objectId, category = ItemCategory.SEED,
         unlock = UnlockCondition.PlayerLevel(4),
     ),
-    DECO_ROCK("deco_rock", price = 30, objectId = "deco_rock", unlock = UnlockCondition.PlayerLevel(2)),
+    DECO_ROCK(
+        "deco_rock", price = 30, objectId = "deco_rock", category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(2),
+    ),
     STRUCT_HUT(
-        "struct_hut", price = 150, objectId = StructureData.HUT.objectId,
+        "struct_hut", price = 150, objectId = StructureData.HUT.objectId, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(5), placeXp = 60,
     ),
     STRUCT_WELL(
-        "struct_well", price = 80, objectId = StructureData.WELL.objectId,
+        "struct_well", price = 80, objectId = StructureData.WELL.objectId, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(3), placeXp = 30,
     ),
-    GROUND_GRASS("ground_grass", price = 10, objectId = "ground_grass"),
-    GROUND_PEBBLE("ground_pebble", price = 10, objectId = "ground_pebble");
+    GROUND_GRASS("ground_grass", price = 10, objectId = "ground_grass", category = ItemCategory.DECORATION),
+    GROUND_PEBBLE("ground_pebble", price = 10, objectId = "ground_pebble", category = ItemCategory.DECORATION),
+
+    /** Turns the tile it is placed on into river; removing it turns the tile back into lawn. */
+    TILE_RIVER("tile_river", price = 10, objectId = GridObject.RIVER_OBJECT_ID, category = ItemCategory.DECORATION);
 
     fun isUnlockedFor(stats: PlayerStats): Boolean = unlock.isMetBy(stats)
 

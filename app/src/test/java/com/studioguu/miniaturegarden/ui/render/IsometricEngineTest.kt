@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IsometricEngineTest {
@@ -135,10 +136,38 @@ class IsometricEngineTest {
         assertOffset(Offset(1152f, -576f), camera.pan)
     }
 
+
     @Test
-    fun `initial camera zooms out to fit but not below the minimum`() {
-        assertEquals(1f, GardenCamera.fitting(Size(4000f, 4000f), metrics).scale, 0f)
-        assertEquals(800f / 1152f, GardenCamera.fitting(Size(800f, 2000f), metrics).scale, 1e-6f)
-        assertEquals(GardenCamera.MIN_SCALE, GardenCamera.fitting(Size(300f, 2000f), metrics).scale, 0f)
+    fun `initial camera shows the whole grid, however small the screen`() {
+        // Plenty of room: no need to shrink, and the usual zoom limit applies.
+        val roomy = GardenCamera.fitting(Size(4000f, 4000f), metrics)
+        assertEquals(1f, roomy.scale, 0f)
+        assertEquals(GardenCamera.MIN_SCALE, roomy.minScale, 0f)
+
+        for (viewport in listOf(Size(800f, 2000f), Size(300f, 2000f), Size(2000f, 500f))) {
+            val camera = GardenCamera.fitting(viewport, metrics)
+            val t = camera.toTransform(metrics, viewport)
+            // All four corners of the 9 x 9 grid are inside the screen.
+            for ((x, y) in listOf(0f to 0f, 9f to 0f, 9f to 9f, 0f to 9f)) {
+                val p = t.worldToScreen(x, y)
+                assertTrue("$viewport corner ($x, $y) at $p", p.x in 0f..viewport.width && p.y in 0f..viewport.height)
+            }
+        }
+        // A phone-sized screen needs to go below the usual limit to manage that.
+        assertEquals(300f / 1152f * GardenCamera.FIT_MARGIN, GardenCamera.fitting(Size(300f, 2000f), metrics).scale, 1e-6f)
     }
+
+    @Test
+    fun `pinching out stops at the zoom that shows the whole grid`() {
+        val small = Size(300f, 2000f)
+        val fitted = GardenCamera.fitting(small, metrics)
+        val center = Offset(150f, 1000f)
+
+        val zoomedIn = fitted.transformedBy(center, Offset.Zero, 3f, small, metrics)
+        val backOut = zoomedIn.transformedBy(center, Offset.Zero, 0.001f, small, metrics)
+
+        assertEquals(fitted.scale, backOut.scale, 1e-6f)
+        assertTrue(backOut.scale < GardenCamera.MIN_SCALE)
+    }
+
 }

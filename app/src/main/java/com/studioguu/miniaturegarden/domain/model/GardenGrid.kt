@@ -7,7 +7,7 @@ enum class PlacementCheck {
     /** Part of the footprint lies outside the grid. */
     OUT_OF_BOUNDS,
 
-    /** Part of the footprint is on terrain that cannot be built on, such as the river. */
+    /** Part of the footprint is on river, whether from the map or laid by the player. */
     NOT_BUILDABLE,
 
     /** Part of the footprint is already covered by another object. */
@@ -38,6 +38,7 @@ class GardenGrid(
         return when {
             cells.any { !map.isInside(it.x, it.y) } -> PlacementCheck.OUT_OF_BOUNDS
             cells.any { !map.isBuildable(it.x, it.y) } -> PlacementCheck.NOT_BUILDABLE
+            cells.any { occupants[it]?.isTerrain == true } -> PlacementCheck.NOT_BUILDABLE
             cells.any { it in occupants } -> PlacementCheck.OCCUPIED
             else -> PlacementCheck.OK
         }

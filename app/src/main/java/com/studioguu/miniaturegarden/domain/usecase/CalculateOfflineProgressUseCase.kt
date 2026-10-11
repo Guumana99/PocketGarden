@@ -47,7 +47,7 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
 
         val species = PlantSpecies.forObjectId(gridObject.objectId)
         val moistureDrain = weather.moistureDrainMultiplier / (species.dryOutHours * TICKS_PER_HOUR)
-        val growthPerTick = 1.0 / (species.growthHours * TICKS_PER_HOUR)
+        val growthPerTick = weather.growthMultiplier / (species.growthHours * TICKS_PER_HOUR)
         val hydratedTicks = ticksAbove(gridObject.moistureLevel, THIRSTY_THRESHOLD, moistureDrain, ticks)
         val nourishedTicks = ticksAbove(gridObject.nutritionLevel, UNNOURISHED_THRESHOLD, NUTRITION_DRAIN_PER_TICK, ticks)
         val healthyTicks = min(hydratedTicks, nourishedTicks)
