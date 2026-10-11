@@ -28,7 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -46,6 +49,7 @@ import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
+import com.studioguu.miniaturegarden.ui.settings.SettingsDialog
 import com.studioguu.miniaturegarden.ui.shop.ShopDialog
 import kotlinx.coroutines.delay
 
@@ -68,6 +72,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
     var showDebugMenu by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -109,10 +114,20 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
         )
 
+        val settingsLabel = stringResource(R.string.settings_title)
+        TextButton(
+            onClick = { showSettings = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .safeDrawingPadding()
+                .padding(top = 56.dp, end = 4.dp)
+                .semantics { contentDescription = settingsLabel },
+        ) { Text("⚙️", fontSize = 22.sp) }
+
         if (BuildConfig.DEBUG) {
             TextButton(
                 onClick = { showDebugMenu = true },
-                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 56.dp, end = 4.dp),
+                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 104.dp, end = 4.dp),
             ) { Text("🛠") }
         }
 
@@ -165,6 +180,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             },
             onDismiss = { showInventory = false },
         )
+    }
+    if (showSettings) {
+        SettingsDialog(onDismiss = { showSettings = false })
     }
     if (showDebugMenu) {
         DebugMenuDialog(onSkipTime = viewModel::debugSkipTime, onDismiss = { showDebugMenu = false })
