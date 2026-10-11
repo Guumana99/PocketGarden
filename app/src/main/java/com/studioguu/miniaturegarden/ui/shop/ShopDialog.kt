@@ -14,6 +14,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +35,7 @@ fun ShopDialog(
 ) {
     val coins by viewModel.coins.collectAsStateWithLifecycle()
     val feedback by viewModel.feedback.collectAsStateWithLifecycle()
+    val playerStats by viewModel.playerStats.collectAsStateWithLifecycle()
     // Start every visit without the previous visit's message.
     DisposableEffect(Unit) { onDispose { viewModel.clearFeedback() } }
 
@@ -44,7 +46,12 @@ fun ShopDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(stringResource(R.string.shop_coins, coins), style = MaterialTheme.typography.titleSmall)
                 for (item in viewModel.items) {
-                    ShopRow(item, affordable = coins >= item.price, onBuy = { viewModel.buy(item) })
+                    ShopRow(
+                        item = item,
+                        locked = !item.isUnlockedFor(playerStats),
+                        affordable = coins >= item.price,
+                        onBuy = { viewModel.buy(item) },
+                    )
                 }
                 feedback?.let { (item, result) ->
                     val failure = actionResultMessage(result)
@@ -71,16 +78,29 @@ fun ShopDialog(
 }
 
 @Composable
-private fun ShopRow(item: GardenItem, affordable: Boolean, onBuy: () -> Unit) {
+private fun ShopRow(item: GardenItem, locked: Boolean, affordable: Boolean, onBuy: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(itemEmoji(item), fontSize = 26.sp)
-        Text(itemDisplayName(item), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Button(onClick = onBuy, enabled = affordable) {
-            Text(stringResource(R.string.shop_buy, item.price))
+        // A locked item stays listed, so the player can see what is coming, but its icon and name
+        // are faded. The unlock level itself is left at full strength so it can be read.
+        val fade = Modifier.alpha(if (locked) LOCKED_ALPHA else 1f)
+        Text(itemEmoji(item), fontSize = 26.sp, modifier = fade)
+        Text(itemDisplayName(item), style = MaterialTheme.typography.bodyLarge, modifier = fade.weight(1f))
+        if (locked) {
+            Text(
+                text = stringResource(R.string.shop_locked, item.unlockLevel),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Button(onClick = onBuy, enabled = affordable) {
+                Text(stringResource(R.string.shop_buy, item.price))
+            }
         }
     }
 }
+
+private const val LOCKED_ALPHA = 0.5f

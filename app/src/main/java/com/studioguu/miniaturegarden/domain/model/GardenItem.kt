@@ -56,6 +56,9 @@ enum class GardenItem(
 
     fun isUnlockedFor(stats: PlayerStats): Boolean = unlock.isMetBy(stats)
 
+    /** The player level that opens this item in the shop; 1 when it is never locked. */
+    val unlockLevel: Int get() = (unlock as? UnlockCondition.PlayerLevel)?.level ?: 1
+
     companion object {
         fun fromItemId(itemId: String): GardenItem? = entries.firstOrNull { it.itemId == itemId }
 
