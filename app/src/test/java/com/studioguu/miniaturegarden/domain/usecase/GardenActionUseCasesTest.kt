@@ -1,5 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridCell
@@ -29,8 +31,9 @@ class GardenActionUseCasesTest {
     private val security = FakeSecurityRepository()
     private val calc = CalculateOfflineProgressUseCase()
     private val care = CareForPlantUseCase(repo, calc)
-    private val place = PlaceItemUseCase(repo, GardenMap.allGrass())
-    private val harvest = HarvestPlantUseCase(repo, calc)
+    private val recordCollection = RecordCollectionUseCase(repo)
+    private val place = PlaceItemUseCase(repo, GardenMap.allGrass(), recordCollection)
+    private val harvest = HarvestPlantUseCase(repo, calc, recordCollection)
     private val remove = RemoveObjectUseCase(repo)
     private val purchase = PurchaseItemUseCase(repo)
     private val skip = SkipTimeUseCase(repo, calc)
@@ -162,6 +165,7 @@ class GardenActionUseCasesTest {
     @Test
     fun `harvest pays the species' own coins and experience and can level the player up`() = runBlocking {
         repo.profile = UserProfile(coins = 0, currentXp = 200, playerLevel = 2)
+        repo.discover(CollectionEntry.ROSE)
         repo.put(tulip(growth = 1f).copy(objectId = PlantSpecies.ROSE.objectId))
 
         assertEquals(ActionResult.SUCCESS, harvest("p1", t0, sunny))
@@ -300,7 +304,7 @@ class GardenActionUseCasesTest {
 
     /** 9x9 with a river down column 6, like the real garden's upper half. */
     private val riverMap = GardenMap.parse(*Array(9) { "......~.." })
-    private val placeOnRiverMap = PlaceItemUseCase(repo, riverMap)
+    private val placeOnRiverMap = PlaceItemUseCase(repo, riverMap, recordCollection)
 
     @Test
     fun `nothing can be placed on the river`() = runBlocking {
@@ -336,6 +340,7 @@ class GardenActionUseCasesTest {
     @Test
     fun `building a structure earns experience and placing a seed does not`() = runBlocking {
         repo.profile = UserProfile(coins = 5, currentXp = 80)
+        repo.discover(CollectionEntry.WELL)
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1))
         repo.putSlot(InventorySlot(1, GardenItem.STRUCT_WELL.itemId, 1))
 
@@ -413,6 +418,7 @@ class GardenActionUseCasesTest {
     @Test
     fun `harvesting a grown plant removes it and pays coins through a re-signed save`() = runBlocking {
         repo.profile = UserProfile(coins = 10)
+        repo.discover(CollectionEntry.TULIP)
         repo.put(tulip(growth = 1f))
 
         assertEquals(ActionResult.SUCCESS, harvest("p1", t0, sunny))
@@ -587,7 +593,7 @@ class GardenActionUseCasesTest {
     }
 }
 
-private class FakeGardenRepository : GardenRepository {
+internal class FakeGardenRepository : GardenRepository {
     val objects = LinkedHashMap<String, GridObject>()
     val slots = sortedMapOf<Int, InventorySlot>()
     var profile: UserProfile? = null
@@ -617,6 +623,19 @@ private class FakeGardenRepository : GardenRepository {
     override suspend fun upsertGridObjects(gridObjects: List<GridObject>) = gridObjects.forEach(::put)
     override suspend fun deleteGridObject(instanceId: String) {
         objects.remove(instanceId)
+    }
+
+    val collection = LinkedHashMap<String, CollectionRecord>()
+
+    /** Marks a page as already filled in, as if obtained once before. */
+    fun discover(entry: CollectionEntry) {
+        collection[entry.objectId] = CollectionRecord(entry.objectId, count = 1, firstObtainedAt = 0L)
+    }
+
+    override fun observeCollection(): Flow<List<CollectionRecord>> = MutableStateFlow(collection.values.toList())
+    override suspend fun getCollection(): List<CollectionRecord> = collection.values.toList()
+    override suspend fun upsertCollectionRecord(record: CollectionRecord) {
+        collection[record.entryId] = record
     }
 
     override fun observeInventory(): Flow<List<InventorySlot>> = MutableStateFlow(slots.values.toList())

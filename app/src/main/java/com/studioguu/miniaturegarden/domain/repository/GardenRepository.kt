@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.domain.repository
 
+import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -32,4 +33,9 @@ interface GardenRepository {
     suspend fun getInventory(): List<InventorySlot>
     suspend fun upsertInventorySlot(slot: InventorySlot)
     suspend fun upsertInventorySlots(slots: List<InventorySlot>)
+
+    /** Discovered pages of the garden encyclopedia; undiscovered ones have no record. */
+    fun observeCollection(): Flow<List<CollectionRecord>>
+    suspend fun getCollection(): List<CollectionRecord>
+    suspend fun upsertCollectionRecord(record: CollectionRecord)
 }

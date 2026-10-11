@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -116,11 +117,13 @@ class CareForPlantUseCase @Inject constructor(
 /**
  * Takes one item out of an inventory slot and puts its object on the garden with its first cell
  * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
- * ground (not the river) and free. Building a structure earns its [GardenItem.placeXp].
+ * ground (not the river) and free. Building a structure earns its [GardenItem.placeXp], and a
+ * first placement fills in its page of the encyclopedia.
  */
 class PlaceItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val gardenMap: GardenMap,
+    private val recordCollection: RecordCollectionUseCase,
 ) {
     suspend operator fun invoke(slotIndex: Int, gridX: Int, gridY: Int, now: Long): ActionResult =
         gardenRepository.runInTransaction {
@@ -149,17 +152,25 @@ class PlaceItemUseCase @Inject constructor(
             gardenRepository.upsertInventorySlot(
                 if (remaining > 0) slot.copy(amount = remaining) else InventorySlot(slotIndex)
             )
-            if (item.placeXp > 0) {
-                gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
+            val collection = recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
+            val xp = item.placeXp + collection.xp
+            if (xp > 0 || collection.coins > 0) {
+                gardenRepository.getUserProfile()?.let {
+                    gardenRepository.saveUserProfile(it.copy(coins = it.coins + collection.coins).gainXp(xp))
+                }
             }
             ActionResult.SUCCESS
         }
 }
 
-/** Sells a fully grown plant: removes it and credits its coins and XP to the (re-signed) profile. */
+/**
+ * Sells a fully grown plant: removes it, notes it in the encyclopedia and credits its coins and
+ * XP, plus anything the encyclopedia paid out, to the (re-signed) profile.
+ */
 class HarvestPlantUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
+    private val recordCollection: RecordCollectionUseCase,
 ) {
     suspend operator fun invoke(instanceId: String, now: Long, weather: WeatherType): ActionResult =
         gardenRepository.runInTransaction {
@@ -174,8 +185,10 @@ class HarvestPlantUseCase @Inject constructor(
 
             gardenRepository.deleteGridObject(instanceId)
             val species = PlantSpecies.forObjectId(current.objectId)
+            val collection = recordCollection(current.objectId, CollectionTrigger.HARVEST, now)
             gardenRepository.saveUserProfile(
-                profile.copy(coins = profile.coins + species.harvestCoins).gainXp(species.harvestXp)
+                profile.copy(coins = profile.coins + species.harvestCoins + collection.coins)
+                    .gainXp(species.harvestXp + collection.xp)
             )
             ActionResult.SUCCESS
         }

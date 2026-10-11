@@ -1,8 +1,10 @@
 package com.studioguu.miniaturegarden.data.local.mapper
 
+import com.studioguu.miniaturegarden.data.local.entity.CollectionEntryEntity
 import com.studioguu.miniaturegarden.data.local.entity.GridObjectEntity
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
+import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -68,4 +70,16 @@ fun InventorySlot.toEntity() = InventorySlotEntity(
     slotIndex = slotIndex,
     itemId = itemId,
     amount = amount,
+)
+
+fun CollectionEntryEntity.toDomain() = CollectionRecord(
+    entryId = entryId,
+    count = count,
+    firstObtainedAt = firstObtainedAt,
+)
+
+fun CollectionRecord.toEntity() = CollectionEntryEntity(
+    entryId = entryId,
+    count = count,
+    firstObtainedAt = firstObtainedAt,
 )
