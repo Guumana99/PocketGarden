@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
@@ -164,6 +165,9 @@ class GardenViewModel @Inject constructor(
     private val _atlas = MutableStateFlow(SpriteAtlas.EMPTY)
     val atlas: StateFlow<SpriteAtlas> = _atlas.asStateFlow()
 
+    private val _terrain = MutableStateFlow(TerrainTextures.EMPTY)
+    val terrain: StateFlow<TerrainTextures> = _terrain.asStateFlow()
+
     private val _messages = Channel<Int>(Channel.BUFFERED)
 
     /** String resource ids of one-off messages (failed actions) to show the player. */
@@ -181,6 +185,7 @@ class GardenViewModel @Inject constructor(
 
     init {
         viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
+        viewModelScope.launch { _terrain.value = assetRepository.loadTerrainTextures() }
         audio.preload()
         watchForLevelUps()
         watchCollection()

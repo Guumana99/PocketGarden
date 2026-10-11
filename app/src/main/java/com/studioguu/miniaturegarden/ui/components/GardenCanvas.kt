@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.studioguu.miniaturegarden.data.asset.GroundTile
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -40,8 +41,11 @@ import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
+import com.studioguu.miniaturegarden.ui.render.RiverAutotile
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TilePicker
+import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
+import com.studioguu.miniaturegarden.ui.render.drawRiverTile
 import com.studioguu.miniaturegarden.ui.render.drawSprite
 import kotlinx.coroutines.delay
 
@@ -62,6 +66,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * The isometric garden view: pinch to zoom, drag to pan, tap to pick a tile.
  *
  * @param atlas sprites to draw with; anything missing from it falls back to a placeholder shape.
+ * @param terrain ground textures for river and paving; plain shapes are drawn without them.
  * @param gardenMap the terrain under the objects.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
  */
@@ -72,6 +77,7 @@ fun GardenCanvas(
     onTileTapped: (TileCoord?) -> Unit,
     modifier: Modifier = Modifier,
     atlas: SpriteAtlas = SpriteAtlas.EMPTY,
+    terrain: TerrainTextures = TerrainTextures.EMPTY,
     gardenMap: GardenMap = GardenMap.allGrass(),
     showGrid: Boolean = true,
 ) {
@@ -86,8 +92,9 @@ fun GardenCanvas(
     var camera by rememberSaveable(stateSaver = CameraSaver) { mutableStateOf<GardenCamera?>(null) }
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     val pipeline = remember { LayerPipeline() }
-    // The water's ripples step along a few times a second, and only while there is water to show.
-    val hasWater = gridObjects.any { it.isTerrain }
+    // Without a river texture the water is drawn here, and its ripples step along a few times a
+    // second, but only while there is water to show.
+    val hasWater = terrain.riverAutotile == null && gridObjects.any { it.isTerrain }
     val waterPhase by produceState(0, hasWater) {
         while (hasWater) {
             delay(WATER_FRAME_MILLIS)
@@ -140,15 +147,29 @@ fun GardenCanvas(
         }
         for (obj in gridObjects) {
             if (obj.isTerrain) {
-                // Part of the ground: drawn with the terrain, right after the lawn it replaces.
-                val terrainSprite = atlas[TileSetDefinition.assetIdFor(obj)]
+                // River: part of the ground, drawn with the terrain right after the lawn. Its
+                // picture depends on which neighbours are river too, so the tiles join up.
+                val isRiver = { x: Int, y: Int -> grid.occupantAt(x, y)?.isTerrain == true }
+                val autotile = terrain.riverAutotile
                 pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
-                    if (terrainSprite != null && atlasImage != null) {
-                        drawSprite(atlasImage, terrainSprite, transform.tileCenter(obj.gridX, obj.gridY), spriteScale)
+                    if (autotile != null) {
+                        val mask = RiverAutotile.maskAt(obj.gridX, obj.gridY, isRiver)
+                        drawRiverTile(autotile, mask, transform, obj.gridX, obj.gridY)
                     } else {
-                        drawWaterTile(transform, obj.gridX, obj.gridY, waterPhase) { x, y ->
-                            grid.objectAt(x, y)?.isTerrain == true
-                        }
+                        drawWaterTile(transform, obj.gridX, obj.gridY, waterPhase, isRiver)
+                    }
+                }
+                continue
+            }
+            if (obj.isFloor) {
+                // Paving: also ground. Whatever stands on the cell is a separate object and is
+                // drawn later, in the object layer, so it always appears on top.
+                val paving = terrain.cobblestone
+                pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
+                    if (paving != null) {
+                        drawGroundTexture(paving, transform, obj.gridX, obj.gridY)
+                    } else {
+                        drawPath(transform.tilePath(obj.gridX, obj.gridY), PAVING_FALLBACK)
                     }
                 }
                 continue
@@ -198,6 +219,7 @@ fun GardenCanvas(
 // so the plants read as growing out of the lawn rather than sitting on top of it.
 private val GRASS_LIGHT = Color(0xFF86B26B)
 private val GRASS_DARK = Color(0xFF7AA661)
+private val PAVING_FALLBACK = Color(0xFFBDBDBD)
 private val SOIL_LEFT = Color(0xFF8D6E63)
 private val SOIL_RIGHT = Color(0xFF6D4C41)
 

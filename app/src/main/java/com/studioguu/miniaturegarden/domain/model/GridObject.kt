@@ -19,6 +19,9 @@ data class GridObject(
     /** Terrain laid by the player (river). It is part of the ground: nothing can stand on it. */
     val isTerrain: Boolean get() = objectId.startsWith(TERRAIN_ID_PREFIX)
 
+    /** Paving. It lies under whatever stands on the cell and does not take the cell up. */
+    val isFloor: Boolean get() = objectId.startsWith(FLOOR_ID_PREFIX)
+
     /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
     val footprint: Footprint get() = Footprint.forObjectId(objectId)
 
@@ -29,5 +32,8 @@ data class GridObject(
         const val PLANT_ID_PREFIX = "plant_"
         const val TERRAIN_ID_PREFIX = "terrain_"
         const val RIVER_OBJECT_ID = "terrain_river"
+        const val FLOOR_ID_PREFIX = "floor_"
+        const val COBBLESTONE_OBJECT_ID = "floor_cobblestone"
+        const val FENCE_OBJECT_ID = "struct_fence"
     }
 }
