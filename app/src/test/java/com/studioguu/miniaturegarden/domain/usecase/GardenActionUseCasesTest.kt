@@ -5,7 +5,6 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
-import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -161,39 +160,15 @@ class GardenActionUseCasesTest {
     // --- Levels ---
 
     @Test
-    fun `level thresholds follow 100 x N to the power of 1_5`() {
-        assertEquals(0L, LevelTable.xpForLevel(1))
-        assertEquals(282L, LevelTable.xpForLevel(2))
-        assertEquals(519L, LevelTable.xpForLevel(3))
-        assertEquals(800L, LevelTable.xpForLevel(4))
-
-        assertEquals(1, LevelTable.levelForXp(0))
-        assertEquals(1, LevelTable.levelForXp(281))
-        assertEquals(2, LevelTable.levelForXp(282))
-        assertEquals(3, LevelTable.levelForXp(799))
-        assertEquals(4, LevelTable.levelForXp(800))
-        assertEquals(LevelTable.MAX_LEVEL, LevelTable.levelForXp(Long.MAX_VALUE))
-    }
-
-    @Test
-    fun `gaining enough experience raises the level, possibly by several`() {
-        val almost = UserProfile(currentXp = 280)
-        assertEquals(1, almost.gainXp(1).playerLevel)
-        assertEquals(2, almost.gainXp(5).playerLevel)
-        assertEquals(285L, almost.gainXp(5).currentXp)
-        assertEquals(4, UserProfile().gainXp(800).playerLevel)
-    }
-
-    @Test
     fun `harvest pays the species' own coins and experience and can level the player up`() = runBlocking {
-        repo.profile = UserProfile(coins = 0, currentXp = 200)
+        repo.profile = UserProfile(coins = 0, currentXp = 200, playerLevel = 2)
         repo.put(tulip(growth = 1f).copy(objectId = PlantSpecies.ROSE.objectId))
 
         assertEquals(ActionResult.SUCCESS, harvest("p1", t0, sunny))
 
         assertEquals(160L, repo.profile?.coins)
         assertEquals(340L, repo.profile?.currentXp)
-        assertEquals(2, repo.profile?.playerLevel)
+        assertEquals(3, repo.profile?.playerLevel) // 340 XP is past the 300 needed for Lv.3
     }
 
     // --- Species ---

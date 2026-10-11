@@ -12,7 +12,10 @@ data class UserProfile(
     val lastMonoClockTime: Long = 0L,
     val signature: String = "",
 ) {
-    /** Adds experience and raises [playerLevel] to match. */
+    /** Level and experience in the form progress bars and unlock checks use. */
+    val stats: PlayerStats get() = PlayerStats(level = playerLevel, totalXp = currentXp)
+
+    /** Adds experience and raises [playerLevel] to match; a level is never taken away. */
     fun gainXp(amount: Int): UserProfile {
         val xp = currentXp + amount
         return copy(currentXp = xp, playerLevel = maxOf(playerLevel, LevelTable.levelForXp(xp)))
