@@ -1,0 +1,180 @@
+package com.studioguu.miniaturegarden.data.settings
+
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import com.studioguu.miniaturegarden.domain.model.AppSettings
+import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+
+/** Runs against a real Preferences DataStore writing to a temporary file. */
+class SettingsRepositoryTest {
+
+    @get:Rule
+    val folder = TemporaryFolder()
+
+    private val jobs = ArrayList<Job>()
+
+    private val file: File by lazy { File(folder.root, "settings.preferences_pb") }
+
+    /** A repository on [file]. Only one DataStore may be open on a file at a time. */
+    private fun openRepository(): Pair<SettingsRepositoryImpl, Job> {
+        val job = Job()
+        jobs += job
+        val dataStore = PreferenceDataStoreFactory.create(scope = CoroutineScope(Dispatchers.IO + job)) { file }
+        return SettingsRepositoryImpl(dataStore) to job
+    }
+
+    @After
+    fun closeStores() = runBlocking { jobs.forEach { it.cancelAndJoin() } }
+
+    // --- Model ---
+
+    @Test
+    fun `a new player starts with music at 35 percent, effects at 90 percent and everything on`() {
+        val defaults = AppSettings()
+        assertEquals(0.35f, defaults.bgmVolume, 0f)
+        assertEquals(0.9f, defaults.soundEffectVolume, 0f)
+        assertTrue(defaults.bgmEnabled)
+        assertTrue(defaults.soundEffectsEnabled)
+        assertTrue(defaults.notificationsEnabled)
+    }
+
+    @Test
+    fun `normalizing clamps volumes and leaves the switches alone`() {
+        val odd = AppSettings(bgmEnabled = false, bgmVolume = 1.7f, soundEffectVolume = -0.2f, notificationsEnabled = false)
+        assertEquals(odd.copy(bgmVolume = 1f, soundEffectVolume = 0f), odd.normalized())
+        assertEquals(
+            AppSettings(),
+            AppSettings(bgmVolume = Float.NaN, soundEffectVolume = Float.NaN).normalized(),
+        )
+        val fine = AppSettings(bgmVolume = 0f, soundEffectVolume = 1f)
+        assertEquals(fine, fine.normalized())
+    }
+
+    // --- Reading and writing ---
+
+    @Test
+    fun `nothing saved yet reads as the defaults`() = runBlocking {
+        val (repository, _) = openRepository()
+        assertEquals(AppSettings(), repository.settings.first())
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun `every setting can be written and read back`() = runBlocking {
+        val (repository, _) = openRepository()
+        val chosen = AppSettings(
+            bgmEnabled = false,
+            bgmVolume = 0.15f,
+            soundEffectsEnabled = false,
+            soundEffectVolume = 0.65f,
+            notificationsEnabled = false,
+        )
+
+        repository.update { chosen }
+
+        assertEquals(chosen, repository.settings.first())
+    }
+
+    @Test
+    fun `an update changes only what it touches`() = runBlocking {
+        val (repository, _) = openRepository()
+
+        repository.update { it.copy(bgmVolume = 0.5f) }
+        repository.update { it.copy(soundEffectsEnabled = false) }
+
+        assertEquals(
+            AppSettings(bgmVolume = 0.5f, soundEffectsEnabled = false),
+            repository.settings.first(),
+        )
+    }
+
+    @Test
+    fun `muting keeps the chosen volume for when sound comes back`() = runBlocking {
+        val (repository, _) = openRepository()
+        repository.update { it.copy(bgmVolume = 0.8f) }
+
+        repository.update { it.copy(bgmEnabled = false) }
+        assertEquals(0.8f, repository.settings.first().bgmVolume, 0f)
+
+        repository.update { it.copy(bgmEnabled = true) }
+        assertEquals(AppSettings(bgmVolume = 0.8f), repository.settings.first())
+    }
+
+    @Test
+    fun `volumes are clamped before they are stored`() = runBlocking {
+        val (repository, _) = openRepository()
+
+        repository.update { it.copy(bgmVolume = 5f, soundEffectVolume = -1f) }
+
+        val saved = repository.settings.first()
+        assertEquals(1f, saved.bgmVolume, 0f)
+        assertEquals(0f, saved.soundEffectVolume, 0f)
+    }
+
+    @Test
+    fun `many quick updates all land`() = runBlocking {
+        val (repository, _) = openRepository()
+
+        // A slider being dragged: each step builds on the one before.
+        repeat(20) { repository.update { it.copy(bgmVolume = it.bgmVolume + 0.01f) } }
+
+        assertEquals(AppSettings.DEFAULT_BGM_VOLUME + 0.20f, repository.settings.first().bgmVolume, 1e-4f)
+    }
+
+    @Test
+    fun `observers are told about each change`() = runBlocking {
+        val (repository, _) = openRepository()
+        val seen = async(Dispatchers.IO) { repository.settings.take(3).toList() }
+        repository.settings.first() // make sure the collector above has its first value's source ready
+
+        repository.update { it.copy(soundEffectVolume = 0.4f) }
+        repository.update { it.copy(soundEffectVolume = 0.1f) }
+
+        // The collector may miss the intermediate value if it is slow, but never the last one.
+        assertEquals(0.1f, seen.await().last().soundEffectVolume, 0f)
+    }
+
+    // --- Surviving a restart ---
+
+    @Test
+    fun `settings survive closing and reopening the store`() = runBlocking {
+        val chosen = AppSettings(bgmEnabled = false, bgmVolume = 0.2f, soundEffectVolume = 0.55f)
+        val (first, firstJob) = openRepository()
+        first.update { chosen }
+        firstJob.cancelAndJoin() // the app process ends
+
+        val (second, _) = openRepository() // ... and starts again
+        assertTrue(file.exists())
+        assertEquals(chosen, second.settings.first())
+    }
+
+    @Test
+    fun `settings saved by a version that knew fewer keys still load, with defaults for the rest`() = runBlocking {
+        // Write a file holding a single key, as an older build might have.
+        val oldJob = Job().also { jobs += it }
+        val oldStore = PreferenceDataStoreFactory.create(scope = CoroutineScope(Dispatchers.IO + oldJob)) { file }
+        oldStore.edit { it[floatPreferencesKey("bgm_volume")] = 0.6f }
+        oldJob.cancelAndJoin()
+
+        val (repository, _) = openRepository()
+
+        assertEquals(AppSettings(bgmVolume = 0.6f), repository.settings.first())
+    }
+}

@@ -8,6 +8,7 @@ import android.media.SoundPool
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import com.studioguu.miniaturegarden.domain.model.AppSettings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -100,6 +101,18 @@ class AudioManager internal constructor(
         }
 
     /**
+     * Takes over the player's saved settings. Safe to call with every change: only what
+     * actually differs is touched, so music that is playing is not interrupted.
+     */
+    fun apply(settings: AppSettings) {
+        val wanted = settings.normalized()
+        soundEffectsEnabled = wanted.soundEffectsEnabled
+        soundEffectVolume = wanted.soundEffectVolume
+        if (bgmVolume != wanted.bgmVolume) bgmVolume = wanted.bgmVolume
+        if (bgmEnabled != wanted.bgmEnabled) bgmEnabled = wanted.bgmEnabled
+    }
+
+    /**
      * Starts loading every effect that has a file. Loading is asynchronous, so call this early:
      * an effect played before its load finishes makes no sound.
      */
@@ -170,13 +183,14 @@ class AudioManager internal constructor(
     }
 
     companion object {
-        const val DEFAULT_SOUND_EFFECT_VOLUME = 1f
+        /** The values in effect until [apply] is called; the same as a new player's settings. */
+        const val DEFAULT_SOUND_EFFECT_VOLUME = AppSettings.DEFAULT_SOUND_EFFECT_VOLUME
 
         /**
          * The music file is mastered loud (about -18 dBFS average, peaks at 0) while most effects
          * sit around -22 to -29, so it has to come down a long way to stay in the background.
          */
-        const val DEFAULT_BGM_VOLUME = 0.3f
+        const val DEFAULT_BGM_VOLUME = AppSettings.DEFAULT_BGM_VOLUME
 
         /** While an effect sounds, the music plays at this fraction of its volume (about -6 dB). */
         const val BGM_DUCK_FACTOR = 0.5f
