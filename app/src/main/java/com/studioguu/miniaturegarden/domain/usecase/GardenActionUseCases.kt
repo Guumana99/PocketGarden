@@ -1,7 +1,6 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
-import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -291,28 +290,12 @@ class HarvestPlantUseCase @Inject constructor(
 }
 
 /**
- * Swaps a fence standing on the garden for the next of its parts (see [FencePart]), in place and
- * free of charge, so a run of fence can be put together from sections, rails and posts.
- */
-class SwitchFencePartUseCase @Inject constructor(
-    private val gardenRepository: GardenRepository,
-) {
-    suspend operator fun invoke(instanceId: String): ActionResult = gardenRepository.runInTransaction {
-        val stored = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
-            ?: return@runInTransaction ActionResult.NOT_FOUND
-        val part = FencePart.fromObjectId(stored.objectId) ?: return@runInTransaction ActionResult.NOT_FOUND
-        gardenRepository.upsertGridObject(stored.copy(objectId = part.next().objectId))
-        ActionResult.SUCCESS
-    }
-}
-
-/**
  * Takes something off the garden and puts it back into the inventory as the item it was placed
  * from, to be placed again later. It joins a stack of the same item if one has room, otherwise
  * it takes the first empty slot; with no room for it, nothing happens.
  *
  * Plants cannot go back (a seed that has grown is not a seed any more) and neither can tilled
- * soil, which was never an item. A fence goes back as a fence whichever part it was showing.
+ * soil, which was never an item. A fence goes back as a fence however it was joined up.
  * Experience that was earned for placing the thing is taken back with it, so that picking a
  * building up and putting it down again earns nothing.
  */

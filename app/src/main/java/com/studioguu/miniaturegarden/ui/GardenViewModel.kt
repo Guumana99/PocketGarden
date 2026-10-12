@@ -37,7 +37,6 @@ import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SkipTimeUseCase
 import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
-import com.studioguu.miniaturegarden.domain.usecase.SwitchFencePartUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
@@ -72,7 +71,6 @@ class GardenViewModel @Inject constructor(
     private val harvestPlant: HarvestPlantUseCase,
     private val removeObject: RemoveObjectUseCase,
     private val skipTime: SkipTimeUseCase,
-    private val switchFencePart: SwitchFencePartUseCase,
     private val hoe: HoeUseCase,
     private val storeObject: StoreObjectUseCase,
     private val audio: AudioManager,
@@ -356,11 +354,6 @@ class GardenViewModel @Inject constructor(
                 _messages.trySend(R.string.msg_revived)
             }
         ) { now, weather -> careForPlant.revive(obj.instanceId, now, weather) }
-    }
-
-    /** Shows the selected fence as the next of its parts. */
-    fun switchSelectedFencePart() = withSelectedObject { obj ->
-        act(onSuccess = { audio.play(SoundEffect.PLANT) }) { _, _ -> switchFencePart(obj.instanceId) }
     }
 
     /** Debug menu: pretend [millis] passed for everything in the garden. */

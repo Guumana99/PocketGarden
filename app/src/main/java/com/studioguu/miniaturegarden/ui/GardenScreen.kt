@@ -283,7 +283,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         onHarvest = viewModel::harvestSelected,
                         onRemove = { confirmRemove = true },
                         onRevive = viewModel::reviveSelected,
-                        onSwitchPart = viewModel::switchSelectedFencePart,
                         onDismiss = viewModel::clearSelection,
                         modifier = Modifier.fillMaxWidth(),
                     )

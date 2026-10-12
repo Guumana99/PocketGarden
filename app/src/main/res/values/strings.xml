@@ -52,9 +52,6 @@
     <string name="object_floor_cobblestone">石畳</string>
     <string name="object_floor_tilled">耕した土</string>
     <string name="object_struct_fence">ウッドフェンス</string>
-    <string name="object_struct_fence_rail">ウッドフェンス（横木）</string>
-    <string name="object_struct_fence_post">ウッドフェンス（支柱）</string>
-    <string name="action_switch_part">パーツ切替</string>
     <string name="remove_title">%1$s を撤去</string>
     <string name="remove_text_returnable">持ち物に戻すと、あとでまた置けます。破棄すると元に戻せません。</string>
     <string name="remove_text_plant">育てている作物は持ち物に戻せません。破棄すると元に戻せません。</string>

@@ -43,6 +43,7 @@ import com.studioguu.miniaturegarden.data.asset.GroundTile
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -51,6 +52,7 @@ import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TileType
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.render.Daylight
+import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
@@ -61,6 +63,8 @@ import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TilePicker
 import com.studioguu.miniaturegarden.ui.render.Wind
+import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
+import com.studioguu.miniaturegarden.ui.render.drawFenceArms
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
 import com.studioguu.miniaturegarden.ui.render.drawRiverTile
 import com.studioguu.miniaturegarden.ui.render.drawSprite
@@ -329,6 +333,42 @@ private fun submitObjects(
 
         val light = ambience.light
         val sway = ambience.sway(obj.gridX + 0.5f, obj.gridY + 0.5f)
+        if (obj.isFence) {
+            // How a fence looks is read off its neighbours every time it is drawn: alone it is a
+            // short section; next to other fences it is a post with rails reaching out to them.
+            val mask = FenceAutotile.maskAt(obj.gridX, obj.gridY) { x, y -> grid.occupantAt(x, y)?.isFence == true }
+            val section = atlas[FencePart.SECTION.objectId]
+            val post = atlas[FencePart.POST.objectId]
+            val alone = mask == 0 && section != null && atlasImage != null
+            val postHeight = if (post != null) post.height * post.anchorY * spriteScale else unit * 0.2f
+            submit(obj, RenderLayer.SHADOWS, depth) {
+                if (alone) {
+                    drawContactShadow(base, min(section!!.width * spriteScale * 0.62f, unit * 0.7f))
+                    drawSpriteShadow(atlasImage!!, section, base, spriteScale, light)
+                } else {
+                    drawContactShadow(base, unit * 0.22f)
+                    drawFenceArmShadows(transform, obj.gridX, obj.gridY, mask, postHeight, light)
+                    if (post != null && atlasImage != null) drawSpriteShadow(atlasImage, post, base, spriteScale, light)
+                }
+            }
+            submit(obj, RenderLayer.GRID_OBJECTS, depth) {
+                if (alone) {
+                    drawSprite(atlasImage!!, section!!, base, spriteScale)
+                } else {
+                    drawFenceArms(transform, obj.gridX, obj.gridY, mask, behind = true, postHeight)
+                    if (post != null && atlasImage != null) {
+                        drawSprite(atlasImage, post, base, spriteScale)
+                    } else {
+                        drawPlaceholder(obj, base, unit)
+                    }
+                    drawFenceArms(transform, obj.gridX, obj.gridY, mask, behind = false, postHeight)
+                }
+                if (grid.floorAt(obj.gridX, obj.gridY) == null) {
+                    drawGrassAtFoot(base, unit, unit * (if (alone) 0.28f else 0.1f), sway, seed = obj.gridX * 31 + obj.gridY * 17)
+                }
+            }
+            continue
+        }
         // Two shadows tie a thing to the ground: a dark, tight one right under its foot, which
         // is there in any light, and the one the sun throws, which turns with the time of day.
         if (!isGroundCover) {
@@ -429,6 +469,9 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
                 objectId.startsWith(GridObject.FLOOR_ID_PREFIX) ->
                     PreviewScene(2, 0.1f, listOf(at(0, 0), at(1, 0), at(0, 1), at(1, 1)))
                 objectId.startsWith(GridObject.PLANT_ID_PREFIX) -> PreviewScene(1, 1.05f, listOf(at(0, 0)))
+                // A run with a corner in it, to show how fences join.
+                objectId == GridObject.FENCE_OBJECT_ID ->
+                    PreviewScene(3, 0.25f, listOf(at(0, 1), at(1, 1), at(2, 1), at(2, 0)))
                 StructureData.fromObjectId(objectId) != null -> PreviewScene(2, 0.45f, listOf(at(0, 0)))
                 else -> PreviewScene(1, 0.3f, listOf(at(0, 0)))
             }
