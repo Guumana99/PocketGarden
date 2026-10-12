@@ -40,6 +40,8 @@ enum class ItemCategory {
  * @property unlock what the player needs before the shop sells this. Items already in the
  *   inventory can always be placed.
  * @property placeXp experience earned for placing it; seeds pay out at harvest instead.
+ * @property buildSeconds how long it takes to build once placed; 0 for things that are simply
+ *   put down. Until then it stands on the garden as a work site.
  */
 enum class GardenItem(
     val itemId: String,
@@ -48,6 +50,7 @@ enum class GardenItem(
     val category: ItemCategory,
     val unlock: UnlockCondition = UnlockCondition.None,
     val placeXp: Int = 0,
+    val buildSeconds: Int = 0,
 ) {
     SEED_TULIP("seed_tulip", price = 20, objectId = PlantSpecies.TULIP.objectId, category = ItemCategory.SEED),
     SEED_SUNFLOWER(
@@ -64,11 +67,11 @@ enum class GardenItem(
     ),
     STRUCT_HUT(
         "struct_hut", price = 150, objectId = StructureData.HUT.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(5), placeXp = 60,
+        unlock = UnlockCondition.PlayerLevel(5), placeXp = 60, buildSeconds = 300,
     ),
     STRUCT_WELL(
         "struct_well", price = 80, objectId = StructureData.WELL.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(3), placeXp = 30,
+        unlock = UnlockCondition.PlayerLevel(3), placeXp = 30, buildSeconds = 120,
     ),
     GROUND_GRASS("ground_grass", price = 10, objectId = "ground_grass", category = ItemCategory.DECORATION),
     GROUND_PEBBLE("ground_pebble", price = 10, objectId = "ground_pebble", category = ItemCategory.DECORATION),
@@ -79,12 +82,18 @@ enum class GardenItem(
     ),
 
     /** A one-tile section of fence, for edging beds and paths. */
-    STRUCT_FENCE("struct_fence", price = 15, objectId = GridObject.FENCE_OBJECT_ID, category = ItemCategory.STRUCTURE),
+    STRUCT_FENCE(
+        "struct_fence", price = 15, objectId = GridObject.FENCE_OBJECT_ID, category = ItemCategory.STRUCTURE,
+        buildSeconds = 20,
+    ),
 
     /** Turns the tile it is placed on into river; removing it turns the tile back into lawn. */
     TILE_RIVER("tile_river", price = 10, objectId = GridObject.RIVER_OBJECT_ID, category = ItemCategory.DECORATION);
 
     fun isUnlockedFor(stats: PlayerStats): Boolean = unlock.isMetBy(stats)
+
+    /** Taking it apart again takes half as long as building it did. */
+    val demolishSeconds: Int get() = buildSeconds / 2
 
     /** The player level that opens this item in the shop; 1 when it is never locked. */
     val unlockLevel: Int get() = (unlock as? UnlockCondition.PlayerLevel)?.level ?: 1

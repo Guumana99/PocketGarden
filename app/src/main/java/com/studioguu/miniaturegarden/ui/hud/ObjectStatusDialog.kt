@@ -17,6 +17,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -25,10 +27,13 @@ import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.WorkKind
+import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.objectDisplayName
 import com.studioguu.miniaturegarden.ui.statusLabel
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 /**
  * Details and actions for the object on the selected tile.
@@ -43,6 +48,7 @@ fun ObjectStatusDialog(
     onHarvest: () -> Unit,
     onRemove: () -> Unit,
     onRevive: () -> Unit,
+    onMove: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -75,6 +81,8 @@ fun ObjectStatusDialog(
                 }
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
             }
+
+            if (gridObject.isWorking) WorkRow(gridObject)
 
             if (gridObject.isPlant) {
                 LevelRow(stringResource(R.string.label_growth), gridObject.growthProgress)
@@ -111,10 +119,54 @@ fun ObjectStatusDialog(
                         Text(stringResource(R.string.action_harvest, PlantSpecies.forObjectId(gridObject.objectId).harvestCoins))
                     }
                 }
+                if (MoveObjectUseCase.canMove(gridObject) && !gridObject.isWorking) {
+                    FilledTonalButton(onClick = onMove) { Text(stringResource(R.string.action_move)) }
+                }
                 Spacer(Modifier.weight(1f))
                 OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
             }
         }
+    }
+}
+
+/** What is being done to a work site, how far along it is and how long it still takes. */
+@Composable
+private fun WorkRow(gridObject: GridObject) {
+    // The job's own clock: looked at twice a second while the panel is open.
+    val now by produceState(System.currentTimeMillis(), gridObject.instanceId) {
+        while (true) {
+            delay(500)
+            value = System.currentTimeMillis()
+        }
+    }
+    val label = when (gridObject.workKind) {
+        WorkKind.DEMOLISHING -> R.string.work_demolishing
+        WorkKind.PACKING -> R.string.work_packing
+        else -> R.string.work_building
+    }
+    val secondsLeft = ((gridObject.workRemainingMillis(now) + 999) / 1000).toInt()
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(label), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            Text(
+                text = stringResource(R.string.work_remaining, durationText(secondsLeft)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        LinearProgressIndicator(progress = { gridObject.workProgress(now) }, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/** A length of time in words: "45秒", "2分", "2分30秒". */
+@Composable
+fun durationText(seconds: Int): String {
+    val minutes = seconds / 60
+    val rest = seconds % 60
+    return when {
+        minutes == 0 -> stringResource(R.string.duration_seconds, rest)
+        rest == 0 -> stringResource(R.string.duration_minutes, minutes)
+        else -> stringResource(R.string.duration_minutes_seconds, minutes, rest)
     }
 }
 

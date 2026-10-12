@@ -9,6 +9,7 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.UserProfile
+import com.studioguu.miniaturegarden.domain.model.WorkKind
 
 fun UserProfileEntity.toDomain() = UserProfile(
     coins = coins,
@@ -43,6 +44,9 @@ fun GridObjectEntity.toDomain() = GridObject(
     stressRate = stressRate,
     status = PlantStatus.fromName(status),
     lastUpdatedTimestamp = lastUpdatedTimestamp,
+    workKind = WorkKind.fromName(workKind),
+    workStartedAt = workStartedAt,
+    workEndsAt = workEndsAt,
 )
 
 fun GridObject.toEntity() = GridObjectEntity(
@@ -58,6 +62,9 @@ fun GridObject.toEntity() = GridObjectEntity(
     stressRate = stressRate,
     status = status.name,
     lastUpdatedTimestamp = lastUpdatedTimestamp,
+    workKind = workKind.name,
+    workStartedAt = workStartedAt,
+    workEndsAt = workEndsAt,
 )
 
 fun InventorySlotEntity.toDomain() = InventorySlot(

@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -31,6 +32,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
@@ -51,6 +54,7 @@ import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TileType
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.render.Daylight
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
@@ -71,8 +75,11 @@ import com.studioguu.miniaturegarden.ui.render.drawSprite
 import com.studioguu.miniaturegarden.ui.render.drawSpriteShadow
 import com.studioguu.miniaturegarden.ui.render.drawSwayingSprite
 import java.time.LocalTime
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.sin
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -144,12 +151,27 @@ fun GardenCanvas(
     // Whatever was in the garden a moment ago and is not any more (removed, harvested, put back
     // into the bag) is kept as a ghost for a moment and drawn fading away, instead of blinking out.
     val ghosts = remember { mutableStateListOf<Ghost>() }
+    // And where a building has just been finished, a burst of sparkles goes up.
+    val bursts = remember { mutableStateListOf<Ghost>() }
     val lastSeen = remember { arrayOf(gridObjects) }
     val ghostScope = rememberCoroutineScope()
     LaunchedEffect(gridObjects) {
         val present = gridObjects.mapTo(HashSet()) { it.instanceId }
         val gone = lastSeen[0].filter { it.instanceId !in present }
+        val wasBuilding = lastSeen[0].filter { it.workKind == WorkKind.BUILDING }.mapTo(HashSet()) { it.instanceId }
+        val built = gridObjects.filter { it.instanceId in wasBuilding && !it.isWorking }
         lastSeen[0] = gridObjects
+        for (gridObject in built) {
+            val burst = Ghost(gridObject)
+            bursts += burst
+            ghostScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    burst.progress.animateTo(1f, tween(BURST_MILLIS))
+                } finally {
+                    bursts -= burst
+                }
+            }
+        }
         for (gridObject in gone) {
             val ghost = Ghost(gridObject)
             ghosts += ghost
@@ -214,6 +236,12 @@ fun GardenCanvas(
                 vanish = ghost.progress.value,
             )
         }
+        for (burst in bursts) {
+            val progress = burst.progress.value
+            pipeline.submit(RenderLayer.TOP_EFFECTS, depth = Float.MAX_VALUE) {
+                drawCompletionBurst(transform, burst.gridObject, progress)
+            }
+        }
         pipeline.render(this)
     }
 }
@@ -229,7 +257,13 @@ private fun currentHourOfDay(): Float = LocalTime.now().let { it.hour + it.minut
  *
  * @property windMillis the wind's clock, or null for still air (the pictures in the encyclopedia).
  */
-private class Ambience(val light: SunLight, val weather: WeatherType, val windMillis: Long?) {
+private class Ambience(
+    val light: SunLight,
+    val weather: WeatherType,
+    val windMillis: Long?,
+    /** Wall clock, for how far along building jobs are. */
+    val epochMillis: Long = System.currentTimeMillis(),
+) {
     /** How far something at this place in the grid leans right now, see [Wind.sway]. */
     fun sway(gridX: Float, gridY: Float): Float =
         if (windMillis == null) 0f else Wind.sway(windMillis, gridX, gridY, weather)
@@ -273,7 +307,11 @@ private fun submitObjects(
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
     // Everything is queued through here, so that objects on their way out can be drawn fading.
     fun submit(obj: GridObject, layer: RenderLayer, depth: Float, draw: DrawScope.() -> Unit) {
-        if (vanish == null) {
+        if (vanish == null && obj.isWorking && layer == RenderLayer.GRID_OBJECTS) {
+            // A work site: the thing itself half there, inside its scaffolding.
+            val progress = obj.workProgress(ambience.epochMillis)
+            pipeline.submit(layer, depth) { drawWorkSite(transform, obj, progress, ambience.windMillis ?: 0L, draw) }
+        } else if (vanish == null) {
             pipeline.submit(layer, depth, draw)
         } else {
             val footprint = obj.footprint
@@ -413,6 +451,179 @@ private fun submitObjects(
         if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
             submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit) }
         }
+    }
+}
+
+/** How long the sparkles over a finished building last. */
+private const val BURST_MILLIS = 900
+
+// --- Work sites --------------------------------------------------------------------------------------
+
+private val SCAFFOLD_POLE = Color(0xFFD9B36C)
+private val SCAFFOLD_PLANK = Color(0xFFC2924F)
+private val SCAFFOLD_LINE = Color(0xFF5D3A1A)
+private val SCAFFOLD_ROPE = Color(0xFFF3E3B8)
+private val PROGRESS_TRACK = Color(0xCC3E2723)
+private val PROGRESS_BUILD = Color(0xFF8BC34A)
+private val PROGRESS_TAKE_DOWN = Color(0xFFFFB74D)
+private val DUST = Color(0xFFE8D9B5)
+private val SPARKLE = Color(0xFFFFF3B0)
+
+/** How tall the thing being worked on is, on screen: what the scaffolding has to reach. */
+private fun siteHeight(obj: GridObject, transform: IsometricTransform): Float = when (StructureData.fromObjectId(obj.objectId)) {
+    StructureData.HUT -> 7.2f * transform.heightStep
+    StructureData.WELL -> 2.4f * transform.heightStep
+    null -> transform.tileWidth * 0.24f
+}
+
+/**
+ * Draws something that is being built or taken apart: the part of it that stands so far, the
+ * rest as a faint outline of what it will be (or was), scaffolding round it, dust at its foot
+ * and a bar that fills as the job goes on.
+ *
+ * A building goes up from the ground: at [progress] 0 nothing of it stands, at 1 all of it. One
+ * being taken apart comes down from the top the same way.
+ *
+ * @param clock a running millisecond count, for the bits that move.
+ */
+private fun DrawScope.drawWorkSite(
+    transform: IsometricTransform,
+    obj: GridObject,
+    progress: Float,
+    clock: Long,
+    draw: DrawScope.() -> Unit,
+) {
+    val footprint = obj.footprint
+    // A fence fills little of its tile; its scaffolding is drawn in closer.
+    val inset = if (StructureData.fromObjectId(obj.objectId) == null) 0.22f else 0.02f
+    val x0 = obj.gridX + inset
+    val y0 = obj.gridY + inset
+    val x1 = obj.gridX + footprint.width - inset
+    val y1 = obj.gridY + footprint.height - inset
+    val height = siteHeight(obj, transform)
+    val up = Offset(0f, -height)
+    val back = transform.worldToScreen(x0, y0)
+    val right = transform.worldToScreen(x1, y0)
+    val front = transform.worldToScreen(x1, y1)
+    val left = transform.worldToScreen(x0, y1)
+    val unit = transform.tileWidth
+    val stroke = (unit * 0.022f).coerceAtLeast(1.5f)
+
+    // The two poles and planks at the back go behind the thing.
+    drawScaffoldSide(back, right, up, stroke, alpha = 0.7f)
+    drawScaffoldSide(back, left, up, stroke, alpha = 0.7f)
+
+    val standing = if (obj.workKind == WorkKind.BUILDING) progress else 1f - progress
+    // What it will be, faintly ...
+    drawIntoCanvas { canvas ->
+        canvas.saveLayer(Rect(Offset.Zero, size), Paint().apply { alpha = 0.22f })
+        draw()
+        canvas.restore()
+    }
+    // ... and what stands of it so far, from the ground up to a line that rises with the work.
+    val top = back.y + up.y - unit * 0.1f
+    val line = front.y - (front.y - top) * standing
+    clipRect(left = 0f, top = line, right = size.width, bottom = size.height) { draw() }
+
+    // The near sides of the scaffolding, with a brace across each.
+    drawScaffoldSide(left, front, up, stroke, alpha = 1f)
+    drawScaffoldSide(front, right, up, stroke, alpha = 1f)
+    drawLine(SCAFFOLD_ROPE, left, front + up * 0.5f, stroke * 0.6f, StrokeCap.Round)
+    drawLine(SCAFFOLD_ROPE, front, right + up * 0.5f, stroke * 0.6f, StrokeCap.Round)
+
+    // Dust puffing up along the front, each puff in its own rhythm.
+    for (i in 0 until 4) {
+        val phase = ((clock + i * 430L) % 1400L) / 1400f
+        val along = 0.15f + 0.23f * i
+        val foot = (if (i % 2 == 0) left + (front - left) * along else front + (right - front) * along)
+        drawCircle(
+            color = DUST.copy(alpha = 0.55f * (1f - phase)),
+            radius = unit * (0.02f + 0.045f * phase),
+            center = foot + Offset(0f, -unit * 0.07f * phase),
+        )
+    }
+    // A glint where the work is going on, hopping along the line the building has reached.
+    val hop = ((clock / 380L) % 5L).toInt()
+    val beat = 1f - ((clock % 380L) / 380f)
+    val spot = Offset(left.x + (right.x - left.x) * (0.15f + 0.175f * hop), line - unit * 0.02f)
+    drawSparkle(spot, unit * 0.045f * beat, SPARKLE.copy(alpha = beat))
+
+    // The bar above it all.
+    val centre = transform.worldToScreen((x0 + x1) / 2f, (y0 + y1) / 2f) + up * 1.18f
+    val barSize = Size(unit * 0.62f, unit * 0.075f)
+    val barTopLeft = centre - Offset(barSize.width / 2f, barSize.height + unit * 0.06f)
+    val corner = CornerRadius(barSize.height / 2f, barSize.height / 2f)
+    drawRoundRect(PROGRESS_TRACK, barTopLeft, barSize, corner)
+    val pad = barSize.height * 0.18f
+    val fill = (barSize.width - pad * 2f) * progress.coerceIn(0f, 1f)
+    if (fill > 0f) {
+        drawRoundRect(
+            color = if (obj.workKind == WorkKind.BUILDING) PROGRESS_BUILD else PROGRESS_TAKE_DOWN,
+            topLeft = barTopLeft + Offset(pad, pad),
+            size = Size(fill, barSize.height - pad * 2f),
+            cornerRadius = corner,
+        )
+    }
+}
+
+/** One side of the scaffolding between two corners on the ground: two poles and two planks. */
+private fun DrawScope.drawScaffoldSide(from: Offset, to: Offset, up: Offset, stroke: Float, alpha: Float) {
+    val pole = SCAFFOLD_POLE.copy(alpha = alpha)
+    val plank = SCAFFOLD_PLANK.copy(alpha = alpha)
+    val outline = SCAFFOLD_LINE.copy(alpha = alpha * 0.8f)
+    for (level in floatArrayOf(0.5f, 1f)) {
+        drawLine(outline, from + up * level, to + up * level, stroke * 1.9f, StrokeCap.Round)
+        drawLine(plank, from + up * level, to + up * level, stroke * 1.2f, StrokeCap.Round)
+    }
+    for (foot in arrayOf(from, to)) {
+        drawLine(outline, foot, foot + up * 1.08f, stroke * 1.9f, StrokeCap.Round)
+        drawLine(pole, foot, foot + up * 1.08f, stroke * 1.2f, StrokeCap.Round)
+    }
+}
+
+/** A four-pointed star. */
+private fun DrawScope.drawSparkle(center: Offset, radius: Float, color: Color) {
+    if (radius <= 0f) return
+    val waist = radius * 0.28f
+    val star = Path().apply {
+        moveTo(center.x, center.y - radius)
+        lineTo(center.x + waist, center.y - waist)
+        lineTo(center.x + radius, center.y)
+        lineTo(center.x + waist, center.y + waist)
+        lineTo(center.x, center.y + radius)
+        lineTo(center.x - waist, center.y + waist)
+        lineTo(center.x - radius, center.y)
+        lineTo(center.x - waist, center.y - waist)
+        close()
+    }
+    drawPath(star, color)
+}
+
+/**
+ * The moment a building is finished: a ring spreads out from it on the ground and sparkles fly
+ * up and outwards, fading as they go.
+ *
+ * @param progress 0 (just finished) to 1 (over).
+ */
+private fun DrawScope.drawCompletionBurst(transform: IsometricTransform, obj: GridObject, progress: Float) {
+    val footprint = obj.footprint
+    val ground = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
+    val height = siteHeight(obj, transform)
+    val unit = transform.tileWidth
+    val fade = (1f - progress).coerceIn(0f, 1f)
+    // The ring lies on the ground, so it is twice as wide as it is tall.
+    val reach = unit * (0.3f + 0.5f * footprint.width) * progress
+    drawOval(
+        color = SPARKLE.copy(alpha = 0.8f * fade),
+        topLeft = ground - Offset(reach, reach / 2f),
+        size = Size(reach * 2f, reach),
+        style = Stroke(width = unit * 0.035f * fade),
+    )
+    for (i in 0 until 8) {
+        val angle = (i / 8f) * 2f * PI.toFloat()
+        val out = unit * (0.15f + 0.45f * progress)
+        val at = ground + Offset(cos(angle) * out, -height * (0.4f + 0.9f * progress) + sin(angle) * out * 0.4f)
+        drawSparkle(at, unit * 0.06f * fade * (if (i % 2 == 0) 1f else 0.65f), SPARKLE.copy(alpha = fade))
     }
 }
 

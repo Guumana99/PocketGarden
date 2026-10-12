@@ -13,7 +13,29 @@ data class GridObject(
     val stressRate: Float = 0f,
     val status: PlantStatus = PlantStatus.HEALTHY,
     val lastUpdatedTimestamp: Long,
+    /** The job being done on this object, if any. See [WorkKind]. */
+    val workKind: WorkKind = WorkKind.NONE,
+    /** Epoch millis at which that job began and at which it will be finished; 0 without a job. */
+    val workStartedAt: Long = 0L,
+    val workEndsAt: Long = 0L,
 ) {
+    /** Whether this is a work site: being built, taken apart or packed up. */
+    val isWorking: Boolean get() = workKind != WorkKind.NONE
+
+    /** How far along the job is at [now], 0 (just begun) to 1 (done); 1 when there is none. */
+    fun workProgress(now: Long): Float {
+        if (!isWorking) return 1f
+        val total = workEndsAt - workStartedAt
+        if (total <= 0L) return 1f
+        return ((now - workStartedAt).toFloat() / total).coerceIn(0f, 1f)
+    }
+
+    /** Milliseconds of the job still to go at [now]; 0 when it is done or there is none. */
+    fun workRemainingMillis(now: Long): Long = if (isWorking) (workEndsAt - now).coerceAtLeast(0L) else 0L
+
+    /** The same object with no job on it. */
+    fun withoutWork(): GridObject = copy(workKind = WorkKind.NONE, workStartedAt = 0L, workEndsAt = 0L)
+
     val isPlant: Boolean get() = objectId.startsWith(PLANT_ID_PREFIX)
 
     /** Terrain laid by the player (river). It is part of the ground: nothing can stand on it. */
@@ -78,5 +100,25 @@ enum class FencePart(val objectId: String) {
 
     companion object {
         fun fromObjectId(objectId: String): FencePart? = entries.firstOrNull { it.objectId == objectId }
+    }
+}
+
+/** A job that takes time, done on something standing on the garden. */
+enum class WorkKind {
+    /** Nothing is being done: the object simply stands there. */
+    NONE,
+
+    /** Being built. It takes up its place already, but is not finished. */
+    BUILDING,
+
+    /** Being taken apart to be thrown away. When the job is done the object is gone. */
+    DEMOLISHING,
+
+    /** Being taken apart to go back into the bag. When the job is done it is an item again. */
+    PACKING;
+
+    companion object {
+        /** Unknown values (e.g. written by a newer app version) count as no job. */
+        fun fromName(name: String): WorkKind = entries.firstOrNull { it.name == name } ?: NONE
     }
 }

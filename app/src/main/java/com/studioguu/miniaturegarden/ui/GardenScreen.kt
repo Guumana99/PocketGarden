@@ -105,6 +105,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val blessedRainFalling by viewModel.blessedRainFalling.collectAsStateWithLifecycle()
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
+    val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
@@ -257,6 +258,21 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             if (placing != null) lastPlacing = placing
             if (target != null) lastTarget = target
 
+            val moving = movingObject
+            var lastMoving by remember { mutableStateOf<GridObject?>(null) }
+            if (moving != null) lastMoving = moving
+            AnimatedVisibility(
+                visible = moving != null,
+                enter = slideInVertically { it / 2 } + fadeIn(),
+                exit = slideOutVertically { it / 2 } + fadeOut(),
+            ) {
+                lastMoving?.let {
+                    ToolBanner(
+                        stringResource(R.string.move_banner, objectDisplayName(it.objectId)),
+                        onCancel = viewModel::cancelMoving,
+                    )
+                }
+            }
             AnimatedVisibility(
                 visible = hoeActive,
                 enter = slideInVertically { it / 2 } + fadeIn(),
@@ -272,7 +288,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 lastPlacing?.let { PlacingBanner(it, onCancel = viewModel::cancelPlacing) }
             }
             AnimatedVisibility(
-                visible = placing == null && !hoeActive && target != null,
+                visible = placing == null && !hoeActive && moving == null && target != null,
                 enter = slideInVertically { it / 2 } + fadeIn(),
                 exit = slideOutVertically { it / 2 } + fadeOut(),
             ) {
@@ -283,6 +299,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         onHarvest = viewModel::harvestSelected,
                         onRemove = { confirmRemove = true },
                         onRevive = viewModel::reviveSelected,
+                        onMove = viewModel::startMovingSelected,
                         onDismiss = viewModel::clearSelection,
                         modifier = Modifier.fillMaxWidth(),
                     )

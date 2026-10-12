@@ -22,6 +22,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.WorkKind
+import com.studioguu.miniaturegarden.ui.objectDisplayName
 
 /** A short-lived piece of feedback. [id] must be unique among the effects on screen. */
 sealed interface GardenEffect {
@@ -33,6 +35,9 @@ sealed interface GardenEffect {
 
     /** A page of the encyclopedia became ready to be filled in. */
     data class Discovery(override val id: Long) : GardenEffect
+
+    /** A building was finished, or taking one apart was. */
+    data class WorkDone(override val id: Long, val objectId: String, val kind: WorkKind) : GardenEffect
 }
 
 private const val DURATION_MILLIS = 1600
@@ -48,6 +53,7 @@ private fun liftSteps(effect: GardenEffect): Int = when (effect) {
     is GardenEffect.Harvest, is GardenEffect.Xp -> 0
     is GardenEffect.Discovery -> 1
     is GardenEffect.LevelUp -> 2
+    is GardenEffect.WorkDone -> 1
 }
 
 /**
@@ -77,13 +83,22 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
     }
 
     // The big moments get the larger, filled style.
-    val isLevelUp = effect is GardenEffect.LevelUp
+    val isLevelUp = effect is GardenEffect.LevelUp ||
+        (effect is GardenEffect.WorkDone && effect.kind == WorkKind.BUILDING)
     val lift = LIFT_STEP * liftSteps(effect)
     val text = when (effect) {
         is GardenEffect.Harvest -> stringResource(R.string.effect_harvest, effect.coins, effect.xp)
         is GardenEffect.Xp -> stringResource(R.string.effect_xp, effect.amount)
         is GardenEffect.LevelUp -> stringResource(R.string.effect_level_up, effect.level)
         is GardenEffect.Discovery -> stringResource(R.string.effect_discovery)
+        is GardenEffect.WorkDone -> stringResource(
+            when (effect.kind) {
+                WorkKind.DEMOLISHING -> R.string.effect_demolished
+                WorkKind.PACKING -> R.string.effect_packed
+                else -> R.string.effect_built
+            },
+            objectDisplayName(effect.objectId),
+        )
     }
     Text(
         text = text,

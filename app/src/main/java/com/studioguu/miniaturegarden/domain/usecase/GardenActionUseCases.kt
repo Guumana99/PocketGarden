@@ -12,6 +12,7 @@ import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
+import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import java.util.UUID
 import javax.inject.Inject
@@ -41,6 +42,12 @@ enum class ActionResult {
 
     /** Something that is not an item (a growing plant, tilled soil) was to go back into the bag. */
     NOT_RETURNABLE,
+
+    /** Something that is in the ground (a plant, tilled soil) was to be moved. */
+    NOT_MOVABLE,
+
+    /** The thing is being built or taken apart; it has to be finished first. */
+    BUSY,
 }
 
 /**
@@ -161,7 +168,8 @@ class CareForPlantUseCase @Inject constructor(
  * Takes one item out of an inventory slot and puts its object on the garden with its first cell
  * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
  * ground (not the river) and free in its own layer: paving goes under things, and things can
- * be stood on paving. Seeds and seedlings are the exception: they only go into soil that has
+ * be stood on paving. A building ([GardenItem.buildSeconds]) starts as a work site and is
+ * finished by [CompleteWorkUseCase] when its time is up. Seeds and seedlings are the exception: they only go into soil that has
  * been tilled with the hoe (see [HoeUseCase]). Building a structure earns its [GardenItem.placeXp], and a
  * first placement makes its page of the encyclopedia ready to be filled in.
  */
@@ -199,6 +207,10 @@ class PlaceItemUseCase @Inject constructor(
                     objectId = item.objectId,
                     growthProgress = if (compost != null) GridObject.COMPOST_GROWTH_BONUS else 0f,
                     lastUpdatedTimestamp = now,
+                    // A building is not there at a tap: it goes up over its building time.
+                    workKind = if (item.buildSeconds > 0) WorkKind.BUILDING else WorkKind.NONE,
+                    workStartedAt = if (item.buildSeconds > 0) now else 0L,
+                    workEndsAt = if (item.buildSeconds > 0) now + item.buildSeconds * 1000L else 0L,
                 )
             )
             if (compost != null) gardenRepository.upsertGridObject(compost.copy(growthProgress = 0f))
@@ -387,7 +399,7 @@ class PurchaseItemUseCase @Inject constructor(
  *
  * Integrity is checked first, against the clocks recorded by the previous run. If the device
  * clock was manipulated or the profile's signature is broken, the elapsed time is not credited:
- * objects are simply re-anchored to [now].
+ * objects are simply re-anchored to [now], and building jobs start over.
  */
 class SyncGardenUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -402,7 +414,16 @@ class SyncGardenUseCase @Inject constructor(
             val updated = if (trusted) {
                 calculateOfflineProgress(objects, now, weather)
             } else {
-                objects.map { it.copy(lastUpdatedTimestamp = now) }
+                // Time that cannot be trusted does not build anything either: jobs in progress
+                // start over from now with their full length still to go.
+                objects.map {
+                    val restarted = if (it.isWorking) {
+                        it.copy(workStartedAt = now, workEndsAt = now + (it.workEndsAt - it.workStartedAt))
+                    } else {
+                        it
+                    }
+                    restarted.copy(lastUpdatedTimestamp = now)
+                }
             }
             val changed = updated.filterIndexed { index, obj -> obj != objects[index] }
             if (changed.isNotEmpty()) gardenRepository.upsertGridObjects(changed)
