@@ -1,28 +1,37 @@
 package com.studioguu.miniaturegarden.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -50,7 +59,9 @@ import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
 import com.studioguu.miniaturegarden.ui.render.drawRiverTile
 import com.studioguu.miniaturegarden.ui.render.drawSprite
 import kotlin.math.min
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val TILE_WIDTH = 128.dp
 private val TILE_HEIGHT = 64.dp
@@ -99,6 +110,30 @@ fun GardenCanvas(
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
 
+    // Whatever was in the garden a moment ago and is not any more (removed, harvested, put back
+    // into the bag) is kept as a ghost for a moment and drawn fading away, instead of blinking out.
+    val ghosts = remember { mutableStateListOf<Ghost>() }
+    val lastSeen = remember { arrayOf(gridObjects) }
+    val ghostScope = rememberCoroutineScope()
+    LaunchedEffect(gridObjects) {
+        val present = gridObjects.mapTo(HashSet()) { it.instanceId }
+        val gone = lastSeen[0].filter { it.instanceId !in present }
+        lastSeen[0] = gridObjects
+        for (gridObject in gone) {
+            val ghost = Ghost(gridObject)
+            ghosts += ghost
+            // In a scope of their own rather than this effect's, which is cancelled at the next
+            // change to the garden and would cut the fading short.
+            ghostScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    ghost.progress.animateTo(1f, tween(VANISH_MILLIS))
+                } finally {
+                    ghosts -= ghost
+                }
+            }
+        }
+    }
+
     Canvas(
         modifier = modifier
             .onSizeChanged { size ->
@@ -141,6 +176,12 @@ fun GardenCanvas(
             pipeline.submit(RenderLayer.HUD_OVERLAY) { drawTileOutline(transform, origin, spanX, spanY) }
         }
         submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick)
+        for (ghost in ghosts) {
+            submitObjects(
+                pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick,
+                vanish = ghost.progress.value,
+            )
+        }
         pipeline.render(this)
     }
 }
@@ -172,15 +213,26 @@ private fun submitObjects(
     atlasImage: ImageBitmap?,
     terrain: TerrainTextures,
     waterTick: Int,
+    vanish: Float? = null,
 ) {
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
+    // Everything is queued through here, so that objects on their way out can be drawn fading.
+    fun submit(obj: GridObject, layer: RenderLayer, depth: Float, draw: DrawScope.() -> Unit) {
+        if (vanish == null) {
+            pipeline.submit(layer, depth, draw)
+        } else {
+            val footprint = obj.footprint
+            val pivot = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
+            pipeline.submit(layer, depth) { drawVanishing(pivot, vanish, transform.tileHeight, draw) }
+        }
+    }
     for (obj in gridObjects) {
         if (obj.isTerrain) {
             // River: part of the ground, drawn with the terrain right after the lawn. Its
             // picture depends on which neighbours are river too, so the tiles join up.
             val isRiver = { x: Int, y: Int -> grid.occupantAt(x, y)?.isTerrain == true }
             val autotile = terrain.riverAutotile
-            pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
+            submit(obj, RenderLayer.BASE_TERRAIN, 1f) {
                 if (autotile != null) {
                     val mask = RiverAutotile.maskAt(obj.gridX, obj.gridY, isRiver)
                     drawRiverTile(autotile, mask, waterTick, transform, obj.gridX, obj.gridY)
@@ -194,7 +246,7 @@ private fun submitObjects(
             // Paving and tilled soil: also ground. Whatever stands on the cell is a separate
             // object and is drawn later, in the object layer, so it always appears on top.
             val paving = terrain.cobblestone
-            pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
+            submit(obj, RenderLayer.BASE_TERRAIN, 1f) {
                 if (obj.isTilledSoil) {
                     drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted)
                 } else if (paving != null) {
@@ -227,9 +279,9 @@ private fun submitObjects(
         // A fence is drawn with its feet on the ground already; a round shadow under it only
         // looks like a stain.
         if (!isGroundCover && structure == null && !obj.isFence) {
-            pipeline.submit(RenderLayer.SHADOWS, depth) { drawShadow(obj, base, unit) }
+            submit(obj, RenderLayer.SHADOWS, depth) { drawShadow(obj, base, unit) }
         }
-        pipeline.submit(if (isGroundCover) RenderLayer.BOTTOM_OBJECTS else RenderLayer.GRID_OBJECTS, depth) {
+        submit(obj, if (isGroundCover) RenderLayer.BOTTOM_OBJECTS else RenderLayer.GRID_OBJECTS, depth) {
             if (sprite != null && atlasImage != null) {
                 drawSprite(atlasImage, sprite, base, spriteScale, flipped = obj.isFlipped)
             } else if (structure != null) {
@@ -239,8 +291,35 @@ private fun submitObjects(
             }
         }
         if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
-            pipeline.submit(RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit) }
+            submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit) }
         }
+    }
+}
+
+/** How long something that has been removed takes to disappear. */
+private const val VANISH_MILLIS = 380
+
+/** Something that is no longer in the garden but is still being shown on its way out. */
+private class Ghost(val gridObject: GridObject) {
+    val progress = Animatable(0f)
+}
+
+/**
+ * Draws [draw] as it disappears: it swells a little, lifts off the ground and fades, like a puff.
+ *
+ * @param pivot the point on the ground it stood on.
+ * @param progress 0 (still whole) to 1 (gone).
+ */
+private fun DrawScope.drawVanishing(pivot: Offset, progress: Float, tileHeight: Float, draw: DrawScope.() -> Unit) {
+    val alpha = (1f - progress).coerceIn(0f, 1f)
+    if (alpha <= 0f) return
+    val grow = 1f + 0.18f * progress
+    drawIntoCanvas { canvas ->
+        canvas.saveLayer(Rect(Offset.Zero, size), Paint().apply { this.alpha = alpha })
+        translate(top = -tileHeight * 0.35f * progress) {
+            scale(grow, grow, pivot) { draw() }
+        }
+        canvas.restore()
     }
 }
 

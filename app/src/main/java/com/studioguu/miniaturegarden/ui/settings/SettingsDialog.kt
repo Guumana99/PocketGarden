@@ -175,37 +175,31 @@ private fun VolumeControl(
     onVolumeChange: (Float) -> Unit,
     onVolumeChosen: () -> Unit = {},
 ) {
-    val percent = (volume * 100).roundToInt()
-    val defaultPercent = (defaultVolume * 100).roundToInt()
+    // Compared in whole steps of the slider, so a value a hair off the default still counts as it.
+    val atDefault = (volume * 100).roundToInt() == (defaultVolume * 100).roundToInt()
     val volumeDescription = stringResource(R.string.settings_volume_description, label)
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             Switch(checked = enabled, onCheckedChange = onEnabledChange)
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Slider(
-                value = volume,
-                onValueChange = onVolumeChange,
-                onValueChangeFinished = onVolumeChosen,
-                enabled = enabled,
-                modifier = Modifier.weight(1f).semantics { contentDescription = volumeDescription },
-            )
-            Text(
-                text = stringResource(R.string.label_percent, percent),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.width(48.dp),
-            )
-        }
+        // The slider speaks for itself: no number beside it.
+        Slider(
+            value = volume,
+            onValueChange = onVolumeChange,
+            onValueChangeFinished = onVolumeChosen,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = volumeDescription },
+        )
         TextButton(
             onClick = {
                 onVolumeChange(defaultVolume)
                 onVolumeChosen()
             },
-            enabled = percent != defaultPercent,
+            enabled = !atDefault,
             modifier = Modifier.align(Alignment.End),
         ) {
-            Text(stringResource(R.string.settings_reset_volume, defaultPercent))
+            Text(stringResource(R.string.settings_reset_volume))
         }
     }
 }

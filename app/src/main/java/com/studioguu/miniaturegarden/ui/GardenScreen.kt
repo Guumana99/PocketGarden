@@ -77,6 +77,7 @@ import com.studioguu.miniaturegarden.ui.effects.RainOverlay
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
+import com.studioguu.miniaturegarden.ui.hud.RemoveConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
 import com.studioguu.miniaturegarden.ui.settings.SettingsDialog
@@ -111,6 +112,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCollection by rememberSaveable { mutableStateOf(false) }
     var confirmRain by rememberSaveable { mutableStateOf(false) }
+    var confirmRemove by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -278,7 +280,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         gridObject = it,
                         onWater = viewModel::waterSelected,
                         onHarvest = viewModel::harvestSelected,
-                        onRemove = viewModel::removeSelected,
+                        onRemove = { confirmRemove = true },
                         onRevive = viewModel::reviveSelected,
                         onSwitchPart = viewModel::switchSelectedFencePart,
                         onDismiss = viewModel::clearSelection,
@@ -322,6 +324,24 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onDismiss = { confirmRain = false },
         )
     }
+    // Nothing leaves the garden on a single tap: the choice is made here first.
+    val removing = selectedObject
+    if (confirmRemove && removing != null) {
+        RemoveConfirmDialog(
+            gridObject = removing,
+            onStore = {
+                confirmRemove = false
+                viewModel.storeSelected()
+            },
+            onDiscard = {
+                confirmRemove = false
+                viewModel.removeSelected()
+            },
+            onDismiss = { confirmRemove = false },
+        )
+    }
+    // If the selection goes away under the dialog, the question goes with it.
+    LaunchedEffect(removing == null) { if (removing == null) confirmRemove = false }
     if (showCollection) {
         CollectionDialog(onDismiss = { showCollection = false })
     }

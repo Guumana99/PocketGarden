@@ -39,6 +39,9 @@ enum class ActionResult {
 
     /** Reviving was asked for a plant that has not withered. */
     NOT_WITHERED,
+
+    /** Something that is not an item (a growing plant, tilled soil) was to go back into the bag. */
+    NOT_RETURNABLE,
 }
 
 /**
@@ -300,6 +303,47 @@ class SwitchFencePartUseCase @Inject constructor(
         val part = FencePart.fromObjectId(stored.objectId) ?: return@runInTransaction ActionResult.NOT_FOUND
         gardenRepository.upsertGridObject(stored.copy(objectId = part.next().objectId))
         ActionResult.SUCCESS
+    }
+}
+
+/**
+ * Takes something off the garden and puts it back into the inventory as the item it was placed
+ * from, to be placed again later. It joins a stack of the same item if one has room, otherwise
+ * it takes the first empty slot; with no room for it, nothing happens.
+ *
+ * Plants cannot go back (a seed that has grown is not a seed any more) and neither can tilled
+ * soil, which was never an item. A fence goes back as a fence whichever part it was showing.
+ * Experience that was earned for placing the thing is taken back with it, so that picking a
+ * building up and putting it down again earns nothing.
+ */
+class StoreObjectUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+) {
+    suspend operator fun invoke(instanceId: String): ActionResult = gardenRepository.runInTransaction {
+        val target = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+            ?: return@runInTransaction ActionResult.NOT_FOUND
+        val item = itemFor(target) ?: return@runInTransaction ActionResult.NOT_RETURNABLE
+        val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
+
+        val slots = gardenRepository.getInventory().filter { it.slotIndex < profile.inventoryCapacity }
+        val slot = slots.firstOrNull { !it.isEmpty && it.itemId == item.itemId && it.amount < InventorySlot.MAX_STACK }
+            ?: slots.firstOrNull { it.isEmpty }
+            ?: return@runInTransaction ActionResult.INVENTORY_FULL
+
+        gardenRepository.deleteGridObject(instanceId)
+        val amount = if (slot.isEmpty) 1 else slot.amount + 1
+        gardenRepository.upsertInventorySlot(InventorySlot(slot.slotIndex, item.itemId, amount))
+        if (item.placeXp > 0) gardenRepository.saveUserProfile(profile.loseXp(item.placeXp))
+        ActionResult.SUCCESS
+    }
+
+    companion object {
+        /** The item [gridObject] goes back into the bag as, or null if it cannot go back. */
+        fun itemFor(gridObject: GridObject): GardenItem? {
+            if (gridObject.isPlant || gridObject.isTilledSoil) return null
+            val objectId = if (gridObject.isFence) GridObject.FENCE_OBJECT_ID else gridObject.objectId
+            return GardenItem.entries.firstOrNull { it.objectId == objectId }
+        }
     }
 }
 

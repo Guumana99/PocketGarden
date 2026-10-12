@@ -417,7 +417,7 @@ private fun Spread(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        text = stringResource(R.string.collection_reveal_button, entry.discoveryCoins),
+                        text = stringResource(R.string.collection_reveal_button),
                         color = Ink,
                         fontFamily = BookFont,
                         fontWeight = FontWeight.Bold,
