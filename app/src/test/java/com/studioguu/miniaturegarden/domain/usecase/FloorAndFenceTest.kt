@@ -201,35 +201,28 @@ class FloorAndFenceTest {
         assertEquals(100L, repo.profile?.coins) // the coins come when the pages are filled in
     }
 
-    // --- Fence parts ---
+    // --- Fences ---
 
     @Test
-    fun `a new fence is a section and switching goes round its parts`() = runBlocking {
-        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_FENCE.itemId, 1))
-        place(0, 3, 3, t0)
-        val fence = repo.objects.values.single()
-        assertEquals(FencePart.SECTION.objectId, fence.objectId)
-        val switch = SwitchFencePartUseCase(repo)
+    fun `a new fence is stored as a plain fence, whatever stands next to it`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_FENCE.itemId, 3))
 
-        val seen = (1..3).map {
-            assertEquals(ActionResult.SUCCESS, switch(fence.instanceId))
-            repo.objects.getValue(fence.instanceId).objectId
-        }
+        for (x in 3..5) assertEquals(ActionResult.SUCCESS, place(0, x, 3, t0))
 
-        assertEquals(listOf("struct_fence_rail", "struct_fence_post", "struct_fence"), seen)
-        // Nothing but the part changes: same cell, same object, no cost.
-        assertEquals(fence, repo.objects.getValue(fence.instanceId))
+        // How fences join is worked out when they are drawn; nothing about it is stored.
+        assertEquals(3, repo.objects.size)
+        assertTrue(repo.objects.values.all { it.objectId == FencePart.SECTION.objectId && !it.isFlipped })
         assertEquals(100L, repo.profile?.coins)
     }
 
     @Test
-    fun `only fences have parts to switch`() = runBlocking {
-        repo.put(GridObject(instanceId = "rock", gridX = 0, gridY = 0, objectId = "deco_rock", lastUpdatedTimestamp = t0))
-        val switch = SwitchFencePartUseCase(repo)
-
-        assertEquals(ActionResult.NOT_FOUND, switch("rock"))
-        assertEquals(ActionResult.NOT_FOUND, switch("nothing"))
-        assertEquals("deco_rock", repo.objects.getValue("rock").objectId)
+    fun `there is one fence item, and it is what every fence id belongs to`() {
+        val fenceItems = GardenItem.entries.filter { it.objectId.startsWith(GridObject.FENCE_OBJECT_ID) }
+        assertEquals(listOf(GardenItem.STRUCT_FENCE), fenceItems)
+        for (part in FencePart.entries) {
+            val stored = GridObject(instanceId = part.name, gridX = 0, gridY = 0, objectId = part.objectId, lastUpdatedTimestamp = t0)
+            assertEquals(part.name, GardenItem.STRUCT_FENCE, StoreObjectUseCase.itemFor(stored))
+        }
     }
 
     @Test

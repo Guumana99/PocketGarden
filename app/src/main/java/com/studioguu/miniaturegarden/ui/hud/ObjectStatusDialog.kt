@@ -43,7 +43,6 @@ fun ObjectStatusDialog(
     onHarvest: () -> Unit,
     onRemove: () -> Unit,
     onRevive: () -> Unit,
-    onSwitchPart: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -111,10 +110,6 @@ fun ObjectStatusDialog(
                     Button(onClick = onHarvest, enabled = alive && gridObject.growthProgress >= 1f) {
                         Text(stringResource(R.string.action_harvest, PlantSpecies.forObjectId(gridObject.objectId).harvestCoins))
                     }
-                }
-                if (gridObject.isFence) {
-                    // Section, rail or post: the player picks the piece that suits the spot.
-                    FilledTonalButton(onClick = onSwitchPart) { Text(stringResource(R.string.action_switch_part)) }
                 }
                 Spacer(Modifier.weight(1f))
                 OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }

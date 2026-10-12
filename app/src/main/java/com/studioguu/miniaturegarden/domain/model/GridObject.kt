@@ -32,7 +32,7 @@ data class GridObject(
      */
     val isComposted: Boolean get() = isTilledSoil && growthProgress > 0f
 
-    /** A fence, whichever of its parts. */
+    /** A fence, under whichever of its ids. Fences join up with the fences next to them. */
     val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
 
     /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
@@ -61,21 +61,20 @@ data class GridObject(
 }
 
 /**
- * The pieces a fence can be shown as. Every piece stands upright on its one cell, facing the
- * viewer; none of them looks at its neighbours or changes shape to join them. A newly placed
- * fence is a [SECTION], and the player can switch a standing fence to another piece.
+ * The object ids a fence can be stored under. A fence is placed as a [SECTION] and how it looks
+ * is worked out from the fences next to it, so the id says nothing about its shape. The other two
+ * ids date from when the player picked a piece by hand; gardens saved then still hold them, and
+ * they are fences like any other.
  */
 enum class FencePart(val objectId: String) {
-    /** Five pickets on one rail. */
+    /** What every new fence is stored as. Its sprite is the stand-alone section. */
     SECTION(GridObject.FENCE_OBJECT_ID),
 
-    /** Two posts joined by two rails. */
+    /** Stored by older versions only. Its sprite is not used any more. */
     RAIL("struct_fence_rail"),
 
-    /** A single post, for corners and ends. */
+    /** Stored by older versions only. Its sprite is the post that joined fences are built round. */
     POST("struct_fence_post");
-
-    fun next(): FencePart = entries[(ordinal + 1) % entries.size]
 
     companion object {
         fun fromObjectId(objectId: String): FencePart? = entries.firstOrNull { it.objectId == objectId }
