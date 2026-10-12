@@ -171,13 +171,18 @@ class RiverAndWeatherTest {
     }
 
     @Test
-    fun `rain does not help a plant that is already suffering`() {
+    fun `rain does not feed a hungry plant but keeps it from getting worse`() {
         val starving = tulip("p", 0, 0).copy(nutritionLevel = 0.1f)
 
+        val sunny = calc(starving, t0 + 10 * hour, WeatherType.SUNNY)
         val rainy = calc(starving, t0 + 10 * hour, WeatherType.RAINY)
 
+        // Still hungry, so still not growing ...
         assertEquals(0f, rainy.growthProgress, 0f)
-        assertFalse(rainy.stressRate == 0f)
+        assertTrue(rainy.nutritionLevel < 0.1f)
+        // ... but under the rain it moves no closer to withering, as it does in the sun.
+        assertEquals(0f, rainy.stressRate, 0f)
+        assertFalse(sunny.stressRate == 0f)
     }
 
     @Test

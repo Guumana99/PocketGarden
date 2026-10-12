@@ -1,18 +1,42 @@
 package com.studioguu.miniaturegarden.domain.model
 
 /**
+ * What the weather is at any given moment. Plants are brought up to date through one of these,
+ * so that time spent away is weighed with the weather each part of it actually had.
+ */
+fun interface WeatherForecast {
+    fun at(epochMillis: Long): WeatherType
+
+    /** The game's own weather: one kind per day, see [WeatherType.forTime]. */
+    object Daily : WeatherForecast {
+        override fun at(epochMillis: Long): WeatherType = WeatherType.forTime(epochMillis)
+    }
+}
+
+/**
+ * A kind of weather. It is also a forecast of itself: that weather, all the time.
+ *
  * @property moistureDrainMultiplier scales how fast soil dries out; 0 means it does not dry at all.
  * @property growthMultiplier scales how fast healthy plants grow.
  */
-enum class WeatherType(val moistureDrainMultiplier: Float, val growthMultiplier: Float) {
+enum class WeatherType(val moistureDrainMultiplier: Float, val growthMultiplier: Float) : WeatherForecast {
     SUNNY(moistureDrainMultiplier = 1.0f, growthMultiplier = 1.0f),
     CLOUDY(moistureDrainMultiplier = 0.7f, growthMultiplier = 1.0f),
 
-    /** A good day for the garden: the soil stays moist and everything grows a little faster. */
+    /**
+     * A good day for the garden: the rain waters every plant, nothing dries out or moves any
+     * closer to withering while it lasts, and everything grows a little faster.
+     */
     RAINY(moistureDrainMultiplier = 0.0f, growthMultiplier = 1.2f);
 
+    /** Whether this weather waters the plants and keeps them from withering. */
+    val isProtective: Boolean get() = this == RAINY
+
+    override fun at(epochMillis: Long): WeatherType = this
+
     companion object {
-        private const val DAY_MILLIS = 24L * 60 * 60 * 1000
+        /** The weather changes at multiples of this (midnight UTC). */
+        const val DAY_MILLIS = 24L * 60 * 60 * 1000
 
         /**
          * Weather for the (UTC) day containing [epochMillis]. Deterministic, so it is stable

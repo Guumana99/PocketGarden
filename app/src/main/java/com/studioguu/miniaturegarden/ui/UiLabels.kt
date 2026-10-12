@@ -92,4 +92,5 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.INVENTORY_FULL -> R.string.msg_inventory_full
     ActionResult.ITEM_LOCKED -> R.string.msg_item_locked
     ActionResult.NEEDS_TILLED_SOIL -> R.string.msg_needs_tilled_soil
+    ActionResult.NOT_WITHERED -> R.string.msg_not_withered
 }

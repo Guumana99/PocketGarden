@@ -2,7 +2,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
-import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import javax.inject.Inject
@@ -28,7 +28,7 @@ class GrantRewardUseCase @Inject constructor(
      * Blessed rain: every living plant is first brought up to [now], then loses half of the
      * growth it still has ahead of it. Fully grown and withered plants are left as they are.
      */
-    suspend fun blessedRain(now: Long, weather: WeatherType, today: Long): RewardResult {
+    suspend fun blessedRain(now: Long, weather: WeatherForecast, today: Long): RewardResult {
         if (!rewardLimits.tryConsume(RewardType.BLESSED_RAIN, today)) return RewardResult.LIMIT_REACHED
         gardenRepository.runInTransaction {
             val updated = gardenRepository.getGridObjects()
