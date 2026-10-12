@@ -18,10 +18,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
@@ -47,17 +49,25 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TileType
+import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.ui.render.Daylight
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.RiverAutotile
+import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TilePicker
+import com.studioguu.miniaturegarden.ui.render.Wind
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
 import com.studioguu.miniaturegarden.ui.render.drawRiverTile
 import com.studioguu.miniaturegarden.ui.render.drawSprite
+import com.studioguu.miniaturegarden.ui.render.drawSpriteShadow
+import com.studioguu.miniaturegarden.ui.render.drawSwayingSprite
+import java.time.LocalTime
+import kotlin.math.abs
 import kotlin.math.min
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
@@ -82,6 +92,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param atlas sprites to draw with; anything missing from it falls back to a placeholder shape.
  * @param terrain ground textures for river and paving; plain shapes are drawn without them.
  * @param gardenMap the terrain under the objects.
+ * @param weather decides how hard the wind blows and how strong the shadows are.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
  */
 @Composable
@@ -94,6 +105,7 @@ fun GardenCanvas(
     terrain: TerrainTextures = TerrainTextures.EMPTY,
     gardenMap: GardenMap = GardenMap.allGrass(),
     showGrid: Boolean = true,
+    weather: WeatherType = WeatherType.SUNNY,
 ) {
     val density = LocalDensity.current
     val metrics = remember(density) {
@@ -109,6 +121,21 @@ fun GardenCanvas(
     val waterTick by rememberWaterTick(running = gridObjects.any { it.isTerrain })
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
+    // The wind's clock. It is read while drawing only, so a new value redraws the garden without
+    // recomposing anything. A breeze is slow: a modest frame rate is plenty and saves battery.
+    val windMillis by produceState(0L) {
+        while (true) {
+            withFrameMillis { value = it }
+            delay(WIND_FRAME_MILLIS)
+        }
+    }
+    // The time of day, for the direction of the light; looked at again every minute.
+    val hourOfDay by produceState(currentHourOfDay()) {
+        while (true) {
+            delay(60_000)
+            value = currentHourOfDay()
+        }
+    }
 
     // Whatever was in the garden a moment ago and is not any more (removed, harvested, put back
     // into the bag) is kept as a ghost for a moment and drawn fading away, instead of blinking out.
@@ -153,9 +180,10 @@ fun GardenCanvas(
     ) {
         val transform = camera?.toTransform(metrics, size) ?: return@Canvas
         val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
+        val ambience = Ambience(Daylight.at(hourOfDay, weather), weather, windMillis)
 
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, gardenMap, framed = true) { tile, center ->
+            drawTerrain(transform, gardenMap, framed = true, ambience) { tile, center ->
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
                 sprite != null
@@ -175,14 +203,36 @@ fun GardenCanvas(
             }
             pipeline.submit(RenderLayer.HUD_OVERLAY) { drawTileOutline(transform, origin, spanX, spanY) }
         }
-        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick)
+        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience)
         for (ghost in ghosts) {
             submitObjects(
-                pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick,
+                pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
                 vanish = ghost.progress.value,
             )
         }
         pipeline.render(this)
+    }
+}
+
+/** How long the garden waits between two frames of wind. */
+private const val WIND_FRAME_MILLIS = 50L
+
+/** Local time as hours since midnight, minutes included as a fraction. */
+private fun currentHourOfDay(): Float = LocalTime.now().let { it.hour + it.minute / 60f }
+
+/**
+ * The light and the air a scene is drawn in.
+ *
+ * @property windMillis the wind's clock, or null for still air (the pictures in the encyclopedia).
+ */
+private class Ambience(val light: SunLight, val weather: WeatherType, val windMillis: Long?) {
+    /** How far something at this place in the grid leans right now, see [Wind.sway]. */
+    fun sway(gridX: Float, gridY: Float): Float =
+        if (windMillis == null) 0f else Wind.sway(windMillis, gridX, gridY, weather)
+
+    companion object {
+        /** A still, fine afternoon. */
+        val CALM = Ambience(Daylight.at(15f, WeatherType.SUNNY), WeatherType.SUNNY, windMillis = null)
     }
 }
 
@@ -213,6 +263,7 @@ private fun submitObjects(
     atlasImage: ImageBitmap?,
     terrain: TerrainTextures,
     waterTick: Int,
+    ambience: Ambience,
     vanish: Float? = null,
 ) {
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
@@ -276,18 +327,47 @@ private fun submitObjects(
         // Null while the atlas has no sprite for this object; the placeholder is drawn instead.
         val sprite = atlas[TileSetDefinition.assetIdFor(obj)]
 
-        // A fence is drawn with its feet on the ground already; a round shadow under it only
-        // looks like a stain.
-        if (!isGroundCover && structure == null && !obj.isFence) {
-            submit(obj, RenderLayer.SHADOWS, depth) { drawShadow(obj, base, unit) }
+        val light = ambience.light
+        val sway = ambience.sway(obj.gridX + 0.5f, obj.gridY + 0.5f)
+        // Two shadows tie a thing to the ground: a dark, tight one right under its foot, which
+        // is there in any light, and the one the sun throws, which turns with the time of day.
+        if (!isGroundCover) {
+            submit(obj, RenderLayer.SHADOWS, depth) {
+                if (sprite != null && atlasImage != null) {
+                    drawContactShadow(base, min(sprite.width * spriteScale * 0.62f, unit * 0.7f))
+                    drawSpriteShadow(atlasImage, sprite, base, spriteScale, light)
+                } else if (structure != null) {
+                    drawStructureShadow(transform, obj, structure, light)
+                } else {
+                    val scale = if (obj.isPlant) plantScale(obj) else 1f
+                    drawContactShadow(base, unit * 0.4f * scale)
+                    drawBlobShadow(base, unit * 0.36f * scale, unit * (if (obj.isPlant) 0.55f else 0.2f) * scale, light)
+                }
+            }
         }
         submit(obj, if (isGroundCover) RenderLayer.BOTTOM_OBJECTS else RenderLayer.GRID_OBJECTS, depth) {
             if (sprite != null && atlasImage != null) {
-                drawSprite(atlasImage, sprite, base, spriteScale, flipped = obj.isFlipped)
+                // Plants lean with the wind; a withered one is stiff and barely moves.
+                val lean = when {
+                    !obj.isPlant -> 0f
+                    obj.status == PlantStatus.WITHERED -> sway * PLANT_LEAN * 0.3f
+                    else -> sway * PLANT_LEAN
+                }
+                drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
             } else if (structure != null) {
                 drawStructure(transform, obj, structure)
             } else {
                 drawPlaceholder(obj, base, unit)
+            }
+            // What it stands in comes up around its foot: blades of grass on open ground, crumbs
+            // of earth on a bed. Paving is hard and shows nothing.
+            if (!isGroundCover && structure == null) {
+                val floor = grid.floorAt(obj.gridX, obj.gridY)
+                val reach = if (sprite != null) min(sprite.width * spriteScale * 0.3f, unit * 0.3f) else unit * 0.16f
+                when {
+                    floor == null -> drawGrassAtFoot(base, unit, reach, sway, seed = obj.gridX * 31 + obj.gridY * 17)
+                    floor.isTilledSoil -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
+                }
             }
         }
         if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
@@ -392,13 +472,13 @@ fun ObjectPreview(
         )
         val spriteScale = tileWidth / atlas.manifest.tileWidth
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, map, framed = false) { tile, center ->
+            drawTerrain(transform, map, framed = false, Ambience.CALM) { tile, center ->
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
                 sprite != null
             }
         }
-        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, waterTick)
+        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, waterTick, Ambience.CALM)
         pipeline.render(this)
     }
 }
@@ -410,6 +490,7 @@ fun ObjectPreview(
 private val GRASS_LIGHT = Color(0xFF9CBB6C)
 private val GRASS_DARK = Color(0xFF90B062)
 private val GRASS_TUFT = Color(0xFF739E4D)
+private val GRASS_BLADE_LIGHT = Color(0xFFA9C86F)
 private val EARTH_PATCH = Color(0xFFBF9F6C)
 private val PAVING_FALLBACK = Color(0xFFBDBDBD)
 private val SOIL_LEFT = Color(0xFF8D6E63)
@@ -439,6 +520,7 @@ private fun DrawScope.drawTerrain(
     transform: IsometricTransform,
     gardenMap: GardenMap,
     framed: Boolean,
+    ambience: Ambience,
     drawTileSprite: DrawScope.(tile: GroundTile, center: Offset) -> Boolean,
 ) {
     val gridSize = gardenMap.size
@@ -462,8 +544,8 @@ private fun DrawScope.drawTerrain(
         if (drawTileSprite(tile, transform.tileCenter(x, y))) continue
         when (tile) {
             GroundTile.WATER -> drawWaterTile(transform, x, y, phase = 0)
-            GroundTile.GRASS -> drawGroundTile(transform, x, y, GRASS_LIGHT)
-            else -> drawGroundTile(transform, x, y, GRASS_DARK)
+            GroundTile.GRASS -> drawGroundTile(transform, x, y, GRASS_LIGHT, ambience.sway(x + 0.5f, y + 0.5f))
+            else -> drawGroundTile(transform, x, y, GRASS_DARK, ambience.sway(x + 0.5f, y + 0.5f))
         }
     }
     if (framed) {
@@ -483,9 +565,10 @@ private fun DrawScope.drawTerrain(
 /**
  * One tile of open ground: grass in the given shade, with a worn patch or two of earth and a few
  * darker tufts. Where they fall depends only on the tile's position, so the ground looks the
- * same every time and does not shimmer as the camera moves.
+ * same every time and does not shimmer as the camera moves. The tips of the tufts move with
+ * the wind ([sway], see [Wind.sway]); their roots stay put.
  */
-private fun DrawScope.drawGroundTile(transform: IsometricTransform, x: Int, y: Int, grass: Color) {
+private fun DrawScope.drawGroundTile(transform: IsometricTransform, x: Int, y: Int, grass: Color, sway: Float) {
     drawPath(transform.tilePath(x, y), grass)
     val unit = transform.tileWidth
     var seed = x * 73856093 xor y * 19349663
@@ -504,9 +587,136 @@ private fun DrawScope.drawGroundTile(transform: IsometricTransform, x: Int, y: I
         val at = transform.worldToScreen(x + 0.15f + next() * 0.7f, y + 0.15f + next() * 0.7f)
         val blade = unit * 0.035f
         val stroke = unit * 0.012f
-        drawLine(GRASS_TUFT, at, at + Offset(-blade * 0.5f, -blade), stroke, StrokeCap.Round)
-        drawLine(GRASS_TUFT, at, at + Offset(blade * 0.5f, -blade * 0.8f), stroke, StrokeCap.Round)
+        val bend = blade * 0.55f * sway
+        drawLine(GRASS_TUFT, at, at + Offset(-blade * 0.5f + bend, -blade), stroke, StrokeCap.Round)
+        drawLine(GRASS_TUFT, at, at + Offset(blade * 0.5f + bend, -blade * 0.8f), stroke, StrokeCap.Round)
     }
+}
+
+/** How far the top of a plant moves in the wind, as a share of its height, at full sway. */
+private const val PLANT_LEAN = 0.05f
+
+/**
+ * Blades of grass in front of the foot of something standing on open ground, so that it stands
+ * in the grass and not on it.
+ *
+ * @param reach how far to either side of [base] the blades spread.
+ */
+private fun DrawScope.drawGrassAtFoot(base: Offset, unit: Float, reach: Float, sway: Float, seed: Int) {
+    var state = seed * 7919 + 13
+    fun next(): Float {
+        state = state * 1103515245 + 12345
+        return ((state ushr 16) and 0x7FFF) / 32767f
+    }
+    val stroke = unit * 0.014f
+    repeat(5) { i ->
+        val root = base + Offset((next() * 2f - 1f) * reach, unit * (0.012f + next() * 0.028f))
+        val blade = unit * (0.04f + next() * 0.035f)
+        val splay = (next() - 0.5f) * blade * 0.9f
+        val bend = blade * 0.5f * sway
+        drawLine(if (i % 2 == 0) GRASS_TUFT else GRASS_BLADE_LIGHT, root, root + Offset(splay + bend, -blade), stroke, StrokeCap.Round)
+    }
+}
+
+/** Crumbs of earth heaped against the foot of something standing in a tilled bed. */
+private fun DrawScope.drawEarthAtFoot(base: Offset, unit: Float, reach: Float, seed: Int) {
+    var state = seed * 7919 + 29
+    fun next(): Float {
+        state = state * 1103515245 + 12345
+        return ((state ushr 16) and 0x7FFF) / 32767f
+    }
+    repeat(6) { i ->
+        val at = base + Offset((next() * 2f - 1f) * reach, unit * (0.005f + next() * 0.03f))
+        drawCircle(if (i % 3 == 0) DIRT_RIDGE else DIRT_EDGE, unit * (0.012f + next() * 0.012f), at)
+    }
+}
+
+/**
+ * The dark patch right under something's foot: black in the middle, fading out, and flat on the
+ * ground. It is what makes a thing look as if it touches the ground at all.
+ *
+ * @param width how wide the patch is on screen.
+ */
+private fun DrawScope.drawContactShadow(base: Offset, width: Float) {
+    val radius = width / 2f
+    if (radius <= 0f) return
+    scale(scaleX = 1f, scaleY = 0.36f, pivot = base) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                0f to Color.Black.copy(alpha = 0.34f),
+                0.55f to Color.Black.copy(alpha = 0.2f),
+                1f to Color.Transparent,
+                center = base,
+                radius = radius,
+            ),
+            radius = radius,
+            center = base,
+        )
+    }
+}
+
+/**
+ * The shadow of something round that has no sprite to take an outline from: an oval that
+ * stretches away from the light.
+ *
+ * @param width of the thing on the ground, [height] how far it stands up; both on screen.
+ */
+private fun DrawScope.drawBlobShadow(base: Offset, width: Float, height: Float, light: SunLight) {
+    if (light.alpha <= 0f) return
+    val reach = Offset(light.dx * height, light.dy * height)
+    val size = Size(width + abs(reach.x), width * 0.42f + abs(reach.y))
+    val center = base + reach / 2f
+    drawOval(Color.Black.copy(alpha = light.alpha), center - Offset(size.width / 2f, size.height / 2f), size)
+}
+
+/**
+ * The shadow of a building: its footprint, and the same footprint pushed away from the light as
+ * far as the building is tall, with everything in between.
+ */
+private fun DrawScope.drawStructureShadow(
+    transform: IsometricTransform,
+    obj: GridObject,
+    structure: StructureData,
+    light: SunLight,
+) {
+    if (light.alpha <= 0f) return
+    val x0 = obj.gridX + STRUCTURE_INSET
+    val y0 = obj.gridY + STRUCTURE_INSET
+    val x1 = obj.gridX + structure.footprint.width - STRUCTURE_INSET
+    val y1 = obj.gridY + structure.footprint.height - STRUCTURE_INSET
+    val ground = obj.heightLevel.toFloat()
+    // Height in steps, as in drawStructure; the hut's roof counts for half, as it tapers.
+    val height = (if (structure == StructureData.HUT) 5.5f else 1.8f) * transform.heightStep
+    val reach = Offset(light.dx * height, light.dy * height)
+    val foot = listOf(
+        transform.worldToScreen(x0, y0, ground),
+        transform.worldToScreen(x1, y0, ground),
+        transform.worldToScreen(x1, y1, ground),
+        transform.worldToScreen(x0, y1, ground),
+    )
+    val outline = convexHull(foot + foot.map { it + reach })
+    val path = Path().apply {
+        outline.forEachIndexed { i, point -> if (i == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y) }
+        close()
+    }
+    drawPath(path, Color.Black.copy(alpha = light.alpha))
+}
+
+/** The smallest convex outline round [points], in order (Andrew's monotone chain). */
+internal fun convexHull(points: List<Offset>): List<Offset> {
+    val sorted = points.distinct().sortedWith(compareBy({ it.x }, { it.y }))
+    if (sorted.size < 3) return sorted
+    fun cross(o: Offset, a: Offset, b: Offset) = (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+    fun half(input: List<Offset>): MutableList<Offset> {
+        val chain = mutableListOf<Offset>()
+        for (point in input) {
+            while (chain.size >= 2 && cross(chain[chain.size - 2], chain.last(), point) <= 0f) chain.removeAt(chain.size - 1)
+            chain += point
+        }
+        chain.removeAt(chain.size - 1)
+        return chain
+    }
+    return half(sorted) + half(sorted.reversed())
 }
 
 // Tilled soil.
@@ -554,6 +764,32 @@ private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: I
         val behind = Offset(0f, -stroke)
         drawLine(DIRT_EDGE, from + behind, to + behind, stroke, StrokeCap.Round)
         drawLine(DIRT_RIDGE, from, to, stroke, StrokeCap.Round)
+    }
+    // The edge of a bed is not ruled with a pen: clods lie on it and the grass grows over it.
+    var edge = x * 19349663 xor y * 83492791
+    fun nextEdge(): Float {
+        edge = edge * 1103515245 + 12345
+        return ((edge ushr 16) and 0x7FFF) / 32767f
+    }
+    val unit = transform.tileWidth
+    repeat(10) { i ->
+        // A point somewhere along one of the four sides, a little to either side of the line.
+        val along = 0.08f + nextEdge() * 0.84f
+        val off = (nextEdge() - 0.5f) * 0.07f
+        val (wx, wy) = when (i % 4) {
+            0 -> (x0 + along * (x1 - x0)) to (y0 + off)
+            1 -> (x1 + off) to (y0 + along * (y1 - y0))
+            2 -> (x0 + along * (x1 - x0)) to (y1 + off)
+            else -> (x0 + off) to (y0 + along * (y1 - y0))
+        }
+        val at = transform.worldToScreen(wx, wy)
+        if (i < 6) {
+            drawCircle(if (i % 2 == 0) DIRT_DARK else DIRT_RIDGE, unit * (0.014f + nextEdge() * 0.012f), at)
+        } else {
+            val blade = unit * 0.04f
+            drawLine(GRASS_TUFT, at, at + Offset(-blade * 0.4f, -blade), unit * 0.012f, StrokeCap.Round)
+            drawLine(GRASS_BLADE_LIGHT, at, at + Offset(blade * 0.45f, -blade * 0.8f), unit * 0.012f, StrokeCap.Round)
+        }
     }
     if (composted) {
         // Bits of leaf and straw worked into the bed.
@@ -704,7 +940,6 @@ private fun quad(a: Offset, b: Offset, c: Offset, d: Offset) = Path().apply {
 // Procedural stand-ins until real artwork exists. Everything is sized relative to the on-screen
 // tile width so it follows the zoom.
 
-private const val SHADOW_ALPHA = 0.3f
 private val STEM_GREEN = Color(0xFF388E3C)
 private val LEAF_GREEN = Color(0xFF66BB6A)
 private val WITHERED_BROWN = Color(0xFF8D6E63)
@@ -714,18 +949,6 @@ private val BLOOM_COLORS = listOf(
 
 /** Seedlings start at 35% of full size so a freshly planted tile is not empty. */
 private fun plantScale(obj: GridObject): Float = 0.35f + 0.65f * obj.growthProgress.coerceIn(0f, 1f)
-
-private fun DrawScope.drawShadow(obj: GridObject, base: Offset, unit: Float) {
-    val size = if (obj.isPlant) plantScale(obj) else 1f
-    val width = unit * 0.42f * size
-    val height = width / 2f
-    val center = base + Offset(unit * 0.05f, unit * 0.025f)
-    drawOval(
-        color = Color.Black.copy(alpha = SHADOW_ALPHA),
-        topLeft = center - Offset(width / 2f, height / 2f),
-        size = Size(width, height),
-    )
-}
 
 private fun DrawScope.drawGroundCover(obj: GridObject, base: Offset, unit: Float) {
     val color = if (obj.objectId.contains("grass")) Color(0xFF558B2F) else Color(0xFFBDBDBD)

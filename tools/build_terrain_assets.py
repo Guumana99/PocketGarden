@@ -82,73 +82,119 @@ def opaque_bbox(image: Image.Image):
     return image.getchannel("A").point(lambda a: 255 if a > 32 else 0).getbbox()
 
 
-# Colours taken from tile_river_atlas.png.
-WATER = (150, 205, 240, 255)
-WATER_DEEP = (96, 160, 214, 255)
-BANK = (132, 92, 70, 255)
-RIPPLE = (236, 248, 255, 255)
+# Water colours start from those of tile_river_atlas.png and are spread into a range of depths.
+WATER_SHALLOW = (186, 228, 246)   # at the bank, where the bed shows through
+WATER = (138, 200, 238)
+WATER_DEEP = (84, 150, 208)       # mid-stream
+FOAM = (244, 251, 255)
+BANK_WET = (104, 78, 58)          # mud at the waterline
+BANK_DRY = (158, 122, 86)         # earth further out
+BANK_LIP = (92, 112, 62)          # where the turf starts
+PEBBLE = (206, 196, 176)
+GLINT = (255, 255, 255)
 
 SUPERSAMPLE = 4       # drawn this many times larger, then scaled down, for smooth edges
 CHANNEL = 0.29        # half-width of the water, as a fraction of the tile
-BANK_WIDTH = 0.06
+BANK_WIDTH = 0.07
 POND = 0.35           # radius of a tile with no river neighbours
-FRAMES = 4            # animation frames; ripples travel one full step over the loop
+FRAMES = 4            # animation frames; the waves travel one full step over the loop
 
 
-def _channel(draw: ImageDraw.ImageDraw, mask: int, half: float, colour) -> None:
-    """A round pool in the middle plus an arm of the same width to every connected edge."""
-    n = CELL * SUPERSAMPLE
-    c = n / 2
-    r = (POND - CHANNEL + half if mask == 0 else half) * n
-    draw.ellipse((c - r, c - r, c + r, c + r), fill=colour)
-    h = half * n
-    if mask & NORTH:
-        draw.rectangle((c - h, 0, c + h, c), fill=colour)
-    if mask & SOUTH:
-        draw.rectangle((c - h, c, c + h, n), fill=colour)
-    if mask & WEST:
-        draw.rectangle((0, c - h, c, c + h), fill=colour)
-    if mask & EAST:
-        draw.rectangle((c, c - h, n, c + h), fill=colour)
+def _lerp(a, b, t):
+    """Blend colour a into colour b by t (an array of 0..1), giving an (h, w, 3) array."""
+    t = np.clip(t, 0.0, 1.0)[..., None]
+    return np.asarray(a, dtype=np.float64) * (1.0 - t) + np.asarray(b, dtype=np.float64) * t
+
+
+def _smooth(t):
+    t = np.clip(t, 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
 
 
 def river_cell(mask: int, frame: int = 0) -> Image.Image:
+    """
+    One river tile. Everything is worked out from two numbers per pixel: `u`, how far the pixel is
+    from the middle of the stream (a pool in the centre of the tile plus an arm to every edge with
+    a river neighbour), and `s`, how far it is from the centre of the tile.
+
+    `u` decides what the pixel is: deep water, shallows, the foam at the waterline, wet mud, dry
+    earth, turf. None of that depends on the frame, so the outline of the water never moves.
+    `s` carries the animation: bands of light travel along it, and it has the same value on both
+    sides of a tile's edge, which is what makes neighbouring tiles of any shape line up.
+    """
     n = CELL * SUPERSAMPLE
-    cell = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(cell)
-    _channel(draw, mask, CHANNEL + BANK_WIDTH, BANK)
-    _channel(draw, mask, CHANNEL, WATER_DEEP)
-    _channel(draw, mask, CHANNEL - 0.045, WATER)
+    axis = (np.arange(n) + 0.5) / n
+    x, y = np.meshgrid(axis, axis)
+    dx, dy = x - 0.5, y - 0.5
+    s = np.hypot(dx, dy)
 
-    # Ripples. Along each arm two of them, half an arm apart, drift from the edge towards the
-    # pool and wrap round, so the last frame leads back into the first; the two in the pool sway
-    # from side to side. Every arm moves the same way relative to its edge, which is what lets
-    # neighbouring tiles of any shape line up.
-    c, w = n / 2, max(2, n // 48)
+    # Distance to the stream's middle line: the centre point, and a half-line per arm.
+    u = s.copy()
+    if mask & NORTH:
+        u = np.minimum(u, np.where(dy < 0, np.abs(dx), s))
+    if mask & SOUTH:
+        u = np.minimum(u, np.where(dy > 0, np.abs(dx), s))
+    if mask & WEST:
+        u = np.minimum(u, np.where(dx < 0, np.abs(dy), s))
+    if mask & EAST:
+        u = np.minimum(u, np.where(dx > 0, np.abs(dy), s))
+    if mask == 0:
+        u = u - (POND - CHANNEL)  # a pond is wider than a stream
+
     t = frame / FRAMES
+    two_pi = 2.0 * np.pi
 
-    def ripple(x: float, y: float, length: float, vertical: bool) -> None:
-        x, y, half = x * n, y * n, length * n / 2
-        end = (x, y + half) if vertical else (x + half, y)
-        start = (x, y - half) if vertical else (x - half, y)
-        draw.line((start, end), fill=RIPPLE, width=w)
+    # --- Water: shallow and pale at the bank, deep and blue mid-stream -----------------------
+    depth = _smooth(1.0 - u / CHANNEL)
+    water = np.where((depth < 0.5)[..., None],
+                     _lerp(WATER_SHALLOW, WATER, depth * 2.0),
+                     _lerp(WATER, WATER_DEEP, depth * 2.0 - 1.0))
+    # The bank's shadow on the water just inside the waterline.
+    shade = _smooth((u - (CHANNEL - 0.075)) / 0.05) * (u < CHANNEL - 0.02)
+    water = water * (1.0 - 0.16 * shade[..., None])
 
-    sway = 0.03 * (1 if frame % 2 == 0 else -1) * (1 if frame < 2 else 0.4)
-    ripple(0.44 + sway, 0.46, 0.12, False)
-    ripple(0.57 - sway, 0.56, 0.10, False)
-    arm = 0.36  # how far in from the edge a ripple travels
-    for k in (0, 1):
-        d = ((t + k / 2) % 1.0) * arm + 0.05
-        side = 0.06 if k == 0 else -0.06
-        if mask & NORTH:
-            ripple(0.5 + side, d, 0.10, True)
-        if mask & SOUTH:
-            ripple(0.5 - side, 1 - d, 0.10, True)
-        if mask & WEST:
-            ripple(d, 0.5 - side, 0.10, False)
-        if mask & EAST:
-            ripple(1 - d, 0.5 + side, 0.10, False)
-    return cell.resize((CELL, CELL), Image.LANCZOS)
+    # Bands of light travelling along the stream, broken up across it so they read as waves and
+    # not as stripes. Whole periods fit into the loop, so frame FRAMES is frame 0 again.
+    across = np.sin(two_pi * (dx * 4.0 + dy * 3.0)) * 0.5 + np.sin(two_pi * (dx * 2.0 - dy * 5.0)) * 0.5
+    wave = np.sin(two_pi * (s / 0.2 - t) + across * 1.0)
+    crest = _smooth((wave - 0.72) / 0.28) * _smooth(depth * 1.6)
+    water = water + (np.asarray(FOAM) - water) * (0.6 * crest[..., None])
+    trough = _smooth((-wave - 0.6) / 0.4) * depth
+    water = water * (1.0 - 0.07 * trough[..., None])
+
+    # Glints: small hard sparkles on some crests, in different places in each frame.
+    sparkle = np.sin(two_pi * (x * 11.0 + frame * 0.37)) * np.sin(two_pi * (y * 13.0 - frame * 0.29))
+    glint = (sparkle > 0.8) & (crest > 0.3)
+    water = np.where(glint[..., None], np.asarray(GLINT, dtype=np.float64), water)
+
+    # Foam lapping at the waterline: a thin pale line that thickens and thins along the bank
+    # and breathes with the frames.
+    lap = 0.5 + 0.5 * np.sin(two_pi * (x * 4.0 + y * 6.0) + two_pi * t)
+    foam_width = 0.010 + 0.014 * lap
+    foam = _smooth((u - (CHANNEL - foam_width)) / foam_width)
+    water = water + (np.asarray(FOAM) - water) * (0.78 * foam[..., None])
+
+    # --- Bank: wet mud at the water, drying earth, then the lip of the turf -------------------
+    across_bank = (u - CHANNEL) / BANK_WIDTH
+    bank = _lerp(BANK_WET, BANK_DRY, _smooth(across_bank / 0.75))
+    lip = _smooth((across_bank - 0.72) / 0.2)
+    bank = bank + (np.asarray(BANK_LIP) - bank) * lip[..., None]
+    # A scatter of pebbles on the earth, the same in every frame.
+    scatter = (np.sin(two_pi * x * 17.0 + 1.3 * np.sin(two_pi * y * 9.0)) *
+               np.sin(two_pi * y * 19.0 + 1.7 * np.sin(two_pi * x * 7.0)))
+    pebbles = (scatter > 0.93) & (across_bank > 0.15) & (across_bank < 0.7)
+    bank = np.where(pebbles[..., None], np.asarray(PEBBLE, dtype=np.float64), bank)
+
+    is_water = u < CHANNEL
+    inside = u < CHANNEL + BANK_WIDTH
+    rgb = np.where(is_water[..., None], water, bank)
+    # Outside the bank the pixels are see-through; they still carry the turf colour, so that
+    # scaling down does not pull a dark fringe in from them.
+    rgb = np.where(inside[..., None], rgb, np.asarray(BANK_LIP, dtype=np.float64))
+    alpha = np.where(inside, 255.0, 0.0)
+
+    rgba = np.dstack([np.clip(rgb, 0, 255), alpha]).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA").resize((CELL, CELL), Image.LANCZOS)
 
 
 def build_river_atlas() -> None:
