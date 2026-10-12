@@ -36,6 +36,7 @@ import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SkipTimeUseCase
+import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SwitchFencePartUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
@@ -73,6 +74,7 @@ class GardenViewModel @Inject constructor(
     private val skipTime: SkipTimeUseCase,
     private val switchFencePart: SwitchFencePartUseCase,
     private val hoe: HoeUseCase,
+    private val storeObject: StoreObjectUseCase,
     private val audio: AudioManager,
     val gardenMap: GardenMap,
     private val grantReward: GrantRewardUseCase,
@@ -333,6 +335,17 @@ class GardenViewModel @Inject constructor(
                 if (composts) _messages.trySend(R.string.msg_composted)
             }
         ) { _, _ -> removeObject(obj.instanceId) }
+    }
+
+    /** Takes the selected object off the garden and puts it back into the inventory. */
+    fun storeSelected() = withSelectedObject { obj ->
+        act(
+            onSuccess = {
+                clearSelection()
+                audio.play(SoundEffect.PLANT)
+                _messages.trySend(R.string.msg_stored)
+            }
+        ) { _, _ -> storeObject(obj.instanceId) }
     }
 
     /** Pays to bring the selected withered plant back. */

@@ -55,6 +55,16 @@
     <string name="object_struct_fence_rail">ウッドフェンス（横木）</string>
     <string name="object_struct_fence_post">ウッドフェンス（支柱）</string>
     <string name="action_switch_part">パーツ切替</string>
+    <string name="remove_title">%1$s を撤去</string>
+    <string name="remove_text_returnable">持ち物に戻すと、あとでまた置けます。破棄すると元に戻せません。</string>
+    <string name="remove_text_plant">育てている作物は持ち物に戻せません。破棄すると元に戻せません。</string>
+    <string name="remove_text_withered">枯れた作物を破棄すると、たい肥になって土に残ります。</string>
+    <string name="remove_text_soil">耕した土を草地に戻します。</string>
+    <string name="remove_store">🎒 持ち物に戻す</string>
+    <string name="remove_discard">破棄する</string>
+    <string name="remove_soil">草地に戻す</string>
+    <string name="msg_stored">持ち物に戻しました</string>
+    <string name="msg_not_returnable">これは持ち物に戻せません</string>
     <string name="item_seed_tulip">チューリップの種</string>
     <string name="item_seed_sunflower">ひまわりの種</string>
     <string name="item_seed_rose">バラの苗</string>
@@ -106,7 +116,7 @@
     <string name="collection_tab_terrain">ちけい・みち</string>
     <string name="collection_tab_structures">たてもの・さく</string>
     <string name="collection_ready_hint">じょうけん たっせい！\nボタンを おして　ずかんに とうろく しよう。</string>
-    <string name="collection_reveal_button">✨ とうろく する　+%1$d 🪙</string>
+    <string name="collection_reveal_button">✨ とうろく する</string>
     <string name="collection_revealed_coins">とうろく かんりょう！　+%1$d 🪙</string>
     <string name="collection_daily_reward">きょうの ずかん ボーナス　+%1$d 🪙</string>
     <string name="collection_page">%1$d / %2$d</string>
@@ -137,8 +147,8 @@
 
     <!-- Rewards. By request, none of these texts uses the word 動画. -->
     <string name="action_cancel">キャンセル</string>
-    <string name="reward_rain_button">☔ 恵みの雨を降らせる（本日あと %1$d/%2$d回）</string>
-    <string name="reward_rain_confirm" formatted="false">恵みの雨を降らせますか？\n（すべての作物の成長時間を50%短縮します）</string>
+    <string name="reward_rain_button">☔ 慈雨を降らせる（本日あと %1$d/%2$d回）</string>
+    <string name="reward_rain_confirm" formatted="false">慈雨（じう）を降らせますか？\n（すべての作物の成長時間を50%短縮します）</string>
     <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
     <string name="reward_bonus_button">💰 臨時ボーナスを受け取る +%1$dG（本日あと %2$d/%3$d回）</string>
     <string name="reward_bonus_short">💰 臨時ボーナス +%1$dG</string>
@@ -148,7 +158,7 @@
     <string name="msg_reward_cancelled">途中で終了したため、特典は付与されませんでした</string>
     <string name="msg_reward_unavailable">ただいま準備中です。少し待ってからお試しください</string>
     <string name="msg_reward_limit">本日の回数上限に達しました</string>
-    <string name="msg_blessed_rain_done">☔ 恵みの雨が降りました！ 作物の成長時間が半分になりました</string>
+    <string name="msg_blessed_rain_done">☔ 慈雨が降りました。作物の成長時間が半分になりました</string>
     <string name="msg_bonus_done">💰 臨時ボーナス +%1$dG を受け取りました</string>
     <string name="msg_no_growing_plants">育てている途中の作物がありません</string>
 
@@ -157,7 +167,7 @@
     <string name="settings_tab_sound">音量</string>
     <string name="settings_tab_about">情報</string>
     <string name="settings_tab_other">その他</string>
-    <string name="settings_reset_volume">初期値（%1$d%%）に戻す</string>
+    <string name="settings_reset_volume">初期値に戻す</string>
     <string name="settings_bgm">BGM</string>
     <string name="settings_se">効果音</string>
     <string name="settings_volume_description">%1$s の音量</string>

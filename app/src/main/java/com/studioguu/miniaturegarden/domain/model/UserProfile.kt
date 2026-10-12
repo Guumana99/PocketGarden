@@ -21,6 +21,12 @@ data class UserProfile(
         return copy(currentXp = xp, playerLevel = maxOf(playerLevel, LevelTable.levelForXp(xp)))
     }
 
+    /**
+     * Takes experience back, down to none at most. The level stays: a level is never taken away,
+     * and it rises again only once the experience has been earned back.
+     */
+    fun loseXp(amount: Int): UserProfile = copy(currentXp = (currentXp - amount).coerceAtLeast(0L))
+
     companion object {
         const val DEFAULT_INVENTORY_CAPACITY = 16
 
