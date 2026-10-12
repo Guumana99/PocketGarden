@@ -20,7 +20,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         InventorySlotEntity::class,
         CollectionEntryEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -58,6 +58,15 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE collection_entries ADD COLUMN revealed INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("UPDATE collection_entries SET revealed = 1")
+            }
+        }
+
+        /** v5: building and taking apart take time. Everything that exists already is finished. */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN workKind TEXT NOT NULL DEFAULT 'NONE'")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN workStartedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN workEndsAt INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

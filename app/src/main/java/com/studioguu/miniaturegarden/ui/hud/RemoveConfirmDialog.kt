@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
@@ -34,7 +35,10 @@ fun RemoveConfirmDialog(
     onDiscard: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val returnable = StoreObjectUseCase.itemFor(gridObject) != null
+    val item = StoreObjectUseCase.itemFor(gridObject)
+    val returnable = item != null
+    // A finished building has to be taken apart first; one still going up is just called off.
+    val seconds = if (gridObject.isWorking) 0 else item?.demolishSeconds ?: 0
     val explanation = when {
         returnable -> R.string.remove_text_returnable
         gridObject.isTilledSoil -> R.string.remove_text_soil
@@ -45,7 +49,16 @@ fun RemoveConfirmDialog(
         modifier = Modifier.popIn(),
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.remove_title, objectDisplayName(gridObject.objectId))) },
-        text = { Text(stringResource(explanation)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(stringResource(explanation))
+                if (seconds > 0) {
+                    Text(stringResource(R.string.remove_text_takes_time, durationText(seconds)))
+                } else if (gridObject.workKind == WorkKind.BUILDING) {
+                    Text(stringResource(R.string.remove_text_cancel_build))
+                }
+            }
+        },
         // The choices are stacked: the safe one on top, the way out at the bottom.
         confirmButton = {
             Column(

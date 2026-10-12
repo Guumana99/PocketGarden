@@ -25,17 +25,21 @@ import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
+import com.studioguu.miniaturegarden.domain.usecase.CompleteWorkUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HoeUseCase
+import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SkipTimeUseCase
+import com.studioguu.miniaturegarden.domain.usecase.StartRemovalUseCase
 import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
@@ -52,6 +56,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -69,10 +74,11 @@ class GardenViewModel @Inject constructor(
     private val careForPlant: CareForPlantUseCase,
     private val placeItem: PlaceItemUseCase,
     private val harvestPlant: HarvestPlantUseCase,
-    private val removeObject: RemoveObjectUseCase,
+    private val startRemoval: StartRemovalUseCase,
+    private val completeWork: CompleteWorkUseCase,
+    private val moveObject: MoveObjectUseCase,
     private val skipTime: SkipTimeUseCase,
     private val hoe: HoeUseCase,
-    private val storeObject: StoreObjectUseCase,
     private val audio: AudioManager,
     val gardenMap: GardenMap,
     private val grantReward: GrantRewardUseCase,
@@ -176,6 +182,13 @@ class GardenViewModel @Inject constructor(
     /** True while the hoe is the tool in hand: a tap on a tile then tills it. */
     val hoeActive: StateFlow<Boolean> = _hoeActive.asStateFlow()
 
+    private val _movingId = MutableStateFlow<String?>(null)
+
+    /** Non-null in move mode: the object that the next tap on a tile moves there. */
+    val movingObject: StateFlow<GridObject?> = combine(gridObjects, _movingId) { objects, id ->
+        objects.firstOrNull { it.instanceId == id }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     /** Empty until the atlas has loaded, and for good when no artwork is bundled. */
     private val _atlas = MutableStateFlow(SpriteAtlas.EMPTY)
     val atlas: StateFlow<SpriteAtlas> = _atlas.asStateFlow()
@@ -207,6 +220,7 @@ class GardenViewModel @Inject constructor(
         audio.preload()
         watchForLevelUps()
         watchCollection()
+        watchWork()
     }
 
     /** The garden came to the foreground: start (or continue) its music. */
@@ -233,9 +247,30 @@ class GardenViewModel @Inject constructor(
     fun sync() {
         viewModelScope.launch {
             initJob.join()
-            actionMutex.withLock {
+            val finished = actionMutex.withLock {
                 val now = System.currentTimeMillis()
-                syncGarden(now, currentWeather(now))
+                // Jobs are only finished on time that can be trusted; otherwise the sync has
+                // just restarted them.
+                if (syncGarden(now, currentWeather(now)).isTrusted) completeWork(now) else emptyList()
+            }
+            if (finished.isNotEmpty()) {
+                audio.play(if (finished.any { it.kind == WorkKind.BUILDING }) SoundEffect.LEVEL_UP else SoundEffect.PLANT)
+                finished.forEach { done -> showEffect { GardenEffect.WorkDone(it, done.objectId, done.kind) } }
+            }
+        }
+    }
+
+    /**
+     * Wakes up when the next building or demolition job is due and syncs, which finishes it.
+     * Nothing is polled: whenever the garden changes, the wait is set again for the job that
+     * will be done soonest, and with no jobs there is nothing to wait for.
+     */
+    private fun watchWork() {
+        viewModelScope.launch {
+            gridObjects.collectLatest { objects ->
+                val nextDue = objects.filter { it.isWorking }.minOfOrNull { it.workEndsAt } ?: return@collectLatest
+                delay((nextDue - System.currentTimeMillis()).coerceAtLeast(0L) + WORK_GRACE_MILLIS)
+                sync()
             }
         }
     }
@@ -247,18 +282,32 @@ class GardenViewModel @Inject constructor(
      */
     fun onTileTapped(tile: TileCoord?) {
         val slotIndex = _placingSlotIndex.value
-        if (_hoeActive.value) {
+        val movingId = _movingId.value
+        if (movingId != null) {
+            if (tile != null) {
+                act(
+                    onSuccess = {
+                        _movingId.value = null
+                        _selectedTile.value = tile
+                        audio.play(SoundEffect.PLANT)
+                        _messages.trySend(R.string.msg_moved)
+                    }
+                ) { _, _ -> moveObject(movingId, tile.x, tile.y) }
+            }
+        } else if (_hoeActive.value) {
             if (tile != null) {
                 act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ -> hoe(tile.x, tile.y, now) }
             }
         } else if (slotIndex == null) {
             _selectedTile.value = tile.takeIf { it != _selectedTile.value }
         } else if (tile != null) {
-            val placeXp = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }?.placeXp ?: 0
+            val item = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }
+            val placeXp = item?.placeXp ?: 0
             act(
                 onSuccess = {
                     audio.play(SoundEffect.PLANT)
                     if (placeXp > 0) showEffect { GardenEffect.Xp(it, placeXp) }
+                    if ((item?.buildSeconds ?: 0) > 0) _messages.trySend(R.string.work_started_building)
                 }
             ) { now, _ ->
                 placeItem(slotIndex, tile.x, tile.y, now).also {
@@ -276,12 +325,32 @@ class GardenViewModel @Inject constructor(
         if (active) {
             _selectedTile.value = null
             _placingSlotIndex.value = null
+            _movingId.value = null
         }
         _hoeActive.value = active
     }
 
+    /** Enters move mode for the selected object: the next tap on a tile moves it there. */
+    fun startMovingSelected() = withSelectedObject { obj ->
+        when {
+            !MoveObjectUseCase.canMove(obj) -> _messages.trySend(R.string.msg_not_movable)
+            obj.isWorking -> _messages.trySend(R.string.msg_busy)
+            else -> {
+                _hoeActive.value = false
+                _placingSlotIndex.value = null
+                _selectedTile.value = null
+                _movingId.value = obj.instanceId
+            }
+        }
+    }
+
+    fun cancelMoving() {
+        _movingId.value = null
+    }
+
     fun startPlacing(slotIndex: Int) {
         _hoeActive.value = false
+        _movingId.value = null
         _selectedTile.value = null
         _placingSlotIndex.value = slotIndex
     }
@@ -327,23 +396,30 @@ class GardenViewModel @Inject constructor(
         // A withered plant standing on tilled soil is dug in as compost; say so.
         val composts = RemoveObjectUseCase.leavesCompost(obj) &&
             GardenGrid(gardenMap, gridObjects.value).isTilled(obj.gridX, obj.gridY)
+        val takesTime = takesTimeToRemove(obj)
         act(
             onSuccess = {
                 clearSelection()
                 if (composts) _messages.trySend(R.string.msg_composted)
+                if (takesTime) _messages.trySend(R.string.work_started_demolition)
             }
-        ) { _, _ -> removeObject(obj.instanceId) }
+        ) { now, _ -> startRemoval(obj.instanceId, toBag = false, now) }
     }
+
+    /** Whether removing [obj] starts a job instead of happening at once. */
+    private fun takesTimeToRemove(obj: GridObject): Boolean =
+        !obj.isWorking && (StoreObjectUseCase.itemFor(obj)?.demolishSeconds ?: 0) > 0
 
     /** Takes the selected object off the garden and puts it back into the inventory. */
     fun storeSelected() = withSelectedObject { obj ->
+        val takesTime = takesTimeToRemove(obj)
         act(
             onSuccess = {
                 clearSelection()
                 audio.play(SoundEffect.PLANT)
-                _messages.trySend(R.string.msg_stored)
+                _messages.trySend(if (takesTime) R.string.work_started_demolition else R.string.msg_stored)
             }
-        ) { _, _ -> storeObject(obj.instanceId) }
+        ) { now, _ -> startRemoval(obj.instanceId, toBag = true, now) }
     }
 
     /** Pays to bring the selected withered plant back. */
@@ -455,5 +531,8 @@ class GardenViewModel @Inject constructor(
 
     private companion object {
         const val BLESSED_RAIN_SHOWER_MILLIS = 4_000L
+
+        /** Waited past a job's end before syncing, so that the sync is sure to find it due. */
+        const val WORK_GRACE_MILLIS = 60L
     }
 }

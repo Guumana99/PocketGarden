@@ -23,4 +23,9 @@ data class GridObjectEntity(
     val status: String = "HEALTHY",
     /** Epoch millis. */
     val lastUpdatedTimestamp: Long,
+    /** WorkKind name: "NONE", "BUILDING", "DEMOLISHING" or "PACKING". Added in schema version 5. */
+    val workKind: String = "NONE",
+    /** Epoch millis; 0 without a job. Added in schema version 5. */
+    val workStartedAt: Long = 0L,
+    val workEndsAt: Long = 0L,
 )
