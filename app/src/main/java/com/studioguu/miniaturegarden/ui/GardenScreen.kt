@@ -168,6 +168,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 atlas = atlas,
                 terrain = terrain,
                 gardenMap = viewModel.gardenMap,
+                weather = weather,
                 modifier = Modifier.fillMaxSize(),
             )
             // Inside the recorded box, so a shared picture shows the rain too.

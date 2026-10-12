@@ -61,6 +61,43 @@ class BundledArtTest {
     }
 
     @Test
+    fun `the water has depth, light on it and a bank round it`() {
+        val atlas = Picture.read(File(main, "res/drawable-nodpi/tile_river_autotile.png"))
+        val cell = atlas.width / RiverAutotile.COLUMNS
+        // A straight stretch running east-west (mask 10), first frame.
+        val left = RiverAutotile.column(10) * cell
+        val top = RiverAutotile.cellTop(10, 0, atlas.width, atlas.height)
+        val pixels = atlas.pixels(left, top, cell, cell)
+        fun at(x: Int, y: Int) = pixels[y * cell + x]
+        fun red(argb: Int) = argb shr 16 and 0xFF
+        fun green(argb: Int) = argb shr 8 and 0xFF
+        fun blue(argb: Int) = argb and 0xFF
+        fun opaque(argb: Int) = argb ushr 24 == 0xFF
+
+        // Down the middle column, from the turf above the stream to its centre: nothing, then
+        // bank (earth: more red than blue), then water (more blue than red).
+        val column = (0 until cell / 2).map { at(cell / 2, it) }
+        val firstOpaque = column.indexOfFirst(::opaque)
+        val firstWater = column.indexOfFirst { opaque(it) && blue(it) > red(it) + 20 }
+        assertTrue("turf shows above the bank", firstOpaque > 0)
+        assertTrue("a bank lies between turf and water", firstWater - firstOpaque >= 4)
+        assertTrue(column.subList(firstOpaque, firstWater).all { red(it) >= blue(it) })
+
+        // Depth: the water is paler at the bank than mid-stream, on average over the tile's width.
+        fun brightness(row: Int) = (0 until cell).map { at(it, row) }.sumOf { red(it) + green(it) + blue(it) }
+        assertTrue("shallows are paler than mid-stream", brightness(firstWater + 3) > brightness(cell / 2))
+
+        // Light: some pixels of the water are almost white, most are not.
+        // (White has as much red as blue, so the water is told from the bank by its rows here.)
+        val water = (firstWater until cell - firstWater).flatMap { row -> (0 until cell).map { at(it, row) } }
+        val bright = water.count { red(it) > 225 && green(it) > 235 }
+        assertTrue("there are highlights on the water", bright > 20)
+        assertTrue("but it is not washed out", bright < water.size / 4)
+        // And it is painted in many tones, not three flat ones.
+        assertTrue(water.map { it and 0xF0F0F0 }.toSet().size > 25)
+    }
+
+    @Test
     fun `the paving texture is bundled where the code looks for it`() {
         val paving = Picture.read(File(main, "res/drawable-nodpi/tile_path_cobblestone.png"))
         assertTrue(paving.width > 0 && paving.height > 0)
