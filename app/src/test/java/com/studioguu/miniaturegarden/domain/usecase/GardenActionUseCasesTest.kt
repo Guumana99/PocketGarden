@@ -260,10 +260,11 @@ class GardenActionUseCasesTest {
     @Test
     fun `placing a seed creates a plant and uses up one item`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 2))
+        repo.till(3, 5)
 
         assertEquals(ActionResult.SUCCESS, place(0, 3, 5, t0))
 
-        val planted = repo.objects.values.single()
+        val planted = repo.plants.single()
         assertEquals("plant_tulip", planted.objectId)
         assertEquals(3 to 5, planted.gridX to planted.gridY)
         assertEquals(0f, planted.growthProgress, 0f)
@@ -317,6 +318,8 @@ class GardenActionUseCasesTest {
         assertEquals(2, repo.slots.getValue(0).amount)
 
         // The bank right next to it is fine.
+        repo.till(5, 3)
+        repo.till(7, 3)
         assertEquals(ActionResult.SUCCESS, placeOnRiverMap(0, 5, 3, t0))
         assertEquals(ActionResult.SUCCESS, placeOnRiverMap(0, 7, 3, t0))
     }
@@ -343,8 +346,9 @@ class GardenActionUseCasesTest {
         repo.discover(CollectionEntry.WELL)
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1))
         repo.putSlot(InventorySlot(1, GardenItem.STRUCT_WELL.itemId, 1))
+        repo.till(0, 0)
 
-        place(0, 0, 0, t0)
+        assertEquals(ActionResult.SUCCESS, place(0, 0, 0, t0))
         assertEquals(80L, repo.profile?.currentXp)
         assertEquals(0, repo.profileSaves)
 
@@ -398,8 +402,9 @@ class GardenActionUseCasesTest {
         for ((x, y) in listOf(4 to 4, 5 to 4, 4 to 5, 5 to 5)) {
             assertEquals(ActionResult.TILE_OCCUPIED, place(1, x, y, t0))
         }
+        repo.till(6, 4)
         assertEquals(ActionResult.SUCCESS, place(1, 6, 4, t0))
-        assertEquals(2, repo.objects.size)
+        assertEquals(1, repo.plants.size)
     }
 
     @Test
@@ -606,6 +611,19 @@ internal class FakeGardenRepository : GardenRepository {
     fun putSlot(slot: InventorySlot) {
         slots[slot.slotIndex] = slot
     }
+
+    /** Tills the cell, as the hoe would, so that a seed can be planted there. */
+    fun till(x: Int, y: Int) = put(
+        GridObject(
+            instanceId = "soil_${x}_$y",
+            gridX = x,
+            gridY = y,
+            objectId = GridObject.TILLED_SOIL_OBJECT_ID,
+            lastUpdatedTimestamp = 0L,
+        )
+    )
+
+    val plants: List<GridObject> get() = objects.values.filter { it.isPlant }
 
     override suspend fun ensureInitialized() = Unit
     override suspend fun <T> runInTransaction(block: suspend () -> T): T = block()

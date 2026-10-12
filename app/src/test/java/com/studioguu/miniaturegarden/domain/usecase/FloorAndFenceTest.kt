@@ -112,21 +112,23 @@ class FloorAndFenceTest {
     // --- Through the game actions ---
 
     @Test
-    fun `a paved path with a fence and a flower on it`() = runBlocking {
+    fun `a paved path with a fence on it, and no flowers in the paving`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.FLOOR_COBBLESTONE.itemId, 3))
         repo.putSlot(InventorySlot(1, GardenItem.STRUCT_FENCE.itemId, 1))
         repo.putSlot(InventorySlot(2, GardenItem.SEED_TULIP.itemId, 1))
 
         for (x in 0..2) assertEquals(ActionResult.SUCCESS, place(0, x, 4, t0))
         assertEquals(ActionResult.SUCCESS, place(1, 0, 4, t0)) // fence on the first stone
-        assertEquals(ActionResult.SUCCESS, place(2, 2, 4, t0)) // tulip on the last
+        // A seed needs tilled soil, and a paved cell cannot be tilled.
+        assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(2, 2, 4, t0))
+        assertEquals(ActionResult.TILE_OCCUPIED, HoeUseCase(repo, GardenMap.DEFAULT)(2, 4, t0))
 
         val grid = GardenGrid(GardenMap.DEFAULT, repo.getGridObjects())
-        assertEquals(5, repo.objects.size)
+        assertEquals(4, repo.objects.size)
         assertEquals(GridObject.FENCE_OBJECT_ID, grid.objectAt(0, 4)?.objectId)
         assertEquals(GridObject.COBBLESTONE_OBJECT_ID, grid.objectAt(1, 4)?.objectId)
-        assertEquals(PlantSpecies.TULIP.objectId, grid.objectAt(2, 4)?.objectId)
-        assertEquals(GridObject.COBBLESTONE_OBJECT_ID, grid.floorAt(2, 4)?.objectId)
+        assertEquals(GridObject.COBBLESTONE_OBJECT_ID, grid.objectAt(2, 4)?.objectId)
+        assertEquals(1, repo.slots.getValue(2).amount) // the seed was not used up
     }
 
     @Test

@@ -22,6 +22,9 @@ data class GridObject(
     /** Paving. It lies under whatever stands on the cell and does not take the cell up. */
     val isFloor: Boolean get() = objectId.startsWith(FLOOR_ID_PREFIX)
 
+    /** Ground the player has broken up with the hoe. The only place a seed can go. */
+    val isTilledSoil: Boolean get() = objectId == TILLED_SOIL_OBJECT_ID
+
     /** A fence, whichever of its parts. */
     val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
 
@@ -37,6 +40,12 @@ data class GridObject(
         const val RIVER_OBJECT_ID = "terrain_river"
         const val FLOOR_ID_PREFIX = "floor_"
         const val COBBLESTONE_OBJECT_ID = "floor_cobblestone"
+
+        /**
+         * Tilled soil. It is stored like paving, in the floor layer of its cell: the plant grown
+         * on it stands on top, and it and paving cannot share a cell.
+         */
+        const val TILLED_SOIL_OBJECT_ID = "floor_tilled"
         const val FENCE_OBJECT_ID = "struct_fence"
     }
 }

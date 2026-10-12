@@ -76,6 +76,7 @@ class RiverAndWeatherTest {
         assertEquals(1, repo.objects.size)
         assertEquals(1, repo.slots.getValue(2).amount)
         // Right beside it is fine.
+        repo.till(5, 4)
         assertEquals(ActionResult.SUCCESS, place(0, 5, 4, t0))
     }
 
@@ -94,6 +95,8 @@ class RiverAndWeatherTest {
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1))
 
         assertEquals(ActionResult.SUCCESS, remove("r"))
+        // Lawn again: it can be tilled and planted like any other.
+        assertEquals(ActionResult.SUCCESS, HoeUseCase(repo, GardenMap.DEFAULT)(4, 4, t0))
         assertEquals(ActionResult.SUCCESS, place(0, 4, 4, t0))
     }
 

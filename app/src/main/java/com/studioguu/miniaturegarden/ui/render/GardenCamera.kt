@@ -69,8 +69,11 @@ data class GardenCamera(
         /** Widest zoom on screens large enough not to need more; small screens may go further out. */
         const val MIN_SCALE = 0.5f
 
-        /** The fitted grid is drawn at this fraction of the screen, leaving a little air around it. */
-        const val FIT_MARGIN = 0.94f
+        /**
+         * The fitted grid is drawn at this fraction of the screen. What is left over holds the
+         * frame around the garden and a little air beyond that.
+         */
+        const val FIT_MARGIN = 0.86f
         const val MAX_SCALE = 2.5f
 
         /**

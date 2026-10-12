@@ -120,7 +120,7 @@ fun GardenCanvas(
         val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
 
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, gardenMap) { tile, center ->
+            drawTerrain(transform, gardenMap, framed = true) { tile, center ->
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
                 sprite != null
@@ -191,11 +191,13 @@ private fun submitObjects(
             continue
         }
         if (obj.isFloor) {
-            // Paving: also ground. Whatever stands on the cell is a separate object and is
-            // drawn later, in the object layer, so it always appears on top.
+            // Paving and tilled soil: also ground. Whatever stands on the cell is a separate
+            // object and is drawn later, in the object layer, so it always appears on top.
             val paving = terrain.cobblestone
             pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
-                if (paving != null) {
+                if (obj.isTilledSoil) {
+                    drawTilledSoil(transform, obj.gridX, obj.gridY)
+                } else if (paving != null) {
                     drawGroundTexture(paving, transform, obj.gridX, obj.gridY)
                 } else {
                     drawPath(transform.tilePath(obj.gridX, obj.gridY), PAVING_FALLBACK)
@@ -311,7 +313,7 @@ fun ObjectPreview(
         )
         val spriteScale = tileWidth / atlas.manifest.tileWidth
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, map) { tile, center ->
+            drawTerrain(transform, map, framed = false) { tile, center ->
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
                 sprite != null
@@ -324,33 +326,55 @@ fun ObjectPreview(
 
 // --- Layer 0: terrain -------------------------------------------------------------------------
 
-// Muted, slightly olive greens: closer to the leaves of the plant sprites than a bright lime,
-// so the plants read as growing out of the lawn rather than sitting on top of it.
-private val GRASS_LIGHT = Color(0xFF86B26B)
-private val GRASS_DARK = Color(0xFF7AA661)
+// Warm, slightly yellow greens with earth showing through here and there: ground that grass has
+// grown over rather than a lawn laid on top, and close to the leaves of the plant sprites.
+private val GRASS_LIGHT = Color(0xFF9CBB6C)
+private val GRASS_DARK = Color(0xFF90B062)
+private val GRASS_TUFT = Color(0xFF739E4D)
+private val EARTH_PATCH = Color(0xFFBF9F6C)
 private val PAVING_FALLBACK = Color(0xFFBDBDBD)
 private val SOIL_LEFT = Color(0xFF8D6E63)
 private val SOIL_RIGHT = Color(0xFF6D4C41)
 
+// The wooden frame the garden sits in.
+private val FRAME_TOP = Color(0xFFD2A66E)
+private val FRAME_TOP_SHADE = Color(0xFFC09458)
+private val FRAME_SIDE_LEFT = Color(0xFFA5733F)
+private val FRAME_SIDE_RIGHT = Color(0xFF7F5530)
+private val FRAME_LINE = Color(0xFF5D3A1A)
+private val FRAME_HIGHLIGHT = Color(0xFFF1D4A3)
+
+/** Width of the frame's top face, in tiles. */
+const val FRAME_RIM = 0.34f
+
+/** Height of the frame's side faces, in tile heights. */
+private const val FRAME_DEPTH = 0.85f
+
 /**
+ * @param framed true for the garden itself: the ground sits in a wooden frame, like a diorama
+ *   in its box. False draws the plain slab of soil that the small previews stand on.
  * @param drawTileSprite draws the sprite for a ground tile centered on the given point and
  *   returns true, or returns false when there is none and the flat-color tile should be used.
  */
 private fun DrawScope.drawTerrain(
     transform: IsometricTransform,
     gardenMap: GardenMap,
+    framed: Boolean,
     drawTileSprite: DrawScope.(tile: GroundTile, center: Offset) -> Boolean,
 ) {
     val gridSize = gardenMap.size
     val max = gridSize.toFloat()
-    val left = transform.worldToScreen(0f, max)
-    val bottom = transform.worldToScreen(max, max)
-    val right = transform.worldToScreen(max, 0f)
-    val thickness = Offset(0f, transform.tileHeight * 0.6f)
-
-    // The two visible side faces of the soil slab the garden sits on.
-    drawPath(quad(left, bottom, bottom + thickness, left + thickness), SOIL_LEFT)
-    drawPath(quad(bottom, right, right + thickness, bottom + thickness), SOIL_RIGHT)
+    if (framed) {
+        drawFrame(transform, max)
+    } else {
+        val left = transform.worldToScreen(0f, max)
+        val bottom = transform.worldToScreen(max, max)
+        val right = transform.worldToScreen(max, 0f)
+        val thickness = Offset(0f, transform.tileHeight * 0.6f)
+        // The two visible side faces of the soil slab the patch sits on.
+        drawPath(quad(left, bottom, bottom + thickness, left + thickness), SOIL_LEFT)
+        drawPath(quad(bottom, right, right + thickness, bottom + thickness), SOIL_RIGHT)
+    }
 
     // x-then-y order draws every tile before the two neighbours in front of it.
     for (x in 0 until gridSize) for (y in 0 until gridSize) {
@@ -359,10 +383,146 @@ private fun DrawScope.drawTerrain(
         if (drawTileSprite(tile, transform.tileCenter(x, y))) continue
         when (tile) {
             GroundTile.WATER -> drawWaterTile(transform, x, y, phase = 0)
-            GroundTile.GRASS -> drawPath(transform.tilePath(x, y), GRASS_LIGHT)
-            else -> drawPath(transform.tilePath(x, y), GRASS_DARK)
+            GroundTile.GRASS -> drawGroundTile(transform, x, y, GRASS_LIGHT)
+            else -> drawGroundTile(transform, x, y, GRASS_DARK)
         }
     }
+    if (framed) {
+        // The frame's inner edge, drawn over the outermost tiles so the ground reads as set into it.
+        val a = transform.worldToScreen(0f, 0f)
+        val b = transform.worldToScreen(max, 0f)
+        val c = transform.worldToScreen(max, max)
+        val d = transform.worldToScreen(0f, max)
+        val width = transform.tileWidth * 0.022f
+        drawLine(FRAME_LINE.copy(alpha = 0.55f), a, b, width, StrokeCap.Round)
+        drawLine(FRAME_LINE.copy(alpha = 0.55f), a, d, width, StrokeCap.Round)
+        drawLine(FRAME_LINE.copy(alpha = 0.3f), b, c, width, StrokeCap.Round)
+        drawLine(FRAME_LINE.copy(alpha = 0.3f), d, c, width, StrokeCap.Round)
+    }
+}
+
+/**
+ * One tile of open ground: grass in the given shade, with a worn patch or two of earth and a few
+ * darker tufts. Where they fall depends only on the tile's position, so the ground looks the
+ * same every time and does not shimmer as the camera moves.
+ */
+private fun DrawScope.drawGroundTile(transform: IsometricTransform, x: Int, y: Int, grass: Color) {
+    drawPath(transform.tilePath(x, y), grass)
+    val unit = transform.tileWidth
+    var seed = x * 73856093 xor y * 19349663
+    fun next(): Float {
+        seed = seed * 1103515245 + 12345
+        return ((seed ushr 16) and 0x7FFF) / 32767f
+    }
+    // Earth showing through: flat ovals, kept away from the tile's corners.
+    repeat(2) {
+        val at = transform.worldToScreen(x + 0.25f + next() * 0.5f, y + 0.25f + next() * 0.5f)
+        val width = unit * (0.08f + next() * 0.09f)
+        drawOval(EARTH_PATCH.copy(alpha = 0.38f), at - Offset(width / 2f, width / 4f), Size(width, width / 2f))
+    }
+    // Tufts: two short blades each.
+    repeat(3) {
+        val at = transform.worldToScreen(x + 0.15f + next() * 0.7f, y + 0.15f + next() * 0.7f)
+        val blade = unit * 0.035f
+        val stroke = unit * 0.012f
+        drawLine(GRASS_TUFT, at, at + Offset(-blade * 0.5f, -blade), stroke, StrokeCap.Round)
+        drawLine(GRASS_TUFT, at, at + Offset(blade * 0.5f, -blade * 0.8f), stroke, StrokeCap.Round)
+    }
+}
+
+// Tilled soil.
+private val DIRT_DARK = Color(0xFF5B3D28)
+private val DIRT_EDGE = Color(0xFF452C1C)
+private val DIRT_RIDGE = Color(0xFF7B5536)
+private const val FURROWS = 4
+
+/**
+ * A tile the hoe has been over: dark, damp-looking earth with furrows running across it, set a
+ * little in from the tile's edge so that a strip of grass still shows between two beds.
+ */
+private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: Int) {
+    val inset = 0.05f
+    val x0 = x + inset
+    val y0 = y + inset
+    val x1 = x + 1 - inset
+    val y1 = y + 1 - inset
+    val bed = quad(
+        transform.worldToScreen(x0, y0),
+        transform.worldToScreen(x1, y0),
+        transform.worldToScreen(x1, y1),
+        transform.worldToScreen(x0, y1),
+    )
+    drawPath(bed, DIRT_EDGE)
+    val lip = 0.03f
+    drawPath(
+        quad(
+            transform.worldToScreen(x0 + lip, y0 + lip),
+            transform.worldToScreen(x1 - lip, y0 + lip),
+            transform.worldToScreen(x1 - lip, y1 - lip),
+            transform.worldToScreen(x0 + lip, y1 - lip),
+        ),
+        DIRT_DARK,
+    )
+    // Furrows: a lit ridge with its shadow just behind it.
+    val stroke = transform.tileWidth * 0.022f
+    for (i in 0 until FURROWS) {
+        val fy = y0 + (y1 - y0) * (i + 0.5f) / FURROWS
+        val from = transform.worldToScreen(x0 + 0.08f, fy)
+        val to = transform.worldToScreen(x1 - 0.08f, fy)
+        val behind = Offset(0f, -stroke)
+        drawLine(DIRT_EDGE, from + behind, to + behind, stroke, StrokeCap.Round)
+        drawLine(DIRT_RIDGE, from, to, stroke, StrokeCap.Round)
+    }
+}
+
+/**
+ * The wooden frame round a garden [max] tiles across: a rim of planks level with the ground, the
+ * two side faces that can be seen from the front, and the shadow the whole box casts.
+ */
+private fun DrawScope.drawFrame(transform: IsometricTransform, max: Float) {
+    val rim = FRAME_RIM
+    val depth = Offset(0f, transform.tileHeight * FRAME_DEPTH)
+    val unit = transform.tileWidth
+    // Outer and inner corners, named by where they appear on screen.
+    val top = transform.worldToScreen(-rim, -rim)
+    val right = transform.worldToScreen(max + rim, -rim)
+    val bottom = transform.worldToScreen(max + rim, max + rim)
+    val left = transform.worldToScreen(-rim, max + rim)
+    val innerTop = transform.worldToScreen(0f, 0f)
+    val innerRight = transform.worldToScreen(max, 0f)
+    val innerBottom = transform.worldToScreen(max, max)
+    val innerLeft = transform.worldToScreen(0f, max)
+
+    // Shadow on whatever the box stands on: its own outline, pushed down and softened.
+    val drop = depth + Offset(0f, unit * 0.1f)
+    drawPath(quad(left + drop, bottom + drop + Offset(0f, unit * 0.06f), right + drop, bottom + depth), Color.Black.copy(alpha = 0.16f))
+
+    // Side faces.
+    drawPath(quad(left, bottom, bottom + depth, left + depth), FRAME_SIDE_LEFT)
+    drawPath(quad(bottom, right, right + depth, bottom + depth), FRAME_SIDE_RIGHT)
+    // A board line halfway down each, and the dark foot of the box.
+    val seam = depth * 0.5f
+    val line = unit * 0.014f
+    drawLine(FRAME_LINE.copy(alpha = 0.35f), left + seam, bottom + seam, line)
+    drawLine(FRAME_LINE.copy(alpha = 0.35f), bottom + seam, right + seam, line)
+    drawLine(FRAME_LINE, left + depth, bottom + depth, line * 1.6f, StrokeCap.Round)
+    drawLine(FRAME_LINE, bottom + depth, right + depth, line * 1.6f, StrokeCap.Round)
+    drawLine(FRAME_LINE.copy(alpha = 0.6f), bottom, bottom + depth, line)
+
+    // The rim: the two far boards a shade darker than the two near ones.
+    drawPath(quad(top, right, innerRight, innerTop), FRAME_TOP_SHADE)
+    drawPath(quad(top, innerTop, innerLeft, left), FRAME_TOP_SHADE)
+    drawPath(quad(innerLeft, innerBottom, bottom, left), FRAME_TOP)
+    drawPath(quad(innerRight, right, bottom, innerBottom), FRAME_TOP)
+    // Mitred corners.
+    for ((outer, inner) in listOf(top to innerTop, right to innerRight, bottom to innerBottom, left to innerLeft)) {
+        drawLine(FRAME_LINE.copy(alpha = 0.45f), outer, inner, line)
+    }
+    // Light catching the outer edge of the near boards.
+    drawLine(FRAME_HIGHLIGHT, left, bottom, line * 1.4f, StrokeCap.Round)
+    drawLine(FRAME_HIGHLIGHT, bottom, right, line * 1.4f, StrokeCap.Round)
+    drawLine(FRAME_LINE.copy(alpha = 0.4f), top, right, line)
+    drawLine(FRAME_LINE.copy(alpha = 0.4f), top, left, line)
 }
 
 // Pixel-art water. Each tile is cut into WATER_PIXELS x WATER_PIXELS little diamonds, coloured

@@ -30,6 +30,7 @@ import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
+import com.studioguu.miniaturegarden.domain.usecase.HoeUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
@@ -70,6 +71,7 @@ class GardenViewModel @Inject constructor(
     private val removeObject: RemoveObjectUseCase,
     private val skipTime: SkipTimeUseCase,
     private val switchFencePart: SwitchFencePartUseCase,
+    private val hoe: HoeUseCase,
     private val audio: AudioManager,
     val gardenMap: GardenMap,
     private val grantReward: GrantRewardUseCase,
@@ -168,6 +170,11 @@ class GardenViewModel @Inject constructor(
             slots.firstOrNull { it.slotIndex == index && !it.isEmpty }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    private val _hoeActive = MutableStateFlow(false)
+
+    /** True while the hoe is the tool in hand: a tap on a tile then tills it. */
+    val hoeActive: StateFlow<Boolean> = _hoeActive.asStateFlow()
+
     /** Empty until the atlas has loaded, and for good when no artwork is bundled. */
     private val _atlas = MutableStateFlow(SpriteAtlas.EMPTY)
     val atlas: StateFlow<SpriteAtlas> = _atlas.asStateFlow()
@@ -188,7 +195,10 @@ class GardenViewModel @Inject constructor(
 
     // Sync and player actions all read-modify-write the same rows; run them one at a time.
     private val actionMutex = Mutex()
-    private val initJob = viewModelScope.launch { gardenRepository.ensureInitialized() }
+    private val initJob = viewModelScope.launch {
+        gardenRepository.ensureInitialized()
+        hoe.tillUnderExistingPlants(System.currentTimeMillis())
+    }
 
     init {
         viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
@@ -230,12 +240,17 @@ class GardenViewModel @Inject constructor(
     }
 
     /**
-     * In placement mode a tap on a tile places the chosen item there. Otherwise it selects the
-     * tile; tapping the selected tile again, or anywhere off the grid, clears the selection.
+     * With the hoe in hand a tap on a tile tills it, and in placement mode it places the chosen
+     * item there. Otherwise it selects the tile; tapping the selected tile again, or anywhere
+     * off the grid, clears the selection.
      */
     fun onTileTapped(tile: TileCoord?) {
         val slotIndex = _placingSlotIndex.value
-        if (slotIndex == null) {
+        if (_hoeActive.value) {
+            if (tile != null) {
+                act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ -> hoe(tile.x, tile.y, now) }
+            }
+        } else if (slotIndex == null) {
             _selectedTile.value = tile.takeIf { it != _selectedTile.value }
         } else if (tile != null) {
             val placeXp = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }?.placeXp ?: 0
@@ -254,7 +269,18 @@ class GardenViewModel @Inject constructor(
         }
     }
 
+    /** Picks the hoe up, or puts it down again. Picking it up ends any placing and selection. */
+    fun toggleHoe() {
+        val active = !_hoeActive.value
+        if (active) {
+            _selectedTile.value = null
+            _placingSlotIndex.value = null
+        }
+        _hoeActive.value = active
+    }
+
     fun startPlacing(slotIndex: Int) {
+        _hoeActive.value = false
         _selectedTile.value = null
         _placingSlotIndex.value = slotIndex
     }
