@@ -22,6 +22,14 @@
     <string name="label_growth">成長</string>
     <string name="label_moisture">水分</string>
     <string name="label_nutrition">栄養</string>
+    <string name="label_vitality">元気</string>
+    <string name="hint_overripe">満開です。収穫しないまま置いておくと、やがて枯れてしまいます</string>
+    <string name="hint_withered">枯れています。コインで復活させるか、撤去するとたい肥になり、次に植える作物が少し育った状態で始まります</string>
+    <string name="hint_composted">たい肥入りの土です。次に植える作物が少し育った状態で始まります</string>
+    <string name="action_revive">🌱 復活 (🪙%1$d)</string>
+    <string name="msg_revived">元気を取り戻しました</string>
+    <string name="msg_composted">枯れた作物がたい肥になりました</string>
+    <string name="msg_not_withered">この作物は枯れていません</string>
     <string name="label_percent">%1$d%%</string>
     <string name="status_healthy">元気</string>
     <string name="status_thirsty">水不足</string>

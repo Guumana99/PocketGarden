@@ -12,7 +12,7 @@ import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
-import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import java.util.UUID
 import javax.inject.Inject
@@ -36,6 +36,9 @@ enum class ActionResult {
 
     /** A seed was put on ground that has not been tilled with the hoe. */
     NEEDS_TILLED_SOIL,
+
+    /** Reviving was asked for a plant that has not withered. */
+    NOT_WITHERED,
 }
 
 /**
@@ -48,7 +51,7 @@ class CareForPlantUseCase @Inject constructor(
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
     /** Refills moisture to 100% for [WATER_XP]. Only allowed below [WATERING_THRESHOLD]. */
-    suspend fun water(instanceId: String, now: Long, weather: WeatherType): ActionResult =
+    suspend fun water(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         care(
             instanceId, now, weather,
             coinCost = 0,
@@ -61,7 +64,7 @@ class CareForPlantUseCase @Inject constructor(
      * would grow in [FERTILIZER_GROWTH_HOURS] healthy hours and earns [FERTILIZE_XP]. Being a fixed
      * amount of time, it is worth proportionally less on slow, valuable plants.
      */
-    suspend fun fertilize(instanceId: String, now: Long, weather: WeatherType): ActionResult =
+    suspend fun fertilize(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         care(instanceId, now, weather, coinCost = FERTILIZER_COST, xp = FERTILIZE_XP, refuse = { null }) {
             it.copy(
                 nutritionLevel = 1f,
@@ -72,10 +75,42 @@ class CareForPlantUseCase @Inject constructor(
             )
         }
 
+    /**
+     * Brings a withered plant back for [REVIVE_COST] coins: watered, fed and free of stress, at
+     * the growth it had reached. One that withered in full bloom is in bloom again and can be
+     * harvested, though it will go over once more if it is left standing.
+     */
+    suspend fun revive(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
+        gardenRepository.runInTransaction {
+            val stored = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+                ?: return@runInTransaction ActionResult.NOT_FOUND
+            if (!stored.isPlant) return@runInTransaction ActionResult.NOT_A_PLANT
+            // Brought up to now first: a plant can have withered since it was last looked at.
+            val current = calculateOfflineProgress(stored, now, weather)
+            if (current.status != PlantStatus.WITHERED) {
+                gardenRepository.upsertGridObject(current)
+                return@runInTransaction ActionResult.NOT_WITHERED
+            }
+            val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
+            if (profile.coins < REVIVE_COST) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
+
+            gardenRepository.upsertGridObject(
+                current.copy(
+                    moistureLevel = 1f,
+                    nutritionLevel = 1f,
+                    stressRate = 0f,
+                    status = PlantStatus.HEALTHY,
+                    lastUpdatedTimestamp = now,
+                )
+            )
+            gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - REVIVE_COST))
+            ActionResult.SUCCESS
+        }
+
     private suspend fun care(
         instanceId: String,
         now: Long,
-        weather: WeatherType,
+        weather: WeatherForecast,
         coinCost: Int,
         xp: Int,
         refuse: (GridObject) -> ActionResult?,
@@ -113,6 +148,7 @@ class CareForPlantUseCase @Inject constructor(
         const val FERTILIZE_XP = 10
         const val FERTILIZER_COST = 15
         const val FERTILIZER_GROWTH_HOURS = 2
+        const val REVIVE_COST = 30
 
         /** Watering is only possible while moisture is below this. */
         const val WATERING_THRESHOLD = 0.8f
@@ -150,15 +186,20 @@ class PlaceItemUseCase @Inject constructor(
                 return@runInTransaction ActionResult.NEEDS_TILLED_SOIL
             }
 
+            // A seed planted in composted soil starts off ahead, and that uses the compost up.
+            val compost = grid.floorAt(gridX, gridY)
+                ?.takeIf { it.isComposted && item.objectId.startsWith(GridObject.PLANT_ID_PREFIX) }
             gardenRepository.upsertGridObject(
                 GridObject(
                     instanceId = UUID.randomUUID().toString(),
                     gridX = gridX,
                     gridY = gridY,
                     objectId = item.objectId,
+                    growthProgress = if (compost != null) GridObject.COMPOST_GROWTH_BONUS else 0f,
                     lastUpdatedTimestamp = now,
                 )
             )
+            if (compost != null) gardenRepository.upsertGridObject(compost.copy(growthProgress = 0f))
             val remaining = slot.amount - 1
             gardenRepository.upsertInventorySlot(
                 if (remaining > 0) slot.copy(amount = remaining) else InventorySlot(slotIndex)
@@ -225,7 +266,7 @@ class HarvestPlantUseCase @Inject constructor(
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
     private val recordCollection: RecordCollectionUseCase,
 ) {
-    suspend operator fun invoke(instanceId: String, now: Long, weather: WeatherType): ActionResult =
+    suspend operator fun invoke(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         gardenRepository.runInTransaction {
             val stored = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
                 ?: return@runInTransaction ActionResult.NOT_FOUND
@@ -262,16 +303,29 @@ class SwitchFencePartUseCase @Inject constructor(
     }
 }
 
-/** Clears a tile. Nothing is refunded. */
+/**
+ * Clears a tile. Nothing is refunded, with one consolation: a withered plant is dug into the
+ * tilled soil it stood on as compost, which gives the next seed planted there a head start.
+ */
 class RemoveObjectUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
 ) {
     suspend operator fun invoke(instanceId: String): ActionResult = gardenRepository.runInTransaction {
-        if (gardenRepository.getGridObjects().none { it.instanceId == instanceId }) {
-            return@runInTransaction ActionResult.NOT_FOUND
-        }
+        val objects = gardenRepository.getGridObjects()
+        val target = objects.firstOrNull { it.instanceId == instanceId }
+            ?: return@runInTransaction ActionResult.NOT_FOUND
         gardenRepository.deleteGridObject(instanceId)
+        if (leavesCompost(target)) {
+            objects.firstOrNull { it.isTilledSoil && it.gridX == target.gridX && it.gridY == target.gridY }
+                ?.let { gardenRepository.upsertGridObject(it.copy(growthProgress = 1f)) }
+        }
         ActionResult.SUCCESS
+    }
+
+    companion object {
+        /** Whether clearing [gridObject] away turns it into compost, given soil to dig it into. */
+        fun leavesCompost(gridObject: GridObject): Boolean =
+            gridObject.isPlant && gridObject.status == PlantStatus.WITHERED
     }
 }
 
@@ -313,7 +367,7 @@ class SyncGardenUseCase @Inject constructor(
     private val verifyIntegrity: VerifyIntegrityUseCase,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
-    suspend operator fun invoke(now: Long, weather: WeatherType): IntegrityResult {
+    suspend operator fun invoke(now: Long, weather: WeatherForecast): IntegrityResult {
         val integrity = verifyIntegrity()
         val trusted = integrity.signatureValid && integrity.timeConsistent
         gardenRepository.runInTransaction {
@@ -340,7 +394,7 @@ class SkipTimeUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
-    suspend operator fun invoke(millis: Long, now: Long, weather: WeatherType): ActionResult =
+    suspend operator fun invoke(millis: Long, now: Long, weather: WeatherForecast): ActionResult =
         gardenRepository.runInTransaction {
             val aged = gardenRepository.getGridObjects()
                 .map { it.copy(lastUpdatedTimestamp = it.lastUpdatedTimestamp - millis) }

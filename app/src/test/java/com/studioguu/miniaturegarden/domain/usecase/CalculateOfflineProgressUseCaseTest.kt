@@ -118,6 +118,8 @@ class CalculateOfflineProgressUseCaseTest {
             plant(growth = 0.3f, moisture = 0.55f, nutrition = 0.9f, stress = 0.4f),
             plant(moisture = 0.9f, nutrition = 0.25f, stress = 0.1f),
             plant(moisture = 0.15f, nutrition = 0.1f),
+            plant(growth = 0.8f),                 // comes into bloom on the way and then goes over
+            plant(growth = 1f, stress = 0.2f),    // in bloom from the start
         )
         val durations = listOf(1L, 7L, 19L, 31L, 50L, 100L, 168L).map { it * hour + 17 * TICK_MILLIS }
         for (start in starts) for (weather in WeatherType.entries) for (duration in durations) {
@@ -137,15 +139,23 @@ class CalculateOfflineProgressUseCaseTest {
         var moisture = start.moistureLevel.toDouble()
         var nutrition = start.nutritionLevel.toDouble()
         var stress = start.stressRate.toDouble()
+        // Rain waters the plant, and while it falls nothing brings the plant closer to withering.
+        val protected = weather.isProtective
+        if (protected && ticks > 0) moisture = 1.0
         repeat(ticks.toInt()) {
             val thirsty = moisture <= THIRSTY_THRESHOLD
             val starved = nutrition <= UNNOURISHED_THRESHOLD
-            if (!thirsty && !starved) {
+            // A plant in full bloom no longer grows or recovers: it only goes over.
+            val inBloom = growth >= 1.0 - 1e-9
+            if (!thirsty && !starved && !inBloom) {
                 growth = (growth + GROWTH_PER_TICK * weather.growthMultiplier).coerceAtMost(1.0)
                 stress = (stress - STRESS_RECOVERY_PER_TICK).coerceAtLeast(0.0)
             }
-            if (thirsty) stress += STRESS_THIRSTY_PER_TICK
-            if (starved) stress += STRESS_UNNOURISHED_PER_TICK
+            if (!protected) {
+                if (thirsty) stress += STRESS_THIRSTY_PER_TICK
+                if (starved) stress += STRESS_UNNOURISHED_PER_TICK
+                if (inBloom) stress += CalculateOfflineProgressUseCase.STRESS_OVERRIPE_PER_TICK
+            }
             stress = stress.coerceAtMost(1.0)
             moisture = (moisture - MOISTURE_DRAIN_PER_TICK * weather.moistureDrainMultiplier).coerceAtLeast(0.0)
             nutrition = (nutrition - NUTRITION_DRAIN_PER_TICK).coerceAtLeast(0.0)

@@ -25,6 +25,13 @@ data class GridObject(
     /** Ground the player has broken up with the hoe. The only place a seed can go. */
     val isTilledSoil: Boolean get() = objectId == TILLED_SOIL_OBJECT_ID
 
+    /**
+     * Tilled soil that a withered plant was dug into. The next seed planted here starts off
+     * ahead (see [COMPOST_GROWTH_BONUS]), which uses the compost up. Soil has no growth of its
+     * own, so its otherwise unused [growthProgress] holds this.
+     */
+    val isComposted: Boolean get() = isTilledSoil && growthProgress > 0f
+
     /** A fence, whichever of its parts. */
     val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
 
@@ -46,6 +53,9 @@ data class GridObject(
          * on it stands on top, and it and paving cannot share a cell.
          */
         const val TILLED_SOIL_OBJECT_ID = "floor_tilled"
+
+        /** Growth a seed starts with when it is planted in composted soil. */
+        const val COMPOST_GROWTH_BONUS = 0.2f
         const val FENCE_OBJECT_ID = "struct_fence"
     }
 }

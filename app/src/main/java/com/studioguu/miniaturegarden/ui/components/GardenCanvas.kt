@@ -196,7 +196,7 @@ private fun submitObjects(
             val paving = terrain.cobblestone
             pipeline.submit(RenderLayer.BASE_TERRAIN, depth = 1f) {
                 if (obj.isTilledSoil) {
-                    drawTilledSoil(transform, obj.gridX, obj.gridY)
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted)
                 } else if (paving != null) {
                     drawGroundTexture(paving, transform, obj.gridX, obj.gridY)
                 } else {
@@ -434,13 +434,16 @@ private fun DrawScope.drawGroundTile(transform: IsometricTransform, x: Int, y: I
 private val DIRT_DARK = Color(0xFF5B3D28)
 private val DIRT_EDGE = Color(0xFF452C1C)
 private val DIRT_RIDGE = Color(0xFF7B5536)
+private val COMPOST_LEAF = Color(0xFF8FB25A)
+private val COMPOST_STRAW = Color(0xFFE2C879)
 private const val FURROWS = 4
 
 /**
  * A tile the hoe has been over: dark, damp-looking earth with furrows running across it, set a
  * little in from the tile's edge so that a strip of grass still shows between two beds.
+ * A [composted] bed is flecked with green and straw.
  */
-private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: Int) {
+private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: Int, composted: Boolean) {
     val inset = 0.05f
     val x0 = x + inset
     val y0 = y + inset
@@ -472,6 +475,18 @@ private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: I
         val behind = Offset(0f, -stroke)
         drawLine(DIRT_EDGE, from + behind, to + behind, stroke, StrokeCap.Round)
         drawLine(DIRT_RIDGE, from, to, stroke, StrokeCap.Round)
+    }
+    if (composted) {
+        // Bits of leaf and straw worked into the bed.
+        var seed = x * 73856093 xor y * 19349663
+        repeat(7) { i ->
+            seed = seed * 1103515245 + 12345
+            val u = ((seed ushr 16) and 0x7FFF) / 32767f
+            seed = seed * 1103515245 + 12345
+            val v = ((seed ushr 16) and 0x7FFF) / 32767f
+            val at = transform.worldToScreen(x0 + 0.12f + u * (x1 - x0 - 0.24f), y0 + 0.12f + v * (y1 - y0 - 0.24f))
+            drawCircle(if (i % 2 == 0) COMPOST_LEAF else COMPOST_STRAW, transform.tileWidth * 0.016f, at)
+        }
     }
 }
 

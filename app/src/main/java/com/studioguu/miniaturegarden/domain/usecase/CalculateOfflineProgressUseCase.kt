@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import javax.inject.Inject
 import kotlin.math.ceil
@@ -15,24 +16,61 @@ import kotlin.math.min
  * Time is consumed in whole ticks of [TICK_MILLIS] (Δt / tick); the remainder (Δt % tick) is
  * carried over by leaving it in `lastUpdatedTimestamp`, so frequent short sessions lose nothing.
  *
- * The result is computed in O(1) per plant instead of looping over ticks. That works because
- * nothing waters or feeds a plant while offline: moisture and nutrition only fall, so the elapsed
- * ticks always split into a healthy phase followed by a deficient phase, and each phase's
- * contribution is a plain multiplication.
+ * A stretch of one weather is computed in O(1) per plant instead of looping over ticks. That
+ * works because nothing waters or feeds a plant while offline: moisture and nutrition only fall,
+ * so the ticks always split into a healthy phase followed by a deficient phase, and a plant
+ * that comes into full bloom stays there; each phase's contribution is a plain multiplication.
+ * Time away that spans several kinds of weather is cut at the changes and computed stretch by
+ * stretch.
+ *
+ * How a plant withers:
+ * - thirst and lack of nutrition add stress, as long as they last;
+ * - a plant left standing in full bloom goes over: from the moment it is fully grown it gains
+ *   stress too, and withers [OVERRIPE_HOURS] later if it is not harvested;
+ * - at full stress it is withered. It is never removed: it stays where it is until the player
+ *   revives it or clears it away.
+ * Rain waters every plant and stops all of the above for as long as it falls.
  */
 class CalculateOfflineProgressUseCase @Inject constructor() {
 
     operator fun invoke(
         gridObjects: List<GridObject>,
         currentTimeMillis: Long,
-        weather: WeatherType = WeatherType.SUNNY,
+        weather: WeatherForecast = WeatherType.SUNNY,
     ): List<GridObject> = gridObjects.map { invoke(it, currentTimeMillis, weather) }
 
     operator fun invoke(
         gridObject: GridObject,
         currentTimeMillis: Long,
-        weather: WeatherType = WeatherType.SUNNY,
+        weather: WeatherForecast = WeatherType.SUNNY,
     ): GridObject {
+        // One kind of weather throughout: a single stretch.
+        if (weather is WeatherType) return advance(gridObject, currentTimeMillis, weather)
+
+        // Only the last MAX_OFFLINE_MILLIS count; the stretches are cut out of that window.
+        val windowStart = currentTimeMillis - MAX_OFFLINE_MILLIS
+        var current = if (gridObject.lastUpdatedTimestamp < windowStart) {
+            gridObject.copy(lastUpdatedTimestamp = windowStart)
+        } else {
+            gridObject
+        }
+        var cursor = current.lastUpdatedTimestamp
+        // Nothing to cut up (this also covers a timestamp in the future, which advance() repairs).
+        if (cursor >= currentTimeMillis) return advance(current, currentTimeMillis, weather.at(currentTimeMillis))
+        while (cursor < currentTimeMillis) {
+            // The weather of a stretch is the weather at its start; it holds until the next change.
+            val nextChange = (Math.floorDiv(cursor, WeatherType.DAY_MILLIS) + 1) * WeatherType.DAY_MILLIS
+            val until = min(nextChange, currentTimeMillis)
+            // Whatever part of a minute is left at the change stays in the object's timestamp and
+            // is counted with the next stretch, so nothing is lost at the joins.
+            current = advance(current, until, weather.at(cursor))
+            cursor = until
+        }
+        return current
+    }
+
+    /** Advances one object to [currentTimeMillis] under [weather] throughout. */
+    private fun advance(gridObject: GridObject, currentTimeMillis: Long, weather: WeatherType): GridObject {
         val elapsed = cappedElapsedMillis(gridObject.lastUpdatedTimestamp, currentTimeMillis)
         val ticks = elapsed / TICK_MILLIS
         val remainder = elapsed % TICK_MILLIS
@@ -46,21 +84,37 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         }
 
         val species = PlantSpecies.forObjectId(gridObject.objectId)
+        val protected = weather.isProtective
+        // Rain waters the plant before anything else happens.
+        val startMoisture = if (protected) 1f else gridObject.moistureLevel
         val moistureDrain = weather.moistureDrainMultiplier / (species.dryOutHours * TICKS_PER_HOUR)
         val growthPerTick = weather.growthMultiplier / (species.growthHours * TICKS_PER_HOUR)
-        val hydratedTicks = ticksAbove(gridObject.moistureLevel, THIRSTY_THRESHOLD, moistureDrain, ticks)
+        val hydratedTicks = ticksAbove(startMoisture, THIRSTY_THRESHOLD, moistureDrain, ticks)
         val nourishedTicks = ticksAbove(gridObject.nutritionLevel, UNNOURISHED_THRESHOLD, NUTRITION_DRAIN_PER_TICK, ticks)
         val healthyTicks = min(hydratedTicks, nourishedTicks)
         val thirstyTicks = ticks - hydratedTicks
         val starvedTicks = ticks - nourishedTicks
 
-        val moisture = (gridObject.moistureLevel - moistureDrain * ticks).coerceIn(0.0, 1.0)
+        // Growing happens in the healthy phase, which comes first. Once the plant is fully grown
+        // it is in bloom for every tick that is left, healthy or not.
+        val growthLeft = (1.0 - gridObject.growthProgress).coerceAtLeast(0.0)
+        val ticksToBloom = if (growthLeft <= 0.0) 0L else ceil(growthLeft / growthPerTick - GROWTH_EPSILON).toLong()
+        val bloomTicks = if (healthyTicks >= ticksToBloom) ticks - ticksToBloom else 0L
+        val growingTicks = min(healthyTicks, ticksToBloom)
+
+        val moisture = (startMoisture - moistureDrain * ticks).coerceIn(0.0, 1.0)
         val nutrition = (gridObject.nutritionLevel - NUTRITION_DRAIN_PER_TICK * ticks).coerceIn(0.0, 1.0)
         val growth = (gridObject.growthProgress + growthPerTick * healthyTicks).coerceIn(0.0, 1.0)
-        // The healthy phase comes first, so recovery is applied before stress accumulates.
-        val recovered = max(0.0, gridObject.stressRate - STRESS_RECOVERY_PER_TICK * healthyTicks)
-        val stress = (recovered + STRESS_THIRSTY_PER_TICK * thirstyTicks + STRESS_UNNOURISHED_PER_TICK * starvedTicks)
-            .coerceIn(0.0, 1.0)
+        // A healthy plant that is still growing gets over earlier hardship; one in bloom does
+        // not, it only ever goes over. Recovery is applied first, as the healthy phase is first.
+        val recovered = max(0.0, gridObject.stressRate - STRESS_RECOVERY_PER_TICK * growingTicks)
+        val gained = if (protected) {
+            0.0
+        } else {
+            STRESS_THIRSTY_PER_TICK * thirstyTicks + STRESS_UNNOURISHED_PER_TICK * starvedTicks +
+                STRESS_OVERRIPE_PER_TICK * bloomTicks
+        }
+        val stress = (recovered + gained).coerceIn(0.0, 1.0)
 
         val status = statusOf(moisture, nutrition, stress)
 
@@ -116,5 +170,12 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         const val STRESS_THIRSTY_PER_TICK = 1.0 / (24 * TICKS_PER_HOUR)
         const val STRESS_UNNOURISHED_PER_TICK = 1.0 / (48 * TICKS_PER_HOUR)
         const val STRESS_RECOVERY_PER_TICK = 1.0 / (48 * TICKS_PER_HOUR)
+
+        /** A plant left in full bloom withers this many hours after it finished growing. */
+        const val OVERRIPE_HOURS = 72
+        const val STRESS_OVERRIPE_PER_TICK = 1.0 / (OVERRIPE_HOURS * TICKS_PER_HOUR)
+
+        /** Keeps rounding in the growth sums from adding a tick to the time left until bloom. */
+        private const val GROWTH_EPSILON = 1e-6
     }
 }

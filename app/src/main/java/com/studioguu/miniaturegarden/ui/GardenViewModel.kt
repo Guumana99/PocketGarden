@@ -23,6 +23,7 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.UserProfile
+import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
@@ -323,7 +324,25 @@ class GardenViewModel @Inject constructor(
     }
 
     fun removeSelected() = withSelectedObject { obj ->
-        act(onSuccess = ::clearSelection) { _, _ -> removeObject(obj.instanceId) }
+        // A withered plant standing on tilled soil is dug in as compost; say so.
+        val composts = RemoveObjectUseCase.leavesCompost(obj) &&
+            GardenGrid(gardenMap, gridObjects.value).isTilled(obj.gridX, obj.gridY)
+        act(
+            onSuccess = {
+                clearSelection()
+                if (composts) _messages.trySend(R.string.msg_composted)
+            }
+        ) { _, _ -> removeObject(obj.instanceId) }
+    }
+
+    /** Pays to bring the selected withered plant back. */
+    fun reviveSelected() = withSelectedObject { obj ->
+        act(
+            onSuccess = {
+                audio.play(SoundEffect.WATER)
+                _messages.trySend(R.string.msg_revived)
+            }
+        ) { now, weather -> careForPlant.revive(obj.instanceId, now, weather) }
     }
 
     /** Shows the selected fence as the next of its parts. */
@@ -400,7 +419,7 @@ class GardenViewModel @Inject constructor(
 
     private fun act(
         onSuccess: () -> Unit = {},
-        block: suspend (now: Long, weather: WeatherType) -> ActionResult,
+        block: suspend (now: Long, weather: WeatherForecast) -> ActionResult,
     ) {
         viewModelScope.launch {
             initJob.join()
@@ -413,8 +432,16 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    private fun currentWeather(now: Long): WeatherType =
-        (debugWeather ?: WeatherType.forTime(now)).also { _weather.value = it }
+    /**
+     * The weather to bring plants up to [now] with: day by day as it really was, so that time
+     * away is weighed correctly, or the debug menu's choice throughout. Also refreshes the
+     * weather shown on screen.
+     */
+    private fun currentWeather(now: Long): WeatherForecast {
+        val forecast: WeatherForecast = debugWeather ?: WeatherForecast.Daily
+        _weather.value = forecast.at(now)
+        return forecast
+    }
 
     /** The object covering [tile]; for a structure that is any cell of its footprint. */
     private fun List<GridObject>.objectAt(tile: TileCoord?): GridObject? =

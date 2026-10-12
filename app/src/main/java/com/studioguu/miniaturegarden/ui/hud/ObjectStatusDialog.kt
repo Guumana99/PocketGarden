@@ -25,6 +25,7 @@ import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.objectDisplayName
 import com.studioguu.miniaturegarden.ui.statusLabel
 import kotlin.math.roundToInt
@@ -41,6 +42,7 @@ fun ObjectStatusDialog(
     onWater: () -> Unit,
     onHarvest: () -> Unit,
     onRemove: () -> Unit,
+    onRevive: () -> Unit,
     onSwitchPart: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -79,10 +81,29 @@ fun ObjectStatusDialog(
                 LevelRow(stringResource(R.string.label_growth), gridObject.growthProgress)
                 LevelRow(stringResource(R.string.label_moisture), gridObject.moistureLevel)
                 LevelRow(stringResource(R.string.label_nutrition), gridObject.nutritionLevel)
+                // What is left before it withers.
+                LevelRow(stringResource(R.string.label_vitality), 1f - gridObject.stressRate)
+            }
+            val hint = when {
+                gridObject.isPlant && gridObject.status == PlantStatus.WITHERED -> R.string.hint_withered
+                gridObject.isPlant && gridObject.growthProgress >= 1f -> R.string.hint_overripe
+                gridObject.isComposted -> R.string.hint_composted
+                else -> null
+            }
+            if (hint != null) {
+                Text(
+                    text = stringResource(hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (gridObject.isPlant) {
+                if (gridObject.isPlant && gridObject.status == PlantStatus.WITHERED) {
+                    Button(onClick = onRevive) {
+                        Text(stringResource(R.string.action_revive, CareForPlantUseCase.REVIVE_COST))
+                    }
+                } else if (gridObject.isPlant) {
                     val alive = gridObject.status != PlantStatus.WITHERED
                     FilledTonalButton(onClick = onWater, enabled = alive) {
                         Text(stringResource(R.string.action_water))
