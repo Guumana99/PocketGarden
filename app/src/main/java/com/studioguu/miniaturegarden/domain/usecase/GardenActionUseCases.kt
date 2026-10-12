@@ -33,6 +33,9 @@ enum class ActionResult {
     NOT_ENOUGH_COINS,
     INVENTORY_FULL,
     ITEM_LOCKED,
+
+    /** A seed was put on ground that has not been tilled with the hoe. */
+    NEEDS_TILLED_SOIL,
 }
 
 /**
@@ -120,7 +123,8 @@ class CareForPlantUseCase @Inject constructor(
  * Takes one item out of an inventory slot and puts its object on the garden with its first cell
  * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
  * ground (not the river) and free in its own layer: paving goes under things, and things can
- * be stood on paving. Building a structure earns its [GardenItem.placeXp], and a
+ * be stood on paving. Seeds and seedlings are the exception: they only go into soil that has
+ * been tilled with the hoe (see [HoeUseCase]). Building a structure earns its [GardenItem.placeXp], and a
  * first placement makes its page of the encyclopedia ready to be filled in.
  */
 class PlaceItemUseCase @Inject constructor(
@@ -142,6 +146,9 @@ class PlaceItemUseCase @Inject constructor(
                 PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED
                 PlacementCheck.OK -> Unit
             }
+            if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX) && !grid.isTilled(gridX, gridY)) {
+                return@runInTransaction ActionResult.NEEDS_TILLED_SOIL
+            }
 
             gardenRepository.upsertGridObject(
                 GridObject(
@@ -162,6 +169,51 @@ class PlaceItemUseCase @Inject constructor(
             }
             ActionResult.SUCCESS
         }
+}
+
+/**
+ * The hoe: turns a cell of open ground into tilled soil, which is where seeds can be planted.
+ * It is a tool, not an item, so it costs nothing and is never used up. The cell must be empty
+ * ground: no river, no paving, nothing standing on it, and not tilled already.
+ */
+class HoeUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+    private val gardenMap: GardenMap,
+) {
+    suspend operator fun invoke(gridX: Int, gridY: Int, now: Long): ActionResult =
+        gardenRepository.runInTransaction {
+            val grid = GardenGrid(gardenMap, gardenRepository.getGridObjects())
+            // Checked like terrain, which needs the whole cell to itself.
+            when (grid.checkPlacement(Footprint.SINGLE, gridX, gridY, PlacementKind.TERRAIN)) {
+                PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
+                PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
+                PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED
+                PlacementCheck.OK -> Unit
+            }
+            gardenRepository.upsertGridObject(tilledSoil(gridX, gridY, now))
+            ActionResult.SUCCESS
+        }
+
+    /**
+     * Gardens saved before the hoe existed have plants standing on bare ground. This puts tilled
+     * soil under each of them, so they look right and the spot can be replanted after the
+     * harvest. Plants on paving are left as they are. Does nothing once every plant has soil.
+     */
+    suspend fun tillUnderExistingPlants(now: Long) = gardenRepository.runInTransaction {
+        val objects = gardenRepository.getGridObjects()
+        val grid = GardenGrid(gardenMap, objects)
+        val missing = objects.filter { it.isPlant && grid.floorAt(it.gridX, it.gridY) == null }
+            .map { tilledSoil(it.gridX, it.gridY, now) }
+        if (missing.isNotEmpty()) gardenRepository.upsertGridObjects(missing)
+    }
+
+    private fun tilledSoil(gridX: Int, gridY: Int, now: Long) = GridObject(
+        instanceId = UUID.randomUUID().toString(),
+        gridX = gridX,
+        gridY = gridY,
+        objectId = GridObject.TILLED_SOIL_OBJECT_ID,
+        lastUpdatedTimestamp = now,
+    )
 }
 
 /**

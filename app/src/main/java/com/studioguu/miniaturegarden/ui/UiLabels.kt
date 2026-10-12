@@ -24,6 +24,7 @@ fun objectDisplayName(objectId: String): String = when (objectId) {
     "ground_pebble" -> stringResource(R.string.object_ground_pebble)
     "terrain_river" -> stringResource(R.string.object_terrain_river)
     "floor_cobblestone" -> stringResource(R.string.object_floor_cobblestone)
+    "floor_tilled" -> stringResource(R.string.object_floor_tilled)
     "struct_fence" -> stringResource(R.string.object_struct_fence)
     "struct_fence_rail" -> stringResource(R.string.object_struct_fence_rail)
     "struct_fence_post" -> stringResource(R.string.object_struct_fence_post)
@@ -90,4 +91,5 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.NOT_ENOUGH_COINS -> R.string.msg_not_enough_coins
     ActionResult.INVENTORY_FULL -> R.string.msg_inventory_full
     ActionResult.ITEM_LOCKED -> R.string.msg_item_locked
+    ActionResult.NEEDS_TILLED_SOIL -> R.string.msg_needs_tilled_soil
 }

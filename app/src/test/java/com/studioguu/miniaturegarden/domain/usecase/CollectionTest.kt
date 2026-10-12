@@ -259,8 +259,9 @@ class CollectionTest {
     @Test
     fun `planting a seed does not open the plant's page`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1))
+        repo.till(0, 0)
 
-        place(0, 0, 0, t0)
+        assertEquals(ActionResult.SUCCESS, place(0, 0, 0, t0))
 
         assertTrue(repo.collection.isEmpty())
         assertEquals(0, repo.profileSaves)

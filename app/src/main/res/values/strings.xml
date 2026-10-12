@@ -14,6 +14,8 @@
     <string name="action_fertilize">肥料 🪙%1$d</string>
     <string name="action_inventory">もちもの</string>
     <string name="action_shop">ショップ</string>
+    <string name="action_hoe">クワ</string>
+    <string name="hoe_banner">⛏️ クワ: 耕したい地面のマスをタップ</string>
 
     <!-- Object status popup -->
     <string name="tile_position">マス (%1$d, %2$d)</string>
@@ -40,6 +42,7 @@
     <string name="object_ground_pebble">小石</string>
     <string name="object_terrain_river">川</string>
     <string name="object_floor_cobblestone">石畳</string>
+    <string name="object_floor_tilled">耕した土</string>
     <string name="object_struct_fence">ウッドフェンス</string>
     <string name="object_struct_fence_rail">ウッドフェンス（横木）</string>
     <string name="object_struct_fence_post">ウッドフェンス（支柱）</string>
@@ -72,6 +75,7 @@
     <string name="msg_not_ready">まだ収穫できません</string>
     <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やり可能）</string>
     <string name="msg_tile_occupied">ほかの物があるため置けません</string>
+    <string name="msg_needs_tilled_soil">種や苗は、クワで耕した土にだけ植えられます</string>
     <string name="msg_tile_not_buildable">川の上には置けません</string>
     <string name="msg_out_of_bounds">庭の外には置けません</string>
     <string name="msg_slot_empty">アイテムがありません</string>

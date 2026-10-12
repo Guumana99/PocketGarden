@@ -74,7 +74,7 @@ import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.effects.RainOverlay
-import com.studioguu.miniaturegarden.ui.effects.skyColor
+import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
@@ -103,6 +103,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val adReady by viewModel.adReady.collectAsStateWithLifecycle()
     val blessedRainFalling by viewModel.blessedRainFalling.collectAsStateWithLifecycle()
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
+    val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
@@ -154,8 +155,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     gardenLayer.record { this@drawWithContent.drawContent() }
                     drawLayer(gardenLayer)
                 }
-                .background(skyColor(weather))
         ) {
+            // Sky, hills and meadow behind the garden. Inside the recorded box, so a shared
+            // picture has them too.
+            GardenBackdrop(weather, Modifier.fillMaxSize())
             GardenCanvas(
                 gridObjects = gridObjects,
                 selectedTile = selectedTile,
@@ -252,6 +255,13 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             if (target != null) lastTarget = target
 
             AnimatedVisibility(
+                visible = hoeActive,
+                enter = slideInVertically { it / 2 } + fadeIn(),
+                exit = slideOutVertically { it / 2 } + fadeOut(),
+            ) {
+                ToolBanner(stringResource(R.string.hoe_banner), onCancel = viewModel::toggleHoe)
+            }
+            AnimatedVisibility(
                 visible = placing != null,
                 enter = slideInVertically { it / 2 } + fadeIn(),
                 exit = slideOutVertically { it / 2 } + fadeOut(),
@@ -259,7 +269,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 lastPlacing?.let { PlacingBanner(it, onCancel = viewModel::cancelPlacing) }
             }
             AnimatedVisibility(
-                visible = placing == null && target != null,
+                visible = placing == null && !hoeActive && target != null,
                 enter = slideInVertically { it / 2 } + fadeIn(),
                 exit = slideOutVertically { it / 2 } + fadeOut(),
             ) {
@@ -277,7 +287,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             }
 
             QuickActionBar(
-                canCare = placing == null && target?.isPlant == true && target.status != PlantStatus.WITHERED,
+                hoeActive = hoeActive,
+                onToggleHoe = viewModel::toggleHoe,
+                canCare = placing == null && !hoeActive && target?.isPlant == true && target.status != PlantStatus.WITHERED,
                 onWater = viewModel::waterSelected,
                 onFertilize = viewModel::fertilizeSelected,
                 onOpenInventory = { showInventory = true },
@@ -339,13 +351,19 @@ private fun SideButton(emoji: String, label: String, onClick: () -> Unit) {
 @Composable
 private fun PlacingBanner(slot: InventorySlot, onCancel: () -> Unit) {
     val name = GardenItem.fromItemId(slot.itemId)?.let { itemDisplayName(it) } ?: slot.itemId
+    ToolBanner(stringResource(R.string.placing_banner, name, slot.amount), onCancel)
+}
+
+/** Says what the next tap on a tile will do, with a way out. */
+@Composable
+private fun ToolBanner(text: String, onCancel: () -> Unit) {
     Surface(shape = RoundedCornerShape(20.dp), tonalElevation = 3.dp, shadowElevation = 6.dp) {
         Row(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.placing_banner, name, slot.amount),
+                text = text,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f, fill = false),
             )

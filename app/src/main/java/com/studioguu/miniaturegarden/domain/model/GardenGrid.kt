@@ -56,6 +56,9 @@ class GardenGrid(
     /** The paving on (x, y), if any. */
     fun floorAt(x: Int, y: Int): GridObject? = floors[GridCell(x, y)]
 
+    /** Whether (x, y) has been tilled, with or without something growing on it. */
+    fun isTilled(x: Int, y: Int): Boolean = floorAt(x, y)?.isTilledSoil == true
+
     /** What a tap on (x, y) means: the thing standing there, or else the paving under it. */
     fun objectAt(x: Int, y: Int): GridObject? = occupantAt(x, y) ?: floorAt(x, y)
 
