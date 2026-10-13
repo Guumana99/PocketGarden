@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
@@ -58,11 +59,14 @@ import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.render.Daylight
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
+import com.studioguu.miniaturegarden.ui.render.GustAxis
+import com.studioguu.miniaturegarden.ui.render.GustFront
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.RiverAutotile
+import com.studioguu.miniaturegarden.ui.render.SoilTexture
 import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TilePicker
@@ -238,6 +242,12 @@ fun GardenCanvas(
                 vanish = ghost.progress.value,
             )
         }
+        val gust = Wind.gustAt(windMillis, weather)
+        if (gust != null) {
+            pipeline.submit(RenderLayer.TOP_EFFECTS, depth = Float.MAX_VALUE - 1f) {
+                drawGustStreaks(transform, metrics.gridSize, gust)
+            }
+        }
         for (burst in bursts) {
             val progress = burst.progress.value
             pipeline.submit(RenderLayer.TOP_EFFECTS, depth = Float.MAX_VALUE) {
@@ -342,7 +352,8 @@ private fun submitObjects(
             submit(obj, RenderLayer.BASE_TERRAIN, 1f) {
                 if (autotile != null) {
                     val mask = RiverAutotile.maskAt(obj.gridX, obj.gridY, isRiver)
-                    drawRiverTile(autotile, mask, waterTick, transform, obj.gridX, obj.gridY)
+                    val frame = RiverAutotile.frameFor(waterTick, obj.gridX, obj.gridY)
+                    drawRiverTile(autotile, mask, frame, transform, obj.gridX, obj.gridY)
                 } else {
                     drawWaterTile(transform, obj.gridX, obj.gridY, waterTick % WATER_PHASES, isRiver)
                 }
@@ -985,7 +996,49 @@ private fun DrawScope.drawGroundTile(transform: IsometricTransform, x: Int, y: I
 }
 
 /** How far the top of a plant moves in the wind, as a share of its height, at full sway. */
-private const val PLANT_LEAN = 0.05f
+private const val PLANT_LEAN = 0.09f
+
+private val GUST_STREAK = Color(0xFFFFFFFF)
+
+/**
+ * The gust itself, made visible: a few pale streaks riding on its front as it sweeps over the
+ * garden, strongest in the middle of the crossing and gone at either end.
+ */
+private fun DrawScope.drawGustStreaks(transform: IsometricTransform, gridSize: Int, gust: GustFront) {
+    val unit = transform.tileWidth
+    // Faint at the start and the end of the crossing, when the front is at the garden's edge.
+    val across = gust.position / gridSize
+    val strength = (1f - kotlin.math.abs(across * 2f - 1f)).coerceIn(0f, 1f)
+    if (strength <= 0f) return
+    for (lane in 0 until 5) {
+        // Lanes are spread over the garden's width; each streak trails behind the front a little
+        // differently, so that they do not form a ruled line.
+        val side = (lane + 0.5f) * gridSize / 5f + (if (lane % 2 == 0) 0.3f else -0.25f)
+        val lead = gust.position - (lane * 37 % 11) / 11f * 1.4f
+        val length = 0.9f + (lane * 53 % 7) / 7f * 0.7f
+        fun at(along: Float): Offset = when (gust.axis) {
+            GustAxis.ALONG_X -> transform.worldToScreen(along, side)
+            GustAxis.ALONG_Y -> transform.worldToScreen(side, along)
+        }
+        val head = lead.coerceIn(-0.5f, gridSize + 0.5f)
+        val tail = (lead - length).coerceIn(-0.5f, gridSize + 0.5f)
+        if (head - tail < 0.2f) continue
+        // Lifted off the ground a little, and bowed, like a line drawn in the air.
+        val lift = Offset(0f, -unit * (0.32f + 0.08f * lane))
+        val from = at(tail) + lift
+        val to = at(head) + lift
+        val bow = Offset(0f, -unit * 0.06f)
+        val streak = Path().apply {
+            moveTo(from.x, from.y)
+            quadraticTo((from.x + to.x) / 2f + bow.x, (from.y + to.y) / 2f + bow.y, to.x, to.y)
+        }
+        drawPath(
+            path = streak,
+            color = GUST_STREAK.copy(alpha = 0.42f * strength * gust.strength.coerceAtMost(1f)),
+            style = Stroke(width = unit * 0.022f, cap = StrokeCap.Round),
+        )
+    }
+}
 
 /**
  * Blades of grass in front of the foot of something standing on open ground, so that it stands
@@ -1114,6 +1167,9 @@ internal fun convexHull(points: List<Offset>): List<Offset> {
 private val DIRT_DARK = Color(0xFF5B3D28)
 private val DIRT_EDGE = Color(0xFF452C1C)
 private val DIRT_RIDGE = Color(0xFF7B5536)
+private val DIRT_DEEP = Color(0xFF3B2618)
+private val DIRT_DRY = Color(0xFF9A7350)
+private val DIRT_DUST = Color(0xFF7E5E40)
 private val COMPOST_LEAF = Color(0xFF8FB25A)
 private val COMPOST_STRAW = Color(0xFFE2C879)
 private const val FURROWS = 4
@@ -1124,49 +1180,88 @@ private const val FURROWS = 4
  * A [composted] bed is flecked with green and straw.
  */
 private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: Int, composted: Boolean) {
-    val inset = 0.05f
+    val unit = transform.tileWidth
+    val inset = SoilTexture.INSET
     val x0 = x + inset
     val y0 = y + inset
     val x1 = x + 1 - inset
     val y1 = y + 1 - inset
-    val bed = quad(
-        transform.worldToScreen(x0, y0),
-        transform.worldToScreen(x1, y0),
-        transform.worldToScreen(x1, y1),
-        transform.worldToScreen(x0, y1),
-    )
+    val damp = SoilTexture.dampness(x, y)
+
+    // Loose earth that has spilled over the edge onto the grass: soft, flat smudges that thin
+    // out away from the bed, so that the green and the brown run into each other.
+    for (speck in SoilTexture.drift(x, y)) {
+        val at = transform.worldToScreen(speck.x, speck.y)
+        val radius = unit * speck.size
+        scale(scaleX = 1f, scaleY = 0.5f, pivot = at) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(DIRT_DUST.copy(alpha = 0.5f * speck.shade), DIRT_DUST.copy(alpha = 0f)),
+                    center = at,
+                    radius = radius,
+                ),
+                radius = radius,
+                center = at,
+            )
+        }
+    }
+
+    // The bed itself, with an edge that wanders: dark at the rim, where the turf was cut ...
+    val ring = SoilTexture.outline(x, y).map { (wx, wy) -> transform.worldToScreen(wx, wy) }
+    val bed = Path().apply {
+        ring.forEachIndexed { i, point -> if (i == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y) }
+        close()
+    }
     drawPath(bed, DIRT_EDGE)
-    val lip = 0.03f
-    drawPath(
-        quad(
-            transform.worldToScreen(x0 + lip, y0 + lip),
-            transform.worldToScreen(x1 - lip, y0 + lip),
-            transform.worldToScreen(x1 - lip, y1 - lip),
-            transform.worldToScreen(x0 + lip, y1 - lip),
-        ),
-        DIRT_DARK,
-    )
-    // Furrows: a lit ridge with its shadow just behind it.
-    val stroke = transform.tileWidth * 0.022f
+    // ... and inside it the earth in three shades laid one in the other, damp and dark in the
+    // middle of the bed and drier towards its edge, so that it has depth instead of one flat brown.
+    val centre = transform.worldToScreen(x + 0.5f, y + 0.5f)
+    val body = lerp(DIRT_DRY, DIRT_DARK, 0.45f + 0.4f * damp)
+    for ((shrink, colour) in listOf(0.93f to lerp(DIRT_DRY, body, 0.45f), 0.8f to body, 0.5f to lerp(body, DIRT_DEEP, 0.55f))) {
+        val layer = Path().apply {
+            ring.forEachIndexed { i, point ->
+                val p = centre + (point - centre) * shrink
+                if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
+            }
+            close()
+        }
+        drawPath(layer, colour)
+    }
+
+    // Furrows: a lit ridge with its shadow just behind it. Each stops a little short of the edge,
+    // at its own length, as a hoe leaves them.
+    val stroke = unit * 0.022f
     for (i in 0 until FURROWS) {
         val fy = y0 + (y1 - y0) * (i + 0.5f) / FURROWS
-        val from = transform.worldToScreen(x0 + 0.08f, fy)
-        val to = transform.worldToScreen(x1 - 0.08f, fy)
+        val short = 0.07f + 0.04f * (((x * 7 + y * 13 + i * 5) % 4) / 3f)
+        val from = transform.worldToScreen(x0 + short, fy)
+        val to = transform.worldToScreen(x1 - 0.11f + short * 0.5f, fy)
         val behind = Offset(0f, -stroke)
-        drawLine(DIRT_EDGE, from + behind, to + behind, stroke, StrokeCap.Round)
+        drawLine(DIRT_DEEP, from + behind, to + behind, stroke, StrokeCap.Round)
         drawLine(DIRT_RIDGE, from, to, stroke, StrokeCap.Round)
+        drawLine(DIRT_DRY.copy(alpha = 0.55f), from + Offset(0f, stroke * 0.3f), to + Offset(0f, stroke * 0.3f), stroke * 0.35f, StrokeCap.Round)
     }
+    // Grains: crumbs of dry earth and small dark hollows scattered over the surface.
+    for (grain in SoilTexture.grains(x, y)) {
+        val at = transform.worldToScreen(grain.x, grain.y)
+        val colour = when {
+            grain.shade < 0.4f -> DIRT_DRY
+            grain.shade < 0.75f -> DIRT_RIDGE
+            else -> DIRT_DEEP
+        }
+        drawOval(colour.copy(alpha = 0.85f), at - Offset(unit * grain.size, unit * grain.size * 0.6f), Size(unit * grain.size * 2f, unit * grain.size * 1.2f))
+    }
+
     // The edge of a bed is not ruled with a pen: clods lie on it and the grass grows over it.
     var edge = x * 19349663 xor y * 83492791
     fun nextEdge(): Float {
         edge = edge * 1103515245 + 12345
         return ((edge ushr 16) and 0x7FFF) / 32767f
     }
-    val unit = transform.tileWidth
-    repeat(10) { i ->
+    repeat(12) { i ->
         // A point somewhere along one of the four sides, a little to either side of the line.
         val along = 0.08f + nextEdge() * 0.84f
-        val off = (nextEdge() - 0.5f) * 0.07f
+        val off = (nextEdge() - 0.5f) * 0.08f
         val (wx, wy) = when (i % 4) {
             0 -> (x0 + along * (x1 - x0)) to (y0 + off)
             1 -> (x1 + off) to (y0 + along * (y1 - y0))
@@ -1175,9 +1270,11 @@ private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: I
         }
         val at = transform.worldToScreen(wx, wy)
         if (i < 6) {
-            drawCircle(if (i % 2 == 0) DIRT_DARK else DIRT_RIDGE, unit * (0.014f + nextEdge() * 0.012f), at)
+            val radius = unit * (0.014f + nextEdge() * 0.014f)
+            drawCircle(DIRT_DEEP, radius, at + Offset(0f, radius * 0.35f))
+            drawCircle(if (i % 2 == 0) DIRT_DARK else DIRT_RIDGE, radius, at)
         } else {
-            val blade = unit * 0.04f
+            val blade = unit * (0.035f + nextEdge() * 0.02f)
             drawLine(GRASS_TUFT, at, at + Offset(-blade * 0.4f, -blade), unit * 0.012f, StrokeCap.Round)
             drawLine(GRASS_BLADE_LIGHT, at, at + Offset(blade * 0.45f, -blade * 0.8f), unit * 0.012f, StrokeCap.Round)
         }
