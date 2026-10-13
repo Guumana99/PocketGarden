@@ -27,8 +27,8 @@
     <string name="hint_withered">枯れています。コインで復活させるか、撤去するとたい肥になり、次に植える作物が少し育った状態で始まります</string>
     <string name="hint_composted">たい肥入りの土です。次に植える作物が少し育った状態で始まります</string>
     <string name="action_revive">🌱 復活 (🪙%1$d)</string>
-    <string name="msg_revived">元気を取り戻しました</string>
-    <string name="msg_composted">枯れた作物がたい肥になりました</string>
+    <string name="msg_revived">🌱 元気になりました</string>
+    <string name="msg_composted">🍂 たい肥になりました</string>
     <string name="msg_not_withered">この作物は枯れていません</string>
     <string name="label_percent">%1$d%%</string>
     <string name="status_healthy">元気</string>
@@ -60,19 +60,21 @@
     <string name="remove_store">🎒 持ち物に戻す</string>
     <string name="remove_discard">破棄する</string>
     <string name="remove_soil">草地に戻す</string>
-    <string name="msg_stored">持ち物に戻しました</string>
+    <string name="msg_stored">🎒 かばんにしまいました</string>
     <string name="msg_not_returnable">これは持ち物に戻せません</string>
     <string name="msg_not_movable">これは移動できません</string>
     <string name="msg_busy">作業中です。終わるまでお待ちください</string>
     <string name="action_move">移動</string>
-    <string name="move_banner">🚚 移動: %1$s の移動先のマスをタップ</string>
-    <string name="msg_moved">移動しました</string>
+    <string name="move_banner">🚚 %1$s の移動先をタップ</string>
+    <string name="msg_moved">🚚 おひっこし完了</string>
     <string name="work_building">🔨 建築中</string>
     <string name="work_demolishing">🧹 解体中</string>
     <string name="work_packing">📦 片づけ中</string>
     <string name="work_remaining">あと %1$s</string>
-    <string name="work_started_demolition">解体を始めました</string>
-    <string name="work_started_building">建築を始めました</string>
+    <string name="work_started_demolition">🧹 解体スタート</string>
+    <string name="work_started_building">🔨 建築スタート</string>
+    <string name="work_ready">✨ 完成！ タップでお披露目</string>
+    <string name="msg_work_ready">✨ できあがり！ タップしてお披露目しよう</string>
     <string name="effect_built">🎉 %1$s が完成！</string>
     <string name="effect_demolished">🧹 %1$s の解体が完了</string>
     <string name="effect_packed">📦 %1$s を持ち物に戻しました</string>
@@ -140,8 +142,6 @@
     <string name="collection_unknown">？？？</string>
     <string name="collection_hint_harvest">そだてて　しゅうかく すると　とうろく される。</string>
     <string name="collection_hint_placement">にわに　おくと　とうろく される。</string>
-    <string name="collection_count_harvest">しゅうかく　%1$d かい</string>
-    <string name="collection_count_placement">せっち　%1$d かい</string>
     <string name="flavor_tulip">はるの にわの　ていばん。\nそだてやすく　はじめての ひとにも やさしい。</string>
     <string name="flavor_sunflower">おひさまを　おいかけて　せを のばす。\nのどが かわきやすいので　みずやりは こまめに。</string>
     <string name="flavor_rose">はなの じょおう。\nてまは かかるが　さいたときの よろこびは ひとしお。</string>
@@ -163,7 +163,7 @@
 
     <!-- Rewards. By request, none of these texts uses the word 動画. -->
     <string name="action_cancel">キャンセル</string>
-    <string name="reward_rain_button">☔ 慈雨を降らせる（本日あと %1$d/%2$d回）</string>
+    <string name="reward_rain_button">☔ 慈雨を降らせる</string>
     <string name="reward_rain_confirm" formatted="false">慈雨（じう）を降らせますか？\n（すべての作物の成長時間を50%短縮します）</string>
     <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
     <string name="reward_bonus_button">💰 臨時ボーナスを受け取る +%1$dG（本日あと %2$d/%3$d回）</string>

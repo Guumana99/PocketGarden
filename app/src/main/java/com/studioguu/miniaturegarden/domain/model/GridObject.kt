@@ -19,19 +19,20 @@ data class GridObject(
     val workStartedAt: Long = 0L,
     val workEndsAt: Long = 0L,
 ) {
-    /** Whether this is a work site: being built, taken apart or packed up. */
+    /** Whether this is a work site: being built (or built and not yet unveiled), taken apart or packed up. */
     val isWorking: Boolean get() = workKind != WorkKind.NONE
 
     /** How far along the job is at [now], 0 (just begun) to 1 (done); 1 when there is none. */
     fun workProgress(now: Long): Float {
-        if (!isWorking) return 1f
+        if (!isWorking || workKind == WorkKind.READY) return 1f
         val total = workEndsAt - workStartedAt
         if (total <= 0L) return 1f
         return ((now - workStartedAt).toFloat() / total).coerceIn(0f, 1f)
     }
 
     /** Milliseconds of the job still to go at [now]; 0 when it is done or there is none. */
-    fun workRemainingMillis(now: Long): Long = if (isWorking) (workEndsAt - now).coerceAtLeast(0L) else 0L
+    fun workRemainingMillis(now: Long): Long =
+        if (isWorking && workKind != WorkKind.READY) (workEndsAt - now).coerceAtLeast(0L) else 0L
 
     /** The same object with no job on it. */
     fun withoutWork(): GridObject = copy(workKind = WorkKind.NONE, workStartedAt = 0L, workEndsAt = 0L)
@@ -110,6 +111,12 @@ enum class WorkKind {
 
     /** Being built. It takes up its place already, but is not finished. */
     BUILDING,
+
+    /**
+     * Built, but still under wraps: the building time is over and it waits for the player to
+     * tap it, which is what unveils it. Nothing about it depends on the clock any more.
+     */
+    READY,
 
     /** Being taken apart to be thrown away. When the job is done the object is gone. */
     DEMOLISHING,

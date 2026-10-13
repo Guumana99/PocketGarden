@@ -35,7 +35,8 @@ class StartRemovalUseCase @Inject constructor(
                 return@runInTransaction ActionResult.BUSY
             }
             val seconds = item?.demolishSeconds ?: 0
-            if (seconds <= 0 || target.workKind == WorkKind.BUILDING) {
+            // Not unveiled yet counts as not built yet: it is called off, not taken apart.
+            if (seconds <= 0 || target.workKind == WorkKind.BUILDING || target.workKind == WorkKind.READY) {
                 return@runInTransaction if (toBag) storeObject(instanceId) else removeObject(instanceId)
             }
             if (toBag && !hasRoomFor(item!!.itemId)) return@runInTransaction ActionResult.INVENTORY_FULL
@@ -62,9 +63,10 @@ class StartRemovalUseCase @Inject constructor(
 data class FinishedWork(val objectId: String, val kind: WorkKind)
 
 /**
- * Finishes every job whose time is up at [now]: a building under construction becomes a building,
- * one being demolished disappears, one being packed up goes into the bag. Jobs that still have
- * time to run are left alone.
+ * Finishes every job whose time is up at [now]: one being demolished disappears, one being packed
+ * up goes into the bag. A building under construction does not simply appear: it becomes
+ * [WorkKind.READY] and stays under wraps until the player unveils it ([UnveilBuildingUseCase]).
+ * Jobs that still have time to run are left alone.
  *
  * If the bag has filled up while something was being packed, it cannot go in; the job is called
  * off and the building stays where it is, whole.
@@ -76,14 +78,15 @@ class CompleteWorkUseCase @Inject constructor(
 ) {
     /** @return what was finished, in no particular order; empty if nothing was due. */
     suspend operator fun invoke(now: Long): List<FinishedWork> = gardenRepository.runInTransaction {
-        val due = gardenRepository.getGridObjects().filter { it.isWorking && it.workEndsAt <= now }
+        val due = gardenRepository.getGridObjects()
+            .filter { it.isWorking && it.workKind != WorkKind.READY && it.workEndsAt <= now }
         val finished = mutableListOf<FinishedWork>()
         for (site in due) {
             val standing = site.withoutWork()
             when (site.workKind) {
                 WorkKind.BUILDING -> {
-                    gardenRepository.upsertGridObject(standing)
-                    finished += FinishedWork(site.objectId, WorkKind.BUILDING)
+                    gardenRepository.upsertGridObject(site.copy(workKind = WorkKind.READY))
+                    finished += FinishedWork(site.objectId, WorkKind.READY)
                 }
                 WorkKind.DEMOLISHING -> {
                     gardenRepository.upsertGridObject(standing)
@@ -97,10 +100,32 @@ class CompleteWorkUseCase @Inject constructor(
                         finished += FinishedWork(site.objectId, WorkKind.PACKING)
                     }
                 }
-                WorkKind.NONE -> Unit
+                WorkKind.READY, WorkKind.NONE -> Unit
             }
         }
         finished
+    }
+}
+
+/**
+ * Unveils a building that is finished and waiting: the wraps come off and it stands there as
+ * what it is. This is the player's tap; nothing else finishes a building.
+ */
+class UnveilBuildingUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+) {
+    /** @return [ActionResult.BUSY] if it is still being built, [ActionResult.NOT_FOUND] if there is nothing to unveil. */
+    suspend operator fun invoke(instanceId: String): ActionResult = gardenRepository.runInTransaction {
+        val target = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+            ?: return@runInTransaction ActionResult.NOT_FOUND
+        when (target.workKind) {
+            WorkKind.READY -> {
+                gardenRepository.upsertGridObject(target.withoutWork())
+                ActionResult.SUCCESS
+            }
+            WorkKind.NONE -> ActionResult.NOT_FOUND
+            else -> ActionResult.BUSY
+        }
     }
 }
 

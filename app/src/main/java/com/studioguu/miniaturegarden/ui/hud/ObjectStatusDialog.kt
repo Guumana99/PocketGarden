@@ -144,6 +144,10 @@ private fun WorkRow(gridObject: GridObject) {
         WorkKind.PACKING -> R.string.work_packing
         else -> R.string.work_building
     }
+    if (gridObject.workKind == WorkKind.READY) {
+        Text(stringResource(R.string.work_ready), style = MaterialTheme.typography.labelLarge)
+        return
+    }
     val secondsLeft = ((gridObject.workRemainingMillis(now) + 999) / 1000).toInt()
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
