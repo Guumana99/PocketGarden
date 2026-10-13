@@ -70,6 +70,7 @@ data class GridObject(
         const val RIVER_OBJECT_ID = "terrain_river"
         const val FLOOR_ID_PREFIX = "floor_"
         const val COBBLESTONE_OBJECT_ID = "floor_cobblestone"
+        const val WOOD_DECK_OBJECT_ID = "floor_wood"
 
         /**
          * Tilled soil. It is stored like paving, in the floor layer of its cell: the plant grown

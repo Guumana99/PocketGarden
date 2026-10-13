@@ -365,6 +365,14 @@ class GardenViewModel @Inject constructor(
         _movingId.value = null
     }
 
+    /** Puts down whatever is in hand or selected, ready for a photograph of the garden alone. */
+    fun enterCameraMode() {
+        _selectedTile.value = null
+        _placingSlotIndex.value = null
+        _movingId.value = null
+        _hoeActive.value = false
+    }
+
     fun startPlacing(slotIndex: Int) {
         _hoeActive.value = false
         _movingId.value = null

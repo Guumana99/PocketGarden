@@ -121,20 +121,26 @@ class ProgressionTest {
         assertEquals(
             setOf(
                 GardenItem.SEED_TULIP, GardenItem.GROUND_GRASS, GardenItem.GROUND_PEBBLE, GardenItem.TILE_RIVER,
-                GardenItem.FLOOR_COBBLESTONE, GardenItem.STRUCT_FENCE,
+                GardenItem.FLOOR_COBBLESTONE, GardenItem.STRUCT_FENCE, GardenItem.GROUND_FLOWERS,
             ),
             unlockedAt(1),
         )
-        assertEquals(unlockedAt(1) + GardenItem.SEED_SUNFLOWER + GardenItem.DECO_ROCK, unlockedAt(2))
+        assertEquals(
+            unlockedAt(1) + GardenItem.SEED_SUNFLOWER + GardenItem.DECO_ROCK + GardenItem.DECO_BENCH,
+            unlockedAt(2),
+        )
         assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL, unlockedAt(3))
         assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE, unlockedAt(4))
-        assertEquals(GardenItem.entries.toSet(), unlockedAt(5))
+        // Level opens everything but the two that the encyclopedia opens.
+        val byPages = setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN)
+        assertEquals(GardenItem.entries.toSet() - byPages, unlockedAt(5))
+        assertEquals(GardenItem.entries.toSet(), GardenItem.entries.filter { it.isUnlockedFor(statsAt(5).copy(collectionPages = 4)) }.toSet())
     }
 
     @Test
     fun `unlockedBetween lists what a level-up opens, including skipped levels`() {
         assertEquals(
-            setOf(GardenItem.SEED_SUNFLOWER, GardenItem.DECO_ROCK),
+            setOf(GardenItem.SEED_SUNFLOWER, GardenItem.DECO_ROCK, GardenItem.DECO_BENCH),
             GardenItem.unlockedBetween(1, 2).toSet(),
         )
         assertEquals(

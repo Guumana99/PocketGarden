@@ -51,6 +51,17 @@
     <string name="object_terrain_river">川</string>
     <string name="object_floor_cobblestone">石畳</string>
     <string name="object_floor_tilled">耕した土</string>
+    <string name="object_floor_wood">ウッドデッキ</string>
+    <string name="object_ground_flowers">野の花</string>
+    <string name="object_deco_bench">ベンチ</string>
+    <string name="object_deco_lantern">石どうろう</string>
+    <string name="hint_near_well">💧 井戸のそば：土が乾きにくい</string>
+    <string name="hint_near_hut">🛖 小屋のそば：少し早く育つ</string>
+    <string name="hint_well_effect">💧 まわりの作物の土が乾きにくくなります</string>
+    <string name="hint_hut_effect">🌱 まわりの作物が少し早く育ちます</string>
+    <string name="camera_button">カメラ</string>
+    <string name="camera_back">✕ もどる</string>
+    <string name="camera_shutter">撮影してシェア</string>
     <string name="object_struct_fence">ウッドフェンス</string>
     <string name="remove_title">%1$s を撤去</string>
     <string name="remove_text_returnable">持ち物に戻すと、あとでまた置けます。破棄すると元に戻せません。</string>
@@ -103,6 +114,7 @@
     <string name="shop_tab_decorations">装飾</string>
     <string name="shop_bought">%1$s を買いました</string>
     <string name="shop_locked">🔒 Lv.%1$d で開放</string>
+    <string name="shop_locked_pages">🔒 ずかん %1$dページ</string>
 
     <!-- Action results -->
     <string name="msg_not_found">対象が見つかりません</string>
@@ -147,6 +159,10 @@
     <string name="flavor_rose">はなの じょおう。\nてまは かかるが　さいたときの よろこびは ひとしお。</string>
     <string name="flavor_grass">ふかふかの　みどりの じゅうたん。\nねころぶと　きもちいい。</string>
     <string name="flavor_pebble">かわらで ひろった　まるい こいし。\nならべると　こみちに なる。</string>
+    <string name="flavor_flowers">なまえも しらない　ちいさな はな。\nかぜが ふくと　いっせいに ゆれる。</string>
+    <string name="flavor_deck">きの かおりが する　いたばりの ゆか。\nはだしで あるくと　きもちいい。</string>
+    <string name="flavor_bench">ひとやすみに　ちょうど いい。\nすわって にわを ながめよう。</string>
+    <string name="flavor_lantern">こけむした　いしの あかり。\nゆうぐれに　ぽっと ともる。</string>
     <string name="flavor_rock">どっしり かまえた　おおきな いわ。\nにわの　ぬしの ような かお。</string>
     <string name="flavor_river">さらさら ながれる　ちいさな おがわ。\nならべて つなげば　にわに せせらぎが うまれる。</string>
     <string name="flavor_path">まるい いしを　しきつめた こみち。\nあめの ひも　あしもとが ぬかるまない。</string>

@@ -7,6 +7,8 @@ package com.studioguu.miniaturegarden.domain.model
 data class PlayerStats(
     val level: Int,
     val totalXp: Long,
+    /** Pages of the encyclopedia the player has filled in. Not part of the profile: see [UnlockCondition.CollectionPages]. */
+    val collectionPages: Int = 0,
 ) {
     val isMaxLevel: Boolean get() = level >= LevelTable.MAX_LEVEL
 
@@ -37,5 +39,10 @@ sealed interface UnlockCondition {
     /** Available once the player has reached [level]. */
     data class PlayerLevel(val level: Int) : UnlockCondition {
         override fun isMetBy(stats: PlayerStats) = stats.level >= level
+    }
+
+    /** Available once the player has filled in [pages] pages of the encyclopedia. */
+    data class CollectionPages(val pages: Int) : UnlockCondition {
+        override fun isMetBy(stats: PlayerStats) = stats.collectionPages >= pages
     }
 }

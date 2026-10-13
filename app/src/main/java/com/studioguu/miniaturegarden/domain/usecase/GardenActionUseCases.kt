@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
@@ -91,11 +92,12 @@ class CareForPlantUseCase @Inject constructor(
      */
     suspend fun revive(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         gardenRepository.runInTransaction {
-            val stored = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+            val garden = gardenRepository.getGridObjects()
+            val stored = garden.firstOrNull { it.instanceId == instanceId }
                 ?: return@runInTransaction ActionResult.NOT_FOUND
             if (!stored.isPlant) return@runInTransaction ActionResult.NOT_A_PLANT
             // Brought up to now first: a plant can have withered since it was last looked at.
-            val current = calculateOfflineProgress(stored, now, weather)
+            val current = calculateOfflineProgress(stored, now, weather, garden)
             if (current.status != PlantStatus.WITHERED) {
                 gardenRepository.upsertGridObject(current)
                 return@runInTransaction ActionResult.NOT_WITHERED
@@ -125,11 +127,12 @@ class CareForPlantUseCase @Inject constructor(
         refuse: (GridObject) -> ActionResult?,
         treat: (GridObject) -> GridObject,
     ): ActionResult = gardenRepository.runInTransaction {
-        val stored = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+        val garden = gardenRepository.getGridObjects()
+        val stored = garden.firstOrNull { it.instanceId == instanceId }
             ?: return@runInTransaction ActionResult.NOT_FOUND
         if (!stored.isPlant) return@runInTransaction ActionResult.NOT_A_PLANT
 
-        val current = calculateOfflineProgress(stored, now, weather)
+        val current = calculateOfflineProgress(stored, now, weather, garden)
         if (current.status == PlantStatus.WITHERED) {
             gardenRepository.upsertGridObject(current)
             return@runInTransaction ActionResult.WITHERED
@@ -282,11 +285,12 @@ class HarvestPlantUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         gardenRepository.runInTransaction {
-            val stored = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+            val garden = gardenRepository.getGridObjects()
+            val stored = garden.firstOrNull { it.instanceId == instanceId }
                 ?: return@runInTransaction ActionResult.NOT_FOUND
             if (!stored.isPlant) return@runInTransaction ActionResult.NOT_A_PLANT
 
-            val current = calculateOfflineProgress(stored, now, weather)
+            val current = calculateOfflineProgress(stored, now, weather, garden)
             if (current.status == PlantStatus.WITHERED) return@runInTransaction ActionResult.WITHERED
             if (current.growthProgress < 1f) return@runInTransaction ActionResult.NOT_READY
             val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
@@ -378,7 +382,8 @@ class PurchaseItemUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(item: GardenItem): ActionResult = gardenRepository.runInTransaction {
         val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
-        if (!item.isUnlockedFor(profile.stats)) return@runInTransaction ActionResult.ITEM_LOCKED
+        val pages = CollectionProgress(gardenRepository.getCollection()).revealed
+        if (!item.isUnlockedFor(profile.stats.copy(collectionPages = pages))) return@runInTransaction ActionResult.ITEM_LOCKED
         if (profile.coins < item.price) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
 
         val slots = gardenRepository.getInventory().filter { it.slotIndex < profile.inventoryCapacity }

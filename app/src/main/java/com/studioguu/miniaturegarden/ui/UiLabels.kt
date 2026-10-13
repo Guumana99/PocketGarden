@@ -25,6 +25,10 @@ fun objectDisplayName(objectId: String): String = when (objectId) {
     "terrain_river" -> stringResource(R.string.object_terrain_river)
     "floor_cobblestone" -> stringResource(R.string.object_floor_cobblestone)
     "floor_tilled" -> stringResource(R.string.object_floor_tilled)
+    "floor_wood" -> stringResource(R.string.object_floor_wood)
+    "ground_flowers" -> stringResource(R.string.object_ground_flowers)
+    "deco_bench" -> stringResource(R.string.object_deco_bench)
+    "deco_lantern" -> stringResource(R.string.object_deco_lantern)
     // A fence is a fence under any of the ids it has been stored as.
     "struct_fence", "struct_fence_rail", "struct_fence_post" -> stringResource(R.string.object_struct_fence)
     else -> objectId
@@ -51,6 +55,10 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.TILE_RIVER -> "🌊"
     GardenItem.FLOOR_COBBLESTONE -> "🧱"
     GardenItem.STRUCT_FENCE -> "🪵"
+    GardenItem.GROUND_FLOWERS -> "🌼"
+    GardenItem.FLOOR_WOOD -> "🟫"
+    GardenItem.DECO_BENCH -> "🪑"
+    GardenItem.DECO_LANTERN -> "🏮"
 }
 
 fun weatherEmoji(weather: WeatherType): String = when (weather) {

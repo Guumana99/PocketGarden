@@ -29,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -59,6 +58,8 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
+import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.collection.CollectionDialog
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
@@ -79,6 +80,11 @@ import com.studioguu.miniaturegarden.ui.hud.RemoveConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
 import com.studioguu.miniaturegarden.ui.settings.SettingsDialog
+import com.studioguu.miniaturegarden.ui.share.CAMERA_MARGIN
+import com.studioguu.miniaturegarden.ui.share.CAMERA_RESERVED_BOTTOM
+import com.studioguu.miniaturegarden.ui.share.CameraFrame
+import com.studioguu.miniaturegarden.ui.share.CameraOverlay
+import com.studioguu.miniaturegarden.ui.share.cropToFrame
 import com.studioguu.miniaturegarden.ui.share.shareGardenImage
 import com.studioguu.miniaturegarden.ui.shop.ShopDialog
 import kotlinx.coroutines.delay
@@ -112,10 +118,14 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var showCollection by rememberSaveable { mutableStateOf(false) }
     var confirmRain by rememberSaveable { mutableStateOf(false) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
+    // Camera mode: nothing on screen but the garden, a viewfinder and a shutter.
+    var cameraMode by rememberSaveable { mutableStateOf(false) }
+    var shots by remember { mutableStateOf(0) }
     val toast = remember { GardenToastState() }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     // Everything drawn inside the garden box below is also recorded into this layer, which is
     // what a shared screenshot is made from: the garden and the sky, none of the controls.
@@ -160,175 +170,208 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             // Sky, hills and meadow behind the garden. Inside the recorded box, so a shared
             // picture has them too.
             GardenBackdrop(weather, Modifier.fillMaxSize())
+            // The reach of the selected building's effect, if it has one and is finished.
+            val aura = remember(selectedObject) {
+                selectedObject?.takeUnless { it.isWorking }
+                    ?.let { building -> StructureEffect.forObjectId(building.objectId)?.cellsInReach(building.gridX, building.gridY) }
+                    ?: emptySet()
+            }
             GardenCanvas(
                 gridObjects = gridObjects,
-                selectedTile = selectedTile,
-                onTileTapped = viewModel::onTileTapped,
+                // In camera mode the garden is only looked at: no selection, no grid, and taps
+                // do nothing, though it can still be dragged and pinched into place.
+                selectedTile = if (cameraMode) null else selectedTile,
+                onTileTapped = { tile -> if (!cameraMode) viewModel.onTileTapped(tile) },
                 atlas = atlas,
                 terrain = terrain,
                 gardenMap = viewModel.gardenMap,
                 weather = weather,
+                showGrid = !cameraMode,
+                auraCells = if (cameraMode) emptySet() else aura,
                 modifier = Modifier.fillMaxSize(),
             )
             // Inside the recorded box, so a shared picture shows the rain too.
             if (weather == WeatherType.RAINY || blessedRainFalling) RainOverlay(Modifier.fillMaxSize())
         }
 
-        TopStatusBar(
-            coins = profile?.coins ?: 0L,
-            playerLevel = profile?.playerLevel ?: 1,
-            currentXp = profile?.currentXp ?: 0L,
-            weather = weather,
-            modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
-        )
-
-        // Greyed out when today's rains are used up or none is ready to be shown.
-        WoodButton(
-            text = stringResource(R.string.reward_rain_button),
-            onClick = {
-                if (viewModel.hasGrowingPlants()) confirmRain = true else viewModel.showMessage(R.string.msg_no_growing_plants)
-            },
-            enabled = rainRemaining > 0 && adReady,
-            modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 58.dp),
-        )
-
-        Column(
-            modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 112.dp, end = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
-            Box {
-                SideButton("📖", stringResource(R.string.collection_title)) { showCollection = true }
-                // Pages waiting to be filled in.
-                if (collectionReady > 0) {
-                    Text(
-                        text = collectionReady.toString(),
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 4.dp, end = 4.dp)
-                            .size(18.dp)
-                            .background(MaterialTheme.colorScheme.error, CircleShape)
-                            .wrapContentSize(),
-                    )
-                }
-            }
-            SideButton("📷", stringResource(R.string.share_button)) {
-                scope.launch {
-                    // Drop the selection frame first and let that frame be drawn, so it is not in the picture.
-                    viewModel.clearSelection()
-                    withFrameNanos { }
-                    withFrameNanos { }
-                    val shared = shareGardenImage(context, gardenLayer.toImageBitmap().asAndroidBitmap())
-                    if (!shared) toast.show(context.getString(R.string.share_failed))
-                }
-            }
-            if (BuildConfig.DEBUG) {
-                SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
-            }
-        }
-
-        FloatingEffectsHost(
-            effects = effects,
-            onFinished = viewModel::onEffectFinished,
-            modifier = Modifier.align(Alignment.Center),
-        )
-
-        // Short messages, laid over the garden below the buttons at the top. They take no room
-        // in the layout, so nothing shifts when one comes or goes.
-        GardenToastHost(
-            state = toast,
-            modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 124.dp, start = 24.dp, end = 24.dp),
-        )
-
-        // The tool bar sits at the bottom and never moves. Whatever belongs to the current mode
-        // (the selected thing's panel, or the banner of the tool in hand) is laid over the garden
-        // just above it: one swaps for another by fading, in place, and none of them pushes
-        // anything else about.
-        var barHeightPx by remember { mutableStateOf(0) }
-        val barHeight = with(LocalDensity.current) { barHeightPx.toDp() }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .safeDrawingPadding()
-                .padding(horizontal = 12.dp, vertical = 12.dp)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            val placing = placingSlot
-            val target = selectedObject
-            // The panels fade away rather than vanish, so they keep showing the last thing they
-            // held while they leave.
-            var lastPlacing by remember { mutableStateOf<InventorySlot?>(null) }
-            var lastTarget by remember { mutableStateOf<GridObject?>(null) }
-            if (placing != null) lastPlacing = placing
-            if (target != null) lastTarget = target
-
-            QuickActionBar(
-                modifier = Modifier.onSizeChanged { barHeightPx = it.height },
-                hoeActive = hoeActive,
-                onToggleHoe = viewModel::toggleHoe,
-                canCare = placing == null && !hoeActive && target?.isPlant == true && target.status != PlantStatus.WITHERED,
-                onWater = viewModel::waterSelected,
-                onFertilize = viewModel::fertilizeSelected,
-                onOpenInventory = { showInventory = true },
-                onOpenShop = { showShop = true },
+        if (cameraMode) {
+            CameraOverlay(
+                shots = shots,
+                onShutter = {
+                    scope.launch {
+                        // The picture is the garden box as it is drawn, cut to the viewfinder:
+                        // the frame, the dimming and the buttons are not part of that box.
+                        val image = gardenLayer.toImageBitmap().asAndroidBitmap()
+                        val frame = with(density) {
+                            CameraFrame.rect(
+                                image.width.toFloat(), image.height.toFloat(),
+                                CAMERA_MARGIN.toPx(), CAMERA_RESERVED_BOTTOM.toPx(),
+                            )
+                        }
+                        shots++
+                        val shared = shareGardenImage(context, cropToFrame(image, frame))
+                        if (!shared) toast.show(context.getString(R.string.share_failed))
+                    }
+                },
+                onClose = { cameraMode = false },
             )
+            GardenToastHost(
+                state = toast,
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 24.dp, start = 24.dp, end = 24.dp),
+            )
+        } else {
+            TopStatusBar(
+                coins = profile?.coins ?: 0L,
+                playerLevel = profile?.playerLevel ?: 1,
+                currentXp = profile?.currentXp ?: 0L,
+                weather = weather,
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
+            )
+
+            // Greyed out when today's rains are used up or none is ready to be shown.
+            WoodButton(
+                text = stringResource(R.string.reward_rain_button),
+                onClick = {
+                    if (viewModel.hasGrowingPlants()) confirmRain = true else viewModel.showMessage(R.string.msg_no_growing_plants)
+                },
+                enabled = rainRemaining > 0 && adReady,
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 58.dp),
+            )
+
+            Column(
+                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 112.dp, end = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
+                Box {
+                    SideButton("📖", stringResource(R.string.collection_title)) { showCollection = true }
+                    // Pages waiting to be filled in.
+                    if (collectionReady > 0) {
+                        Text(
+                            text = collectionReady.toString(),
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 4.dp, end = 4.dp)
+                                .size(18.dp)
+                                .background(MaterialTheme.colorScheme.error, CircleShape)
+                                .wrapContentSize(),
+                        )
+                    }
+                }
+                SideButton("📷", stringResource(R.string.camera_button)) {
+                    // Whatever was in hand is put down, so that nothing of it is in the picture.
+                    viewModel.enterCameraMode()
+                    cameraMode = true
+                }
+                if (BuildConfig.DEBUG) {
+                    SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
+                }
+            }
+
+            FloatingEffectsHost(
+                effects = effects,
+                onFinished = viewModel::onEffectFinished,
+                modifier = Modifier.align(Alignment.Center),
+            )
+
+            // Short messages, laid over the garden below the buttons at the top. They take no room
+            // in the layout, so nothing shifts when one comes or goes.
+            GardenToastHost(
+                state = toast,
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 124.dp, start = 24.dp, end = 24.dp),
+            )
+
+            // The tool bar sits at the bottom and never moves. Whatever belongs to the current mode
+            // (the selected thing's panel, or the banner of the tool in hand) is laid over the garden
+            // just above it: one swaps for another by fading, in place, and none of them pushes
+            // anything else about.
+            var barHeightPx by remember { mutableStateOf(0) }
+            val barHeight = with(LocalDensity.current) { barHeightPx.toDp() }
             Box(
-                modifier = Modifier.fillMaxWidth().padding(bottom = barHeight + 8.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .safeDrawingPadding()
+                    .padding(horizontal = 12.dp, vertical = 12.dp)
+                    .fillMaxWidth(),
                 contentAlignment = Alignment.BottomCenter,
             ) {
-                val moving = movingObject
-                var lastMoving by remember { mutableStateOf<GridObject?>(null) }
-                if (moving != null) lastMoving = moving
-                AnimatedVisibility(
-                    visible = moving != null,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    lastMoving?.let {
-                        ToolBanner(
-                            stringResource(R.string.move_banner, objectDisplayName(it.objectId)),
-                            onCancel = viewModel::cancelMoving,
-                        )
-                    }
-                }
-                AnimatedVisibility(
-                    visible = hoeActive,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    ToolBanner(stringResource(R.string.hoe_banner), onCancel = viewModel::toggleHoe)
-                }
-                AnimatedVisibility(
-                    visible = placing != null,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    lastPlacing?.let { PlacingBanner(it, onCancel = viewModel::cancelPlacing) }
-                }
-                AnimatedVisibility(
-                    visible = placing == null && !hoeActive && moving == null && target != null,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                ) {
-                    lastTarget?.let {
-                        ObjectStatusDialog(
-                            gridObject = it,
-                            onWater = viewModel::waterSelected,
-                            onHarvest = viewModel::harvestSelected,
-                            onRemove = { confirmRemove = true },
-                            onRevive = viewModel::reviveSelected,
-                            onMove = viewModel::startMovingSelected,
-                            onDismiss = viewModel::clearSelection,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
+                val placing = placingSlot
+                val target = selectedObject
+                // The panels fade away rather than vanish, so they keep showing the last thing they
+                // held while they leave.
+                var lastPlacing by remember { mutableStateOf<InventorySlot?>(null) }
+                var lastTarget by remember { mutableStateOf<GridObject?>(null) }
+                if (placing != null) lastPlacing = placing
+                if (target != null) lastTarget = target
 
+                QuickActionBar(
+                    modifier = Modifier.onSizeChanged { barHeightPx = it.height },
+                    hoeActive = hoeActive,
+                    onToggleHoe = viewModel::toggleHoe,
+                    canCare = placing == null && !hoeActive && target?.isPlant == true && target.status != PlantStatus.WITHERED,
+                    onWater = viewModel::waterSelected,
+                    onFertilize = viewModel::fertilizeSelected,
+                    onOpenInventory = { showInventory = true },
+                    onOpenShop = { showShop = true },
+                )
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = barHeight + 8.dp),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    val moving = movingObject
+                    var lastMoving by remember { mutableStateOf<GridObject?>(null) }
+                    if (moving != null) lastMoving = moving
+                    AnimatedVisibility(
+                        visible = moving != null,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        lastMoving?.let {
+                            ToolBanner(
+                                stringResource(R.string.move_banner, objectDisplayName(it.objectId)),
+                                onCancel = viewModel::cancelMoving,
+                            )
+                        }
+                    }
+                    AnimatedVisibility(
+                        visible = hoeActive,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        ToolBanner(stringResource(R.string.hoe_banner), onCancel = viewModel::toggleHoe)
+                    }
+                    AnimatedVisibility(
+                        visible = placing != null,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        lastPlacing?.let { PlacingBanner(it, onCancel = viewModel::cancelPlacing) }
+                    }
+                    AnimatedVisibility(
+                        visible = placing == null && !hoeActive && moving == null && target != null,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        lastTarget?.let {
+                            ObjectStatusDialog(
+                                gridObject = it,
+                                onWater = viewModel::waterSelected,
+                                onHarvest = viewModel::harvestSelected,
+                                onRemove = { confirmRemove = true },
+                                onRevive = viewModel::reviveSelected,
+                                onMove = viewModel::startMovingSelected,
+                                onDismiss = viewModel::clearSelection,
+                                modifier = Modifier.fillMaxWidth(),
+                                surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },
+                            )
+                        }
+                    }
+
+                }
             }
         }
     }
