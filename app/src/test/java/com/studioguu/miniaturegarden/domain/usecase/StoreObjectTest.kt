@@ -190,8 +190,12 @@ class StoreObjectTest {
         for (name in listOf("reward_rain_button", "reward_rain_confirm", "msg_blessed_rain_done")) {
             assertTrue(name, string(name).contains("慈雨"))
         }
-        // Still says how many are left today, and still never says "video".
-        assertTrue(string("reward_rain_button").contains("%1\$d/%2\$d"))
+        // The button is just its name: no count of how many are left, no numbers at all.
+        val button = string("reward_rain_button")
+        assertFalse(button.contains("%"))
+        assertFalse(button.contains("本日") || button.contains("あと") || button.contains("回"))
+        assertFalse(button.any { it.isDigit() })
+        // And it still never says "video".
         val shownTexts = strings.replace(Regex("<!--.*?-->", RegexOption.DOT_MATCHES_ALL), "")
         assertFalse(shownTexts.contains("動画"))
     }

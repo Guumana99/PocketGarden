@@ -36,6 +36,7 @@ class ConstructionTest {
     private val startRemoval = StartRemovalUseCase(repo, store, remove)
     private val complete = CompleteWorkUseCase(repo, store, remove)
     private val move = MoveObjectUseCase(repo, GardenMap.DEFAULT)
+    private val unveil = UnveilBuildingUseCase(repo)
 
     private fun obj(id: String, objectId: String, x: Int = 0, y: Int = 0) =
         GridObject(instanceId = id, gridX = x, gridY = y, objectId = objectId, lastUpdatedTimestamp = t0)
@@ -110,23 +111,79 @@ class ConstructionTest {
     }
 
     @Test
-    fun `a building is finished when its time is up and not a moment before`() = runBlocking {
+    fun `when its time is up a building waits under wraps, and not a moment before`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
         place(0, 3, 3, t0)
 
         assertTrue(complete(t0).isEmpty())
         assertTrue(complete(t0 + 299 * second).isEmpty())
-        assertTrue(only().isWorking)
+        assertEquals(WorkKind.BUILDING, only().workKind)
 
-        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.BUILDING)), complete(t0 + 300 * second))
+        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.READY)), complete(t0 + 300 * second))
+
+        // It does not turn into the finished building by itself.
+        val site = only()
+        assertEquals(WorkKind.READY, site.workKind)
+        assertTrue(site.isWorking)
+        assertEquals(1f, site.workProgress(t0), 0f)        // whatever the clock says now
+        assertEquals(0L, site.workRemainingMillis(t0))
+        // And however long it is left, or however often the garden is synced, it stays that way.
+        assertTrue(complete(t0 + 301 * second).isEmpty())
+        assertTrue(complete(t0 + 30L * 24 * 3_600 * second).isEmpty())
+        assertEquals(WorkKind.READY, only().workKind)
+    }
+
+    @Test
+    fun `the tap of the player unveils a finished building`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
+        place(0, 3, 3, t0)
+        val id = only().instanceId
+
+        // Not while it is still going up.
+        assertEquals(ActionResult.BUSY, unveil(id))
+        assertEquals(WorkKind.BUILDING, only().workKind)
+
+        complete(t0 + 300 * second)
+        assertEquals(ActionResult.SUCCESS, unveil(id))
 
         val hut = only()
         assertFalse(hut.isWorking)
+        assertEquals(WorkKind.NONE, hut.workKind)
         assertEquals(0L, hut.workStartedAt)
         assertEquals(0L, hut.workEndsAt)
         assertEquals(3 to 3, hut.gridX to hut.gridY)
-        // Done is done: asking again finishes nothing.
-        assertTrue(complete(t0 + 9_999 * second).isEmpty())
+        // Once is enough: there is nothing left to unveil.
+        assertEquals(ActionResult.NOT_FOUND, unveil(id))
+        assertEquals(ActionResult.NOT_FOUND, unveil("nothing"))
+    }
+
+    @Test
+    fun `only a building under wraps can be unveiled`() = runBlocking {
+        repo.put(obj("rock", "deco_rock"))
+        repo.put(obj("down", "struct_well", 3, 3).copy(workKind = WorkKind.DEMOLISHING, workStartedAt = t0, workEndsAt = t0 + 60 * second))
+        repo.put(obj("pack", "struct_hut", 6, 6).copy(workKind = WorkKind.PACKING, workStartedAt = t0, workEndsAt = t0 + 150 * second))
+
+        assertEquals(ActionResult.NOT_FOUND, unveil("rock"))
+        assertEquals(ActionResult.BUSY, unveil("down"))
+        assertEquals(ActionResult.BUSY, unveil("pack"))
+        assertEquals(WorkKind.DEMOLISHING, repo.objects.getValue("down").workKind)
+    }
+
+    @Test
+    fun `a building under wraps stays put, and is called off at once like one still going up`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 2))
+        place(0, 2, 2, t0)
+        place(0, 6, 6, t0)
+        complete(t0 + 120 * second)
+        val (wrappedA, wrappedB) = repo.objects.values.toList()
+        assertEquals(WorkKind.READY, wrappedA.workKind)
+
+        assertEquals(ActionResult.BUSY, move(wrappedA.instanceId, 0, 0))
+
+        assertEquals(ActionResult.SUCCESS, startRemoval(wrappedA.instanceId, toBag = true, t0 + 200 * second))
+        assertEquals(1, repo.slots.getValue(0).amount)
+        assertEquals(ActionResult.SUCCESS, startRemoval(wrappedB.instanceId, toBag = false, t0 + 200 * second))
+        assertTrue(repo.objects.isEmpty())
     }
 
     @Test
@@ -139,9 +196,9 @@ class ConstructionTest {
 
         assertEquals(1, complete(t0 + 20 * second).size)   // the first fence
         assertEquals(1, complete(t0 + 30 * second).size)   // the second
-        assertEquals(1, repo.objects.values.count { it.isWorking })
-        assertEquals(listOf(FinishedWork("struct_well", WorkKind.BUILDING)), complete(t0 + 120 * second))
-        assertTrue(repo.objects.values.none { it.isWorking })
+        assertEquals(1, repo.objects.values.count { it.workKind == WorkKind.BUILDING })
+        assertEquals(listOf(FinishedWork("struct_well", WorkKind.READY)), complete(t0 + 120 * second))
+        assertTrue(repo.objects.values.all { it.workKind == WorkKind.READY })
     }
 
     @Test
@@ -151,7 +208,10 @@ class ConstructionTest {
 
         val finished = complete(t0 + 3 * 24 * 3_600 * second)
 
-        assertEquals(1, finished.size)
+        // Finished, but it has waited for the player before showing itself.
+        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.READY)), finished)
+        assertEquals(WorkKind.READY, only().workKind)
+        assertEquals(ActionResult.SUCCESS, unveil(only().instanceId))
         assertFalse(only().isWorking)
     }
 
@@ -292,7 +352,7 @@ class ConstructionTest {
         assertEquals(later, site.workStartedAt)
         assertEquals(later + 300 * second, site.workEndsAt) // the whole building time again
         assertTrue(complete(later).isEmpty())
-        assertEquals(1, complete(later + 300 * second).size)
+        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.READY)), complete(later + 300 * second))
     }
 
     @Test
@@ -394,6 +454,14 @@ class ConstructionTest {
         assertEquals("PACKING", site.toEntity().workKind)
         assertEquals(obj("r", "deco_rock"), obj("r", "deco_rock").toEntity().toDomain())
         assertEquals("NONE", obj("r", "deco_rock").toEntity().workKind)
+    }
+
+    @Test
+    fun `a building under wraps is stored as such`() {
+        val waiting = obj("h", "struct_hut", 1, 1).copy(workKind = WorkKind.READY, workStartedAt = t0, workEndsAt = t0 + 300 * second)
+
+        assertEquals("READY", waiting.toEntity().workKind)
+        assertEquals(waiting, waiting.toEntity().toDomain())
     }
 
     @Test

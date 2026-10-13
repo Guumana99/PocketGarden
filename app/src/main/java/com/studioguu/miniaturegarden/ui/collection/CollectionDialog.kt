@@ -72,7 +72,6 @@ import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.domain.model.CollectionCategory
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
-import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.PageState
 import com.studioguu.miniaturegarden.ui.components.ObjectPreview
@@ -284,7 +283,6 @@ private fun Chapter(
         Spread(
             entry = entry,
             state = progress.stateOf(entry),
-            record = progress.recordOf(entry),
             atlas = atlas,
             terrain = terrain,
             onReveal = { onReveal(entry) },
@@ -316,7 +314,6 @@ private fun Chapter(
 private fun Spread(
     entry: CollectionEntry,
     state: PageState,
-    record: CollectionRecord?,
     atlas: SpriteAtlas,
     terrain: TerrainTextures,
     onReveal: () -> Unit,
@@ -394,19 +391,6 @@ private fun Spread(
                         color = Ink,
                         fontFamily = BookFont,
                         style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = stringResource(
-                            if (entry.trigger == CollectionTrigger.HARVEST) {
-                                R.string.collection_count_harvest
-                            } else {
-                                R.string.collection_count_placement
-                            },
-                            record?.count ?: 0,
-                        ),
-                        color = InkFaded,
-                        fontFamily = BookFont,
-                        style = MaterialTheme.typography.labelLarge,
                     )
                 }
                 PageState.READY -> {

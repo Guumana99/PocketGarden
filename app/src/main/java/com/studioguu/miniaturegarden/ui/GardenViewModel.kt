@@ -42,6 +42,7 @@ import com.studioguu.miniaturegarden.domain.usecase.SkipTimeUseCase
 import com.studioguu.miniaturegarden.domain.usecase.StartRemovalUseCase
 import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
+import com.studioguu.miniaturegarden.domain.usecase.UnveilBuildingUseCase
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
 import com.studioguu.miniaturegarden.ui.render.TileCoord
@@ -77,6 +78,7 @@ class GardenViewModel @Inject constructor(
     private val startRemoval: StartRemovalUseCase,
     private val completeWork: CompleteWorkUseCase,
     private val moveObject: MoveObjectUseCase,
+    private val unveilBuilding: UnveilBuildingUseCase,
     private val skipTime: SkipTimeUseCase,
     private val hoe: HoeUseCase,
     private val audio: AudioManager,
@@ -254,8 +256,12 @@ class GardenViewModel @Inject constructor(
                 if (syncGarden(now, currentWeather(now)).isTrusted) completeWork(now) else emptyList()
             }
             if (finished.isNotEmpty()) {
-                audio.play(if (finished.any { it.kind == WorkKind.BUILDING }) SoundEffect.LEVEL_UP else SoundEffect.PLANT)
-                finished.forEach { done -> showEffect { GardenEffect.WorkDone(it, done.objectId, done.kind) } }
+                audio.play(if (finished.any { it.kind == WorkKind.READY }) SoundEffect.COIN else SoundEffect.PLANT)
+                // A finished building is not announced yet, only pointed out: it is the player's
+                // tap that unveils it. What has been taken apart is done and is announced.
+                if (finished.any { it.kind == WorkKind.READY }) _messages.trySend(R.string.msg_work_ready)
+                finished.filter { it.kind != WorkKind.READY }
+                    .forEach { done -> showEffect { GardenEffect.WorkDone(it, done.objectId, done.kind) } }
             }
         }
     }
@@ -268,7 +274,8 @@ class GardenViewModel @Inject constructor(
     private fun watchWork() {
         viewModelScope.launch {
             gridObjects.collectLatest { objects ->
-                val nextDue = objects.filter { it.isWorking }.minOfOrNull { it.workEndsAt } ?: return@collectLatest
+                val nextDue = objects.filter { it.isWorking && it.workKind != WorkKind.READY }
+                    .minOfOrNull { it.workEndsAt } ?: return@collectLatest
                 delay((nextDue - System.currentTimeMillis()).coerceAtLeast(0L) + WORK_GRACE_MILLIS)
                 sync()
             }
@@ -294,6 +301,16 @@ class GardenViewModel @Inject constructor(
                     }
                 ) { _, _ -> moveObject(movingId, tile.x, tile.y) }
             }
+        } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.workKind == WorkKind.READY) {
+            // A finished building under wraps: the tap unveils it.
+            val site = gridObjects.value.objectAt(tile) ?: return
+            act(
+                onSuccess = {
+                    _selectedTile.value = null
+                    audio.play(SoundEffect.LEVEL_UP)
+                    showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
+                }
+            ) { _, _ -> unveilBuilding(site.instanceId) }
         } else if (_hoeActive.value) {
             if (tile != null) {
                 act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ -> hoe(tile.x, tile.y, now) }

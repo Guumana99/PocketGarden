@@ -151,15 +151,16 @@ fun GardenCanvas(
     // Whatever was in the garden a moment ago and is not any more (removed, harvested, put back
     // into the bag) is kept as a ghost for a moment and drawn fading away, instead of blinking out.
     val ghosts = remember { mutableStateListOf<Ghost>() }
-    // And where a building has just been finished, a burst of sparkles goes up.
+    // And where a building has just been unveiled, its wraps burst apart.
     val bursts = remember { mutableStateListOf<Ghost>() }
     val lastSeen = remember { arrayOf(gridObjects) }
     val ghostScope = rememberCoroutineScope()
     LaunchedEffect(gridObjects) {
         val present = gridObjects.mapTo(HashSet()) { it.instanceId }
         val gone = lastSeen[0].filter { it.instanceId !in present }
-        val wasBuilding = lastSeen[0].filter { it.workKind == WorkKind.BUILDING }.mapTo(HashSet()) { it.instanceId }
-        val built = gridObjects.filter { it.instanceId in wasBuilding && !it.isWorking }
+        val wasUnderWraps = lastSeen[0].filter { it.workKind == WorkKind.READY || it.workKind == WorkKind.BUILDING }
+            .mapTo(HashSet()) { it.instanceId }
+        val built = gridObjects.filter { it.instanceId in wasUnderWraps && !it.isWorking }
         lastSeen[0] = gridObjects
         for (gridObject in built) {
             val burst = Ghost(gridObject)
@@ -229,7 +230,8 @@ fun GardenCanvas(
             }
             pipeline.submit(RenderLayer.HUD_OVERLAY) { drawTileOutline(transform, origin, spanX, spanY) }
         }
-        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience)
+        val pops = if (bursts.isEmpty()) emptyMap() else bursts.associate { it.gridObject.instanceId to it.progress.value }
+        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience, pops = pops)
         for (ghost in ghosts) {
             submitObjects(
                 pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
@@ -291,6 +293,8 @@ private fun rememberWaterTick(running: Boolean): State<Int> = produceState(0, ru
  * in the object layers, sorted by depth.
  *
  * @param waterTick animation counter for the river, see [rememberWaterTick].
+ * @param pops for things that were unveiled a moment ago, by instance id: how far along the
+ *   unveiling is, 0 to 1.
  */
 private fun submitObjects(
     pipeline: LayerPipeline,
@@ -303,14 +307,24 @@ private fun submitObjects(
     waterTick: Int,
     ambience: Ambience,
     vanish: Float? = null,
+    pops: Map<String, Float> = emptyMap(),
 ) {
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
     // Everything is queued through here, so that objects on their way out can be drawn fading.
     fun submit(obj: GridObject, layer: RenderLayer, depth: Float, draw: DrawScope.() -> Unit) {
-        if (vanish == null && obj.isWorking && layer == RenderLayer.GRID_OBJECTS) {
-            // A work site: the thing itself half there, inside its scaffolding.
-            val progress = obj.workProgress(ambience.epochMillis)
-            pipeline.submit(layer, depth) { drawWorkSite(transform, obj, progress, ambience.windMillis ?: 0L, draw) }
+        val pop = pops[obj.instanceId]
+        if (vanish == null && obj.isWorking) {
+            // A work site: sheeting and scaffolding, and nothing of what is inside. Its shadow
+            // and anything else the finished thing would draw are left out with it.
+            if (layer == RenderLayer.GRID_OBJECTS) {
+                val progress = obj.workProgress(ambience.epochMillis)
+                pipeline.submit(layer, depth) { drawWorkSite(transform, obj, progress, ambience.windMillis ?: 0L) }
+            }
+        } else if (vanish == null && pop != null && layer == RenderLayer.GRID_OBJECTS) {
+            // Just unveiled: it pops up out of the ground, a little too big, and settles.
+            val footprint = obj.footprint
+            val pivot = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
+            pipeline.submit(layer, depth) { scale(popScale(pop), pivot) { draw() } }
         } else if (vanish == null) {
             pipeline.submit(layer, depth, draw)
         } else {
@@ -454,8 +468,8 @@ private fun submitObjects(
     }
 }
 
-/** How long the sparkles over a finished building last. */
-private const val BURST_MILLIS = 900
+/** How long the unveiling of a finished building lasts. */
+private const val BURST_MILLIS = 1100
 
 // --- Work sites --------------------------------------------------------------------------------------
 
@@ -476,82 +490,104 @@ private fun siteHeight(obj: GridObject, transform: IsometricTransform): Float = 
     null -> transform.tileWidth * 0.24f
 }
 
-/**
- * Draws something that is being built or taken apart: the part of it that stands so far, the
- * rest as a faint outline of what it will be (or was), scaffolding round it, dust at its foot
- * and a bar that fills as the job goes on.
- *
- * A building goes up from the ground: at [progress] 0 nothing of it stands, at 1 all of it. One
- * being taken apart comes down from the top the same way.
- *
- * @param clock a running millisecond count, for the bits that move.
- */
-private fun DrawScope.drawWorkSite(
-    transform: IsometricTransform,
-    obj: GridObject,
-    progress: Float,
-    clock: Long,
-    draw: DrawScope.() -> Unit,
-) {
-    val footprint = obj.footprint
-    // A fence fills little of its tile; its scaffolding is drawn in closer.
-    val inset = if (StructureData.fromObjectId(obj.objectId) == null) 0.22f else 0.02f
-    val x0 = obj.gridX + inset
-    val y0 = obj.gridY + inset
-    val x1 = obj.gridX + footprint.width - inset
-    val y1 = obj.gridY + footprint.height - inset
+/** The corners of a work site on the ground and how tall it is; shared by the site and its burst. */
+private class SiteBox(transform: IsometricTransform, obj: GridObject) {
+    private val footprint = obj.footprint
+    // A fence fills little of its tile; its site is drawn in closer.
+    private val inset = if (StructureData.fromObjectId(obj.objectId) == null) 0.2f else 0.03f
+    private val x0 = obj.gridX + inset
+    private val y0 = obj.gridY + inset
+    private val x1 = obj.gridX + footprint.width - inset
+    private val y1 = obj.gridY + footprint.height - inset
     val height = siteHeight(obj, transform)
     val up = Offset(0f, -height)
     val back = transform.worldToScreen(x0, y0)
     val right = transform.worldToScreen(x1, y0)
     val front = transform.worldToScreen(x1, y1)
     val left = transform.worldToScreen(x0, y1)
+    val centre = transform.worldToScreen((x0 + x1) / 2f, (y0 + y1) / 2f)
     val unit = transform.tileWidth
+}
+
+private val SHEET_LEFT = Color(0xFFDCEBE4)
+private val SHEET_RIGHT = Color(0xFFBFD6CC)
+private val SHEET_TOP = Color(0xFFEDF5F0)
+private val SHEET_STRIPE = Color(0xFF7FB0A0)
+private val SHEET_SEAM = Color(0xFF6C8F84)
+private val BUBBLE = Color(0xFFFFFDF2)
+private val BUBBLE_EDGE = Color(0xFFE2A93B)
+private val CONFETTI = listOf(
+    Color(0xFFFF8A80), Color(0xFFFFD54F), Color(0xFF81D4FA), Color(0xFFA5D6A7), Color(0xFFCE93D8), Color(0xFFFFFFFF),
+)
+
+/**
+ * Draws a work site: a box of builders' sheeting on a wooden scaffold, which hides whatever is
+ * inside it completely. Nothing of the finished building shows until it is unveiled.
+ *
+ * While the work goes on, dust puffs up at its foot and a bar above it fills ([progress], 0 to 1).
+ * A building that is finished and waiting ([WorkKind.READY]) stands still and has a bouncing
+ * "✨ ！" bubble over it instead, asking to be tapped.
+ *
+ * @param clock a running millisecond count, for the bits that move.
+ */
+private fun DrawScope.drawWorkSite(transform: IsometricTransform, obj: GridObject, progress: Float, clock: Long) {
+    val box = SiteBox(transform, obj)
+    val unit = box.unit
+    val up = box.up
     val stroke = (unit * 0.022f).coerceAtLeast(1.5f)
+    val ready = obj.workKind == WorkKind.READY
 
-    // The two poles and planks at the back go behind the thing.
-    drawScaffoldSide(back, right, up, stroke, alpha = 0.7f)
-    drawScaffoldSide(back, left, up, stroke, alpha = 0.7f)
+    // The scaffold's far sides, then the sheeting, which hides them up to its top edge.
+    drawScaffoldSide(box.back, box.right, up, stroke, alpha = 0.8f)
+    drawScaffoldSide(box.back, box.left, up, stroke, alpha = 0.8f)
 
-    val standing = if (obj.workKind == WorkKind.BUILDING) progress else 1f - progress
-    // What it will be, faintly ...
-    drawIntoCanvas { canvas ->
-        canvas.saveLayer(Rect(Offset.Zero, size), Paint().apply { alpha = 0.22f })
-        draw()
-        canvas.restore()
+    val sheetUp = up * 0.94f
+    drawPath(quad(box.left, box.front, box.front + sheetUp, box.left + sheetUp), SHEET_LEFT)
+    drawPath(quad(box.front, box.right, box.right + sheetUp, box.front + sheetUp), SHEET_RIGHT)
+    drawPath(quad(box.back + sheetUp, box.right + sheetUp, box.front + sheetUp, box.left + sheetUp), SHEET_TOP)
+    // Stripes down the two near faces, as on a builder's tarpaulin, and a hem along the bottom.
+    for ((from, to) in listOf(box.left to box.front, box.front to box.right)) {
+        for (i in 1..3) {
+            val foot = from + (to - from) * (i / 4f)
+            drawLine(SHEET_STRIPE.copy(alpha = 0.55f), foot, foot + sheetUp, stroke * 1.6f)
+        }
+        drawLine(SHEET_SEAM, from, to, stroke * 0.9f, StrokeCap.Round)
+        drawLine(SHEET_SEAM.copy(alpha = 0.7f), from + sheetUp, to + sheetUp, stroke * 0.7f, StrokeCap.Round)
     }
-    // ... and what stands of it so far, from the ground up to a line that rises with the work.
-    val top = back.y + up.y - unit * 0.1f
-    val line = front.y - (front.y - top) * standing
-    clipRect(left = 0f, top = line, right = size.width, bottom = size.height) { draw() }
+    drawLine(SHEET_SEAM, box.front, box.front + sheetUp, stroke * 0.8f)
 
-    // The near sides of the scaffolding, with a brace across each.
-    drawScaffoldSide(left, front, up, stroke, alpha = 1f)
-    drawScaffoldSide(front, right, up, stroke, alpha = 1f)
-    drawLine(SCAFFOLD_ROPE, left, front + up * 0.5f, stroke * 0.6f, StrokeCap.Round)
-    drawLine(SCAFFOLD_ROPE, front, right + up * 0.5f, stroke * 0.6f, StrokeCap.Round)
+    // The near sides of the scaffold stand in front of the sheeting, with a rope across each.
+    drawScaffoldSide(box.left, box.front, up, stroke, alpha = 1f)
+    drawScaffoldSide(box.front, box.right, up, stroke, alpha = 1f)
+    drawLine(SCAFFOLD_ROPE, box.left, box.front + up * 0.5f, stroke * 0.6f, StrokeCap.Round)
+    drawLine(SCAFFOLD_ROPE, box.front, box.right + up * 0.5f, stroke * 0.6f, StrokeCap.Round)
 
-    // Dust puffing up along the front, each puff in its own rhythm.
+    val above = box.centre + up * 1.2f
+    if (ready) {
+        drawReadyBubble(above, unit, clock)
+        return
+    }
+
+    // Dust puffing up along the front, each puff in its own rhythm, and the sheeting shaking a
+    // little where the work is going on behind it.
     for (i in 0 until 4) {
         val phase = ((clock + i * 430L) % 1400L) / 1400f
         val along = 0.15f + 0.23f * i
-        val foot = (if (i % 2 == 0) left + (front - left) * along else front + (right - front) * along)
+        val foot = if (i % 2 == 0) box.left + (box.front - box.left) * along else box.front + (box.right - box.front) * along
         drawCircle(
-            color = DUST.copy(alpha = 0.55f * (1f - phase)),
-            radius = unit * (0.02f + 0.045f * phase),
-            center = foot + Offset(0f, -unit * 0.07f * phase),
+            color = DUST.copy(alpha = 0.6f * (1f - phase)),
+            radius = unit * (0.022f + 0.05f * phase),
+            center = foot + Offset(0f, -unit * 0.08f * phase),
         )
     }
-    // A glint where the work is going on, hopping along the line the building has reached.
-    val hop = ((clock / 380L) % 5L).toInt()
-    val beat = 1f - ((clock % 380L) / 380f)
-    val spot = Offset(left.x + (right.x - left.x) * (0.15f + 0.175f * hop), line - unit * 0.02f)
-    drawSparkle(spot, unit * 0.045f * beat, SPARKLE.copy(alpha = beat))
+    val hop = ((clock / 420L) % 4L).toInt()
+    val beat = 1f - ((clock % 420L) / 420f)
+    val knock = box.left + (box.right - box.left) * (0.2f + 0.2f * hop) + up * 0.55f
+    drawSparkle(knock, unit * 0.05f * beat, SPARKLE.copy(alpha = beat))
 
     // The bar above it all.
-    val centre = transform.worldToScreen((x0 + x1) / 2f, (y0 + y1) / 2f) + up * 1.18f
     val barSize = Size(unit * 0.62f, unit * 0.075f)
-    val barTopLeft = centre - Offset(barSize.width / 2f, barSize.height + unit * 0.06f)
+    val barTopLeft = above - Offset(barSize.width / 2f, barSize.height + unit * 0.05f)
     val corner = CornerRadius(barSize.height / 2f, barSize.height / 2f)
     drawRoundRect(PROGRESS_TRACK, barTopLeft, barSize, corner)
     val pad = barSize.height * 0.18f
@@ -564,6 +600,51 @@ private fun DrawScope.drawWorkSite(
             cornerRadius = corner,
         )
     }
+}
+
+/**
+ * The "✨ ！" over a finished building that waits to be unveiled: a round speech bubble with a
+ * sparkle and an exclamation mark in it, bobbing up and down to catch the eye.
+ *
+ * @param tip where the bubble's tail points, just above the site.
+ */
+private fun DrawScope.drawReadyBubble(tip: Offset, unit: Float, clock: Long) {
+    val bob = sin(clock / 260.0).toFloat() * unit * 0.035f
+    val radius = unit * 0.2f
+    val centre = tip + Offset(0f, -radius * 1.35f + bob)
+    val tail = Path().apply {
+        moveTo(centre.x - radius * 0.35f, centre.y + radius * 0.8f)
+        lineTo(tip.x, tip.y + bob * 0.4f)
+        lineTo(centre.x + radius * 0.35f, centre.y + radius * 0.8f)
+        close()
+    }
+    val edge = unit * 0.022f
+    drawPath(tail, BUBBLE_EDGE)
+    drawCircle(BUBBLE_EDGE, radius + edge, centre)
+    drawCircle(BUBBLE, radius, centre)
+    drawPath(
+        Path().apply {
+            moveTo(centre.x - radius * 0.22f, centre.y + radius * 0.75f)
+            lineTo(tip.x, tip.y + bob * 0.4f - edge * 2f)
+            lineTo(centre.x + radius * 0.22f, centre.y + radius * 0.75f)
+            close()
+        },
+        BUBBLE,
+    )
+    // The sparkle twinkles; the exclamation mark is a bar and a dot.
+    val twinkle = 0.8f + 0.2f * sin(clock / 140.0).toFloat()
+    drawSparkle(centre + Offset(-radius * 0.34f, -radius * 0.05f), radius * 0.48f * twinkle, BUBBLE_EDGE)
+    drawSparkle(centre + Offset(-radius * 0.02f, -radius * 0.5f), radius * 0.2f * twinkle, BUBBLE_EDGE)
+    val markX = centre.x + radius * 0.42f
+    drawLine(SCAFFOLD_LINE, Offset(markX, centre.y - radius * 0.5f), Offset(markX, centre.y + radius * 0.12f), radius * 0.2f, StrokeCap.Round)
+    drawCircle(SCAFFOLD_LINE, radius * 0.11f, Offset(markX, centre.y + radius * 0.46f))
+}
+
+/** How big something that was just unveiled is drawn at [progress] (0 to 1): up past full size and back. */
+internal fun popScale(progress: Float): Float {
+    val t = (progress / 0.45f).coerceIn(0f, 1f)
+    // From 0.55 up to 1.18 in the first third of the way, then easing back down to 1.
+    return if (t < 0.6f) 0.55f + (1.18f - 0.55f) * (t / 0.6f) else 1.18f - 0.18f * ((t - 0.6f) / 0.4f)
 }
 
 /** One side of the scaffolding between two corners on the ground: two poles and two planks. */
@@ -600,30 +681,86 @@ private fun DrawScope.drawSparkle(center: Offset, radius: Float, color: Color) {
 }
 
 /**
- * The moment a building is finished: a ring spreads out from it on the ground and sparkles fly
- * up and outwards, fading as they go.
+ * The unveiling of a building, set off by the player's tap: a white flash, the scaffold's poles
+ * and planks flung outwards, tumbling, the sheeting gone in a puff, a ring spreading over the
+ * ground, and confetti thrown up that flutters down again. The building itself pops up through
+ * it (see [popScale]).
  *
- * @param progress 0 (just finished) to 1 (over).
+ * @param progress 0 (the tap) to 1 (over).
  */
 private fun DrawScope.drawCompletionBurst(transform: IsometricTransform, obj: GridObject, progress: Float) {
-    val footprint = obj.footprint
-    val ground = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
-    val height = siteHeight(obj, transform)
-    val unit = transform.tileWidth
+    val box = SiteBox(transform, obj)
+    val unit = box.unit
     val fade = (1f - progress).coerceIn(0f, 1f)
-    // The ring lies on the ground, so it is twice as wide as it is tall.
-    val reach = unit * (0.3f + 0.5f * footprint.width) * progress
+    val middle = box.centre + box.up * 0.5f
+
+    // The flash: over almost as soon as it begins.
+    val flash = (1f - progress / 0.22f).coerceIn(0f, 1f)
+    if (flash > 0f) {
+        val radius = (box.height + unit * 0.6f) * (0.4f + 0.8f * (1f - flash))
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(Color.White.copy(alpha = 0.95f * flash), Color.White.copy(alpha = 0f)),
+                center = middle,
+                radius = radius,
+            ),
+            radius = radius,
+            center = middle,
+        )
+    }
+    // Puffs of what was the sheeting.
+    for (i in 0 until 6) {
+        val angle = (i / 6f) * 2f * PI.toFloat() + 0.4f
+        val out = unit * 0.5f * progress
+        drawCircle(
+            color = SHEET_TOP.copy(alpha = 0.7f * fade * fade),
+            radius = unit * (0.1f + 0.16f * progress),
+            center = middle + Offset(cos(angle) * out, sin(angle) * out * 0.5f),
+        )
+    }
+    // The ring on the ground: twice as wide as it is tall, as it lies flat.
+    val reach = unit * (0.3f + 0.6f * obj.footprint.width) * progress
     drawOval(
-        color = SPARKLE.copy(alpha = 0.8f * fade),
-        topLeft = ground - Offset(reach, reach / 2f),
+        color = SPARKLE.copy(alpha = 0.85f * fade),
+        topLeft = box.centre - Offset(reach, reach / 2f),
         size = Size(reach * 2f, reach),
-        style = Stroke(width = unit * 0.035f * fade),
+        style = Stroke(width = unit * 0.04f * fade),
     )
+    // The scaffold comes apart: eight pieces thrown outwards, turning as they go and falling.
+    val stroke = (unit * 0.022f).coerceAtLeast(1.5f)
     for (i in 0 until 8) {
-        val angle = (i / 8f) * 2f * PI.toFloat()
-        val out = unit * (0.15f + 0.45f * progress)
-        val at = ground + Offset(cos(angle) * out, -height * (0.4f + 0.9f * progress) + sin(angle) * out * 0.4f)
-        drawSparkle(at, unit * 0.06f * fade * (if (i % 2 == 0) 1f else 0.65f), SPARKLE.copy(alpha = fade))
+        val angle = (i / 8f) * 2f * PI.toFloat() + 0.2f
+        val out = unit * 1.1f * progress
+        val drop = unit * 0.9f * progress * progress
+        val at = middle + Offset(cos(angle) * out, sin(angle) * out * 0.45f - box.height * 0.3f * (1f - progress) + drop)
+        val spin = angle * 3f + progress * 9f
+        val half = Offset(cos(spin), sin(spin)) * (unit * 0.11f)
+        drawLine(SCAFFOLD_LINE.copy(alpha = fade), at - half, at + half, stroke * 1.9f, StrokeCap.Round)
+        drawLine((if (i % 2 == 0) SCAFFOLD_POLE else SCAFFOLD_PLANK).copy(alpha = fade), at - half, at + half, stroke * 1.2f, StrokeCap.Round)
+    }
+    // Confetti: thrown up and out, then fluttering down, each piece turning in its own time.
+    for (i in 0 until 26) {
+        val seed = i * 2654435761L
+        val spread = ((seed ushr 5) % 1000L) / 1000f * 2f - 1f          // -1 .. 1, left to right
+        val lift = 0.55f + ((seed ushr 13) % 1000L) / 1000f * 0.75f     // how high this piece goes
+        val x = spread * unit * 0.95f * (0.25f + 0.75f * progress)
+        // Up fast, down slowly: a parabola in the progress.
+        val y = -(box.height + unit * 0.75f) * lift * (4f * progress * (1f - progress * 0.72f)) * 0.62f
+        val at = middle + Offset(x, y)
+        val turn = progress * 14f + i
+        val width = unit * 0.045f * (0.35f + 0.65f * abs(cos(turn)))
+        val height = unit * 0.03f
+        drawRect(
+            color = CONFETTI[i % CONFETTI.size].copy(alpha = (fade * 1.6f).coerceAtMost(1f)),
+            topLeft = at - Offset(width / 2f, height / 2f),
+            size = Size(width, height),
+        )
+    }
+    // And a few sparkles hanging in the air at the end.
+    for (i in 0 until 5) {
+        val angle = (i / 5f) * 2f * PI.toFloat()
+        val at = middle + Offset(cos(angle) * unit * 0.45f, -box.height * 0.5f + sin(angle) * unit * 0.2f)
+        drawSparkle(at, unit * 0.07f * sin(PI.toFloat() * progress), SPARKLE.copy(alpha = fade))
     }
 }
 
