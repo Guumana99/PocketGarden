@@ -117,43 +117,160 @@ class AtmosphereTest {
 
     // --- Wind ---
 
+    private val slot = Wind.GUST_SLOT_MILLIS
+
+    /** Every 40 ms over [slots] slots of time: enough to catch each gust as it passes. */
+    private fun times(slots: Int, from: Long = 0L) = (from until from + slots * slot step 40L)
+
     @Test
     fun `a plant never leans further than the wind is strong`() {
         for (weather in WeatherType.entries) {
             val limit = Wind.strength(weather)
-            var time = 0L
-            while (time < 60_000L) {
-                for (x in 0 until 9) for (y in 0 until 9) {
+            for (time in times(6) step 3) {
+                for (x in 0 until 9 step 2) for (y in 0 until 9 step 2) {
                     val sway = Wind.sway(time, x + 0.5f, y + 0.5f, weather)
                     assertTrue("$weather $time $x,$y: $sway", abs(sway) <= limit + 1e-4f)
                 }
-                time += 337L
             }
         }
     }
 
     @Test
-    fun `plants swing both ways and come back`() {
-        val samples = (0L until 20_000L step 50L).map { Wind.sway(it, 4.5f, 4.5f, sunny) }
-        assertTrue(samples.max() > 0.3f)
-        assertTrue(samples.min() < -0.3f)
-        // No sudden jerks between two frames.
-        assertTrue(samples.zipWithNext { a, b -> abs(a - b) }.max() < 0.2f)
-        // Over time it leans neither way more than the other.
-        assertEquals(0f, samples.average().toFloat(), 0.08f)
+    fun `most of the time the air is almost still`() {
+        val samples = times(30).map { abs(Wind.sway(it, 4.5f, 4.5f, sunny)) }
+        val calm = samples.count { it <= Wind.CALM_SHARE + 1e-4f }
+
+        // More than three quarters of the time a plant moves no more than the breeze moves it.
+        assertTrue("calm ${calm * 100 / samples.size}%", calm > samples.size * 3 / 4)
+        // And the breeze is slight: under a fifth of a full lean.
+        assertTrue(Wind.CALM_SHARE < 0.2f)
+        // But it is not dead still either.
+        assertTrue(samples.sorted()[samples.size / 2] > 0.02f)
     }
 
     @Test
-    fun `neighbours are out of step with each other`() {
-        val time = 12_345L
+    fun `now and then a gust makes the plants bow much further`() {
+        val perSlot = (0 until 30).map { k -> times(1, from = k * slot).maxOf { abs(Wind.sway(it, 4.5f, 4.5f, sunny)) } }
+
+        // Every slot of time has its gust. At its height a plant leans at least twice as far as
+        // the breeze ever moves it (even when the breeze happened to be leaning it the other
+        // way), usually three times and more, and at best almost all the way.
+        assertTrue(perSlot.all { it > Wind.CALM_SHARE * 2f })
+        assertTrue(perSlot.count { it > Wind.CALM_SHARE * 3f } > perSlot.size * 2 / 3)
+        assertTrue(perSlot.max() > 0.8f)
+    }
+
+    @Test
+    fun `a gust passes and the calm comes back`() {
+        // Find a moment at which the gust is at its height at the middle of the garden ...
+        val peak = times(1).maxBy { Wind.gustiness(it, 4.5f, 4.5f) }
+        assertTrue(Wind.gustiness(peak, 4.5f, 4.5f) > 0.9f)
+
+        // ... a moment before there was nothing, and a few seconds later there is nothing again.
+        assertEquals(0f, Wind.gustiness(peak - 400, 4.5f, 4.5f), 0f)
+        assertTrue(Wind.gustiness(peak + 800, 4.5f, 4.5f) < 0.5f)
+        assertTrue(Wind.gustiness(peak + 3_500, 4.5f, 4.5f) < 0.03f)
+        // In between it only ever falls: one bow, not a second one.
+        val after = (peak..peak + 3_500 step 50).map { Wind.gustiness(it, 4.5f, 4.5f) }
+        assertEquals(after.sortedDescending(), after)
+    }
+
+    @Test
+    fun `gusts come at irregular intervals`() {
+        val peaks = (0 until 24).map { k -> times(1, from = k * slot).maxBy { Wind.gustiness(it, 4.5f, 4.5f) } }
+        val gaps = peaks.zipWithNext { a, b -> b - a }
+
+        assertTrue(gaps.all { it > 2_000L })            // never one on the heels of another
+        assertTrue(gaps.max() - gaps.min() > 3_000L)    // and not like clockwork
+        assertTrue(gaps.toSet().size > 12)
+    }
+
+    @Test
+    fun `a gust sweeps across the garden - the plants bow one after another`() {
+        // Find a gust and see when it is at its height along its path.
+        val time = times(4).first { Wind.gustAt(it, sunny) != null }
+        val front = Wind.gustAt(time, sunny)!!
+        fun peakAt(along: Float): Long {
+            val (x, y) = if (front.axis == GustAxis.ALONG_X) along to 4.5f else 4.5f to along
+            return (time - 500..time + 3_000 step 10).maxBy { Wind.gustiness(it, x, y) }
+        }
+        val arrivals = listOf(0.5f, 2.5f, 4.5f, 6.5f, 8.5f).map(::peakAt)
+
+        // Later and later along the way it is going, at an even pace, and across in a second or two.
+        assertEquals(arrivals.sorted(), arrivals)
+        val steps = arrivals.zipWithNext { a, b -> b - a }
+        assertTrue(steps.all { it in 100L..600L })
+        assertTrue(steps.max() - steps.min() <= 30L)
+        assertTrue(arrivals.last() - arrivals.first() in 600L..1_800L)
+
+        // Across the way it is going, everything is hit at the same moment: it is a front.
+        val (xa, ya) = if (front.axis == GustAxis.ALONG_X) 4.5f to 0.5f else 0.5f to 4.5f
+        val (xb, yb) = if (front.axis == GustAxis.ALONG_X) 4.5f to 8.5f else 8.5f to 4.5f
+        val peakTime = peakAt(4.5f)
+        assertEquals(Wind.gustiness(peakTime, xa, ya), Wind.gustiness(peakTime, xb, yb), 1e-5f)
+    }
+
+    @Test
+    fun `the front that is drawn is where the plants are bowing`() {
+        val time = times(4).first { t -> Wind.gustAt(t, sunny)?.let { it.position in 3f..6f } == true }
+        val front = Wind.gustAt(time, sunny)!!
+        fun gustiness(along: Float) =
+            if (front.axis == GustAxis.ALONG_X) Wind.gustiness(time, along, 4.5f) else Wind.gustiness(time, 4.5f, along)
+
+        // Just behind the front the plants are bowed; well ahead of it they have felt nothing yet.
+        assertTrue(gustiness(front.position - 0.3f) > 0.6f)
+        assertEquals(0f, gustiness(front.position + 2.5f), 0f)
+        assertEquals(Wind.strength(sunny), front.strength, 0f)
+    }
+
+    @Test
+    fun `gusts come from both corners, and push the plants the way they are going`() {
+        val fronts = times(40).mapNotNull { Wind.gustAt(it, sunny) }
+        assertTrue(fronts.any { it.axis == GustAxis.ALONG_X })
+        assertTrue(fronts.any { it.axis == GustAxis.ALONG_Y })
+        // The front runs from before the near edge of the garden to beyond the far one.
+        assertTrue(fronts.minOf { it.position } < 0f)
+        assertTrue(fronts.maxOf { it.position } > 9f)
+
+        for (axis in GustAxis.entries) {
+            val time = times(40).first { t -> Wind.gustAt(t, sunny)?.let { it.axis == axis && it.position in 5f..6f } == true }
+            val lean = Wind.sway(time, 4.5f, 4.5f, sunny)
+            // Along x is down-right on screen, along y is down-left.
+            if (axis == GustAxis.ALONG_X) assertTrue(lean > Wind.CALM_SHARE) else assertTrue(lean < -Wind.CALM_SHARE)
+        }
+    }
+
+    @Test
+    fun `between gusts there is no front to draw`() {
+        val withFront = times(30).count { Wind.gustAt(it, sunny) != null }
+        val all = times(30).count()
+        // A gust takes a second or two to cross, out of every ten.
+        assertTrue(withFront > all / 12)
+        assertTrue(withFront < all / 3)
+    }
+
+    @Test
+    fun `in the calm neighbours are out of step with each other`() {
+        // A moment with no gust anywhere near.
+        val time = times(3).first { t -> (0 until 9).all { Wind.gustiness(t, it + 0.5f, it + 0.5f) == 0f } }
         val sways = (0 until 9).flatMap { x -> (0 until 9).map { y -> Wind.sway(time, x + 0.5f, y + 0.5f, sunny) } }
+
         assertTrue(sways.toSet().size > 70)
         assertTrue(sways.any { it > 0f } && sways.any { it < 0f })
+        assertTrue(sways.all { abs(it) <= Wind.CALM_SHARE + 1e-4f })
+    }
+
+    @Test
+    fun `nothing jerks from one frame to the next`() {
+        val samples = times(6).map { Wind.sway(it, 4.5f, 4.5f, sunny) }
+        // 40 ms apart: even as a gust hits, a plant does not jump.
+        assertTrue(samples.zipWithNext { a, b -> abs(a - b) }.max() < 0.35f)
     }
 
     @Test
     fun `the same moment and place always give the same lean`() {
         assertEquals(Wind.sway(5_000L, 2.5f, 3.5f, sunny), Wind.sway(5_000L, 2.5f, 3.5f, sunny), 0f)
+        assertEquals(Wind.gustAt(123_456L, sunny), Wind.gustAt(123_456L, sunny))
         assertFalse(Wind.sway(5_000L, 2.5f, 3.5f, sunny) == Wind.sway(5_400L, 2.5f, 3.5f, sunny))
     }
 
@@ -161,18 +278,21 @@ class AtmosphereTest {
     fun `it blows harder under clouds and hardest in the rain`() {
         assertTrue(Wind.strength(sunny) < Wind.strength(cloudy))
         assertTrue(Wind.strength(cloudy) < Wind.strength(rainy))
-        // Same rhythm, bigger swing.
-        val time = 7_777L
-        val calm = Wind.sway(time, 1.5f, 1.5f, sunny)
-        val storm = Wind.sway(time, 1.5f, 1.5f, rainy)
-        assertEquals(calm * Wind.strength(rainy) / Wind.strength(sunny), storm, 1e-4f)
+        // Same rhythm and the same gusts, bigger swing.
+        for (time in listOf(7_777L, 23_456L, 61_000L)) {
+            val fine = Wind.sway(time, 1.5f, 1.5f, sunny)
+            val storm = Wind.sway(time, 1.5f, 1.5f, rainy)
+            assertEquals(fine * Wind.strength(rainy) / Wind.strength(sunny), storm, 1e-4f)
+        }
     }
 
     @Test
-    fun `the movement stays small enough to read as a breeze`() {
+    fun `the movement stays small enough to read as wind in a garden`() {
         // A lean is this share of a plant's height at most; see PLANT_LEAN in the canvas.
-        val worst = WeatherType.entries.maxOf { Wind.strength(it) } * 0.05f
-        assertTrue(worst < 0.1f)
+        val plantLean = 0.09f
+        assertTrue(WeatherType.entries.maxOf { Wind.strength(it) } * plantLean < 0.15f)
+        // And in the calm of a fine day it is hardly anything.
+        assertTrue(Wind.CALM_SHARE * plantLean < 0.02f)
     }
 
     // --- The outline of a building's shadow ---

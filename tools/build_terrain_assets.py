@@ -97,7 +97,9 @@ SUPERSAMPLE = 4       # drawn this many times larger, then scaled down, for smoo
 CHANNEL = 0.29        # half-width of the water, as a fraction of the tile
 BANK_WIDTH = 0.07
 POND = 0.35           # radius of a tile with no river neighbours
-FRAMES = 4            # animation frames; the waves travel one full step over the loop
+FRAMES = 4            # animation frames; the waves travel one wavelength over the loop
+FLOW_WAVES = 1.25     # wavelengths per tile along the flow; see river_cell for the .25
+LAP_WAVES = 2.25      # the same for the foam lapping at the bank
 
 
 def _lerp(a, b, t):
@@ -119,8 +121,15 @@ def river_cell(mask: int, frame: int = 0) -> Image.Image:
 
     `u` decides what the pixel is: deep water, shallows, the foam at the waterline, wet mud, dry
     earth, turf. None of that depends on the frame, so the outline of the water never moves.
-    `s` carries the animation: bands of light travel along it, and it has the same value on both
-    sides of a tile's edge, which is what makes neighbouring tiles of any shape line up.
+
+    The animation is a train of waves running downstream, which is towards the east and the south
+    of the grid (down the screen). Their phase at a pixel is FLOW_WAVES * (x + y) - frame / FRAMES,
+    with x and y running from 0 to 1 across the tile. FLOW_WAVES is a whole number plus 1 / FRAMES,
+    which means the pattern does not repeat from tile to tile but is one frame further on in the
+    next tile downstream. The game makes up for exactly that by showing each tile one frame behind
+    its upstream neighbour (see RiverAutotile.frameFor): with that offset the waves run on from
+    tile to tile without a seam, and the stream is one moving surface instead of tiles that all
+    blink together.
     """
     n = CELL * SUPERSAMPLE
     axis = (np.arange(n) + 0.5) / n
@@ -153,23 +162,30 @@ def river_cell(mask: int, frame: int = 0) -> Image.Image:
     shade = _smooth((u - (CHANNEL - 0.075)) / 0.05) * (u < CHANNEL - 0.02)
     water = water * (1.0 - 0.16 * shade[..., None])
 
-    # Bands of light travelling along the stream, broken up across it so they read as waves and
-    # not as stripes. Whole periods fit into the loop, so frame FRAMES is frame 0 again.
+    # Bands of light travelling downstream, broken up across the stream so they read as waves
+    # and not as stripes. The wobble repeats exactly once per tile, so it meets itself at the
+    # edges. Whole periods fit into the loop, so frame FRAMES is frame 0 again.
     across = np.sin(two_pi * (dx * 4.0 + dy * 3.0)) * 0.5 + np.sin(two_pi * (dx * 2.0 - dy * 5.0)) * 0.5
-    wave = np.sin(two_pi * (s / 0.2 - t) + across * 1.0)
+    along = x + y  # grows downstream: 0 at the tile's north-west corner, 2 at its south-east
+    wave = np.sin(two_pi * (FLOW_WAVES * along - t) + across * 0.9)
     crest = _smooth((wave - 0.72) / 0.28) * _smooth(depth * 1.6)
     water = water + (np.asarray(FOAM) - water) * (0.6 * crest[..., None])
     trough = _smooth((-wave - 0.6) / 0.4) * depth
     water = water * (1.0 - 0.07 * trough[..., None])
 
-    # Glints: small hard sparkles on some crests, in different places in each frame.
-    sparkle = np.sin(two_pi * (x * 11.0 + frame * 0.37)) * np.sin(two_pi * (y * 13.0 - frame * 0.29))
-    glint = (sparkle > 0.8) & (crest > 0.3)
+    # Glints: small hard sparkles on some crests. They drift downstream with the water, and
+    # like the waves they are laid out so that a tile one frame behind picks up exactly where its
+    # upstream neighbour leaves off: each term below changes by a whole number of turns from a
+    # pixel in one tile and frame to the same pixel one tile downstream and one frame earlier.
+    quarter = frame / FRAMES
+    sparkle = (np.sin(two_pi * (11.25 * x + 3.25 * y - quarter)) *
+               np.sin(two_pi * (-4.75 * x + 13.25 * y - quarter)))
+    glint = (sparkle > 0.84) & (crest > 0.35)
     water = np.where(glint[..., None], np.asarray(GLINT, dtype=np.float64), water)
 
     # Foam lapping at the waterline: a thin pale line that thickens and thins along the bank
     # and breathes with the frames.
-    lap = 0.5 + 0.5 * np.sin(two_pi * (x * 4.0 + y * 6.0) + two_pi * t)
+    lap = 0.5 + 0.5 * np.sin(two_pi * (LAP_WAVES * along - t))
     foam_width = 0.010 + 0.014 * lap
     foam = _smooth((u - (CHANNEL - foam_width)) / foam_width)
     water = water + (np.asarray(FOAM) - water) * (0.78 * foam[..., None])

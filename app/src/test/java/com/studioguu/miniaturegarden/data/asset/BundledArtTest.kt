@@ -61,6 +61,42 @@ class BundledArtTest {
     }
 
     @Test
+    fun `the waves of neighbouring tiles join when each tile runs a frame behind the one upstream`() {
+        val atlas = Picture.read(File(main, "res/drawable-nodpi/tile_river_autotile.png"))
+        val cell = atlas.width / RiverAutotile.COLUMNS
+        val frames = RiverAutotile.frameCount(atlas.width, atlas.height)
+
+        /** How unlike two strips of pixels are: the mean difference per colour channel. */
+        fun unlike(a: IntArray, b: IntArray): Double = a.indices.sumOf { i ->
+            (0..16 step 8).sumOf { shift -> kotlin.math.abs((a[i] shr shift and 0xFF) - (b[i] shr shift and 0xFF)) }
+        } / (a.size * 3.0)
+
+        // A stretch running east-west (mask 10): the east edge of one tile against the west edge
+        // of its neighbour downstream, over the rows that are water.
+        val water = cell * 5 / 16 until cell * 11 / 16
+        fun eastEdge(frame: Int) = atlas.pixels(RiverAutotile.column(10) * cell + cell - 1, RiverAutotile.cellTop(10, frame, atlas.width, atlas.height) + water.first, 1, water.count())
+        fun westEdge(frame: Int) = atlas.pixels(RiverAutotile.column(10) * cell, RiverAutotile.cellTop(10, frame, atlas.width, atlas.height) + water.first, 1, water.count())
+        // And one running north-south (mask 5): south edge against the north edge of the next.
+        fun southEdge(frame: Int) = atlas.pixels(RiverAutotile.column(5) * cell + water.first, RiverAutotile.cellTop(5, frame, atlas.width, atlas.height) + cell - 1, water.count(), 1)
+        fun northEdge(frame: Int) = atlas.pixels(RiverAutotile.column(5) * cell + water.first, RiverAutotile.cellTop(5, frame, atlas.width, atlas.height), water.count(), 1)
+
+        for (tick in 0 until frames) {
+            // As the game plays it: the tile at (x, y) and the tiles one step east and south of it.
+            val here = Math.floorMod(RiverAutotile.frameFor(tick, 3, 4), frames)
+            val east = Math.floorMod(RiverAutotile.frameFor(tick, 4, 4), frames)
+            val south = Math.floorMod(RiverAutotile.frameFor(tick, 3, 5), frames)
+
+            val joinedEast = unlike(eastEdge(here), westEdge(east))
+            val joinedSouth = unlike(southEdge(here), northEdge(south))
+            assertTrue("tick $tick: seam to the east $joinedEast", joinedEast < 6.0)
+            assertTrue("tick $tick: seam to the south $joinedSouth", joinedSouth < 6.0)
+            // Played all on the same frame, the same edges would not meet.
+            assertTrue(unlike(eastEdge(here), westEdge(here)) > joinedEast * 1.5)
+            assertTrue(unlike(southEdge(here), northEdge(here)) > joinedSouth * 1.5)
+        }
+    }
+
+    @Test
     fun `the water has depth, light on it and a bank round it`() {
         val atlas = Picture.read(File(main, "res/drawable-nodpi/tile_river_autotile.png"))
         val cell = atlas.width / RiverAutotile.COLUMNS

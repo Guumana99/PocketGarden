@@ -42,6 +42,21 @@ object RiverAutotile {
     /** Milliseconds each animation frame is shown for. */
     const val FRAME_MILLIS = 260L
 
+    /**
+     * Which animation frame the tile at ([x], [y]) shows when the garden's water clock stands at
+     * [tick].
+     *
+     * The stream flows towards the east and the south of the grid, which is down the screen, and
+     * each tile runs one frame behind the tile upstream of it. So the tiles do not all blink
+     * together: a ripple that is in one tile now is in the next one a frame later, and is seen
+     * travelling down the river. The atlas is drawn for exactly this offset (see
+     * tools/build_terrain_assets.py): with it, the waves of neighbouring tiles join without a
+     * seam.
+     *
+     * The result may be any whole number, negative too; it wraps round when used.
+     */
+    fun frameFor(tick: Int, x: Int, y: Int): Int = tick - (x + y)
+
     /** Animation frames in an atlas of the given size: one per square block, at least one. */
     fun frameCount(atlasWidth: Int, atlasHeight: Int): Int =
         if (atlasWidth <= 0) 1 else (atlasHeight / atlasWidth).coerceAtLeast(1)
