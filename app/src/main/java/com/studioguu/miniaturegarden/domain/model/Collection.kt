@@ -40,8 +40,12 @@ enum class CollectionEntry(
     PEBBLE("ground_pebble", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     RIVER(GridObject.RIVER_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     PATH(GridObject.COBBLESTONE_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
+    FLOWERS("ground_flowers", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
+    DECK(GridObject.WOOD_DECK_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     ROCK("deco_rock", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     FENCE(GridObject.FENCE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
+    BENCH("deco_bench", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 20),
+    LANTERN("deco_lantern", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     WELL(StructureData.WELL.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 40),
     HUT(StructureData.HUT.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 80);
 

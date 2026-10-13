@@ -17,12 +17,15 @@ enum class GroundTile(val assetId: String) {
 
 enum class Decoration(val objectId: String) {
     ROCK("deco_rock"),
+    BENCH("deco_bench"),
+    LANTERN("deco_lantern"),
 }
 
 /** Flat ground cover, drawn below plants and decorations. */
 enum class GroundCover(val objectId: String) {
     PEBBLE("ground_pebble"),
     GRASS_TUFT("ground_grass"),
+    FLOWERS("ground_flowers"),
 }
 
 /** Maps what is on the grid to the sprites that draw it. Plants themselves are [PlantSpecies]. */
@@ -32,7 +35,7 @@ object TileSetDefinition {
     val objectIds: List<String> =
         PlantSpecies.entries.map { it.objectId } + Decoration.entries.map { it.objectId } +
             GroundCover.entries.map { it.objectId } + StructureData.entries.map { it.objectId } +
-            GridObject.RIVER_OBJECT_ID + GridObject.COBBLESTONE_OBJECT_ID + GridObject.TILLED_SOIL_OBJECT_ID +
+            GridObject.RIVER_OBJECT_ID + GridObject.COBBLESTONE_OBJECT_ID + GridObject.WOOD_DECK_OBJECT_ID + GridObject.TILLED_SOIL_OBJECT_ID +
             FencePart.entries.map { it.objectId }
 
     /** Ground sprite for a cell: water for the river, a two-tone checkerboard for the lawn. */

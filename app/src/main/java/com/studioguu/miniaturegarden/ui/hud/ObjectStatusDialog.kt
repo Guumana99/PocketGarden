@@ -27,6 +27,8 @@ import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
+import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
@@ -51,6 +53,7 @@ fun ObjectStatusDialog(
     onMove: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    surroundings: PlantSurroundings = PlantSurroundings.OPEN_GROUND,
 ) {
     Surface(
         modifier = modifier,
@@ -102,6 +105,25 @@ fun ObjectStatusDialog(
                     text = stringResource(hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            // What the buildings nearby do for this plant, or what this building does for plants.
+            val effects = buildList {
+                if (surroundings.moistureDrainFactor < 1f) add(R.string.hint_near_well)
+                if (surroundings.growthFactor > 1f) add(R.string.hint_near_hut)
+                if (!gridObject.isWorking) {
+                    when (StructureEffect.forObjectId(gridObject.objectId)) {
+                        StructureEffect.WELL -> add(R.string.hint_well_effect)
+                        StructureEffect.HUT -> add(R.string.hint_hut_effect)
+                        null -> Unit
+                    }
+                }
+            }
+            for (effect in effects) {
+                Text(
+                    text = stringResource(effect),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
                 )
             }
 

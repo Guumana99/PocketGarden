@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
+import com.studioguu.miniaturegarden.domain.model.UnlockCondition
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.ui.actionResultMessage
@@ -85,10 +86,11 @@ fun ShopDialog(
                 }
                 // A fixed minimum keeps the dialog from jumping when a shelf has fewer items.
                 Column(
-                    modifier = Modifier.heightIn(min = SHELF_MIN_HEIGHT).verticalScroll(rememberScrollState()),
+                    // A long shelf scrolls inside the dialog rather than pushing its buttons off screen.
+                    modifier = Modifier.heightIn(min = SHELF_MIN_HEIGHT, max = SHELF_MAX_HEIGHT).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    for (item in viewModel.items.filter { it.category == category }) {
+                    for (item in GardenItem.shelf(category)) {
                         ShopRow(
                             item = item,
                             locked = !item.isUnlockedFor(playerStats),
@@ -189,7 +191,10 @@ private fun ShopRow(item: GardenItem, locked: Boolean, affordable: Boolean, onBu
         Text(itemDisplayName(item), style = MaterialTheme.typography.bodyLarge, modifier = fade.weight(1f))
         if (locked) {
             Text(
-                text = stringResource(R.string.shop_locked, item.unlockLevel),
+                text = when (val condition = item.unlock) {
+                    is UnlockCondition.CollectionPages -> stringResource(R.string.shop_locked_pages, condition.pages)
+                    else -> stringResource(R.string.shop_locked, item.unlockLevel)
+                },
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -214,3 +219,4 @@ private fun categoryLabel(category: ItemCategory): Int = when (category) {
 private const val LOCKED_ALPHA = 0.5f
 private const val UNAFFORDABLE_ALPHA = 0.55f
 private val SHELF_MIN_HEIGHT = 200.dp
+private val SHELF_MAX_HEIGHT = 330.dp

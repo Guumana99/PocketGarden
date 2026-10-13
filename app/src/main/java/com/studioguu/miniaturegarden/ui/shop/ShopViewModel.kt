@@ -11,6 +11,7 @@ import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
+import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
 import com.studioguu.miniaturegarden.domain.model.RewardType
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -59,9 +61,11 @@ class ShopViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
     /** Decides which items are still locked. */
-    val playerStats: StateFlow<PlayerStats> = gardenRepository.observeUserProfile()
-        .map { it?.stats ?: NEW_PLAYER }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NEW_PLAYER)
+    val playerStats: StateFlow<PlayerStats> =
+        combine(gardenRepository.observeUserProfile(), gardenRepository.observeCollection()) { profile, pages ->
+            // Some items are opened by the encyclopedia rather than by level.
+            (profile?.stats ?: NEW_PLAYER).copy(collectionPages = CollectionProgress(pages).revealed)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NEW_PLAYER)
 
     private val _feedback = MutableStateFlow<PurchaseFeedback?>(null)
     val feedback: StateFlow<PurchaseFeedback?> = _feedback.asStateFlow()

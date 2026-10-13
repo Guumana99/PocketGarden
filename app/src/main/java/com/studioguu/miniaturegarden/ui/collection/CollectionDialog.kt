@@ -522,6 +522,10 @@ private fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.ROCK -> R.string.flavor_rock
     CollectionEntry.RIVER -> R.string.flavor_river
     CollectionEntry.PATH -> R.string.flavor_path
+    CollectionEntry.FLOWERS -> R.string.flavor_flowers
+    CollectionEntry.DECK -> R.string.flavor_deck
+    CollectionEntry.BENCH -> R.string.flavor_bench
+    CollectionEntry.LANTERN -> R.string.flavor_lantern
     CollectionEntry.FENCE -> R.string.flavor_fence
     CollectionEntry.WELL -> R.string.flavor_well
     CollectionEntry.HUT -> R.string.flavor_hut

@@ -43,6 +43,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
+import com.studioguu.miniaturegarden.data.asset.Decoration
+import com.studioguu.miniaturegarden.data.asset.GroundCover
 import com.studioguu.miniaturegarden.data.asset.GroundTile
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
@@ -50,6 +52,7 @@ import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.StructureData
@@ -108,6 +111,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param terrain ground textures for river and paving; plain shapes are drawn without them.
  * @param gardenMap the terrain under the objects.
  * @param weather decides how hard the wind blows and how strong the shadows are.
+ * @param auraCells cells to mark softly on the ground: the reach of the selected building's effect.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
  */
 @Composable
@@ -121,6 +125,7 @@ fun GardenCanvas(
     gardenMap: GardenMap = GardenMap.allGrass(),
     showGrid: Boolean = true,
     weather: WeatherType = WeatherType.SUNNY,
+    auraCells: Set<GridCell> = emptySet(),
 ) {
     val density = LocalDensity.current
     val metrics = remember(density) {
@@ -223,6 +228,16 @@ fun GardenCanvas(
         if (showGrid) {
             pipeline.submit(RenderLayer.GRID_OVERLAY) { drawIsometricGrid(transform, metrics.gridSize) }
         }
+        if (auraCells.isNotEmpty()) {
+            pipeline.submit(RenderLayer.GRID_OVERLAY, depth = 0.5f) {
+                for (cell in auraCells) {
+                    if (!gardenMap.isInside(cell.x, cell.y)) continue
+                    val tile = transform.tilePath(cell.x, cell.y)
+                    drawPath(tile, AURA_FILL)
+                    drawPath(tile, AURA_EDGE, style = Stroke(width = transform.tileWidth * 0.014f))
+                }
+            }
+        }
         if (selectedTile != null) {
             // Selecting any cell of a structure marks its whole footprint.
             val selected = grid.objectAt(selectedTile.x, selectedTile.y)
@@ -257,6 +272,9 @@ fun GardenCanvas(
         pipeline.render(this)
     }
 }
+
+private val AURA_FILL = Color(0x334FC3F7)
+private val AURA_EDGE = Color(0x994FC3F7)
 
 /** How long the garden waits between two frames of wind. */
 private const val WIND_FRAME_MILLIS = 50L
@@ -367,6 +385,8 @@ private fun submitObjects(
             submit(obj, RenderLayer.BASE_TERRAIN, 1f) {
                 if (obj.isTilledSoil) {
                     drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted)
+                } else if (obj.objectId == GridObject.WOOD_DECK_OBJECT_ID) {
+                    drawWoodDeck(transform, obj.gridX, obj.gridY)
                 } else if (paving != null) {
                     drawGroundTexture(paving, transform, obj.gridX, obj.gridY)
                 } else {
@@ -1438,7 +1458,142 @@ private val BLOOM_COLORS = listOf(
 /** Seedlings start at 35% of full size so a freshly planted tile is not empty. */
 private fun plantScale(obj: GridObject): Float = 0.35f + 0.65f * obj.growthProgress.coerceIn(0f, 1f)
 
+private val DECK_BOARD = Color(0xFFC79A63)
+private val DECK_BOARD_ALT = Color(0xFFBB8C55)
+private val DECK_GAP = Color(0xFF7A5230)
+private val DECK_NAIL = Color(0xFF5D3A1A)
+private const val DECK_BOARDS = 4
+
+/**
+ * A tile of wooden decking: four boards running across it, alternately a shade lighter and
+ * darker, with dark gaps between them and a nail at either end of each.
+ */
+private fun DrawScope.drawWoodDeck(transform: IsometricTransform, x: Int, y: Int) {
+    drawPath(transform.tilePath(x, y), DECK_GAP)
+    val gap = 0.025f
+    for (i in 0 until DECK_BOARDS) {
+        val y0 = y + i / DECK_BOARDS.toFloat() + gap / 2f
+        val y1 = y + (i + 1) / DECK_BOARDS.toFloat() - gap / 2f
+        drawPath(
+            quad(
+                transform.worldToScreen(x + gap, y0),
+                transform.worldToScreen(x + 1 - gap, y0),
+                transform.worldToScreen(x + 1 - gap, y1),
+                transform.worldToScreen(x + gap, y1),
+            ),
+            if ((i + x + y) % 2 == 0) DECK_BOARD else DECK_BOARD_ALT,
+        )
+        val middle = (y0 + y1) / 2f
+        val nail = transform.tileWidth * 0.008f
+        drawCircle(DECK_NAIL, nail, transform.worldToScreen(x + 0.1f, middle))
+        drawCircle(DECK_NAIL, nail, transform.worldToScreen(x + 0.9f, middle))
+    }
+}
+
+private val FLOWER_PETALS = listOf(Color(0xFFFFFFFF), Color(0xFFFFE082), Color(0xFFF8BBD0), Color(0xFFB39DDB))
+private val FLOWER_HEART = Color(0xFFFFB300)
+private val FLOWER_STEM = Color(0xFF5E8C3A)
+
+/** A scatter of small wild flowers over the tile: a short stem, four petals and a yellow heart each. */
+private fun DrawScope.drawWildFlowers(obj: GridObject, base: Offset, unit: Float) {
+    var state = obj.gridX * 73856093 xor obj.gridY * 19349663 xor 0x5F3759DF
+    fun next(): Float {
+        state = state * 1103515245 + 12345
+        return ((state ushr 16) and 0x7FFF) / 32767f
+    }
+    repeat(7) { i ->
+        // Spread over the tile's diamond: wide across, half as deep.
+        val across = (next() - 0.5f) * 0.62f
+        val deep = (next() - 0.5f) * 0.3f * (1f - kotlin.math.abs(across) * 1.4f)
+        val foot = base + Offset(unit * across, unit * deep)
+        val head = foot + Offset(0f, -unit * (0.035f + next() * 0.03f))
+        drawLine(FLOWER_STEM, foot, head, unit * 0.011f, StrokeCap.Round)
+        val petal = unit * 0.017f
+        val colour = FLOWER_PETALS[(i + obj.gridX + obj.gridY) % FLOWER_PETALS.size]
+        for ((dx, dy) in listOf(-1f to 0f, 1f to 0f, 0f to -1f, 0f to 1f)) {
+            drawCircle(colour, petal, head + Offset(dx * petal * 0.9f, dy * petal * 0.9f))
+        }
+        drawCircle(FLOWER_HEART, petal * 0.6f, head)
+    }
+}
+
+private val BENCH_WOOD = Color(0xFFB98552)
+private val BENCH_WOOD_DARK = Color(0xFF8A5F36)
+private val BENCH_LEG = Color(0xFF5D3A1A)
+
+/** A garden bench: a seat of two planks on four legs, and a back of two more. */
+private fun DrawScope.drawBench(base: Offset, unit: Float) {
+    val halfWidth = unit * 0.24f
+    val seatHeight = unit * 0.1f
+    val depth = Offset(unit * 0.07f, unit * 0.035f) // how far the front edge is from the back edge
+    val stroke = unit * 0.02f
+    val backLeft = base + Offset(-halfWidth, -seatHeight) - depth / 2f
+    val backRight = base + Offset(halfWidth, -seatHeight) - depth / 2f
+    val frontLeft = backLeft + depth
+    val frontRight = backRight + depth
+    // Legs first, back pair then front pair.
+    for (top in listOf(backLeft, backRight, frontLeft, frontRight)) {
+        drawLine(BENCH_LEG, top, top + Offset(0f, seatHeight), stroke, StrokeCap.Round)
+    }
+    // The back: two posts and two slats.
+    val rise = Offset(0f, -unit * 0.13f)
+    drawLine(BENCH_LEG, backLeft, backLeft + rise, stroke, StrokeCap.Round)
+    drawLine(BENCH_LEG, backRight, backRight + rise, stroke, StrokeCap.Round)
+    drawLine(BENCH_WOOD_DARK, backLeft + rise * 0.55f, backRight + rise * 0.55f, stroke * 1.5f, StrokeCap.Round)
+    drawLine(BENCH_WOOD, backLeft + rise * 0.95f, backRight + rise * 0.95f, stroke * 1.5f, StrokeCap.Round)
+    // The seat.
+    drawPath(quad(backLeft, backRight, frontRight, frontLeft), BENCH_WOOD)
+    drawLine(BENCH_WOOD_DARK, (backLeft + frontLeft) / 2f, (backRight + frontRight) / 2f, stroke * 0.5f)
+    drawLine(BENCH_LEG, frontLeft, frontRight, stroke * 0.6f, StrokeCap.Round)
+}
+
+private val LANTERN_STONE = Color(0xFFB7B3A8)
+private val LANTERN_STONE_DARK = Color(0xFF8E8A80)
+private val LANTERN_MOSS = Color(0xFF8DAE6A)
+private val LANTERN_LIGHT = Color(0xFFFFE9A8)
+
+/**
+ * A stone lantern: a wide foot, a post, the lamp chamber with its lit window, and a broad cap
+ * with a knob on top. A warm glow hangs round the window.
+ */
+private fun DrawScope.drawLantern(base: Offset, unit: Float) {
+    fun slab(centre: Offset, width: Float, height: Float, colour: Color) =
+        drawRoundRect(colour, centre - Offset(width / 2f, height), Size(width, height), CornerRadius(height * 0.25f, height * 0.25f))
+
+    val foot = unit * 0.05f
+    val post = unit * 0.11f
+    val chamber = unit * 0.1f
+    slab(base, unit * 0.2f, foot, LANTERN_STONE_DARK)
+    slab(base + Offset(0f, -foot), unit * 0.08f, post, LANTERN_STONE)
+    val chamberBase = base + Offset(0f, -foot - post)
+    slab(chamberBase, unit * 0.15f, chamber, LANTERN_STONE)
+    // The glow, then the window it comes from.
+    val window = chamberBase + Offset(0f, -chamber / 2f)
+    drawCircle(
+        brush = Brush.radialGradient(listOf(LANTERN_LIGHT.copy(alpha = 0.55f), LANTERN_LIGHT.copy(alpha = 0f)), center = window, radius = unit * 0.16f),
+        radius = unit * 0.16f,
+        center = window,
+    )
+    drawRoundRect(LANTERN_LIGHT, window - Offset(unit * 0.035f, chamber * 0.3f), Size(unit * 0.07f, chamber * 0.6f), CornerRadius(unit * 0.01f, unit * 0.01f))
+    // The cap, wider than everything under it, with moss on one side and a knob on top.
+    val capBase = chamberBase + Offset(0f, -chamber)
+    val cap = Path().apply {
+        moveTo(capBase.x - unit * 0.13f, capBase.y)
+        lineTo(capBase.x + unit * 0.13f, capBase.y)
+        lineTo(capBase.x + unit * 0.04f, capBase.y - unit * 0.06f)
+        lineTo(capBase.x - unit * 0.04f, capBase.y - unit * 0.06f)
+        close()
+    }
+    drawPath(cap, LANTERN_STONE_DARK)
+    drawCircle(LANTERN_MOSS, unit * 0.022f, capBase + Offset(-unit * 0.07f, -unit * 0.018f))
+    drawCircle(LANTERN_STONE, unit * 0.02f, capBase + Offset(0f, -unit * 0.075f))
+}
+
 private fun DrawScope.drawGroundCover(obj: GridObject, base: Offset, unit: Float) {
+    if (obj.objectId == GroundCover.FLOWERS.objectId) {
+        drawWildFlowers(obj, base, unit)
+        return
+    }
     val color = if (obj.objectId.contains("grass")) Color(0xFF558B2F) else Color(0xFFBDBDBD)
     val r = unit * 0.035f
     drawCircle(color, r * 1.3f, base + Offset(-unit * 0.12f, unit * 0.01f))
@@ -1493,7 +1648,12 @@ private fun DrawScope.drawPlaceholder(obj: GridObject, base: Offset, unit: Float
     }
     // isFlipped mirrors the shape around the vertical line through its tile center.
     scale(scaleX = if (obj.isFlipped) -1f else 1f, scaleY = 1f, pivot = base) {
-        if (obj.isPlant) drawPlant(obj, base, unit) else drawDecoration(base, unit)
+        when {
+            obj.isPlant -> drawPlant(obj, base, unit)
+            obj.objectId == Decoration.BENCH.objectId -> drawBench(base, unit)
+            obj.objectId == Decoration.LANTERN.objectId -> drawLantern(base, unit)
+            else -> drawDecoration(base, unit)
+        }
     }
 }
 

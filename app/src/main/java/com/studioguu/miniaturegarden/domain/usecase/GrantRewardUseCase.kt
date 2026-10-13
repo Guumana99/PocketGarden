@@ -31,9 +31,10 @@ class GrantRewardUseCase @Inject constructor(
     suspend fun blessedRain(now: Long, weather: WeatherForecast, today: Long): RewardResult {
         if (!rewardLimits.tryConsume(RewardType.BLESSED_RAIN, today)) return RewardResult.LIMIT_REACHED
         gardenRepository.runInTransaction {
-            val updated = gardenRepository.getGridObjects()
+            val garden = gardenRepository.getGridObjects()
+            val updated = garden
                 .filter { it.isPlant }
-                .map { calculateOfflineProgress(it, now, weather) }
+                .map { calculateOfflineProgress(it, now, weather, garden) }
                 .map { plant ->
                     if (plant.status == PlantStatus.WITHERED) return@map plant
                     val remaining = 1f - plant.growthProgress

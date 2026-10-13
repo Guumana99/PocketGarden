@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -37,15 +38,22 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         gridObjects: List<GridObject>,
         currentTimeMillis: Long,
         weather: WeatherForecast = WeatherType.SUNNY,
-    ): List<GridObject> = gridObjects.map { invoke(it, currentTimeMillis, weather) }
+    ): List<GridObject> = gridObjects.map { invoke(it, currentTimeMillis, weather, gridObjects) }
 
+    /**
+     * @param garden everything in the garden, the object itself included. Buildings in it can
+     *   help the plants round them (see [PlantSurroundings]); with nothing passed, the plant is
+     *   treated as standing in the open.
+     */
     operator fun invoke(
         gridObject: GridObject,
         currentTimeMillis: Long,
         weather: WeatherForecast = WeatherType.SUNNY,
+        garden: List<GridObject> = emptyList(),
     ): GridObject {
+        val surroundings = PlantSurroundings.of(gridObject, garden)
         // One kind of weather throughout: a single stretch.
-        if (weather is WeatherType) return advance(gridObject, currentTimeMillis, weather)
+        if (weather is WeatherType) return advance(gridObject, currentTimeMillis, weather, surroundings)
 
         // Only the last MAX_OFFLINE_MILLIS count; the stretches are cut out of that window.
         val windowStart = currentTimeMillis - MAX_OFFLINE_MILLIS
@@ -56,21 +64,28 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         }
         var cursor = current.lastUpdatedTimestamp
         // Nothing to cut up (this also covers a timestamp in the future, which advance() repairs).
-        if (cursor >= currentTimeMillis) return advance(current, currentTimeMillis, weather.at(currentTimeMillis))
+        if (cursor >= currentTimeMillis) {
+            return advance(current, currentTimeMillis, weather.at(currentTimeMillis), surroundings)
+        }
         while (cursor < currentTimeMillis) {
             // The weather of a stretch is the weather at its start; it holds until the next change.
             val nextChange = (Math.floorDiv(cursor, WeatherType.DAY_MILLIS) + 1) * WeatherType.DAY_MILLIS
             val until = min(nextChange, currentTimeMillis)
             // Whatever part of a minute is left at the change stays in the object's timestamp and
             // is counted with the next stretch, so nothing is lost at the joins.
-            current = advance(current, until, weather.at(cursor))
+            current = advance(current, until, weather.at(cursor), surroundings)
             cursor = until
         }
         return current
     }
 
     /** Advances one object to [currentTimeMillis] under [weather] throughout. */
-    private fun advance(gridObject: GridObject, currentTimeMillis: Long, weather: WeatherType): GridObject {
+    private fun advance(
+        gridObject: GridObject,
+        currentTimeMillis: Long,
+        weather: WeatherType,
+        surroundings: PlantSurroundings,
+    ): GridObject {
         val elapsed = cappedElapsedMillis(gridObject.lastUpdatedTimestamp, currentTimeMillis)
         val ticks = elapsed / TICK_MILLIS
         val remainder = elapsed % TICK_MILLIS
@@ -87,8 +102,11 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         val protected = weather.isProtective
         // Rain waters the plant before anything else happens.
         val startMoisture = if (protected) 1f else gridObject.moistureLevel
-        val moistureDrain = weather.moistureDrainMultiplier / (species.dryOutHours * TICKS_PER_HOUR)
-        val growthPerTick = weather.growthMultiplier / (species.growthHours * TICKS_PER_HOUR)
+        // A well nearby slows the drying, a hut nearby quickens the growing.
+        val moistureDrain = weather.moistureDrainMultiplier * surroundings.moistureDrainFactor /
+            (species.dryOutHours * TICKS_PER_HOUR)
+        val growthPerTick = weather.growthMultiplier * surroundings.growthFactor /
+            (species.growthHours * TICKS_PER_HOUR)
         val hydratedTicks = ticksAbove(startMoisture, THIRSTY_THRESHOLD, moistureDrain, ticks)
         val nourishedTicks = ticksAbove(gridObject.nutritionLevel, UNNOURISHED_THRESHOLD, NUTRITION_DRAIN_PER_TICK, ticks)
         val healthyTicks = min(hydratedTicks, nourishedTicks)
