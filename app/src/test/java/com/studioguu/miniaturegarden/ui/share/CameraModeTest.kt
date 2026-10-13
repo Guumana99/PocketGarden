@@ -76,7 +76,9 @@ class CameraModeTest {
     // --- The mode itself ---
 
     private val main: File = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+    // Git may check the source out with CRLF; the snippets below are written with LF.
     private val screen: String = main.resolve("java/com/studioguu/miniaturegarden/ui/GardenScreen.kt").readText()
+        .replace("\r\n", "\n")
 
     @Test
     fun `in camera mode none of the game's interface is put on screen`() {
