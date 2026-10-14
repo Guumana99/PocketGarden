@@ -50,6 +50,7 @@ import com.studioguu.miniaturegarden.data.asset.GroundTile
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -75,6 +76,7 @@ import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TilePicker
 import com.studioguu.miniaturegarden.ui.render.Wind
+import com.studioguu.miniaturegarden.ui.render.drawCreature
 import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
 import com.studioguu.miniaturegarden.ui.render.drawFenceArms
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
@@ -114,6 +116,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param weather decides how hard the wind blows and how strong the shadows are.
  * @param auraCells cells to mark softly on the ground: the reach of the selected building's effect.
  * @param hintCells cells the first steps point at: a few small stars twinkle quietly over each.
+ * @param visitors creatures staying in the garden; each fades in and out on its own clock.
  * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
  *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
@@ -132,6 +135,7 @@ fun GardenCanvas(
     auraCells: Set<GridCell> = emptySet(),
     hintCells: Set<GridCell> = emptySet(),
     fadedObjectIds: Set<String> = emptySet(),
+    visitors: List<CreatureVisit> = emptyList(),
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -279,6 +283,15 @@ fun GardenCanvas(
                 pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
                 vanish = ghost.progress.value,
             )
+        }
+        for (visit in visitors) {
+            val opacity = visit.opacityAt(ambience.epochMillis)
+            if (opacity <= 0f) continue
+            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = LayerPipeline.depthOf(visit.cell.x, visit.cell.y, 0) + 0.6f) {
+                val base = visitorBase(transform, visit)
+                val draw: DrawScope.() -> Unit = { drawCreature(visit.creature, base, transform.tileWidth, windMillis) }
+                if (opacity < 1f) drawFaded(opacity, draw) else draw()
+            }
         }
         for (cell in hintCells) {
             if (!gardenMap.isInside(cell.x, cell.y)) continue
@@ -877,6 +890,23 @@ private class Ghost(val gridObject: GridObject) {
  * @param pivot the point on the ground it stood on.
  * @param progress 0 (still whole) to 1 (gone).
  */
+/**
+ * Where a visitor's feet are: on the ground in the middle of its cell, or up on what it sits on
+ * (the seat of a bench, the ridge of a roof).
+ */
+private fun visitorBase(transform: IsometricTransform, visit: CreatureVisit): Offset {
+    val host = visit.host ?: return transform.tileCenter(visit.cell.x, visit.cell.y)
+    val footprint = host.footprint
+    val centreX = host.gridX + footprint.width / 2f
+    val centreY = host.gridY + footprint.height / 2f
+    val lift = when {
+        StructureData.fromObjectId(host.objectId) != null -> StructureData.fromObjectId(host.objectId)!!.heightSteps - 0.8f
+        host.objectId == Decoration.BENCH.objectId -> 0.8f
+        else -> 0f
+    }
+    return transform.worldToScreen(centreX, centreY, lift)
+}
+
 /** Draws [draw] at [alpha] as a whole, so overlapping parts do not show through one another. */
 private fun DrawScope.drawFaded(alpha: Float, draw: DrawScope.() -> Unit) {
     drawIntoCanvas { canvas ->

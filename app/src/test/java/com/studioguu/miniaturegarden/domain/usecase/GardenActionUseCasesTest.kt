@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -636,6 +637,7 @@ internal class FakeGardenRepository : GardenRepository {
         objects.clear()
         slots.clear()
         collection.clear()
+        natureNotes.clear()
         progress = null
         profile = null
     }
@@ -671,6 +673,14 @@ internal class FakeGardenRepository : GardenRepository {
     override suspend fun getCollection(): List<CollectionRecord> = collection.values.toList()
     override suspend fun upsertCollectionRecord(record: CollectionRecord) {
         collection[record.entryId] = record
+    }
+
+    val natureNotes = LinkedHashMap<String, NatureNote>()
+
+    override fun observeNatureNotes(): Flow<List<NatureNote>> = MutableStateFlow(natureNotes.values.toList())
+    override suspend fun getNatureNotes(): List<NatureNote> = natureNotes.values.toList()
+    override suspend fun upsertNatureNote(note: NatureNote) {
+        natureNotes[note.noteId] = note
     }
 
     override fun observeInventory(): Flow<List<InventorySlot>> = MutableStateFlow(slots.values.toList())

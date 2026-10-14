@@ -82,17 +82,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // The book's own colours: a leather cover, aged paper, brown ink.
-private val Leather = Color(0xFF5B3A29)
-private val LeatherDark = Color(0xFF3B2418)
-private val GoldLeaf = Color(0xFFE6C36A)
-private val Paper = Color(0xFFF4E6C3)
-private val PaperShade = Color(0xFFE2CFA0)
-private val Ink = Color(0xFF3E2A1E)
-private val InkFaded = Color(0xFF8A6F55)
-private val ReadyMark = Color(0xFFD8442F)
+internal val Leather = Color(0xFF5B3A29)
+internal val LeatherDark = Color(0xFF3B2418)
+internal val GoldLeaf = Color(0xFFE6C36A)
+internal val Paper = Color(0xFFF4E6C3)
+internal val PaperShade = Color(0xFFE2CFA0)
+internal val Ink = Color(0xFF3E2A1E)
+internal val InkFaded = Color(0xFF8A6F55)
+internal val ReadyMark = Color(0xFFD8442F)
 
-private val BookFont = FontFamily.Serif
-private val SPREAD_HEIGHT = 330.dp
+internal val BookFont = FontFamily.Serif
+internal val SPREAD_HEIGHT = 330.dp
 private const val REVEAL_MILLIS = 900
 private const val NOTICE_MILLIS = 2600L
 
@@ -115,6 +115,7 @@ fun CollectionDialog(
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
     val terrain by viewModel.terrain.collectAsStateWithLifecycle()
     val notice by viewModel.notice.collectAsStateWithLifecycle()
+    val natureNotes by viewModel.natureNotes.collectAsStateWithLifecycle()
 
     // Opening the book is what earns the day's bonus.
     LaunchedEffect(Unit) { viewModel.onOpened() }
@@ -144,9 +145,23 @@ fun CollectionDialog(
                 var category by rememberSaveable {
                     mutableStateOf(CollectionCategory.entries.firstOrNull { loaded.readyIn(it) > 0 } ?: CollectionCategory.CROPS)
                 }
-                CategoryTabs(selected = category, progress = loaded, onSelect = { category = it })
-                // Each chapter keeps its own place in the book.
-                key(category) {
+                // The last chapter, the nature notes, is a different kind of page.
+                var natureOpen by rememberSaveable { mutableStateOf(false) }
+                CategoryTabs(
+                    selected = category.takeUnless { natureOpen },
+                    progress = loaded,
+                    onSelect = {
+                        category = it
+                        natureOpen = false
+                    },
+                    onSelectNature = { natureOpen = true },
+                )
+                val notes = natureNotes
+                if (natureOpen && notes != null) {
+                    NatureNotesChapter(notes, onDismiss)
+                } else if (natureOpen) {
+                    Spacer(Modifier.height(SPREAD_HEIGHT))
+                } else key(category) {
                     Chapter(
                         entries = remember(category) { CollectionEntry.inCategory(category) },
                         progress = loaded,
@@ -226,10 +241,19 @@ private fun NoticeStrip(notice: BookNotice?) {
     }
 }
 
-/** The chapters, as bookmarks. A red dot marks a chapter with a page waiting to be filled in. */
+/**
+ * The chapters, as bookmarks. A red dot marks a chapter with a page waiting to be filled in. The
+ * last bookmark is the nature notes; [selected] is null while that is open.
+ */
 @Composable
-private fun CategoryTabs(selected: CollectionCategory, progress: CollectionProgress, onSelect: (CollectionCategory) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun CategoryTabs(
+    selected: CollectionCategory?,
+    progress: CollectionProgress,
+    onSelect: (CollectionCategory) -> Unit,
+    onSelectNature: () -> Unit,
+) {
+    // Four bookmarks share the width, so their labels are a size smaller.
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         for (category in CollectionCategory.entries) {
             val isSelected = category == selected
             Box(
@@ -246,7 +270,7 @@ private fun CategoryTabs(selected: CollectionCategory, progress: CollectionProgr
                     color = if (isSelected) Ink else GoldLeaf,
                     fontFamily = BookFont,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                 )
                 if (progress.readyIn(category) > 0) {
@@ -259,6 +283,25 @@ private fun CategoryTabs(selected: CollectionCategory, progress: CollectionProgr
                     )
                 }
             }
+        }
+        val natureSelected = selected == null
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                .background(if (natureSelected) Paper else LeatherDark)
+                .clickable(onClick = withTick(onSelectNature))
+                .padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(R.string.nature_tab),
+                color = if (natureSelected) Ink else GoldLeaf,
+                fontFamily = BookFont,
+                fontWeight = if (natureSelected) FontWeight.Bold else FontWeight.Normal,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+            )
         }
     }
 }
@@ -499,7 +542,7 @@ private fun Illustration(entry: CollectionEntry, state: PageState, reveal: Float
 }
 
 @Composable
-private fun PageButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+internal fun PageButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     TextButton(onClick = onClick, enabled = enabled) {
         Text(label, color = if (enabled) GoldLeaf else GoldLeaf.copy(alpha = 0.3f), fontSize = 18.sp)
     }

@@ -4,6 +4,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
 
@@ -20,8 +21,8 @@ interface GardenRepository {
     suspend fun hasSavedGarden(): Boolean
 
     /**
-     * Throws the saved garden away entirely: profile, garden, inventory, encyclopedia and
-     * progress. The next [ensureInitialized] starts a new one.
+     * Throws the saved garden away entirely: profile, garden, inventory, encyclopedia, nature
+     * notes and progress. The next [ensureInitialized] starts a new one.
      */
     suspend fun deleteSavedGarden()
 
@@ -56,4 +57,9 @@ interface GardenRepository {
     fun observeCollection(): Flow<List<CollectionRecord>>
     suspend fun getCollection(): List<CollectionRecord>
     suspend fun upsertCollectionRecord(record: CollectionRecord)
+
+    /** The nature notes: creatures met and the combinations that brought them. */
+    fun observeNatureNotes(): Flow<List<NatureNote>>
+    suspend fun getNatureNotes(): List<NatureNote>
+    suspend fun upsertNatureNote(note: NatureNote)
 }

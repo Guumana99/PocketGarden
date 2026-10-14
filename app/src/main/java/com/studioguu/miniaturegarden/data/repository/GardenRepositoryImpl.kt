@@ -6,6 +6,7 @@ import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
 import com.studioguu.miniaturegarden.data.local.dao.GardenProgressDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
+import com.studioguu.miniaturegarden.data.local.dao.NatureNoteDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
@@ -16,6 +17,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.StarterGarden
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
@@ -32,6 +34,7 @@ class GardenRepositoryImpl @Inject constructor(
     private val inventorySlotDao: InventorySlotDao,
     private val collectionEntryDao: CollectionEntryDao,
     private val gardenProgressDao: GardenProgressDao,
+    private val natureNoteDao: NatureNoteDao,
     private val securityManager: SecurityManager,
 ) : GardenRepository {
 
@@ -63,6 +66,7 @@ class GardenRepositoryImpl @Inject constructor(
         inventorySlotDao.deleteAll()
         collectionEntryDao.deleteAll()
         gardenProgressDao.deleteAll()
+        natureNoteDao.deleteAll()
         userProfileDao.deleteAll()
     }
 
@@ -108,4 +112,11 @@ class GardenRepositoryImpl @Inject constructor(
 
     override suspend fun upsertCollectionRecord(record: CollectionRecord) =
         collectionEntryDao.upsert(record.toEntity())
+
+    override fun observeNatureNotes(): Flow<List<NatureNote>> =
+        natureNoteDao.observeAll().map { list -> list.map { it.toDomain() } }
+
+    override suspend fun getNatureNotes(): List<NatureNote> = natureNoteDao.getAll().map { it.toDomain() }
+
+    override suspend fun upsertNatureNote(note: NatureNote) = natureNoteDao.upsert(note.toEntity())
 }

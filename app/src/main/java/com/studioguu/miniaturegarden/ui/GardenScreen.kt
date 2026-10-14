@@ -121,6 +121,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
     val gardenMap by viewModel.gardenMap.collectAsStateWithLifecycle()
     val notificationInviteDue by viewModel.notificationInviteDue.collectAsStateWithLifecycle()
+    val visitors by viewModel.visitors.collectAsStateWithLifecycle()
     val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
     val tutorialStep by viewModel.tutorialStep.collectAsStateWithLifecycle()
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
@@ -205,6 +206,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 showGrid = !cameraMode,
                 auraCells = if (cameraMode) emptySet() else aura,
                 hintCells = if (cameraMode) emptySet() else hintCells,
+                // The visitors stay in camera mode: they belong in a picture of the garden.
+                visitors = visitors,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
                 // the hoe), or when the selected cell is behind one of them.
                 fadedObjectIds = remember(gridObjects, selectedTile, placingSlot, hoeActive, movingObject, cameraMode) {

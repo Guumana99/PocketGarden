@@ -11,6 +11,7 @@ import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
+import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
@@ -46,6 +47,11 @@ class CollectionViewModel @Inject constructor(
      */
     val progress: StateFlow<CollectionProgress?> = gardenRepository.observeCollection()
         .map(::CollectionProgress)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** The nature notes, for the book's last chapter; null until read. */
+    val natureNotes: StateFlow<NatureNotes?> = gardenRepository.observeNatureNotes()
+        .map(::NatureNotes)
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** The same sprites and ground textures the garden draws with, for the book's pictures. */
