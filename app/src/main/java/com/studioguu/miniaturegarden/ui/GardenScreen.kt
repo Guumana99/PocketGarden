@@ -79,6 +79,9 @@ import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.RemoveConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
+import com.studioguu.miniaturegarden.ui.onboarding.StarterCrateDialog
+import com.studioguu.miniaturegarden.ui.onboarding.TutorialHint
+import com.studioguu.miniaturegarden.ui.onboarding.tutorialHint
 import com.studioguu.miniaturegarden.ui.settings.SettingsDialog
 import com.studioguu.miniaturegarden.ui.share.CAMERA_MARGIN
 import com.studioguu.miniaturegarden.ui.share.CAMERA_RESERVED_BOTTOM
@@ -110,6 +113,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
     val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
+    val tutorialStep by viewModel.tutorialStep.collectAsStateWithLifecycle()
+    val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
+    val openingCrate by viewModel.openingCrate.collectAsStateWithLifecycle()
+    val season by viewModel.season.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
@@ -188,6 +195,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 weather = weather,
                 showGrid = !cameraMode,
                 auraCells = if (cameraMode) emptySet() else aura,
+                hintCells = if (cameraMode) emptySet() else hintCells,
                 modifier = Modifier.fillMaxSize(),
             )
             // Inside the recorded box, so a shared picture shows the rain too.
@@ -225,6 +233,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 playerLevel = profile?.playerLevel ?: 1,
                 currentXp = profile?.currentXp ?: 0L,
                 weather = weather,
+                season = season,
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
             )
 
@@ -370,6 +379,17 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                             )
                         }
                     }
+                    // The first steps say what to do next, only while nothing else is showing here.
+                    val hint = tutorialHint(tutorialStep)
+                    var lastHint by remember { mutableStateOf(hint) }
+                    if (hint != null) lastHint = hint
+                    AnimatedVisibility(
+                        visible = hint != null && placing == null && !hoeActive && moving == null && target == null,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        lastHint?.let { TutorialHint(it) }
+                    }
 
                 }
             }
@@ -387,6 +407,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     if (showSettings) {
         SettingsDialog(onDismiss = { showSettings = false })
+    }
+    if (openingCrate != null) {
+        StarterCrateDialog(onReceive = viewModel::openCrate, onDismiss = viewModel::closeCrate)
     }
     if (confirmRain) {
         RewardConfirmDialog(

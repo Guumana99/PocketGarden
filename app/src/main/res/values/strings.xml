@@ -226,4 +226,31 @@
     <string name="debug_skip_hour">+1 時間</string>
     <string name="debug_skip_day">+1 日</string>
     <string name="debug_cycle_weather">天気を切り替え</string>
+
+    <!-- Title screen -->
+    <string name="title_subtitle">Pocket Garden</string>
+    <string name="title_start">はじめる</string>
+    <string name="title_continue">つづきから</string>
+    <string name="title_reset_title">最初からはじめますか？</string>
+    <string name="title_reset_text">いまの庭、もちもの、図鑑はすべて消えて、元には戻せません。</string>
+    <string name="title_reset_ok">最初からはじめる</string>
+    <string name="title_sample_garden">動いている庭の見本</string>
+
+    <!-- Seasons -->
+    <string name="season_spring">春</string>
+    <string name="season_summer">夏</string>
+    <string name="season_autumn">秋</string>
+    <string name="season_winter">冬</string>
+
+    <!-- First steps -->
+    <string name="object_deco_starter_crate">小さな木箱</string>
+    <string name="crate_text">ふたを開けると、種がひとつ。</string>
+    <string name="crate_reward">%1$s ×%2$d</string>
+    <string name="crate_receive">受け取る</string>
+    <string name="crate_later">あとで</string>
+    <string name="msg_crate_opened">🌷 チューリップの種を手に入れました</string>
+    <string name="msg_tutorial_done">✨ 準備はおしまい。あとは自由に育てましょう</string>
+    <string name="tutorial_hint_open_crate">まんなかの木箱がきらきらしています。タップして開けてみましょう</string>
+    <string name="tutorial_hint_plant_seed">「もちもの」から種を選んで、きらきらしている土にまきましょう</string>
+    <string name="tutorial_hint_water">まいた種をタップして、水やりをしましょう</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.domain.repository
 
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
+import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -8,8 +9,25 @@ import kotlinx.coroutines.flow.Flow
 
 interface GardenRepository {
 
-    /** Creates the default profile and empty inventory slots on first launch; no-op afterwards. */
+    /**
+     * Creates the default profile, empty inventory slots, the starter garden ([StarterGarden])
+     * and its progress (spring, first steps ahead) on first launch. A garden saved before there
+     * was any progress to store is given one with the first steps already done. No-op afterwards.
+     */
     suspend fun ensureInitialized()
+
+    /** Whether a garden is saved on this device; false before the very first start. */
+    suspend fun hasSavedGarden(): Boolean
+
+    /**
+     * Throws the saved garden away entirely: profile, garden, inventory, encyclopedia and
+     * progress. The next [ensureInitialized] starts a new one.
+     */
+    suspend fun deleteSavedGarden()
+
+    fun observeProgress(): Flow<GardenProgress?>
+    suspend fun getProgress(): GardenProgress?
+    suspend fun saveProgress(progress: GardenProgress)
 
     /** Runs [block] atomically: either all of its writes are stored or none are. */
     suspend fun <T> runInTransaction(block: suspend () -> T): T

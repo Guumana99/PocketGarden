@@ -37,7 +37,7 @@ enum class ItemCategory {
  *                  lantern      4 book pages    60   ornament
  *
  * How the prices hang together:
- * - A new player has 100 coins and three tulip seeds. Everything "from start" costs 20 or less,
+ * - A new player has 100 coins and one tulip seed, from the starter crate. Everything "from start" costs 20 or less,
  *   so the first session can already shape the garden, and two tulip harvests buy anything on
  *   the first tier several times over.
  * - Each plant earns more per hour than the one before it, which is what makes the next level

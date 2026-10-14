@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.studioguu.miniaturegarden.data.local.AppDatabase
 import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
+import com.studioguu.miniaturegarden.data.local.dao.GardenProgressDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
@@ -29,7 +30,7 @@ object DatabaseModule {
         System.loadLibrary("sqlcipher")
         return Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.NAME)
             .openHelperFactory(SupportOpenHelperFactory(securityManager.getDatabasePassphrase()))
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6)
             .build()
     }
 
@@ -44,4 +45,7 @@ object DatabaseModule {
 
     @Provides
     fun provideCollectionEntryDao(database: AppDatabase): CollectionEntryDao = database.collectionEntryDao()
+
+    @Provides
+    fun provideGardenProgressDao(database: AppDatabase): GardenProgressDao = database.gardenProgressDao()
 }

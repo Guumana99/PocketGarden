@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 
@@ -29,6 +30,7 @@ fun objectDisplayName(objectId: String): String = when (objectId) {
     "ground_flowers" -> stringResource(R.string.object_ground_flowers)
     "deco_bench" -> stringResource(R.string.object_deco_bench)
     "deco_lantern" -> stringResource(R.string.object_deco_lantern)
+    "deco_starter_crate" -> stringResource(R.string.object_deco_starter_crate)
     // A fence is a fence under any of the ids it has been stored as.
     "struct_fence", "struct_fence_rail", "struct_fence_post" -> stringResource(R.string.object_struct_fence)
     else -> objectId
@@ -72,6 +74,21 @@ fun weatherLabel(weather: WeatherType): Int = when (weather) {
     WeatherType.SUNNY -> R.string.weather_sunny
     WeatherType.CLOUDY -> R.string.weather_cloudy
     WeatherType.RAINY -> R.string.weather_rainy
+}
+
+@StringRes
+fun seasonLabel(season: Season): Int = when (season) {
+    Season.SPRING -> R.string.season_spring
+    Season.SUMMER -> R.string.season_summer
+    Season.AUTUMN -> R.string.season_autumn
+    Season.WINTER -> R.string.season_winter
+}
+
+fun seasonEmoji(season: Season): String = when (season) {
+    Season.SPRING -> "🌸"
+    Season.SUMMER -> "🌿"
+    Season.AUTUMN -> "🍁"
+    Season.WINTER -> "❄️"
 }
 
 @StringRes

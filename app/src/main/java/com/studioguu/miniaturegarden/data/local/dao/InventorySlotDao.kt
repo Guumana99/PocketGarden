@@ -26,4 +26,7 @@ interface InventorySlotDao {
     /** Adds missing slots without touching ones that already hold items. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(slots: List<InventorySlotEntity>)
+
+    @Query("DELETE FROM inventory_slots")
+    suspend fun deleteAll()
 }

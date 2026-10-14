@@ -5,10 +5,12 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
+import com.studioguu.miniaturegarden.data.local.dao.GardenProgressDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
 import com.studioguu.miniaturegarden.data.local.entity.CollectionEntryEntity
+import com.studioguu.miniaturegarden.data.local.entity.GardenProgressEntity
 import com.studioguu.miniaturegarden.data.local.entity.GridObjectEntity
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
@@ -19,8 +21,9 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         GridObjectEntity::class,
         InventorySlotEntity::class,
         CollectionEntryEntity::class,
+        GardenProgressEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun gridObjectDao(): GridObjectDao
     abstract fun inventorySlotDao(): InventorySlotDao
     abstract fun collectionEntryDao(): CollectionEntryDao
+    abstract fun gardenProgressDao(): GardenProgressDao
 
     companion object {
         const val NAME = "pocket_garden.db"
@@ -67,6 +71,21 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN workKind TEXT NOT NULL DEFAULT 'NONE'")
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN workStartedAt INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN workEndsAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v6 adds the garden's progress: its season and the player's first steps. The row itself
+         * is written by the repository at start-up, where a garden that already exists is given
+         * one with the first steps done.
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `garden_progress` (" +
+                        "`id` INTEGER NOT NULL, `season` TEXT NOT NULL, `tutorialStep` TEXT NOT NULL, " +
+                        "PRIMARY KEY(`id`))"
+                )
             }
         }
     }

@@ -112,6 +112,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param gardenMap the terrain under the objects.
  * @param weather decides how hard the wind blows and how strong the shadows are.
  * @param auraCells cells to mark softly on the ground: the reach of the selected building's effect.
+ * @param hintCells cells the first steps point at: a few small stars twinkle quietly over each.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
  */
 @Composable
@@ -126,6 +127,7 @@ fun GardenCanvas(
     showGrid: Boolean = true,
     weather: WeatherType = WeatherType.SUNNY,
     auraCells: Set<GridCell> = emptySet(),
+    hintCells: Set<GridCell> = emptySet(),
 ) {
     val density = LocalDensity.current
     val metrics = remember(density) {
@@ -256,6 +258,12 @@ fun GardenCanvas(
                 pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
                 vanish = ghost.progress.value,
             )
+        }
+        for (cell in hintCells) {
+            if (!gardenMap.isInside(cell.x, cell.y)) continue
+            pipeline.submit(RenderLayer.TOP_EFFECTS, depth = LayerPipeline.depthOf(cell.x, cell.y, 0) + 0.5f) {
+                drawHintTwinkle(transform, cell, windMillis)
+            }
         }
         val gust = Wind.gustAt(windMillis, weather)
         if (gust != null) {
@@ -710,6 +718,37 @@ private fun DrawScope.drawSparkle(center: Offset, radius: Float, color: Color) {
     }
     drawPath(star, color)
 }
+
+/**
+ * The quiet sparkle the first steps put on a cell: three small stars round the middle of the
+ * cell, a little above the ground, each fading in and out on its own beat, over a faint glow.
+ * Kept small and soft: it points the way without calling out.
+ */
+private fun DrawScope.drawHintTwinkle(transform: IsometricTransform, cell: GridCell, clock: Long) {
+    val unit = transform.tileWidth
+    val centre = transform.worldToScreen(cell.x + 0.5f, cell.y + 0.5f) + Offset(0f, -unit * 0.18f)
+    val breath = 0.5f + 0.5f * sin(clock / 700.0).toFloat()
+    drawCircle(
+        brush = Brush.radialGradient(
+            listOf(HINT_GLOW.copy(alpha = 0.10f + 0.12f * breath), HINT_GLOW.copy(alpha = 0f)),
+            center = centre,
+            radius = unit * 0.32f,
+        ),
+        radius = unit * 0.32f,
+        center = centre,
+    )
+    for ((index, spot) in HINT_SPOTS.withIndex()) {
+        val beat = 0.5f + 0.5f * sin(clock / 380.0 + index * 2.1).toFloat()
+        val at = centre + Offset(spot.x * unit, spot.y * unit)
+        drawSparkle(at, unit * (0.035f + 0.035f * beat), HINT_STAR.copy(alpha = 0.35f + 0.6f * beat))
+    }
+}
+
+private val HINT_GLOW = Color(0xFFFFF3B0)
+private val HINT_STAR = Color(0xFFFFFDE7)
+
+/** Where the hint's stars sit round the middle of the cell, in tile widths. */
+private val HINT_SPOTS = listOf(Offset(-0.14f, -0.06f), Offset(0.12f, -0.16f), Offset(0.05f, 0.06f))
 
 /**
  * The unveiling of a building, set off by the player's tap: a white flash, the scaffold's poles
@@ -1589,6 +1628,50 @@ private fun DrawScope.drawLantern(base: Offset, unit: Float) {
     drawCircle(LANTERN_STONE, unit * 0.02f, capBase + Offset(0f, -unit * 0.075f))
 }
 
+private val CRATE_WOOD_LEFT = Color(0xFFC89A5E)
+private val CRATE_WOOD_RIGHT = Color(0xFFA9773F)
+private val CRATE_WOOD_TOP = Color(0xFFDDB57A)
+private val CRATE_EDGE = Color(0xFF5D3A1A)
+private val CRATE_BAND = Color(0xFF8BC34A)
+
+/**
+ * The starter crate: a small wooden box seen corner-on, its sides made of planks, a dark edge
+ * round it, and a green band over the lid with two leaves for a bow.
+ */
+private fun DrawScope.drawStarterCrate(base: Offset, unit: Float) {
+    val half = unit * 0.17f // half the box's width on screen
+    val rise = unit * 0.15f // how tall it stands
+    val left = base + Offset(-half, -half / 2f)
+    val front = base
+    val right = base + Offset(half, -half / 2f)
+    val back = base + Offset(0f, -half)
+    val up = Offset(0f, -rise)
+    val stroke = unit * 0.012f
+
+    drawPath(quad(left, front, front + up, left + up), CRATE_WOOD_LEFT)
+    drawPath(quad(front, right, right + up, front + up), CRATE_WOOD_RIGHT)
+    drawPath(quad(left + up, front + up, right + up, back + up), CRATE_WOOD_TOP)
+    // Plank seams across both sides.
+    for (level in floatArrayOf(0.34f, 0.67f)) {
+        drawLine(CRATE_EDGE.copy(alpha = 0.45f), left + up * level, front + up * level, stroke * 0.8f)
+        drawLine(CRATE_EDGE.copy(alpha = 0.45f), front + up * level, right + up * level, stroke * 0.8f)
+    }
+    // The band over the lid, from the middle of the front-left edge to the middle of the back-right one.
+    val bandFrom = (left + front) / 2f + up
+    val bandTo = (right + back) / 2f + up
+    drawLine(CRATE_BAND, bandFrom, bandTo, stroke * 2.4f, StrokeCap.Round)
+    drawLine(CRATE_BAND, (left + front) / 2f + up * 0.05f, bandFrom, stroke * 2.4f, StrokeCap.Round)
+    // The outline.
+    for ((a, b) in listOf(left to front, front to right, left to left + up, front to front + up, right to right + up)) {
+        drawLine(CRATE_EDGE, a, b, stroke, StrokeCap.Round)
+    }
+    drawPath(quad(left + up, front + up, right + up, back + up), CRATE_EDGE, style = Stroke(width = stroke))
+    // Two leaves for a bow, in the middle of the lid.
+    val knot = (bandFrom + bandTo) / 2f
+    drawOval(CRATE_BAND, knot + Offset(-unit * 0.005f, -unit * 0.05f), Size(unit * 0.06f, unit * 0.035f))
+    drawOval(CRATE_BAND, knot + Offset(-unit * 0.055f, -unit * 0.045f), Size(unit * 0.05f, unit * 0.03f))
+}
+
 private fun DrawScope.drawGroundCover(obj: GridObject, base: Offset, unit: Float) {
     if (obj.objectId == GroundCover.FLOWERS.objectId) {
         drawWildFlowers(obj, base, unit)
@@ -1652,6 +1735,7 @@ private fun DrawScope.drawPlaceholder(obj: GridObject, base: Offset, unit: Float
             obj.isPlant -> drawPlant(obj, base, unit)
             obj.objectId == Decoration.BENCH.objectId -> drawBench(base, unit)
             obj.objectId == Decoration.LANTERN.objectId -> drawLantern(base, unit)
+            obj.isStarterCrate -> drawStarterCrate(base, unit)
             else -> drawDecoration(base, unit)
         }
     }

@@ -17,11 +17,15 @@ import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
+import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.TutorialGuide
+import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -31,10 +35,12 @@ import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CompleteWorkUseCase
+import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HoeUseCase
 import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
+import com.studioguu.miniaturegarden.domain.usecase.OpenStarterCrateUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
@@ -81,6 +87,8 @@ class GardenViewModel @Inject constructor(
     private val unveilBuilding: UnveilBuildingUseCase,
     private val skipTime: SkipTimeUseCase,
     private val hoe: HoeUseCase,
+    private val openStarterCrate: OpenStarterCrateUseCase,
+    private val followTutorial: FollowTutorialUseCase,
     private val audio: AudioManager,
     val gardenMap: GardenMap,
     private val grantReward: GrantRewardUseCase,
@@ -93,6 +101,28 @@ class GardenViewModel @Inject constructor(
 
     val profile: StateFlow<UserProfile?> = gardenRepository.observeUserProfile()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val progress = gardenRepository.observeProgress()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The player's first steps; [TutorialStep.DONE] in free play. */
+    val tutorialStep: StateFlow<TutorialStep> = progress.map { it?.tutorialStep ?: TutorialStep.DONE }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TutorialStep.DONE)
+
+    val season: StateFlow<Season> = progress.map { it?.season ?: Season.SPRING }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
+
+    /** The cells the current first step points at with a sparkle. */
+    val hintCells: StateFlow<Set<GridCell>> = combine(tutorialStep, gridObjects) { step, objects ->
+        TutorialGuide.hintCells(step, objects, gardenMap)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    private val _openingCrateId = MutableStateFlow<String?>(null)
+
+    /** Non-null while the starter crate's popup is open: the crate it is about. */
+    val openingCrate: StateFlow<GridObject?> = combine(gridObjects, _openingCrateId) { objects, id ->
+        objects.firstOrNull { it.instanceId == id && it.isStarterCrate }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _weather = MutableStateFlow(WeatherType.forTime(System.currentTimeMillis()))
     val weather: StateFlow<WeatherType> = _weather.asStateFlow()
@@ -214,6 +244,7 @@ class GardenViewModel @Inject constructor(
     private val initJob = viewModelScope.launch {
         gardenRepository.ensureInitialized()
         hoe.tillUnderExistingPlants(System.currentTimeMillis())
+        followTutorial()
     }
 
     init {
@@ -253,7 +284,9 @@ class GardenViewModel @Inject constructor(
                 val now = System.currentTimeMillis()
                 // Jobs are only finished on time that can be trusted; otherwise the sync has
                 // just restarted them.
-                if (syncGarden(now, currentWeather(now)).isTrusted) completeWork(now) else emptyList()
+                (if (syncGarden(now, currentWeather(now)).isTrusted) completeWork(now) else emptyList())
+                    // A plant harvested or cleared away under the first steps lets them go.
+                    .also { followTutorial() }
             }
             if (finished.isNotEmpty()) {
                 audio.play(if (finished.any { it.kind == WorkKind.READY }) SoundEffect.COIN else SoundEffect.PLANT)
@@ -301,6 +334,10 @@ class GardenViewModel @Inject constructor(
                     }
                 ) { _, _ -> moveObject(movingId, tile.x, tile.y) }
             }
+        } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.isStarterCrate == true) {
+            // The starter crate is not selected like other things: a tap opens it.
+            _selectedTile.value = null
+            _openingCrateId.value = gridObjects.value.objectAt(tile)?.instanceId
         } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.workKind == WorkKind.READY) {
             // A finished building under wraps: the tap unveils it.
             val site = gridObjects.value.objectAt(tile) ?: return
@@ -331,6 +368,7 @@ class GardenViewModel @Inject constructor(
                     val slotNowEmpty = gardenRepository.getInventory()
                         .none { it.slotIndex == slotIndex && !it.isEmpty }
                     if (slotNowEmpty) _placingSlotIndex.value = null
+                    if (it == ActionResult.SUCCESS) followTutorial()
                 }
             }
         }
@@ -389,12 +427,40 @@ class GardenViewModel @Inject constructor(
     }
 
     fun waterSelected() = withSelectedObject { obj ->
+        var tutorialFinished = false
         act(
             onSuccess = {
                 audio.play(SoundEffect.WATER)
                 showEffect { GardenEffect.Xp(it, CareForPlantUseCase.WATER_XP) }
+            },
+            // After the action's own message, so that this is the one left showing.
+            afterAll = { if (tutorialFinished) _messages.trySend(R.string.msg_tutorial_done) },
+        ) { now, weather ->
+            careForPlant.water(obj.instanceId, now, weather).also {
+                // Under the first steps a try counts even when the soil is moist already (rain).
+                if (it == ActionResult.SUCCESS || it == ActionResult.ALREADY_MOIST) {
+                    tutorialFinished = followTutorial.wateringDone()
+                }
             }
-        ) { now, weather -> careForPlant.water(obj.instanceId, now, weather) }
+        }
+    }
+
+    /** Opens the starter crate whose popup is showing, and puts its seed in the bag. */
+    fun openCrate() {
+        val crateId = _openingCrateId.value ?: return
+        act(
+            onSuccess = {
+                _openingCrateId.value = null
+                audio.play(SoundEffect.COIN)
+                _messages.trySend(R.string.msg_crate_opened)
+            }
+        ) { _, _ ->
+            openStarterCrate(crateId).also { if (it == ActionResult.SUCCESS) followTutorial() }
+        }
+    }
+
+    fun closeCrate() {
+        _openingCrateId.value = null
     }
 
     fun fertilizeSelected() = withSelectedObject { obj ->
@@ -526,6 +592,7 @@ class GardenViewModel @Inject constructor(
 
     private fun act(
         onSuccess: () -> Unit = {},
+        afterAll: () -> Unit = {},
         block: suspend (now: Long, weather: WeatherForecast) -> ActionResult,
     ) {
         viewModelScope.launch {
@@ -536,6 +603,7 @@ class GardenViewModel @Inject constructor(
             }
             if (result == ActionResult.SUCCESS) onSuccess() else audio.play(SoundEffect.ERROR)
             actionResultMessage(result)?.let { _messages.send(it) }
+            afterAll()
         }
     }
 
