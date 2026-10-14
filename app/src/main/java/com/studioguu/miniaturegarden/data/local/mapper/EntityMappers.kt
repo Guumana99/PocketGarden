@@ -100,9 +100,11 @@ fun CollectionRecord.toEntity() = CollectionEntryEntity(
 fun GardenProgressEntity.toDomain() = GardenProgress(
     season = Season.fromName(season),
     tutorialStep = TutorialStep.fromName(tutorialStep),
+    gardenSize = gardenSize,
 )
 
 fun GardenProgress.toEntity() = GardenProgressEntity(
     season = season.name,
     tutorialStep = tutorialStep.name,
+    gardenSize = gardenSize,
 )

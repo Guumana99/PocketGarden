@@ -133,8 +133,10 @@ class ProgressionTest {
         assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE, unlockedAt(4))
         // Level opens everything but the two that the encyclopedia opens.
         val byPages = setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN)
-        assertEquals(GardenItem.entries.toSet() - byPages, unlockedAt(5))
-        assertEquals(GardenItem.entries.toSet(), GardenItem.entries.filter { it.isUnlockedFor(statsAt(5).copy(collectionPages = 4)) }.toSet())
+        // The symbol building comes last, at Lv.6.
+        assertEquals(GardenItem.entries.toSet() - byPages - GardenItem.STRUCT_COTTAGE, unlockedAt(5))
+        assertEquals(GardenItem.entries.toSet() - byPages, unlockedAt(6))
+        assertEquals(GardenItem.entries.toSet(), GardenItem.entries.filter { it.isUnlockedFor(statsAt(6).copy(collectionPages = 4)) }.toSet())
     }
 
     @Test
@@ -147,7 +149,8 @@ class ProgressionTest {
             setOf(GardenItem.STRUCT_WELL, GardenItem.SEED_ROSE),
             GardenItem.unlockedBetween(2, 4).toSet(),
         )
-        assertTrue(GardenItem.unlockedBetween(5, 6).isEmpty())
+        assertEquals(setOf(GardenItem.STRUCT_COTTAGE), GardenItem.unlockedBetween(5, 6).toSet())
+        assertTrue(GardenItem.unlockedBetween(6, 7).isEmpty())
         assertTrue(GardenItem.unlockedBetween(3, 3).isEmpty())
     }
 
@@ -190,7 +193,7 @@ class ProgressionTest {
     @Test
     fun `only structures give experience for being placed`() {
         val paying = GardenItem.entries.filter { it.placeXp > 0 }
-        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL), paying.toSet())
+        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_COTTAGE), paying.toSet())
         assertTrue(GardenItem.STRUCT_HUT.placeXp > GardenItem.STRUCT_WELL.placeXp)
         // Buying a structure for its XP is never cheaper than growing tulips for it.
         for (item in paying) {

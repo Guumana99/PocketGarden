@@ -61,12 +61,16 @@ data class GridObject(
     /** The crate a new player opens for their first seed. */
     val isStarterCrate: Boolean get() = objectId == STARTER_CRATE_OBJECT_ID
 
+    /** The garden's landmark building, of which there is one at most. */
+    val isSymbol: Boolean get() = StructureData.isSymbol(objectId)
+
     /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
     val footprint: Footprint get() = Footprint.forObjectId(objectId)
 
     fun occupiedCells(): List<GridCell> = footprint.cells(gridX, gridY)
 
     companion object {
+        /** The size a garden starts at; it can grow from there, see [GardenExpansion]. */
         const val GRID_SIZE = 9
         const val PLANT_ID_PREFIX = "plant_"
         const val TERRAIN_ID_PREFIX = "terrain_"

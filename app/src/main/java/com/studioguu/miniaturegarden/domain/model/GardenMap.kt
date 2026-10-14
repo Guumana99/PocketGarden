@@ -23,7 +23,11 @@ data class GridCell(val x: Int, val y: Int)
 class GardenMap private constructor(
     val size: Int,
     private val tiles: List<TileType>,
-) {
+) : GardenMapSource {
+
+    /** A fixed map is its own source: it is the map at any time. */
+    override suspend fun current(): GardenMap = this
+
     fun isInside(x: Int, y: Int): Boolean = x in 0 until size && y in 0 until size
 
     /** The terrain at (x, y), or null outside the grid. */
@@ -64,4 +68,13 @@ class GardenMap private constructor(
         /** Plain lawn. The river is no longer part of the map: the player lays it tile by tile. */
         val DEFAULT: GardenMap = allGrass()
     }
+}
+
+/**
+ * Where the rules get the garden's map from. The garden can grow ([GardenExpansion]), so the
+ * map is looked up when it is needed rather than fixed when the rules are made; a [GardenMap]
+ * itself serves as a source that never changes, which is what tests use.
+ */
+fun interface GardenMapSource {
+    suspend fun current(): GardenMap
 }

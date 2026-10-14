@@ -55,6 +55,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -82,6 +83,7 @@ import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
 import com.studioguu.miniaturegarden.ui.onboarding.StarterCrateDialog
 import com.studioguu.miniaturegarden.ui.onboarding.TutorialHint
 import com.studioguu.miniaturegarden.ui.onboarding.tutorialHint
+import com.studioguu.miniaturegarden.ui.render.Occlusion
 import com.studioguu.miniaturegarden.ui.settings.SettingsDialog
 import com.studioguu.miniaturegarden.ui.share.CAMERA_MARGIN
 import com.studioguu.miniaturegarden.ui.share.CAMERA_RESERVED_BOTTOM
@@ -112,6 +114,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val blessedRainFalling by viewModel.blessedRainFalling.collectAsStateWithLifecycle()
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
+    val gardenMap by viewModel.gardenMap.collectAsStateWithLifecycle()
     val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
     val tutorialStep by viewModel.tutorialStep.collectAsStateWithLifecycle()
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
@@ -191,11 +194,24 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 onTileTapped = { tile -> if (!cameraMode) viewModel.onTileTapped(tile) },
                 atlas = atlas,
                 terrain = terrain,
-                gardenMap = viewModel.gardenMap,
+                gardenMap = gardenMap,
                 weather = weather,
                 showGrid = !cameraMode,
                 auraCells = if (cameraMode) emptySet() else aura,
                 hintCells = if (cameraMode) emptySet() else hintCells,
+                // Buildings turn see-through while a cell is being looked for (placing, moving,
+                // the hoe), or when the selected cell is behind one of them.
+                fadedObjectIds = remember(gridObjects, selectedTile, placingSlot, hoeActive, movingObject, cameraMode) {
+                    if (cameraMode) {
+                        emptySet()
+                    } else {
+                        Occlusion.fadedBuildings(
+                            gridObjects,
+                            selectedTile?.let { GridCell(it.x, it.y) },
+                            editing = placingSlot != null || hoeActive || movingObject != null,
+                        )
+                    }
+                },
                 modifier = Modifier.fillMaxSize(),
             )
             // Inside the recorded box, so a shared picture shows the rain too.
@@ -376,6 +392,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 onDismiss = viewModel::clearSelection,
                                 modifier = Modifier.fillMaxWidth(),
                                 surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },
+                                gardenSize = gardenMap.size,
+                                playerLevel = profile?.playerLevel ?: 1,
+                                onExpand = viewModel::expand,
                             )
                         }
                     }
@@ -447,6 +466,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         DebugMenuDialog(
             onSkipTime = viewModel::debugSkipTime,
             onCycleWeather = viewModel::debugCycleWeather,
+            onBoost = viewModel::debugBoost,
             onDismiss = { showDebugMenu = false },
         )
     }

@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -113,6 +114,8 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param weather decides how hard the wind blows and how strong the shadows are.
  * @param auraCells cells to mark softly on the ground: the reach of the selected building's effect.
  * @param hintCells cells the first steps point at: a few small stars twinkle quietly over each.
+ * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
+ *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
  */
 @Composable
@@ -128,16 +131,32 @@ fun GardenCanvas(
     weather: WeatherType = WeatherType.SUNNY,
     auraCells: Set<GridCell> = emptySet(),
     hintCells: Set<GridCell> = emptySet(),
+    fadedObjectIds: Set<String> = emptySet(),
 ) {
     val density = LocalDensity.current
-    val metrics = remember(density) {
+    // As large as the garden is: it can grow.
+    val metrics = remember(density, gardenMap.size) {
         with(density) {
-            IsometricMetrics(TILE_WIDTH.toPx(), TILE_HEIGHT.toPx(), HEIGHT_STEP.toPx(), GridObject.GRID_SIZE)
+            IsometricMetrics(TILE_WIDTH.toPx(), TILE_HEIGHT.toPx(), HEIGHT_STEP.toPx(), gardenMap.size)
         }
     }
     // Null until the first layout pass tells us how far to zoom out to fit the grid. Saved, so a
     // rotation or a return from the background comes back to the same view.
     var camera by rememberSaveable(stateSaver = CameraSaver) { mutableStateOf<GardenCamera?>(null) }
+    // When the garden grows, the view zooms out to show all of it again.
+    var viewport by remember { mutableStateOf(Size.Zero) }
+    var fittedGridSize by rememberSaveable { mutableStateOf(metrics.gridSize) }
+    LaunchedEffect(metrics, viewport) {
+        if (fittedGridSize != metrics.gridSize && viewport != Size.Zero) {
+            camera = GardenCamera.fitting(viewport, metrics)
+            fittedGridSize = metrics.gridSize
+        }
+    }
+    // Buildings fade to see-through and back; the last set faded is kept while fading back.
+    val fade by animateFloatAsState(if (fadedObjectIds.isEmpty()) 0f else 1f, tween(FADE_MILLIS), label = "fade")
+    var fadingIds by remember { mutableStateOf(emptySet<String>()) }
+    if (fadedObjectIds.isNotEmpty()) fadingIds = fadedObjectIds
+    val fadeAlpha = 1f - (1f - FADED_ALPHA) * fade
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     val pipeline = remember { LayerPipeline() }
     val waterTick by rememberWaterTick(running = gridObjects.any { it.isTerrain })
@@ -202,6 +221,7 @@ fun GardenCanvas(
     Canvas(
         modifier = modifier
             .onSizeChanged { size ->
+                viewport = size.toSize()
                 camera = camera?.clamped(metrics) ?: GardenCamera.fitting(size.toSize(), metrics)
             }
             .pointerInput(metrics) {
@@ -252,7 +272,8 @@ fun GardenCanvas(
             pipeline.submit(RenderLayer.HUD_OVERLAY) { drawTileOutline(transform, origin, spanX, spanY) }
         }
         val pops = if (bursts.isEmpty()) emptyMap() else bursts.associate { it.gridObject.instanceId to it.progress.value }
-        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience, pops = pops)
+        val fades = if (fadeAlpha >= 1f) emptyMap() else fadingIds.associateWith { fadeAlpha }
+        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience, pops = pops, fades = fades)
         for (ghost in ghosts) {
             submitObjects(
                 pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
@@ -344,17 +365,24 @@ private fun submitObjects(
     ambience: Ambience,
     vanish: Float? = null,
     pops: Map<String, Float> = emptyMap(),
+    fades: Map<String, Float> = emptyMap(),
 ) {
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
     // Everything is queued through here, so that objects on their way out can be drawn fading.
-    fun submit(obj: GridObject, layer: RenderLayer, depth: Float, draw: DrawScope.() -> Unit) {
+    fun submit(obj: GridObject, layer: RenderLayer, depth: Float, plainDraw: DrawScope.() -> Unit) {
         val pop = pops[obj.instanceId]
+        // See-through, so that what stands behind it shows. Only the thing itself: its shadow
+        // stays on the ground as it is.
+        val alpha = fades[obj.instanceId]
+        val draw: DrawScope.() -> Unit =
+            if (alpha != null && layer == RenderLayer.GRID_OBJECTS) ({ drawFaded(alpha, plainDraw) }) else plainDraw
         if (vanish == null && obj.isWorking) {
             // A work site: sheeting and scaffolding, and nothing of what is inside. Its shadow
             // and anything else the finished thing would draw are left out with it.
             if (layer == RenderLayer.GRID_OBJECTS) {
                 val progress = obj.workProgress(ambience.epochMillis)
-                pipeline.submit(layer, depth) { drawWorkSite(transform, obj, progress, ambience.windMillis ?: 0L) }
+                val site: DrawScope.() -> Unit = { drawWorkSite(transform, obj, progress, ambience.windMillis ?: 0L) }
+                pipeline.submit(layer, depth) { if (alpha != null) drawFaded(alpha, site) else site() }
             }
         } else if (vanish == null && pop != null && layer == RenderLayer.GRID_OBJECTS) {
             // Just unveiled: it pops up out of the ground, a little too big, and settles.
@@ -526,6 +554,7 @@ private val SPARKLE = Color(0xFFFFF3B0)
 private fun siteHeight(obj: GridObject, transform: IsometricTransform): Float = when (StructureData.fromObjectId(obj.objectId)) {
     StructureData.HUT -> 7.2f * transform.heightStep
     StructureData.WELL -> 2.4f * transform.heightStep
+    StructureData.COTTAGE -> 8.2f * transform.heightStep
     null -> transform.tileWidth * 0.24f
 }
 
@@ -848,6 +877,21 @@ private class Ghost(val gridObject: GridObject) {
  * @param pivot the point on the ground it stood on.
  * @param progress 0 (still whole) to 1 (gone).
  */
+/** Draws [draw] at [alpha] as a whole, so overlapping parts do not show through one another. */
+private fun DrawScope.drawFaded(alpha: Float, draw: DrawScope.() -> Unit) {
+    drawIntoCanvas { canvas ->
+        canvas.saveLayer(Rect(Offset.Zero, size), Paint().apply { this.alpha = alpha })
+        draw()
+        canvas.restore()
+    }
+}
+
+/** How see-through a faded building is. */
+private const val FADED_ALPHA = 0.32f
+
+/** How long a building takes to fade out or back in. */
+private const val FADE_MILLIS = 260
+
 private fun DrawScope.drawVanishing(pivot: Offset, progress: Float, tileHeight: Float, draw: DrawScope.() -> Unit) {
     val alpha = (1f - progress).coerceIn(0f, 1f)
     if (alpha <= 0f) return
@@ -890,7 +934,10 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
                 // A run with a corner in it, to show how fences join.
                 objectId == GridObject.FENCE_OBJECT_ID ->
                     PreviewScene(3, 0.25f, listOf(at(0, 1), at(1, 1), at(2, 1), at(2, 0)))
-                StructureData.fromObjectId(objectId) != null -> PreviewScene(2, 0.45f, listOf(at(0, 0)))
+                StructureData.fromObjectId(objectId) != null -> {
+                    val footprint = StructureData.fromObjectId(objectId)!!.footprint
+                    PreviewScene(maxOf(2, footprint.width, footprint.height), 0.45f, listOf(at(0, 0)))
+                }
                 else -> PreviewScene(1, 0.3f, listOf(at(0, 0)))
             }
         }
@@ -1189,7 +1236,11 @@ private fun DrawScope.drawStructureShadow(
     val y1 = obj.gridY + structure.footprint.height - STRUCTURE_INSET
     val ground = obj.heightLevel.toFloat()
     // Height in steps, as in drawStructure; the hut's roof counts for half, as it tapers.
-    val height = (if (structure == StructureData.HUT) 5.5f else 1.8f) * transform.heightStep
+    val height = when (structure) {
+        StructureData.HUT -> 5.5f
+        StructureData.COTTAGE -> 6f
+        StructureData.WELL -> 1.8f
+    } * transform.heightStep
     val reach = Offset(light.dx * height, light.dy * height)
     val foot = listOf(
         transform.worldToScreen(x0, y0, ground),
@@ -1766,6 +1817,10 @@ private fun DrawScope.drawStructure(transform: IsometricTransform, obj: GridObje
     val x1 = obj.gridX + structure.footprint.width - STRUCTURE_INSET
     val y1 = obj.gridY + structure.footprint.height - STRUCTURE_INSET
     val ground = obj.heightLevel.toFloat()
+    if (structure == StructureData.COTTAGE) {
+        drawCottage(transform, obj)
+        return
+    }
     val isHut = structure == StructureData.HUT
     val top = ground + if (isHut) 4f else 1.8f
 
@@ -1801,4 +1856,70 @@ private fun DrawScope.drawStructure(transform: IsometricTransform, obj: GridObje
             WELL_WATER,
         )
     }
+}
+
+private val COTTAGE_WALL_LEFT = Color(0xFFF3E6CC)
+private val COTTAGE_WALL_RIGHT = Color(0xFFD9C6A2)
+private val COTTAGE_TIMBER = Color(0xFF8A5F36)
+private val COTTAGE_ROOF_LIGHT = Color(0xFF6F9E8A)
+private val COTTAGE_ROOF_DARK = Color(0xFF507A68)
+private val COTTAGE_DOOR = Color(0xFF7A4A26)
+private val COTTAGE_WINDOW = Color(0xFFFFE9A8)
+private val COTTAGE_CHIMNEY = Color(0xFFB0695A)
+
+/**
+ * The cottage, the symbol building, drawn without a sprite: cream walls on its 3 x 3 footprint
+ * with timber corners, a door and two lit windows on the side facing the viewer, a window on the
+ * other, a steep green gabled roof running along gridX, and a brick chimney.
+ */
+private fun DrawScope.drawCottage(transform: IsometricTransform, obj: GridObject) {
+    val footprint = StructureData.COTTAGE.footprint
+    val inset = STRUCTURE_INSET
+    val x0 = obj.gridX + inset
+    val y0 = obj.gridY + inset
+    val x1 = obj.gridX + footprint.width - inset
+    val y1 = obj.gridY + footprint.height - inset
+    val ground = obj.heightLevel.toFloat()
+    val eaves = ground + 4.5f
+    val ridge = eaves + 3.7f
+    fun p(x: Float, y: Float, z: Float) = transform.worldToScreen(x, y, z)
+    val stroke = transform.tileWidth * 0.012f
+
+    // Walls: the left face looks along +y (towards the viewer's lower left), the right face along +x.
+    drawPath(quad(p(x0, y1, ground), p(x1, y1, ground), p(x1, y1, eaves), p(x0, y1, eaves)), COTTAGE_WALL_LEFT)
+    drawPath(quad(p(x1, y1, ground), p(x1, y0, ground), p(x1, y0, eaves), p(x1, y1, eaves)), COTTAGE_WALL_RIGHT)
+    // The gable over the right face: the roof's ridge runs along x, so its end shows on this side.
+    val midY = (y0 + y1) / 2f
+    drawPath(triangle(p(x1, y1, eaves), p(x1, y0, eaves), p(x1, midY, ridge)), COTTAGE_WALL_RIGHT)
+    // Timber at the corners and along the eaves.
+    for (corner in listOf(p(x0, y1, ground) to p(x0, y1, eaves), p(x1, y1, ground) to p(x1, y1, eaves), p(x1, y0, ground) to p(x1, y0, eaves))) {
+        drawLine(COTTAGE_TIMBER, corner.first, corner.second, stroke * 1.6f, StrokeCap.Round)
+    }
+    drawLine(COTTAGE_TIMBER, p(x0, y1, eaves), p(x1, y1, eaves), stroke * 1.4f)
+    drawLine(COTTAGE_TIMBER, p(x1, y1, eaves), p(x1, y0, eaves), stroke * 1.4f)
+
+    // Door in the middle of the front face, a window on each side of it.
+    val doorX = (x0 + x1) / 2f
+    drawPath(quad(p(doorX - 0.28f, y1, ground), p(doorX + 0.28f, y1, ground), p(doorX + 0.28f, y1, ground + 2.6f), p(doorX - 0.28f, y1, ground + 2.6f)), COTTAGE_DOOR)
+    drawCircle(COTTAGE_WINDOW, stroke * 1.2f, p(doorX + 0.18f, y1, ground + 1.3f))
+    for (wx in listOf(x0 + 0.45f, x1 - 0.85f)) {
+        drawPath(quad(p(wx, y1, ground + 1.8f), p(wx + 0.4f, y1, ground + 1.8f), p(wx + 0.4f, y1, ground + 3.3f), p(wx, y1, ground + 3.3f)), COTTAGE_WINDOW)
+        drawLine(COTTAGE_TIMBER, p(wx + 0.2f, y1, ground + 1.8f), p(wx + 0.2f, y1, ground + 3.3f), stroke)
+    }
+    // A round window in the gable.
+    drawCircle(COTTAGE_WINDOW, transform.tileWidth * 0.05f, p(x1, midY, eaves + 1.4f))
+
+    // Roof: the back slope first, then the chimney standing out of it, then the front slope.
+    val over = 0.12f // the eaves overhang the walls a little
+    val ridgeA = p(x0 - over, midY, ridge)
+    val ridgeB = p(x1 + over, midY, ridge)
+    drawPath(quad(p(x0 - over, y0 - over, eaves - 0.3f), p(x1 + over, y0 - over, eaves - 0.3f), ridgeB, ridgeA), COTTAGE_ROOF_DARK)
+    val chimneyX = x0 + 0.7f
+    val chimneyY = y0 + 0.6f
+    drawPath(
+        quad(p(chimneyX, chimneyY + 0.35f, eaves + 2f), p(chimneyX + 0.35f, chimneyY + 0.35f, eaves + 2f), p(chimneyX + 0.35f, chimneyY + 0.35f, ridge + 1.6f), p(chimneyX, chimneyY + 0.35f, ridge + 1.6f)),
+        COTTAGE_CHIMNEY,
+    )
+    drawPath(quad(p(x0 - over, y1 + over, eaves - 0.3f), p(x1 + over, y1 + over, eaves - 0.3f), ridgeB, ridgeA), COTTAGE_ROOF_LIGHT)
+    drawLine(COTTAGE_ROOF_DARK, ridgeA, ridgeB, stroke * 1.5f, StrokeCap.Round)
 }

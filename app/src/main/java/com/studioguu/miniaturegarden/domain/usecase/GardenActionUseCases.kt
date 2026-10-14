@@ -5,7 +5,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
-import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
@@ -49,6 +49,15 @@ enum class ActionResult {
 
     /** The thing is being built or taken apart; it has to be finished first. */
     BUSY,
+
+    /** A second symbol building was to be bought or placed; a garden has one at most. */
+    ONLY_ONE_SYMBOL,
+
+    /** The garden cannot grow yet: see [com.studioguu.miniaturegarden.domain.model.ExpansionCheck]. */
+    EXPANSION_LOCKED,
+
+    /** The garden is as large as it gets. */
+    GARDEN_AT_MAX_SIZE,
 }
 
 /**
@@ -178,7 +187,7 @@ class CareForPlantUseCase @Inject constructor(
  */
 class PlaceItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
-    private val gardenMap: GardenMap,
+    private val gardenMap: GardenMapSource,
     private val recordCollection: RecordCollectionUseCase,
 ) {
     suspend operator fun invoke(slotIndex: Int, gridX: Int, gridY: Int, now: Long): ActionResult =
@@ -187,7 +196,9 @@ class PlaceItemUseCase @Inject constructor(
             val item = slot?.takeUnless { it.isEmpty }?.let { GardenItem.fromItemId(it.itemId) }
                 ?: return@runInTransaction ActionResult.SLOT_EMPTY
 
-            val grid = GardenGrid(gardenMap, gardenRepository.getGridObjects())
+            val grid = GardenGrid(gardenMap.current(), gardenRepository.getGridObjects())
+            // The symbol building is one of a kind: a second one never goes up.
+            if (item.isSymbol && grid.hasSymbol) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
             val kind = PlacementKind.forObjectId(item.objectId)
             when (grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY, kind)) {
                 PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
@@ -236,11 +247,11 @@ class PlaceItemUseCase @Inject constructor(
  */
 class HoeUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
-    private val gardenMap: GardenMap,
+    private val gardenMap: GardenMapSource,
 ) {
     suspend operator fun invoke(gridX: Int, gridY: Int, now: Long): ActionResult =
         gardenRepository.runInTransaction {
-            val grid = GardenGrid(gardenMap, gardenRepository.getGridObjects())
+            val grid = GardenGrid(gardenMap.current(), gardenRepository.getGridObjects())
             // Checked like terrain, which needs the whole cell to itself.
             when (grid.checkPlacement(Footprint.SINGLE, gridX, gridY, PlacementKind.TERRAIN)) {
                 PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
@@ -259,7 +270,7 @@ class HoeUseCase @Inject constructor(
      */
     suspend fun tillUnderExistingPlants(now: Long) = gardenRepository.runInTransaction {
         val objects = gardenRepository.getGridObjects()
-        val grid = GardenGrid(gardenMap, objects)
+        val grid = GardenGrid(gardenMap.current(), objects)
         val missing = objects.filter { it.isPlant && grid.floorAt(it.gridX, it.gridY) == null }
             .map { tilledSoil(it.gridX, it.gridY, now) }
         if (missing.isNotEmpty()) gardenRepository.upsertGridObjects(missing)
@@ -384,6 +395,8 @@ class PurchaseItemUseCase @Inject constructor(
         val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
         val pages = CollectionProgress(gardenRepository.getCollection()).revealed
         if (!item.isUnlockedFor(profile.stats.copy(collectionPages = pages))) return@runInTransaction ActionResult.ITEM_LOCKED
+        // One symbol building per garden, and one in the bag counts as well.
+        if (item.isSymbol && gardenRepository.ownsSymbolBuilding()) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
         if (profile.coins < item.price) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
 
         val slots = gardenRepository.getInventory().filter { it.slotIndex < profile.inventoryCapacity }
@@ -449,8 +462,16 @@ class SkipTimeUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(millis: Long, now: Long, weather: WeatherForecast): ActionResult =
         gardenRepository.runInTransaction {
-            val aged = gardenRepository.getGridObjects()
-                .map { it.copy(lastUpdatedTimestamp = it.lastUpdatedTimestamp - millis) }
+            // Jobs on the clock are brought forward too, so that a building can be finished by
+            // skipping; one waiting for its unveiling is left as it is.
+            val aged = gardenRepository.getGridObjects().map {
+                val onTheClock = it.isWorking && it.workKind != WorkKind.READY
+                it.copy(
+                    lastUpdatedTimestamp = it.lastUpdatedTimestamp - millis,
+                    workStartedAt = if (onTheClock) it.workStartedAt - millis else it.workStartedAt,
+                    workEndsAt = if (onTheClock) it.workEndsAt - millis else it.workEndsAt,
+                )
+            }
             gardenRepository.upsertGridObjects(calculateOfflineProgress(aged, now, weather))
             ActionResult.SUCCESS
         }

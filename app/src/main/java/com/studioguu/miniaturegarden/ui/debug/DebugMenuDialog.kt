@@ -22,12 +22,14 @@ private const val DAY_MILLIS = 24 * HOUR_MILLIS
  * pressed so the buttons can be pressed repeatedly.
  *
  * @param onCycleWeather switches to the next kind of weather, overriding the day's own.
+ * @param onBoost adds coins and a level, to reach what opens late (the symbol building) quickly.
  */
 @Composable
 fun DebugMenuDialog(
     onSkipTime: (millis: Long) -> Unit,
     onCycleWeather: () -> Unit,
     onDismiss: () -> Unit,
+    onBoost: () -> Unit = {},
 ) {
     AlertDialog(
         modifier = Modifier.popIn(),
@@ -46,6 +48,9 @@ fun DebugMenuDialog(
                 }
                 FilledTonalButton(onClick = onCycleWeather) {
                     Text(stringResource(R.string.debug_cycle_weather))
+                }
+                FilledTonalButton(onClick = onBoost) {
+                    Text(stringResource(R.string.debug_boost))
                 }
             }
         },

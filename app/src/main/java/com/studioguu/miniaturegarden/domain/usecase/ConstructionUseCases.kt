@@ -1,7 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
-import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
@@ -139,7 +139,7 @@ class UnveilBuildingUseCase @Inject constructor(
  */
 class MoveObjectUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
-    private val gardenMap: GardenMap,
+    private val gardenMap: GardenMapSource,
 ) {
     suspend operator fun invoke(instanceId: String, gridX: Int, gridY: Int): ActionResult =
         gardenRepository.runInTransaction {
@@ -151,7 +151,7 @@ class MoveObjectUseCase @Inject constructor(
             if (target.gridX == gridX && target.gridY == gridY) return@runInTransaction ActionResult.SUCCESS
 
             // Checked against the garden as it would be with the thing lifted off it.
-            val others = GardenGrid(gardenMap, objects.filter { it.instanceId != instanceId })
+            val others = GardenGrid(gardenMap.current(), objects.filter { it.instanceId != instanceId })
             when (others.checkPlacement(target.footprint, gridX, gridY, PlacementKind.forObjectId(target.objectId))) {
                 PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
                 PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE

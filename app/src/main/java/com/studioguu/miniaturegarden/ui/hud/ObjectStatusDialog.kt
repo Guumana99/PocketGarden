@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
+import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -32,6 +34,7 @@ import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
+import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.objectDisplayName
 import com.studioguu.miniaturegarden.ui.statusLabel
 import kotlin.math.roundToInt
@@ -54,6 +57,9 @@ fun ObjectStatusDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     surroundings: PlantSurroundings = PlantSurroundings.OPEN_GROUND,
+    gardenSize: Int = GridObject.GRID_SIZE,
+    playerLevel: Int = 1,
+    onExpand: () -> Unit = {},
 ) {
     Surface(
         modifier = modifier,
@@ -127,6 +133,11 @@ fun ObjectStatusDialog(
                 )
             }
 
+            // The symbol building is where the garden is made larger from.
+            if (gridObject.isSymbol && !gridObject.isWorking) {
+                ExpansionRow(gardenSize, playerLevel, gridObject, onExpand)
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (gridObject.isPlant && gridObject.status == PlantStatus.WITHERED) {
                     Button(onClick = onRevive) {
@@ -148,6 +159,32 @@ fun ObjectStatusDialog(
                 OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
             }
         }
+    }
+}
+
+/** Growing the garden: the button when it can grow now, otherwise what it still needs. */
+@Composable
+private fun ExpansionRow(gardenSize: Int, playerLevel: Int, symbol: GridObject, onExpand: () -> Unit) {
+    val stage = GardenExpansion.nextStage(gardenSize)
+    when (GardenExpansion.check(gardenSize, listOf(symbol), playerLevel)) {
+        ExpansionCheck.READY -> WoodButton(
+            text = stringResource(R.string.expand_button, stage?.size ?: gardenSize),
+            onClick = onExpand,
+        )
+        ExpansionCheck.NEEDS_LEVEL -> if (stage != null) {
+            Text(
+                text = stringResource(R.string.expand_needs_level, stage.playerLevel, stage.size),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        ExpansionCheck.AT_MAX_SIZE -> Text(
+            text = stringResource(R.string.expand_max),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        // Not possible here: the panel is the symbol building's own.
+        ExpansionCheck.NEEDS_SYMBOL -> Unit
     }
 }
 

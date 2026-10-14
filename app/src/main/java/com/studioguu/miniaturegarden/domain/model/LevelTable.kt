@@ -7,8 +7,7 @@ package com.studioguu.miniaturegarden.domain.model
  *     Lv.2 = 100   Lv.3 = 300   Lv.4 = 600   Lv.5 = 1,000   Lv.6 = 1,500   Lv.10 = 4,500
  *
  * The first step is deliberately short. A tulip is worth about 65 XP per two-day cycle (harvest
- * plus waterings), so the three starter seeds reach Lv.2, and the first shop unlocks, with
- * their first harvest. Everyone starts at Lv.1 with 0 XP.
+ * plus waterings), so two harvests reach Lv.2, and the first shop unlocks. Everyone starts at Lv.1 with 0 XP.
  */
 object LevelTable {
     const val MAX_LEVEL = 99
