@@ -188,7 +188,17 @@ private fun ShopRow(item: GardenItem, locked: Boolean, affordable: Boolean, onBu
         // are faded. The unlock level itself is left at full strength so it can be read.
         val fade = Modifier.alpha(if (locked) LOCKED_ALPHA else 1f)
         Text(itemEmoji(item), fontSize = 26.sp, modifier = fade)
-        Text(itemDisplayName(item), style = MaterialTheme.typography.bodyLarge, modifier = fade.weight(1f))
+        Column(modifier = fade.weight(1f)) {
+            Text(itemDisplayName(item), style = MaterialTheme.typography.bodyLarge)
+            // A symbol building is one of a kind.
+            if (item.isSymbol) {
+                Text(
+                    text = stringResource(R.string.shop_only_one),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+        }
         if (locked) {
             Text(
                 text = when (val condition = item.unlock) {

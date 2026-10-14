@@ -40,6 +40,8 @@
 | ショップ・価格・解放・建物効果 | `ShopAndEffectsTest` `ProgressionTest` |
 | 図鑑 | `CollectionTest` |
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
+| シンボル建物・庭の拡張 | `SymbolBuildingTest`（＋数を見る `ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`） |
+| 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` |
 | リワード・1 日の回数 | `RewardTest` |
 | 川・フェンスの連結、川の位相 | `FloorAndFenceTest` `FenceAutotileTest` `FlowAndSoilTest` |
 | 風・影・耕した土 | `AtmosphereTest` `FlowAndSoilTest` |
@@ -93,7 +95,9 @@
   結果をスクリーンショットで確かめてから次へ進む。
 - 起動するとまずタイトル画面。「はじめる」は y≈2034、「つづきから」は y≈2195（初回は灰色）。
   新しい庭では中央 (4,4) に木箱があり、耕した土は (3..5, 5..6)。
-- 画面は 1080×2424。マスの中心は `x = 540 + (gx - gy) * 51.1`、`y = 1204 + (gx + gy - 8) * 25.6`。
+- コテージ（Lv.6）など後半の物を試すときは、開発者メニュー（🛠）の「+500 コイン・Lv+1」を押す。
+  建築を待たずに完成させるには「+1 時間」（建築の残り時間も進む）。
+- 画面は 1080×2424。9×9 のときのマスの中心は `x = 540 + (gx - gy) * 51.1`、`y = 1204 + (gx + gy - 8) * 25.6`。
   下部ツールバーは y≈2270（クワ 190、持ち物 718、ショップ 885）。
 - エミュレータのデータは起動ごとに初期状態に戻っていた。そのため**旧データからの移行はエミュレータでは確かめられていない**。実機への上書きインストールで確認する。
 - 1 秒未満の演出（フェード、弾ける演出、風）は、スクリーンショットでは確認できない。

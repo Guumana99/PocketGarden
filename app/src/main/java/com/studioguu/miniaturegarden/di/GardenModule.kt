@@ -1,16 +1,17 @@
 package com.studioguu.miniaturegarden.di
 
-import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GardenMapSource
+import com.studioguu.miniaturegarden.domain.usecase.StoredGardenMap
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
 @Module
 @InstallIn(SingletonComponent::class)
-object GardenModule {
+abstract class GardenModule {
 
-    /** The terrain everything is placed on and drawn over. */
-    @Provides
-    fun provideGardenMap(): GardenMap = GardenMap.DEFAULT
+    /** The terrain everything is placed on: lawn, as large as the garden has grown. */
+    @Binds
+    abstract fun bindGardenMapSource(impl: StoredGardenMap): GardenMapSource
 }

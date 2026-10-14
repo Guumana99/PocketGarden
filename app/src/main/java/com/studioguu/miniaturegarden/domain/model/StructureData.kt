@@ -21,12 +21,30 @@ data class Footprint(val width: Int, val height: Int) {
     }
 }
 
-/** Buildings and other objects larger than one cell. */
-enum class StructureData(val objectId: String, val footprint: Footprint) {
-    HUT("struct_hut", Footprint(width = 2, height = 2)),
-    WELL("struct_well", Footprint(width = 1, height = 2));
+/**
+ * Buildings and other objects larger than one cell.
+ *
+ * @property heightSteps how tall it stands, roof included, in height steps (a quarter of a
+ *   tile's height on screen). What it may hide behind it is worked out from this.
+ * @property isSymbol a symbol building: the garden's landmark. A garden has one at most, and
+ *   having one is what lets the garden grow (see [GardenExpansion]).
+ */
+enum class StructureData(
+    val objectId: String,
+    val footprint: Footprint,
+    val heightSteps: Float,
+    val isSymbol: Boolean = false,
+) {
+    HUT("struct_hut", Footprint(width = 2, height = 2), heightSteps = 7f),
+    WELL("struct_well", Footprint(width = 1, height = 2), heightSteps = 2.4f),
+
+    /** A cottage with a chimney: the first symbol building. */
+    COTTAGE("struct_cottage", Footprint(width = 3, height = 3), heightSteps = 8f, isSymbol = true);
 
     companion object {
         fun fromObjectId(objectId: String): StructureData? = entries.firstOrNull { it.objectId == objectId }
+
+        /** Whether [objectId] is a symbol building. */
+        fun isSymbol(objectId: String): Boolean = fromObjectId(objectId)?.isSymbol == true
     }
 }

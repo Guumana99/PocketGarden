@@ -43,6 +43,8 @@ enum class TutorialStep {
 data class GardenProgress(
     val season: Season = Season.SPRING,
     val tutorialStep: TutorialStep = TutorialStep.DONE,
+    /** How many cells the garden is across; see [GardenExpansion]. */
+    val gardenSize: Int = GridObject.GRID_SIZE,
 ) {
     companion object {
         /** A garden made just now: spring, with the first steps ahead. */

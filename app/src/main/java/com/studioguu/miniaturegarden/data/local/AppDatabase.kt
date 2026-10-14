@@ -23,7 +23,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         CollectionEntryEntity::class,
         GardenProgressEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -86,6 +86,13 @@ abstract class AppDatabase : RoomDatabase() {
                         "`id` INTEGER NOT NULL, `season` TEXT NOT NULL, `tutorialStep` TEXT NOT NULL, " +
                         "PRIMARY KEY(`id`))"
                 )
+            }
+        }
+
+        /** v7: the garden can grow. Every garden so far is the starting 9 x 9. */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE garden_progress ADD COLUMN gardenSize INTEGER NOT NULL DEFAULT 9")
             }
         }
     }

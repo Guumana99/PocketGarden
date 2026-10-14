@@ -26,6 +26,7 @@ enum class ItemCategory {
  *     structures   fence        from start      15   joins its neighbours; 20 s to build
  *                  well         Lv.3            80   30 XP; soil round it dries half as fast
  *                  hut          Lv.5           150   60 XP; plants round it grow 10 % faster
+ *                  cottage      Lv.6           300   100 XP; symbol building (one per garden, 3x3); lets the garden grow
  *     decorations  grass        from start      10   ground cover
  *                  pebble       from start      10   ground cover
  *                  cobblestone  from start      10   paving; things can stand on it
@@ -125,7 +126,16 @@ enum class GardenItem(
     DECO_LANTERN(
         "deco_lantern", price = 60, objectId = "deco_lantern", category = ItemCategory.DECORATION,
         unlock = UnlockCondition.CollectionPages(4),
+    ),
+
+    /** The symbol building: a cottage. One per garden; with it standing, the garden can grow. */
+    STRUCT_COTTAGE(
+        "struct_cottage", price = 300, objectId = StructureData.COTTAGE.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(6), placeXp = 100, buildSeconds = 600,
     );
+
+    /** A symbol building: one per garden, see [StructureData.isSymbol]. */
+    val isSymbol: Boolean get() = StructureData.isSymbol(objectId)
 
     fun isUnlockedFor(stats: PlayerStats): Boolean = unlock.isMetBy(stats)
 

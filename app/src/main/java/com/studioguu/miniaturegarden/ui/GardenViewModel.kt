@@ -20,6 +20,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
@@ -35,6 +36,7 @@ import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CompleteWorkUseCase
+import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
 import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
@@ -65,6 +67,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -90,7 +93,7 @@ class GardenViewModel @Inject constructor(
     private val openStarterCrate: OpenStarterCrateUseCase,
     private val followTutorial: FollowTutorialUseCase,
     private val audio: AudioManager,
-    val gardenMap: GardenMap,
+    private val expandGarden: ExpandGardenUseCase,
     private val grantReward: GrantRewardUseCase,
     private val rewardedAds: RewardedAdManager,
     rewardLimits: RewardLimitRepository,
@@ -105,6 +108,12 @@ class GardenViewModel @Inject constructor(
     private val progress = gardenRepository.observeProgress()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** The garden's terrain: lawn, as large as the garden has grown. */
+    val gardenMap: StateFlow<GardenMap> = progress.map { it?.gardenSize ?: GridObject.GRID_SIZE }
+        .distinctUntilChanged()
+        .map { GardenMap.allGrass(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GardenMap.DEFAULT)
+
     /** The player's first steps; [TutorialStep.DONE] in free play. */
     val tutorialStep: StateFlow<TutorialStep> = progress.map { it?.tutorialStep ?: TutorialStep.DONE }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TutorialStep.DONE)
@@ -113,8 +122,8 @@ class GardenViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
 
     /** The cells the current first step points at with a sparkle. */
-    val hintCells: StateFlow<Set<GridCell>> = combine(tutorialStep, gridObjects) { step, objects ->
-        TutorialGuide.hintCells(step, objects, gardenMap)
+    val hintCells: StateFlow<Set<GridCell>> = combine(tutorialStep, gridObjects, gardenMap) { step, objects, map ->
+        TutorialGuide.hintCells(step, objects, map)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private val _openingCrateId = MutableStateFlow<String?>(null)
@@ -463,6 +472,20 @@ class GardenViewModel @Inject constructor(
         _openingCrateId.value = null
     }
 
+    /**
+     * Grows the garden by a ring of lawn. Everything in it moves one cell along, so the selection
+     * (which is a cell, not a thing) is let go of.
+     */
+    fun expand() {
+        act(
+            onSuccess = {
+                _selectedTile.value = null
+                audio.play(SoundEffect.LEVEL_UP)
+                _messages.trySend(R.string.msg_garden_expanded)
+            }
+        ) { _, _ -> expandGarden() }
+    }
+
     fun fertilizeSelected() = withSelectedObject { obj ->
         act(
             onSuccess = {
@@ -486,7 +509,7 @@ class GardenViewModel @Inject constructor(
     fun removeSelected() = withSelectedObject { obj ->
         // A withered plant standing on tilled soil is dug in as compost; say so.
         val composts = RemoveObjectUseCase.leavesCompost(obj) &&
-            GardenGrid(gardenMap, gridObjects.value).isTilled(obj.gridX, obj.gridY)
+            GardenGrid(gardenMap.value, gridObjects.value).isTilled(obj.gridX, obj.gridY)
         val takesTime = takesTimeToRemove(obj)
         act(
             onSuccess = {
@@ -524,7 +547,21 @@ class GardenViewModel @Inject constructor(
     }
 
     /** Debug menu: pretend [millis] passed for everything in the garden. */
-    fun debugSkipTime(millis: Long) = act { now, weather -> skipTime(millis, now, weather) }
+    fun debugSkipTime(millis: Long) = act(onSuccess = ::sync) { now, weather -> skipTime(millis, now, weather) }
+
+    /** Debug menu: 500 more coins and the experience for the next level. */
+    fun debugBoost() {
+        viewModelScope.launch {
+            initJob.join()
+            actionMutex.withLock {
+                gardenRepository.runInTransaction {
+                    val profile = gardenRepository.getUserProfile() ?: return@runInTransaction
+                    val toNext = (LevelTable.xpForLevel(profile.playerLevel + 1) - profile.currentXp).coerceAtLeast(0L)
+                    gardenRepository.saveUserProfile(profile.copy(coins = profile.coins + 500).gainXp(toNext.toInt()))
+                }
+            }
+        }
+    }
 
     /** Debug menu: switch to the next kind of weather, in place of the day's own, until restart. */
     fun debugCycleWeather() {
@@ -620,7 +657,7 @@ class GardenViewModel @Inject constructor(
 
     /** The object covering [tile]; for a structure that is any cell of its footprint. */
     private fun List<GridObject>.objectAt(tile: TileCoord?): GridObject? =
-        if (tile == null) null else GardenGrid(gardenMap, this).objectAt(tile.x, tile.y)
+        if (tile == null) null else GardenGrid(gardenMap.value, this).objectAt(tile.x, tile.y)
 
     private companion object {
         const val BLESSED_RAIN_SHOWER_MILLIS = 4_000L

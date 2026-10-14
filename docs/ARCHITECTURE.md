@@ -10,7 +10,7 @@
 | ビルド | Gradle 8.11 / AGP 8.10 / KSP、JDK 21 |
 | SDK | minSdk 26、target / compile 35 |
 | 広告 | Google Mobile Ads 23.6（リワード。**テスト ID**） |
-| テスト | JUnit4 の JVM ユニットテストのみ（約 420 件）。UI テストなし |
+| テスト | JUnit4 の JVM ユニットテストのみ（約 440 件）。UI テストなし |
 
 ## 層
 
@@ -38,7 +38,9 @@ di/       Hilt の束ね
 | `terrain_` | 地形（川） | セル全体。床も占有物も不可 |
 
 - `GardenGrid` が「床」と「占有物」の 2 層を持ち、`checkPlacement(footprint, x, y, kind)` で可否を返す。
-- 建物の大きさは `StructureData`（小屋 2×2、井戸 1×2）。それ以外は 1×1。
+- 建物の大きさは `StructureData`（小屋 2×2、井戸 1×2、コテージ 3×3）。それ以外は 1×1。
+  `StructureData` は高さ（`heightSteps`、裏が隠れるかの判定用）と、シンボル建物かどうか（`isSymbol`）も持つ。
+- 庭の大きさは固定ではない（下の「庭の拡張」）。`GridObject.GRID_SIZE` は**始まりの大きさ** 9 のこと。
 - **種・苗は耕した土の上にしか置けない**（`PlaceItemUseCase`）。耕すのは `HoeUseCase`。
 - 空きフィールドの流用が 1 つある：耕した土の `growthProgress > 0` は「たい肥入り」。
 
@@ -51,6 +53,42 @@ di/       Hilt の束ね
 - 棚の並びは `GardenItem.shelf(category)`。
 - アイテムを足すときに触る場所：`GardenItem`、`CollectionEntry`（図鑑ページ）、`TileSetDefinition.objectIds`、
   `UiLabels`（名前・絵文字）、`CollectionDialog.flavorText`、`strings.xml`、描画（`GardenCanvas`）。
+
+## シンボル建物
+
+庭の顔になる特別な建物。今はコテージ（`struct_cottage`、3×3、Lv.6、300 コイン、建築 10 分）だけ。
+
+- **庭にひとつだけ**。数えるのは「庭に立っている（工事中も含む）」と「持ち物に入っている」の両方。
+  - 買う：`PurchaseItemUseCase` が、どちらかにあれば `ONLY_ONE_SYMBOL` で断る。
+  - 置く：`PlaceItemUseCase` が、庭にあれば断る（持ち物に 2 個ある状態は通常は起きないが、それでも 2 棟目は建たない）。
+- 移動・持ち物に戻す・解体は、ほかの建物と同じ仕組みでできる。
+- パッシブ効果は持たない。役目は庭の拡張。拡張のボタンはコテージのパネルにある。
+
+## 庭の拡張
+
+`GardenExpansion`。9×9 から外周に 1 周ずつ芝生を足す：9 → 11 → 13。
+
+| 広さ | 条件 |
+|---|---|
+| 11×11 | 完成したシンボル建物が庭にある |
+| 13×13 | それに加えて Lv.8 |
+
+- 広さは `garden_progress.gardenSize`（`GardenProgress.gardenSize`）。
+- 広げるのは `ExpandGardenUseCase`。庭の中心を保つため、**すべての物を x・y とも +1 ずらす**（`GardenExpansion.shifted`）。1 トランザクション。
+- 規則側は地図を `GardenMapSource` から受け取る（`PlaceItemUseCase` `HoeUseCase` `MoveObjectUseCase`）。
+  本番は `StoredGardenMap`（保存された広さの芝生）、テストは `GardenMap` そのもの（`GardenMap` は自分自身を返す `GardenMapSource`）。
+- 画面側は `GardenViewModel.gardenMap`（`StateFlow`）。`GardenCanvas` は地図の大きさで描き、広がったら全体が入る倍率に引き直す。
+- 自動では広がらない。縮める手段は無い。
+
+## 建物の裏のマス
+
+- **タップは地面で判定する**（`TilePicker`）。屋根や壁を押しても、その点の真下の地面のマス、つまり**建物の裏のマス**が選ばれる。
+  建物が選ばれるのは、足元の占有マスを押したときだけ。この仕組みは以前からで、#25 でテスト（`OcclusionTest`）を足した。
+- 見えないと困るので、**建物を半透明にする**（`Occlusion`、`GardenCanvas` の `fadedObjectIds`）。
+  - 配置・移動・クワのあいだは、すべての建物。
+  - それ以外は、選んだマスを画面上で隠している建物だけ。選んだ建物そのものは薄くしない。
+  - 判定は建物を「占有マスの上に `heightSteps` の高さの箱」とみなし、マスの中心がその輪郭に入るか。純関数。
+  - 透明度 0.32 まで 0.26 秒でふわっと薄くなり、戻るときも同じ。影は薄くしない。
 
 ## 時間の計算（作物）
 
@@ -87,7 +125,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v6**。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v7**。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|
@@ -96,6 +134,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 | 4 | `collection_entries.revealed`（手動登録。既存行は登録済みに） |
 | 5 | `grid_objects.workKind / workStartedAt / workEndsAt`（既存はすべて完成扱い） |
 | 6 | `garden_progress`（季節とチュートリアルの段階。1 行のみ）。行はマイグレーションではなく `ensureInitialized` が作る |
+| 7 | `garden_progress.gardenSize`（既存の庭は 9） |
 
 - マイグレーションは `AppDatabase.MIGRATION_x_y`、登録は `di/DatabaseModule.kt`。
 - DB は SQLCipher。鍵は Android Keystore で包む。プロフィールは HMAC 署名付き（`SecurityManager`）。
@@ -180,7 +219,7 @@ OPEN_CRATE ──木箱を開ける──▶ PLANT_SEED ──作物が庭にあ
 
 ## 画面
 
-- 遊ぶ画面は `GardenScreen` だけ（その前にタイトル）。ダイアログ（ショップ、図鑑、設定、持ち物）を上に出す。
+- 遊ぶ画面は `GardenScreen` だけ（その前にタイトル）。開発者メニュー（デバッグビルドのみ）に時間送り・天気・「+500 コイン・Lv+1」。時間送りは建築・解体の残り時間も進める（#25 から）。ダイアログ（ショップ、図鑑、設定、持ち物）を上に出す。
 - 下部ツールバーは固定。選択パネルと各モードのバナーはその上に**重ねて**フェードで切り替える。
 - 通知は自前の `GardenToastHost`（レイアウトを動かさない）。
 - カメラモードは HUD 全体と排他の分岐。写真は庭の `graphicsLayer` を 4:5 の枠で切り抜く（`CameraFrame`）。

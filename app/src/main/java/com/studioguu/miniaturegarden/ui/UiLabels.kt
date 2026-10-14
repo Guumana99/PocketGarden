@@ -21,6 +21,7 @@ fun objectDisplayName(objectId: String): String = when (objectId) {
     "deco_rock" -> stringResource(R.string.object_deco_rock)
     "struct_hut" -> stringResource(R.string.object_struct_hut)
     "struct_well" -> stringResource(R.string.object_struct_well)
+    "struct_cottage" -> stringResource(R.string.object_struct_cottage)
     "ground_grass" -> stringResource(R.string.object_ground_grass)
     "ground_pebble" -> stringResource(R.string.object_ground_pebble)
     "terrain_river" -> stringResource(R.string.object_terrain_river)
@@ -61,6 +62,7 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.FLOOR_WOOD -> "🟫"
     GardenItem.DECO_BENCH -> "🪑"
     GardenItem.DECO_LANTERN -> "🏮"
+    GardenItem.STRUCT_COTTAGE -> "🏡"
 }
 
 fun weatherEmoji(weather: WeatherType): String = when (weather) {
@@ -120,4 +122,7 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.NOT_RETURNABLE -> R.string.msg_not_returnable
     ActionResult.NOT_MOVABLE -> R.string.msg_not_movable
     ActionResult.BUSY -> R.string.msg_busy
+    ActionResult.ONLY_ONE_SYMBOL -> R.string.msg_only_one_symbol
+    ActionResult.EXPANSION_LOCKED -> R.string.msg_expansion_locked
+    ActionResult.GARDEN_AT_MAX_SIZE -> R.string.msg_garden_at_max_size
 }

@@ -56,7 +56,7 @@ class ShopAndEffectsTest {
         assertEquals(GardenItem.entries.size, shelves.values.sumOf { it.size })
 
         assertEquals(3, shelves.getValue(ItemCategory.SEED).size)
-        assertEquals(3, shelves.getValue(ItemCategory.STRUCTURE).size)
+        assertEquals(4, shelves.getValue(ItemCategory.STRUCTURE).size)
         assertEquals(9, shelves.getValue(ItemCategory.DECORATION).size)
     }
 
@@ -84,7 +84,7 @@ class ShopAndEffectsTest {
         assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(7, 9))
 
         assertEquals(
-            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_HUT),
+            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE),
             GardenItem.shelf(ItemCategory.STRUCTURE),
         )
         assertEquals(
@@ -144,9 +144,11 @@ class ShopAndEffectsTest {
                 if (later.unlockLevel > earlier.unlockLevel) assertTrue("${later.name} after ${earlier.name}", later.price >= dearestSoFar[i])
             }
         }
-        // The two buildings that pay for themselves are the dearest things in the shop.
-        val dearest = GardenItem.entries.sortedByDescending { it.price }.take(2).toSet()
-        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL), dearest)
+        // The symbol building is the dearest thing in the shop; after it come the two buildings
+        // that pay for themselves.
+        val byPrice = GardenItem.entries.sortedByDescending { it.price }
+        assertEquals(GardenItem.STRUCT_COTTAGE, byPrice.first())
+        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL), byPrice.drop(1).take(2).toSet())
     }
 
     @Test
@@ -239,7 +241,9 @@ class ShopAndEffectsTest {
 
     @Test
     fun `every building has its effect and nothing else has one`() {
-        for (structure in StructureData.entries) assertTrue(structure.name, StructureEffect.of(structure) != null)
+        // A symbol building does something else instead: it lets the garden grow.
+        for (structure in StructureData.entries.filter { !it.isSymbol }) assertTrue(structure.name, StructureEffect.of(structure) != null)
+        assertNull(StructureEffect.of(StructureData.COTTAGE))
         assertEquals(StructureEffect.WELL, StructureEffect.forObjectId("struct_well"))
         assertEquals(StructureEffect.HUT, StructureEffect.forObjectId("struct_hut"))
         assertNull(StructureEffect.forObjectId("struct_fence"))

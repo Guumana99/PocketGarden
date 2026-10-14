@@ -59,6 +59,9 @@ class GardenGrid(
     /** Whether (x, y) has been tilled, with or without something growing on it. */
     fun isTilled(x: Int, y: Int): Boolean = floorAt(x, y)?.isTilledSoil == true
 
+    /** Whether a symbol building stands in the garden, finished or not. */
+    val hasSymbol: Boolean = objects.any { it.isSymbol }
+
     /** What a tap on (x, y) means: the thing standing there, or else the paving under it. */
     fun objectAt(x: Int, y: Int): GridObject? = occupantAt(x, y) ?: floorAt(x, y)
 

@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -12,6 +13,8 @@ data class GardenProgressEntity(
     val season: String,
     /** A TutorialStep name. */
     val tutorialStep: String,
+    /** Cells across. Added in schema version 7. */
+    @ColumnInfo(defaultValue = "9") val gardenSize: Int = 9,
 ) {
     companion object {
         const val SINGLETON_ID = 1
