@@ -205,7 +205,9 @@
     <string name="settings_se">効果音</string>
     <string name="settings_volume_description">%1$s の音量</string>
     <string name="settings_notifications">通知</string>
-    <string name="settings_notifications_caption">今後のアップデートで対応予定です</string>
+    <string name="settings_notifications_caption">作物が実ったときや、お水をほしがっているとき、建物ができあがったときに、そっとお知らせします。夜（21 時〜8 時）は朝まで待ちます。</string>
+    <string name="settings_notifications_denied">端末の設定で、通知が許可されていません。</string>
+    <string name="settings_notifications_open_device">端末の設定を開く</string>
     <string name="settings_app_version">%1$s　v%2$s</string>
     <string name="settings_licenses">ライセンス</string>
     <string name="settings_privacy">プライバシーポリシー</string>
@@ -266,4 +268,18 @@
     <string name="expand_button">庭を広げる（%1$d×%1$d）</string>
     <string name="expand_needs_level">Lv.%1$d で %2$d×%2$d に広げられます</string>
     <string name="expand_max">庭はいちばん広くなりました</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">お庭のようす</string>
+    <string name="notification_channel_description">作物や建物のようすを、そっとお知らせします</string>
+    <string name="notification_harvest">お庭の%1$sが実ったようです 🌷</string>
+    <string name="notification_harvest_many">お庭の%1$sなど、%2$dつの作物が実ったようです 🌷</string>
+    <string name="notification_water">%1$sがお水をほしがっているようです 💧</string>
+    <string name="notification_water_many">%1$sなど、%2$dつの作物がお水をほしがっているようです 💧</string>
+    <string name="notification_building">%1$sができあがったようです。お披露目を待っています ✨</string>
+    <string name="notification_building_many">%1$sなど、%2$dつの建物ができあがったようです ✨</string>
+    <string name="notification_invite_title">お庭のようすをお知らせしましょうか？</string>
+    <string name="notification_invite_text">作物が実ったときや、建物ができあがったときに、そっとお知らせします。音は鳴らさず、夜は朝まで待ちます。設定からいつでも変えられます。</string>
+    <string name="notification_invite_ok">お知らせを受け取る</string>
+    <string name="notification_invite_later">いまはいい</string>
 </resources>

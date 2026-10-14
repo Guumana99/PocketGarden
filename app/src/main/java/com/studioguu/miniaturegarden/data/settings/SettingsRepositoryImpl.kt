@@ -34,6 +34,7 @@ class SettingsRepositoryImpl @Inject constructor(
             prefs[SE_ENABLED] = updated.soundEffectsEnabled
             prefs[SE_VOLUME] = updated.soundEffectVolume
             prefs[NOTIFICATIONS_ENABLED] = updated.notificationsEnabled
+            prefs[NOTIFICATION_INVITE_SHOWN] = updated.notificationInviteShown
         }
     }
 
@@ -45,6 +46,7 @@ class SettingsRepositoryImpl @Inject constructor(
             soundEffectsEnabled = prefs[SE_ENABLED] ?: defaults.soundEffectsEnabled,
             soundEffectVolume = prefs[SE_VOLUME] ?: defaults.soundEffectVolume,
             notificationsEnabled = prefs[NOTIFICATIONS_ENABLED] ?: defaults.notificationsEnabled,
+            notificationInviteShown = prefs[NOTIFICATION_INVITE_SHOWN] ?: defaults.notificationInviteShown,
         ).normalized()
     }
 
@@ -56,5 +58,6 @@ class SettingsRepositoryImpl @Inject constructor(
         private val SE_ENABLED = booleanPreferencesKey("se_enabled")
         private val SE_VOLUME = floatPreferencesKey("se_volume")
         private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        private val NOTIFICATION_INVITE_SHOWN = booleanPreferencesKey("notification_invite_shown")
     }
 }

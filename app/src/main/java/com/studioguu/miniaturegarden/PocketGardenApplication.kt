@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden
 import android.app.Application
 import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.audio.AudioManager
+import com.studioguu.miniaturegarden.data.notifications.WorkManagerNotificationScheduler
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -30,5 +31,7 @@ class PocketGardenApplication : Application() {
         applicationScope.launch { settingsRepository.settings.collect(audio::apply) }
         // Have a rewarded ad loading in the background, so its buttons are ready when wanted.
         rewardedAds.start()
+        // The garden's notification channel exists from the start, so the device's settings show it.
+        WorkManagerNotificationScheduler.ensureChannel(this)
     }
 }

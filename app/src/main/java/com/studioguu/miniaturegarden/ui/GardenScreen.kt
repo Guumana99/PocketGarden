@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.ui
 
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -58,6 +59,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.NotificationAccess
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
@@ -80,6 +82,9 @@ import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.RemoveConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
+import com.studioguu.miniaturegarden.ui.notifications.NotificationInviteDialog
+import com.studioguu.miniaturegarden.ui.notifications.hasNotificationPermission
+import com.studioguu.miniaturegarden.ui.notifications.rememberNotificationPermissionRequest
 import com.studioguu.miniaturegarden.ui.onboarding.StarterCrateDialog
 import com.studioguu.miniaturegarden.ui.onboarding.TutorialHint
 import com.studioguu.miniaturegarden.ui.onboarding.tutorialHint
@@ -115,6 +120,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
     val gardenMap by viewModel.gardenMap.collectAsStateWithLifecycle()
+    val notificationInviteDue by viewModel.notificationInviteDue.collectAsStateWithLifecycle()
     val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
     val tutorialStep by viewModel.tutorialStep.collectAsStateWithLifecycle()
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
@@ -429,6 +435,19 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     if (openingCrate != null) {
         StarterCrateDialog(onReceive = viewModel::openCrate, onDismiss = viewModel::closeCrate)
+    }
+    // Once, after the first steps, and only where the device needs the player's permission.
+    val requestNotificationPermission = rememberNotificationPermissionRequest { }
+    val inviteNow = notificationInviteDue && openingCrate == null && !cameraMode &&
+        NotificationAccess.shouldInvite(Build.VERSION.SDK_INT, context.hasNotificationPermission(), enabledInGame = true, alreadyInvited = false)
+    if (inviteNow) {
+        NotificationInviteDialog(
+            onAccept = {
+                viewModel.markNotificationInviteShown()
+                requestNotificationPermission()
+            },
+            onLater = viewModel::markNotificationInviteShown,
+        )
     }
     if (confirmRain) {
         RewardConfirmDialog(

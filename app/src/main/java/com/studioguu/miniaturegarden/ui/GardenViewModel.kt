@@ -33,10 +33,12 @@ import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
+import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CompleteWorkUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
+import com.studioguu.miniaturegarden.domain.usecase.ScheduleGardenNotificationsUseCase
 import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
@@ -57,6 +59,7 @@ import com.studioguu.miniaturegarden.ui.render.TileCoord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -73,6 +76,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -94,6 +98,8 @@ class GardenViewModel @Inject constructor(
     private val followTutorial: FollowTutorialUseCase,
     private val audio: AudioManager,
     private val expandGarden: ExpandGardenUseCase,
+    private val scheduleNotifications: ScheduleGardenNotificationsUseCase,
+    private val settingsRepository: SettingsRepository,
     private val grantReward: GrantRewardUseCase,
     private val rewardedAds: RewardedAdManager,
     rewardLimits: RewardLimitRepository,
@@ -269,6 +275,8 @@ class GardenViewModel @Inject constructor(
     fun onForeground() {
         audio.playBgm(BgmTrack.GARDEN)
         audio.resumeBgm()
+        // The player is here and sees the garden: nothing needs telling while they are.
+        scheduleNotifications.cancel()
     }
 
     /**
@@ -279,6 +287,27 @@ class GardenViewModel @Inject constructor(
     fun onBackground() {
         audio.pauseBgm()
         sync()
+        // What the garden will have to tell them while they are away. Worked out from what is
+        // stored, which the sync above is bringing up to now; the plan runs the plants forward
+        // from there either way.
+        viewModelScope.launch {
+            initJob.join()
+            val weather: WeatherForecast = debugWeather ?: WeatherForecast.Daily
+            withContext(Dispatchers.Default) { scheduleNotifications(System.currentTimeMillis(), weather) }
+        }
+    }
+
+    /**
+     * True when the one-time invitation to turn notifications on is due: the first steps are
+     * over, the player has not switched notifications off, and they have not been asked before.
+     * Whether the device needs asking at all is for the screen to tell.
+     */
+    val notificationInviteDue: StateFlow<Boolean> = combine(settingsRepository.settings, tutorialStep) { settings, step ->
+        step == TutorialStep.DONE && settings.notificationsEnabled && !settings.notificationInviteShown
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun markNotificationInviteShown() {
+        viewModelScope.launch { settingsRepository.update { it.copy(notificationInviteShown = true) } }
     }
 
     override fun onCleared() {

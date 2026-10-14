@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.ui.components.popIn
+import com.studioguu.miniaturegarden.ui.notifications.NotificationSettingRow
 import kotlin.math.roundToInt
 
 /** The settings, one tab per kind, so new ones have somewhere to go. */
@@ -83,11 +84,9 @@ fun SettingsDialog(
                             onShowLicenses = { showLicenses = true },
                             onShowDisclaimer = { showDisclaimer = true },
                         )
-                        SettingsTab.OTHER -> SwitchRow(
-                            label = stringResource(R.string.settings_notifications),
-                            caption = stringResource(R.string.settings_notifications_caption),
-                            checked = current.notificationsEnabled,
-                            onCheckedChange = viewModel::setNotificationsEnabled,
+                        SettingsTab.OTHER -> NotificationSettingRow(
+                            enabledInGame = current.notificationsEnabled,
+                            onEnabledChange = viewModel::setNotificationsEnabled,
                         )
                     }
                 }
@@ -201,17 +200,6 @@ private fun VolumeControl(
         ) {
             Text(stringResource(R.string.settings_reset_volume))
         }
-    }
-}
-
-@Composable
-private fun SwitchRow(label: String, caption: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.bodyLarge)
-            Text(caption, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
