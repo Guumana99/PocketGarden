@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Android 13+: asked for at the player's request only (settings, or the one-time invitation). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Backup is disabled: the database passphrase and the HMAC key live in the Android
          Keystore, which is not restored, so a restored database could never be opened. -->
     <application

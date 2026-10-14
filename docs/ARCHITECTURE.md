@@ -10,7 +10,8 @@
 | ビルド | Gradle 8.11 / AGP 8.10 / KSP、JDK 21 |
 | SDK | minSdk 26、target / compile 35 |
 | 広告 | Google Mobile Ads 23.6（リワード。**テスト ID**） |
-| テスト | JUnit4 の JVM ユニットテストのみ（約 440 件）。UI テストなし |
+| 通知 | WorkManager 2.7.0（広告 SDK が既に使っている版をそのまま明示）、NotificationCompat |
+| テスト | JUnit4 の JVM ユニットテストのみ（約 460 件）。UI テストなし |
 
 ## 層
 
@@ -89,6 +90,38 @@ di/       Hilt の束ね
   - それ以外は、選んだマスを画面上で隠している建物だけ。選んだ建物そのものは薄くしない。
   - 判定は建物を「占有マスの上に `heightSteps` の高さの箱」とみなし、マスの中心がその輪郭に入るか。純関数。
   - 透明度 0.32 まで 0.26 秒でふわっと薄くなり、戻るときも同じ。影は薄くしない。
+
+## ローカル通知
+
+アプリから離れているあいだに、庭のようすをそっと知らせる。
+
+| 種類（`GardenNotificationKind`） | いつ | 文面の例 |
+|---|---|---|
+| `HARVEST_READY` | 作物が満開になる | お庭のチューリップが実ったようです 🌷 |
+| `NEEDS_WATER` | 作物の水分が 20% 以下になる | チューリップがお水をほしがっているようです 💧 |
+| `BUILDING_READY` | 建築が終わり、お披露目待ちになる | ウッドフェンスができあがったようです。お披露目を待っています ✨ |
+
+解体・片づけ・枯れは知らせない（作業や叱る話はしない）。
+
+- **予約するのはアプリから離れたとき**（`GardenViewModel.onBackground`）。**戻ったときは全部取り消す**（`onForeground`）。遊んでいる間は鳴らない。
+- 予測は `PlanGardenNotificationsUseCase`。オフライン計算（`CalculateOfflineProgressUseCase`）で作物を未来へ進めて、その瞬間を探す。
+  天気は日付で決まる（`WeatherForecast.Daily`）ので、予測は実際と一致する。30 分刻みで進め、見つかったら 1 分単位まで二分探索。先は 7 日まで。
+  - 種類ごとに**いちばん早い 1 通だけ**。その後 1 時間以内に同じ種類が続くものはまとめて「〜など、N つの作物が…」。
+  - **21 時〜8 時は朝 8 時まで待つ**（端末のタイムゾーン）。
+- 予約と発行は `WorkManagerNotificationScheduler`（`NotificationScheduler` の実装）と `GardenNotificationWorker`。
+  種類ごとに 1 つのユニークジョブ（`REPLACE`）。WorkManager なので再起動をまたいでも残る。
+  発行の直前に、設定のスイッチと端末の許可をもう一度確かめる。どちらかが無ければ何もしない。
+- チャンネルは `garden`「お庭のようす」。重要度 DEFAULT、**音とバイブなし**（ステータスバーと通知欄に出るだけ）。アプリ起動時に作る。
+- 押すと `MainActivity` が開く（タイトル画面から）。
+
+### 設定と権限
+
+- スイッチは `AppSettings.notificationsEnabled`（既定 ON）。OFF にすると `NotificationScheduler.cancelAll()` で予約も表示中の通知も消す。
+- 画面のスイッチは**本当に届くときだけ ON に見える**（`NotificationAccess.of`）：ゲームの設定が ON、Android 13 以上なら `POST_NOTIFICATIONS` が許可済み、端末の通知設定でアプリが止められていない。
+- スイッチを ON にしたときに足りないものだけを求める（`NotificationAccess.whenTurnedOn`）：権限が無ければシステムの確認、端末で止められていれば端末の設定画面。
+  断られたら「端末の設定で、通知が許可されていません。」と「端末の設定を開く」を出す。ゲームはそのまま遊べる。
+- **一度だけの招待**：チュートリアルが終わったあと、Android 13 以上で権限が無ければ、木目調のダイアログで「お知らせを受け取る／いまはいい」を聞く。
+  どちらを選んでも二度と出ない（`AppSettings.notificationInviteShown`）。既存の庭（チュートリアル済み）では、更新後に最初に庭へ入ったときに出る。
 
 ## 時間の計算（作物）
 

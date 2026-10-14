@@ -9,8 +9,13 @@ data class AppSettings(
     val bgmVolume: Float = DEFAULT_BGM_VOLUME,
     val soundEffectsEnabled: Boolean = true,
     val soundEffectVolume: Float = DEFAULT_SOUND_EFFECT_VOLUME,
-    /** Reserved for notifications; nothing reads it yet. */
+    /**
+     * The player's own switch for the garden's notifications. On by default; on Android 13 and
+     * later they also need the device's permission (see [NotificationAccess]).
+     */
     val notificationsEnabled: Boolean = true,
+    /** Whether the one-time invitation to turn notifications on has been shown. */
+    val notificationInviteShown: Boolean = false,
 ) {
     /** The same settings with both volumes forced into 0..1; a non-number falls back to the default. */
     fun normalized(): AppSettings = copy(

@@ -104,6 +104,9 @@ dependencies {
     // Rewarded ads
     implementation(libs.play.services.ads)
 
+    // Notifications posted while the app is away
+    implementation(libs.androidx.work.runtime)
+
     // Coroutines / Serialization
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)

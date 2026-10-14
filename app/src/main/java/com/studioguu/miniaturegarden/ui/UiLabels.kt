@@ -12,30 +12,34 @@ import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 
 // Display names and emoji icons for domain values. Emoji stand in for icon artwork for now.
 
+/** The string resource naming a grid object; null for an id that has none. */
+@StringRes
+fun objectNameRes(objectId: String): Int? = when (objectId) {
+    "plant_tulip" -> R.string.object_plant_tulip
+    "plant_sunflower" -> R.string.object_plant_sunflower
+    "plant_rose" -> R.string.object_plant_rose
+    "deco_rock" -> R.string.object_deco_rock
+    "struct_hut" -> R.string.object_struct_hut
+    "struct_well" -> R.string.object_struct_well
+    "struct_cottage" -> R.string.object_struct_cottage
+    "ground_grass" -> R.string.object_ground_grass
+    "ground_pebble" -> R.string.object_ground_pebble
+    "terrain_river" -> R.string.object_terrain_river
+    "floor_cobblestone" -> R.string.object_floor_cobblestone
+    "floor_tilled" -> R.string.object_floor_tilled
+    "floor_wood" -> R.string.object_floor_wood
+    "ground_flowers" -> R.string.object_ground_flowers
+    "deco_bench" -> R.string.object_deco_bench
+    "deco_lantern" -> R.string.object_deco_lantern
+    "deco_starter_crate" -> R.string.object_deco_starter_crate
+    // A fence is a fence under any of the ids it has been stored as.
+    "struct_fence", "struct_fence_rail", "struct_fence_post" -> R.string.object_struct_fence
+    else -> null
+}
+
 /** Name of a grid object; unknown ids are shown as-is. */
 @Composable
-fun objectDisplayName(objectId: String): String = when (objectId) {
-    "plant_tulip" -> stringResource(R.string.object_plant_tulip)
-    "plant_sunflower" -> stringResource(R.string.object_plant_sunflower)
-    "plant_rose" -> stringResource(R.string.object_plant_rose)
-    "deco_rock" -> stringResource(R.string.object_deco_rock)
-    "struct_hut" -> stringResource(R.string.object_struct_hut)
-    "struct_well" -> stringResource(R.string.object_struct_well)
-    "struct_cottage" -> stringResource(R.string.object_struct_cottage)
-    "ground_grass" -> stringResource(R.string.object_ground_grass)
-    "ground_pebble" -> stringResource(R.string.object_ground_pebble)
-    "terrain_river" -> stringResource(R.string.object_terrain_river)
-    "floor_cobblestone" -> stringResource(R.string.object_floor_cobblestone)
-    "floor_tilled" -> stringResource(R.string.object_floor_tilled)
-    "floor_wood" -> stringResource(R.string.object_floor_wood)
-    "ground_flowers" -> stringResource(R.string.object_ground_flowers)
-    "deco_bench" -> stringResource(R.string.object_deco_bench)
-    "deco_lantern" -> stringResource(R.string.object_deco_lantern)
-    "deco_starter_crate" -> stringResource(R.string.object_deco_starter_crate)
-    // A fence is a fence under any of the ids it has been stored as.
-    "struct_fence", "struct_fence_rail", "struct_fence_post" -> stringResource(R.string.object_struct_fence)
-    else -> objectId
-}
+fun objectDisplayName(objectId: String): String = objectNameRes(objectId)?.let { stringResource(it) } ?: objectId
 
 @Composable
 fun itemDisplayName(item: GardenItem): String = when (item) {

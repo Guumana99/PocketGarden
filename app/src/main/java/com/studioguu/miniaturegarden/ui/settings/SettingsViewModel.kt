@@ -6,6 +6,7 @@ import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.AppSettings
+import com.studioguu.miniaturegarden.domain.repository.NotificationScheduler
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val audio: AudioManager,
+    private val notifications: NotificationScheduler,
 ) : ViewModel() {
 
     // Kept here rather than read straight from the repository so that a slider follows the
@@ -42,7 +44,11 @@ class SettingsViewModel @Inject constructor(
 
     fun setSoundEffectsEnabled(enabled: Boolean) = change { it.copy(soundEffectsEnabled = enabled) }
 
-    fun setNotificationsEnabled(enabled: Boolean) = change { it.copy(notificationsEnabled = enabled) }
+    /** Turning them off takes back everything already planned, at once. */
+    fun setNotificationsEnabled(enabled: Boolean) {
+        change { it.copy(notificationsEnabled = enabled) }
+        if (!enabled) notifications.cancelAll()
+    }
 
     /** Lets the player hear the effect volume they just chose. */
     fun previewSoundEffect() = audio.play(SoundEffect.COIN)

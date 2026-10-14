@@ -42,6 +42,7 @@
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
 | シンボル建物・庭の拡張 | `SymbolBuildingTest`（＋数を見る `ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`） |
 | 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` |
+| 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | リワード・1 日の回数 | `RewardTest` |
 | 川・フェンスの連結、川の位相 | `FloorAndFenceTest` `FenceAutotileTest` `FlowAndSoilTest` |
 | 風・影・耕した土 | `AtmosphereTest` `FlowAndSoilTest` |
@@ -103,6 +104,9 @@
 - 1 秒未満の演出（フェード、弾ける演出、風）は、スクリーンショットでは確認できない。
   連続撮影の差分で「動いている」ことまでは言えるが、見た目の良し悪しは実機で見てもらう。
 - 動画解析の道具（ffmpeg、OpenCV）は入っていない。
+- 通知の確認：柵（建築 20 秒）を置いてホームに戻り、30 秒ほど待って
+  `adb -s emulator-5554 shell dumpsys notification --noredact | grep -A3 miniaturegarden`。通知欄は `cmd statusbar expand-notifications`。
+  Git Bash では `MSYS_NO_PATHCONV=1` を付けないと `/sdcard/...` などのパスが書き換えられる。
 
 ## 報告の書き方
 

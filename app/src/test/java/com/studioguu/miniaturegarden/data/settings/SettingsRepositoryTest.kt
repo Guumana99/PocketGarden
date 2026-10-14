@@ -85,6 +85,7 @@ class SettingsRepositoryTest {
             soundEffectsEnabled = false,
             soundEffectVolume = 0.65f,
             notificationsEnabled = false,
+            notificationInviteShown = true,
         )
 
         repository.update { chosen }
