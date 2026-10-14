@@ -4,7 +4,9 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -129,4 +131,55 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.ONLY_ONE_SYMBOL -> R.string.msg_only_one_symbol
     ActionResult.EXPANSION_LOCKED -> R.string.msg_expansion_locked
     ActionResult.GARDEN_AT_MAX_SIZE -> R.string.msg_garden_at_max_size
+}
+
+@StringRes
+fun creatureName(creature: Creature): Int = when (creature) {
+    Creature.BUTTERFLY -> R.string.creature_butterfly
+    Creature.LADYBUG -> R.string.creature_ladybug
+    Creature.BIRD -> R.string.creature_bird
+    Creature.SQUIRREL -> R.string.creature_squirrel
+    Creature.FROG -> R.string.creature_frog
+}
+
+/** Said once, the first time a creature comes. */
+@StringRes
+fun creatureMetMessage(creature: Creature): Int = when (creature) {
+    Creature.BUTTERFLY -> R.string.msg_met_butterfly
+    Creature.LADYBUG -> R.string.msg_met_ladybug
+    Creature.BIRD -> R.string.msg_met_bird
+    Creature.SQUIRREL -> R.string.msg_met_squirrel
+    Creature.FROG -> R.string.msg_met_frog
+}
+
+/** What the nature notes say about a creature once it has been met. */
+@StringRes
+fun creatureFlavor(creature: Creature): Int = when (creature) {
+    Creature.BUTTERFLY -> R.string.creature_flavor_butterfly
+    Creature.LADYBUG -> R.string.creature_flavor_ladybug
+    Creature.BIRD -> R.string.creature_flavor_bird
+    Creature.SQUIRREL -> R.string.creature_flavor_squirrel
+    Creature.FROG -> R.string.creature_flavor_frog
+}
+
+/** A combination once found, in a few words. */
+@StringRes
+fun combinationLabel(rule: VisitRule): Int = when (rule) {
+    VisitRule.BUTTERFLY_BLOOMS -> R.string.combo_butterfly_blooms
+    VisitRule.LADYBUG_TULIPS -> R.string.combo_ladybug_tulips
+    VisitRule.BIRD_BENCH -> R.string.combo_bird_bench
+    VisitRule.BIRD_COTTAGE -> R.string.combo_bird_cottage
+    VisitRule.SQUIRREL_SUNFLOWER -> R.string.combo_squirrel_sunflower
+    VisitRule.FROG_RAIN -> R.string.combo_frog_rain
+}
+
+/** A quiet hint for a combination not found yet: what the creature seems to like. */
+@StringRes
+fun combinationHint(rule: VisitRule): Int = when (rule) {
+    VisitRule.BUTTERFLY_BLOOMS -> R.string.hint_butterfly_blooms
+    VisitRule.LADYBUG_TULIPS -> R.string.hint_ladybug_tulips
+    VisitRule.BIRD_BENCH -> R.string.hint_bird_bench
+    VisitRule.BIRD_COTTAGE -> R.string.hint_bird_cottage
+    VisitRule.SQUIRREL_SUNFLOWER -> R.string.hint_squirrel_sunflower
+    VisitRule.FROG_RAIN -> R.string.hint_frog_rain
 }

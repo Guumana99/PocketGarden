@@ -4,11 +4,13 @@ import com.studioguu.miniaturegarden.data.local.entity.CollectionEntryEntity
 import com.studioguu.miniaturegarden.data.local.entity.GardenProgressEntity
 import com.studioguu.miniaturegarden.data.local.entity.GridObjectEntity
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
+import com.studioguu.miniaturegarden.data.local.entity.NatureNoteEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
@@ -108,3 +110,7 @@ fun GardenProgress.toEntity() = GardenProgressEntity(
     tutorialStep = tutorialStep.name,
     gardenSize = gardenSize,
 )
+
+fun NatureNoteEntity.toDomain() = NatureNote(noteId = noteId, firstSeenAt = firstSeenAt, count = count)
+
+fun NatureNote.toEntity() = NatureNoteEntity(noteId = noteId, firstSeenAt = firstSeenAt, count = count)

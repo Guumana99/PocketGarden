@@ -14,6 +14,8 @@ import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
+import com.studioguu.miniaturegarden.domain.model.CreatureVisit
+import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -28,6 +30,7 @@ import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.TutorialGuide
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.UserProfile
+import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
@@ -38,6 +41,8 @@ import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CompleteWorkUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
+import com.studioguu.miniaturegarden.domain.usecase.NoteResult
+import com.studioguu.miniaturegarden.domain.usecase.RecordNatureNoteUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ScheduleGardenNotificationsUseCase
 import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
@@ -61,6 +66,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -71,6 +77,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
@@ -99,6 +106,7 @@ class GardenViewModel @Inject constructor(
     private val audio: AudioManager,
     private val expandGarden: ExpandGardenUseCase,
     private val scheduleNotifications: ScheduleGardenNotificationsUseCase,
+    private val recordNatureNote: RecordNatureNoteUseCase,
     private val settingsRepository: SettingsRepository,
     private val grantReward: GrantRewardUseCase,
     private val rewardedAds: RewardedAdManager,
@@ -269,6 +277,59 @@ class GardenViewModel @Inject constructor(
         watchForLevelUps()
         watchCollection()
         watchWork()
+        watchVisitors()
+    }
+
+    private val _visitors = MutableStateFlow<List<CreatureVisit>>(emptyList())
+
+    /** Creatures staying in the garden this period, see [CreatureVisits]. */
+    val visitors: StateFlow<List<CreatureVisit>> = _visitors.asStateFlow()
+
+    /** Visits already written into the nature notes, as (period, rule): each is written once. */
+    private val notedVisits = HashSet<Pair<Long, VisitRule>>()
+
+    /**
+     * Works out who is visiting, at the start of every period and whenever the garden, its size
+     * or the weather changes, and writes each visitor into the nature notes as it comes into view.
+     */
+    private fun watchVisitors() {
+        val periods = flow {
+            while (true) {
+                val now = System.currentTimeMillis()
+                val period = CreatureVisits.periodOf(now)
+                emit(period)
+                delay(CreatureVisits.periodStart(period + 1) - now + 1)
+            }
+        }
+        viewModelScope.launch {
+            initJob.join()
+            combine(gridObjects, _weather, gardenMap, periods) { objects, weather, map, period -> Visiting(objects, weather, map, period) }
+                .collectLatest { visiting ->
+                    val now = System.currentTimeMillis()
+                    val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map)
+                        .filter { it.leavesAt > now }
+                    _visitors.value = visits
+                    coroutineScope {
+                        for (visit in visits) {
+                            launch {
+                                delay((visit.arrivesAt - now).coerceAtLeast(0L))
+                                noteVisit(visiting.period, visit)
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    private class Visiting(val objects: List<GridObject>, val weather: WeatherType, val map: GardenMap, val period: Long)
+
+    private suspend fun noteVisit(period: Long, visit: CreatureVisit) {
+        if (!notedVisits.add(period to visit.rule)) return
+        when (recordNatureNote(visit.rule, System.currentTimeMillis())) {
+            NoteResult.NEW_CREATURE -> _messages.trySend(creatureMetMessage(visit.creature))
+            NoteResult.NEW_COMBINATION -> _messages.trySend(R.string.msg_nature_note_added)
+            NoteResult.SEEN_BEFORE -> Unit
+        }
     }
 
     /** The garden came to the foreground: start (or continue) its music. */

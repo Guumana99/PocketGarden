@@ -11,7 +11,7 @@
 | SDK | minSdk 26、target / compile 35 |
 | 広告 | Google Mobile Ads 23.6（リワード。**テスト ID**） |
 | 通知 | WorkManager 2.7.0（広告 SDK が既に使っている版をそのまま明示）、NotificationCompat |
-| テスト | JUnit4 の JVM ユニットテストのみ（約 460 件）。UI テストなし |
+| テスト | JUnit4 の JVM ユニットテストのみ（479 件）。UI テストなし |
 
 ## 層
 
@@ -91,6 +91,46 @@ di/       Hilt の束ね
   - 判定は建物を「占有マスの上に `heightSteps` の高さの箱」とみなし、マスの中心がその輪郭に入るか。純関数。
   - 透明度 0.32 まで 0.26 秒でふわっと薄くなり、戻るときも同じ。影は薄くしない。
 
+## 生き物の来訪と自然メモ
+
+### 条件表（`domain/model/CreatureTable.kt`）
+
+**組み合わせはすべて `VisitRule`（enum）の 1 行**。条件・来る生き物・寄り添う物・置き方・確率を持つ。
+調整や追加はこの表だけを触ればよい。文面（うわさ・組み合わせ名）は `UiLabels.kt` の `when` が網羅を強制するので、足し忘れはコンパイルエラーになる。
+
+| 組み合わせ | 生き物 | 条件 | どこに | 確率 |
+|---|---|---|---|---|
+| `BUTTERFLY_BLOOMS` | ちょうちょ | 満開の作物 2 つ以上、雨でない | 満開の作物の上を舞う | 60% |
+| `LADYBUG_TULIPS` | てんとうむし | チューリップ 3 つ以上（大きさ問わず）と芝生 | チューリップの足もと | 50% |
+| `BIRD_BENCH` | ことり | ベンチと柵 3 本以上 | ベンチの座面 | 50% |
+| `BIRD_COTTAGE` | ことり | 完成したコテージ | 屋根の上 | 50% |
+| `SQUIRREL_SUNFLOWER` | りす | 満開のひまわりと岩 | 岩のとなりの空いた芝生 | 50% |
+| `FROG_RAIN` | かえる | 川タイル 3 枚以上、雨の日 | 川のとなりの空いた芝生 | 70% |
+
+- 条件の部品は `VisitCondition`：`Crops`（数・種類・成長度）、`Things`（物の id と数）、`WeatherIs` / `WeatherNot`。
+  工事中の物と枯れた作物は数えない（`GardenSnapshot.settled`）。
+- 置き方は `VisitPlacement`：`ON_ANCHOR`（物の上）か `BESIDE_ANCHOR`（となりの空いた芝生。無ければ来ない）。
+
+### 来訪（`CreatureVisits`）
+
+- 時間を **5 分の区切り**に分け、区切りごとに条件を満たす組み合わせが確率で抽選する。乱数は「区切り番号と組み合わせ」から決まるハッシュ。
+  **同じ時刻なら必ず同じ結果**になるので、来訪は保存しない。画面を回しても、戻ってきても変わらない。
+- 区切りの始まりから 20〜70 秒後に現れ、終わりの 20〜70 秒前に去る。続けて来るときも、いったん去ってまた来るように見える。
+  1.5 秒かけてふわっと現れ、ふわっと消える（`CreatureVisit.opacityAt`）。
+- 一度に最大 2 匹、同じ種類は 1 匹。表の上の行ほど優先。
+- 評価は `GardenViewModel.watchVisitors()`：区切りが変わったとき、庭・天気・広さが変わったときに計算し直す。アプリを開いているあいだだけ。
+- 描画は `GardenCanvas` の `visitors`。足もとの位置は `visitorBase`（ベンチは座面、建物は屋根の高さ）。絵は `ui/render/CreatureSprites.kt`（仮）。
+  生き物は物と同じ奥行きの順で描き、タップは受けない。
+
+### 自然メモ（図鑑の「いきもの」の章）
+
+- 生き物が**見え始めた瞬間**に `RecordNatureNoteUseCase` が書く：生き物（`creature:<id>`）と組み合わせ（`combination:<rule>`）の 2 行。
+  同じ区切りの同じ訪問は 1 回だけ（ViewModel が覚えている）。
+- 初めての生き物は「🐦 ことりが遊びにきました。自然メモに書きとめました」、知っている生き物の新しい組み合わせは「📝 自然メモに新しい出会いを書きとめました」。それ以外は何も言わない。
+- 本の最後のタブ「いきもの」（`NatureNotesChapter`）：1 ページ 1 種。出会った生き物は絵・名前・ひとこと・「みつけた くみあわせ」。
+  まだのものは「？？？」と、**うわさ**（「〜の ちかくを このむようだ」のような控えめなヒント）だけ。数や割合は出さない。
+- コインやレベルの報酬は無い。図鑑の進み具合（表紙の %）にも数えない。
+
 ## ローカル通知
 
 アプリから離れているあいだに、庭のようすをそっと知らせる。
@@ -158,7 +198,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v7**。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v8**。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|
@@ -168,6 +208,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 | 5 | `grid_objects.workKind / workStartedAt / workEndsAt`（既存はすべて完成扱い） |
 | 6 | `garden_progress`（季節とチュートリアルの段階。1 行のみ）。行はマイグレーションではなく `ensureInitialized` が作る |
 | 7 | `garden_progress.gardenSize`（既存の庭は 9） |
+| 8 | `nature_notes`（自然メモ。`noteId` が主キー、`firstSeenAt`、`count`）。作成 SQL は `AppDatabase.CREATE_NATURE_NOTES`（テストで `schemas/8.json` と照合） |
 
 - マイグレーションは `AppDatabase.MIGRATION_x_y`、登録は `di/DatabaseModule.kt`。
 - DB は SQLCipher。鍵は Android Keystore で包む。プロフィールは HMAC 署名付き（`SecurityManager`）。

@@ -43,6 +43,8 @@
 | シンボル建物・庭の拡張 | `SymbolBuildingTest`（＋数を見る `ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`） |
 | 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` |
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
+| 生き物の来訪・組み合わせ表 | `CreatureVisitTest` |
+| 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |
 | リワード・1 日の回数 | `RewardTest` |
 | 川・フェンスの連結、川の位相 | `FloorAndFenceTest` `FenceAutotileTest` `FlowAndSoilTest` |
 | 風・影・耕した土 | `AtmosphereTest` `FlowAndSoilTest` |
@@ -104,6 +106,8 @@
 - 1 秒未満の演出（フェード、弾ける演出、風）は、スクリーンショットでは確認できない。
   連続撮影の差分で「動いている」ことまでは言えるが、見た目の良し悪しは実機で見てもらう。
 - 動画解析の道具（ffmpeg、OpenCV）は入っていない。
+- 生き物の確認：スターターガーデンには柵が 11 本あるので、開発者メニューで Lv.2 にしてベンチを置けば「ことり」の条件がそろう。
+  来るかどうかは 5 分ごとの抽選（50%）なので、長いと 10 分以上待つ。来たかどうかは図鑑の「いきもの」タブで確かめるのが確実（トーストは数秒で消える）。
 - 通知の確認：柵（建築 20 秒）を置いてホームに戻り、30 秒ほど待って
   `adb -s emulator-5554 shell dumpsys notification --noredact | grep -A3 miniaturegarden`。通知欄は `cmd statusbar expand-notifications`。
   Git Bash では `MSYS_NO_PATHCONV=1` を付けないと `/sdcard/...` などのパスが書き換えられる。

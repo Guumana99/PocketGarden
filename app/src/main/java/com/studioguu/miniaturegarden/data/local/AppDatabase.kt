@@ -8,11 +8,13 @@ import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
 import com.studioguu.miniaturegarden.data.local.dao.GardenProgressDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
+import com.studioguu.miniaturegarden.data.local.dao.NatureNoteDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
 import com.studioguu.miniaturegarden.data.local.entity.CollectionEntryEntity
 import com.studioguu.miniaturegarden.data.local.entity.GardenProgressEntity
 import com.studioguu.miniaturegarden.data.local.entity.GridObjectEntity
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
+import com.studioguu.miniaturegarden.data.local.entity.NatureNoteEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
 
 @Database(
@@ -22,8 +24,9 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         InventorySlotEntity::class,
         CollectionEntryEntity::class,
         GardenProgressEntity::class,
+        NatureNoteEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,6 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun inventorySlotDao(): InventorySlotDao
     abstract fun collectionEntryDao(): CollectionEntryDao
     abstract fun gardenProgressDao(): GardenProgressDao
+    abstract fun natureNoteDao(): NatureNoteDao
 
     companion object {
         const val NAME = "pocket_garden.db"
@@ -93,6 +97,18 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE garden_progress ADD COLUMN gardenSize INTEGER NOT NULL DEFAULT 9")
+            }
+        }
+
+        /** The table v8 adds, exactly as Room expects it (checked against the exported schema by a test). */
+        const val CREATE_NATURE_NOTES =
+            "CREATE TABLE IF NOT EXISTS `nature_notes` (`noteId` TEXT NOT NULL, `firstSeenAt` INTEGER NOT NULL, " +
+                "`count` INTEGER NOT NULL, PRIMARY KEY(`noteId`))"
+
+        /** v8 adds the nature notes. Nobody has met anything yet. */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(CREATE_NATURE_NOTES)
             }
         }
     }

@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
 import com.studioguu.miniaturegarden.data.local.dao.GardenProgressDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
+import com.studioguu.miniaturegarden.data.local.dao.NatureNoteDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
 import com.studioguu.miniaturegarden.data.security.SecurityManager
 import dagger.Module
@@ -30,7 +31,7 @@ object DatabaseModule {
         System.loadLibrary("sqlcipher")
         return Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.NAME)
             .openHelperFactory(SupportOpenHelperFactory(securityManager.getDatabasePassphrase()))
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6, AppDatabase.MIGRATION_6_7, AppDatabase.MIGRATION_7_8)
             .build()
     }
 
@@ -48,4 +49,7 @@ object DatabaseModule {
 
     @Provides
     fun provideGardenProgressDao(database: AppDatabase): GardenProgressDao = database.gardenProgressDao()
+
+    @Provides
+    fun provideNatureNoteDao(database: AppDatabase): NatureNoteDao = database.natureNoteDao()
 }
