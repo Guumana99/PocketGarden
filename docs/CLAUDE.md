@@ -34,7 +34,7 @@ timeout 560 ./gradlew testDebugUnitTest --tests "*ConstructionTest" --tests "*Po
 ```
 
 ```bash
-# 全件テスト（約 400 件。指示があったとき、または広く触ったときだけ）
+# 全件テスト（約 420 件。指示があったとき、または広く触ったときだけ）
 timeout 560 ./gradlew testDebugUnitTest --console=plain
 ```
 
@@ -74,9 +74,10 @@ timeout 560 ./gradlew testDebugUnitTest --console=plain
 ```
 app/src/main/java/com/studioguu/miniaturegarden/
   domain/model/     GardenItem(ショップのマスター) GridObject GardenGrid Collection StructureEffect WeatherType
-  domain/usecase/   GardenActionUseCases ConstructionUseCases CalculateOfflineProgressUseCase ほか
+  domain/usecase/   GardenActionUseCases ConstructionUseCases CalculateOfflineProgressUseCase OnboardingUseCases ほか
   data/             Room(local) DataStore(settings, reward) security asset audio ads
   ui/GardenScreen.kt GardenViewModel.kt   画面と状態
+  ui/title/         タイトル画面と見本の庭      ui/onboarding/  木箱のポップアップ、チュートリアルの札
   ui/components/GardenCanvas.kt           庭の描画すべて（大きいファイル）
   ui/render/        IsometricTransform RiverAutotile FenceAutotile Atmosphere(風・光) SoilTexture
 tools/              アセット加工スクリプト（Python）

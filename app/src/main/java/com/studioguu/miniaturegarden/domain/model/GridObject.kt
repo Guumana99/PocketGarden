@@ -58,6 +58,9 @@ data class GridObject(
     /** A fence, under whichever of its ids. Fences join up with the fences next to them. */
     val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
 
+    /** The crate a new player opens for their first seed. */
+    val isStarterCrate: Boolean get() = objectId == STARTER_CRATE_OBJECT_ID
+
     /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
     val footprint: Footprint get() = Footprint.forObjectId(objectId)
 
@@ -81,6 +84,12 @@ data class GridObject(
         /** Growth a seed starts with when it is planted in composted soil. */
         const val COMPOST_GROWTH_BONUS = 0.2f
         const val FENCE_OBJECT_ID = "struct_fence"
+
+        /**
+         * The small wooden crate a new garden starts with (see [StarterGarden]). It is not an item:
+         * it cannot be bought, moved or put away, and tapping it opens it, which uses it up.
+         */
+        const val STARTER_CRATE_OBJECT_ID = "deco_starter_crate"
     }
 }
 

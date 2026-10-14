@@ -47,13 +47,15 @@
 | 画像・アトラス・`tools/` | `BundledArtTest` `AssetPipelineTest` |
 | 文言・レイアウト・トースト | `PolishTest`（＋文言を見る `StoreObjectTest` `BundledArtTest`） |
 | 設定・音・改ざん検出 | `SettingsRepositoryTest` `AudioManagerTest` `TimeTamperDetectionTest` |
+| タイトル・スターターガーデン・チュートリアル・季節 | `OnboardingTest` |
 
 アイテムや図鑑ページを**増減**したら、数を固定値で見ているテストが落ちる
 （`ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`）。これは期待値の更新でよい。
 
 ### テストの癖
 
-- テスト用の偽リポジトリ `FakeGardenRepository` は `GardenActionUseCasesTest.kt` の末尾にある（`till()` `discover()` など）。
+- テスト用の偽リポジトリ `FakeGardenRepository` は `GardenActionUseCasesTest.kt` の末尾にある（`till()` `discover()` `progress` など）。
+  `GardenRepository` にメソッドを足したら、ここにも足す。
 - UI は Compose の実機テストが無い。代わりに、**計算を純関数に切り出してテスト**する
   （`Wind` `Daylight` `SoilTexture` `CameraFrame` `popScale` `RiverAutotile.frameFor`）。
   描画関数そのものは、ソースを文字列として読んで「〜を呼んでいない」を確かめるテストがある（`PolishTest` `CameraModeTest`）。
@@ -89,6 +91,8 @@
 - `adb` は必ず `-s emulator-5554`。USB の実機が繋がっていることがある。
 - 起動直後はアプリが重く、**最初の数回のタップは取りこぼす**。起動後 50〜60 秒待ち、
   結果をスクリーンショットで確かめてから次へ進む。
+- 起動するとまずタイトル画面。「はじめる」は y≈2034、「つづきから」は y≈2195（初回は灰色）。
+  新しい庭では中央 (4,4) に木箱があり、耕した土は (3..5, 5..6)。
 - 画面は 1080×2424。マスの中心は `x = 540 + (gx - gy) * 51.1`、`y = 1204 + (gx + gy - 8) * 25.6`。
   下部ツールバーは y≈2270（クワ 190、持ち物 718、ショップ 885）。
 - エミュレータのデータは起動ごとに初期状態に戻っていた。そのため**旧データからの移行はエミュレータでは確かめられていない**。実機への上書きインストールで確認する。

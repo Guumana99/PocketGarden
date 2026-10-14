@@ -23,4 +23,7 @@ interface GridObjectDao {
 
     @Query("DELETE FROM grid_objects WHERE instanceId = :instanceId")
     suspend fun deleteById(instanceId: String)
+
+    @Query("DELETE FROM grid_objects")
+    suspend fun deleteAll()
 }

@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.data.repository
 import androidx.room.withTransaction
 import com.studioguu.miniaturegarden.data.local.AppDatabase
 import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
+import com.studioguu.miniaturegarden.data.local.dao.GardenProgressDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
@@ -12,9 +13,10 @@ import com.studioguu.miniaturegarden.data.local.mapper.toDomain
 import com.studioguu.miniaturegarden.data.local.mapper.toEntity
 import com.studioguu.miniaturegarden.data.security.SecurityManager
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
-import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.StarterGarden
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import javax.inject.Inject
@@ -29,6 +31,7 @@ class GardenRepositoryImpl @Inject constructor(
     private val gridObjectDao: GridObjectDao,
     private val inventorySlotDao: InventorySlotDao,
     private val collectionEntryDao: CollectionEntryDao,
+    private val gardenProgressDao: GardenProgressDao,
     private val securityManager: SecurityManager,
 ) : GardenRepository {
 
@@ -40,15 +43,34 @@ class GardenRepositoryImpl @Inject constructor(
             ?: securityManager.stampAndSign(UserProfileEntity(coins = UserProfile.STARTING_COINS))
                 .also { userProfileDao.upsert(it) }
         if (existing == null) {
-            // Starter kit, so the very first session has something to plant.
-            inventorySlotDao.insertIfAbsent(
-                listOf(InventorySlotEntity(0, GardenItem.SEED_TULIP.itemId, STARTER_SEED_COUNT))
-            )
+            // A new garden: a small fenced plot with a tilled bed, and the crate whose seed is
+            // the first thing to plant. The player starts out with an empty bag.
+            gridObjectDao.upsertAll(StarterGarden.objects(System.currentTimeMillis()).map { it.toEntity() })
+            gardenProgressDao.upsert(GardenProgress.NEW_GARDEN.toEntity())
+        } else if (gardenProgressDao.get() == null) {
+            // Saved before there was any progress to keep: the player knows the way already.
+            gardenProgressDao.upsert(GardenProgress.EXISTING_GARDEN.toEntity())
         }
         inventorySlotDao.insertIfAbsent(
             (0 until profile.inventoryCapacity).map { InventorySlotEntity(slotIndex = it) }
         )
     }
+
+    override suspend fun hasSavedGarden(): Boolean = userProfileDao.get() != null
+
+    override suspend fun deleteSavedGarden() = database.withTransaction {
+        gridObjectDao.deleteAll()
+        inventorySlotDao.deleteAll()
+        collectionEntryDao.deleteAll()
+        gardenProgressDao.deleteAll()
+        userProfileDao.deleteAll()
+    }
+
+    override fun observeProgress(): Flow<GardenProgress?> = gardenProgressDao.observe().map { it?.toDomain() }
+
+    override suspend fun getProgress(): GardenProgress? = gardenProgressDao.get()?.toDomain()
+
+    override suspend fun saveProgress(progress: GardenProgress) = gardenProgressDao.upsert(progress.toEntity())
 
     override fun observeUserProfile(): Flow<UserProfile?> = userProfileDao.observe().map { it?.toDomain() }
 
@@ -87,5 +109,3 @@ class GardenRepositoryImpl @Inject constructor(
     override suspend fun upsertCollectionRecord(record: CollectionRecord) =
         collectionEntryDao.upsert(record.toEntity())
 }
-
-private const val STARTER_SEED_COUNT = 3

@@ -17,4 +17,7 @@ interface CollectionEntryDao {
 
     @Upsert
     suspend fun upsert(entry: CollectionEntryEntity)
+
+    @Query("DELETE FROM collection_entries")
+    suspend fun deleteAll()
 }

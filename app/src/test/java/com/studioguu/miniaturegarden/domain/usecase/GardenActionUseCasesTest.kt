@@ -4,6 +4,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
@@ -627,6 +628,22 @@ internal class FakeGardenRepository : GardenRepository {
 
     override suspend fun ensureInitialized() = Unit
     override suspend fun <T> runInTransaction(block: suspend () -> T): T = block()
+
+    var progress: GardenProgress? = null
+
+    override suspend fun hasSavedGarden(): Boolean = profile != null
+    override suspend fun deleteSavedGarden() {
+        objects.clear()
+        slots.clear()
+        collection.clear()
+        progress = null
+        profile = null
+    }
+    override fun observeProgress(): Flow<GardenProgress?> = MutableStateFlow(progress)
+    override suspend fun getProgress(): GardenProgress? = progress
+    override suspend fun saveProgress(progress: GardenProgress) {
+        this.progress = progress
+    }
 
     override fun observeUserProfile(): Flow<UserProfile?> = MutableStateFlow(profile)
     override suspend fun getUserProfile(): UserProfile? = profile

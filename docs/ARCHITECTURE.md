@@ -10,7 +10,7 @@
 | ビルド | Gradle 8.11 / AGP 8.10 / KSP、JDK 21 |
 | SDK | minSdk 26、target / compile 35 |
 | 広告 | Google Mobile Ads 23.6（リワード。**テスト ID**） |
-| テスト | JUnit4 の JVM ユニットテストのみ（約 400 件）。UI テストなし |
+| テスト | JUnit4 の JVM ユニットテストのみ（約 420 件）。UI テストなし |
 
 ## 層
 
@@ -87,7 +87,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v5**。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v6**。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|
@@ -95,6 +95,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 | 3 | `collection_entries`（図鑑） |
 | 4 | `collection_entries.revealed`（手動登録。既存行は登録済みに） |
 | 5 | `grid_objects.workKind / workStartedAt / workEndsAt`（既存はすべて完成扱い） |
+| 6 | `garden_progress`（季節とチュートリアルの段階。1 行のみ）。行はマイグレーションではなく `ensureInitialized` が作る |
 
 - マイグレーションは `AppDatabase.MIGRATION_x_y`、登録は `di/DatabaseModule.kt`。
 - DB は SQLCipher。鍵は Android Keystore で包む。プロフィールは HMAC 署名付き（`SecurityManager`）。
@@ -142,9 +143,44 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 `drawWorkSite`：工事シート＋足場＋土ぼこり＋進捗バー。**中身は一切描かない。**
 `READY` は進捗バーの代わりに「✨！」の吹き出し。完成時は `drawCompletionBurst` と `popScale`。
 
+## 起動と導入（初回）
+
+- `MainActivity` は `TitleScreen` → `GardenScreen` の 2 画面を `Crossfade` で切り替えるだけ（ナビゲーションライブラリは不使用）。
+  庭に入ったら戻らない。戻るキーはアプリを閉じる。
+- タイトル（`ui/title/`）：背景は `GardenBackdrop`、木の看板、`GardenCanvas` で描く**見本の庭**（`TitleSampleGarden`、保存しない。
+  花が 1.2 秒ごとに 1 段ずつ育ち、満開でしばらく止まってから最初に戻る）。見本の上に透明な層を重ね、触っても動かない。
+  - 「はじめる」：セーブが無ければそのまま庭へ。あれば確認のうえ `deleteSavedGarden()` で全部消してから庭へ。
+  - 「つづきから」：セーブがあるときだけ押せる。セーブの有無は `hasSavedGarden()`（プロフィールの行があるか）。
+- 新しい庭は `GardenRepositoryImpl.ensureInitialized` が作る：プロフィール（100 コイン）、空の持ち物、
+  `StarterGarden.objects()`（中央の柵の区画、耕した土 6 マス、木箱）、`GardenProgress.NEW_GARDEN`（春・木箱から）。
+  **最初の種は持ち物に入っていない**（以前は 3 個。今は木箱の 1 個だけ）。
+  セーブ済みで `garden_progress` が無い庭（v5 以前）には `EXISTING_GARDEN`（春・チュートリアル済み）を入れる。
+
+### チュートリアル（`TutorialStep`）
+
+```
+OPEN_CRATE ──木箱を開ける──▶ PLANT_SEED ──作物が庭にある──▶ WATER_SEEDLING ──水やり──▶ DONE
+```
+
+- 木箱 `deco_starter_crate` はアイテムではない（買えない・動かせない・しまえない）。タップで選択の代わりに木目のポップアップが開き、
+  「受け取る」で `OpenStarterCrateUseCase`：木箱を消し、チューリップの種 1 個を持ち物へ（同じ種に重ねる／空き枠へ。満杯なら何もしない）。
+- 段階を進めるのは `FollowTutorialUseCase`。**プレイヤーの操作ではなく庭の状態を見て**進める（起動時・同期ごと・置いた後に呼ぶ）。
+  途中でアプリを閉じても、別の手順で達成しても、次に見たときに追いつく。
+  - 種まきの段階で作物が現れたら、その作物の水分を 50%（`SOWN_SEED_MOISTURE`）にする。新しい作物は水分 100% で、
+    水やり（80% 未満のときだけできる）がすぐにはできないため。
+  - 水やりの段階は `wateringDone()` で終わる。雨などで「まだ湿っている」になった水やりも 1 回と数える。
+  - 水やりの前に作物が無くなったら（収穫・撤去）、そのまま `DONE`。
+- 導きは控えめに：対象のマス（`TutorialGuide.hintCells`）に小さな星 3 つとほのかな光（`drawHintTwinkle`）、
+  ツールバーの上に木の札の一文（`TutorialHint`）。札は他のパネルが出ているあいだは引っ込む。操作は何も制限しない。
+- 完了時は「✨ 準備はおしまい。あとは自由に育てましょう」のトースト。
+
+### 季節（`Season`）
+
+`garden_progress.season` に保存し、上部の天気チップに「🌸春」と出す。今は**春のまま進まない**。季節による変化は未実装。
+
 ## 画面
 
-- `GardenScreen` が唯一の画面。ダイアログ（ショップ、図鑑、設定、持ち物）を上に出す。
+- 遊ぶ画面は `GardenScreen` だけ（その前にタイトル）。ダイアログ（ショップ、図鑑、設定、持ち物）を上に出す。
 - 下部ツールバーは固定。選択パネルと各モードのバナーはその上に**重ねて**フェードで切り替える。
 - 通知は自前の `GardenToastHost`（レイアウトを動かさない）。
 - カメラモードは HUD 全体と排他の分岐。写真は庭の `graphicsLayer` を 4:5 の枠で切り抜く（`CameraFrame`）。
