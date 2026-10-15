@@ -257,7 +257,7 @@ class ConstructionTest {
         assertEquals(listOf(FinishedWork("struct_well", WorkKind.PACKING)), complete(t0 + 60 * second))
 
         assertTrue(repo.objects.isEmpty())
-        assertEquals(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 1), repo.slots.getValue(0))
+        assertEquals(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 1), repo.slots.getValue(0).contents())
         // The experience for building it goes back with it, as when anything is put away.
         assertEquals(80L, repo.profile?.currentXp)
     }
@@ -290,7 +290,7 @@ class ConstructionTest {
         assertEquals(ActionResult.SUCCESS, startRemoval("soil_1_1", toBag = false, t0))
 
         assertTrue(repo.objects.isEmpty())
-        assertEquals(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1), repo.slots.getValue(0))
+        assertEquals(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1), repo.slots.getValue(0).contents())
     }
 
     @Test

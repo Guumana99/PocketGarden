@@ -146,10 +146,24 @@ enum class GardenItem(
     val unlockLevel: Int get() = (unlock as? UnlockCondition.PlayerLevel)?.level ?: 1
 
     /**
-     * Where the item stands on its shelf: what is for sale from the start comes first, then what
-     * a level opens (lower levels first), then what the encyclopedia opens.
+     * The seasons it is at its best in (its "shun"); empty for something good all year round.
+     * Only the bag's sorting reads this so far: the shop and planting do not follow the seasons
+     * yet (see "四季" in docs/ARCHITECTURE.md).
      */
-    private val shelfRank: Int
+    val seasons: Set<Season>
+        get() = when (this) {
+            SEED_TULIP -> setOf(Season.SPRING)
+            SEED_SUNFLOWER -> setOf(Season.SUMMER)
+            SEED_ROSE -> setOf(Season.SPRING, Season.AUTUMN)
+            else -> emptySet()
+        }
+
+    /**
+     * How early it opens: what is for sale from the start comes first, then what a level opens
+     * (lower levels first), then what the encyclopedia opens. The shop's shelves and the bag's
+     * level order both go by this.
+     */
+    val openingRank: Int
         get() = when (val condition = unlock) {
             UnlockCondition.None -> 0
             is UnlockCondition.PlayerLevel -> condition.level
@@ -161,7 +175,7 @@ enum class GardenItem(
 
         /** The items of one shelf of the shop, in the order they are shown: soonest first, then cheapest. */
         fun shelf(category: ItemCategory): List<GardenItem> =
-            entries.filter { it.category == category }.sortedWith(compareBy({ it.shelfRank }, { it.price }))
+            entries.filter { it.category == category }.sortedWith(compareBy({ it.openingRank }, { it.price }))
 
         /** Items that are locked at [previousLevel] and for sale at [newLevel]. */
         fun unlockedBetween(previousLevel: Int, newLevel: Int): List<GardenItem> = entries.filter {

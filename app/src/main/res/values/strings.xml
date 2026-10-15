@@ -101,6 +101,16 @@
     <!-- Inventory -->
     <string name="inventory_title">もちもの</string>
     <string name="inventory_hint">置きたいアイテムをタップ</string>
+    <string name="inventory_sort_acquired">入手順</string>
+    <string name="inventory_sort_kind">種別</string>
+    <string name="inventory_sort_amount">所持数順</string>
+    <string name="inventory_sort_season">季節順</string>
+    <string name="inventory_sort_level">レベル順</string>
+    <string name="inventory_sort_description">並び替え：%1$s</string>
+    <string name="inventory_filter_all">すべて</string>
+    <string name="inventory_filter_seeds">たね</string>
+    <string name="inventory_filter_furniture">かぐ</string>
+    <string name="inventory_filter_other">そのた</string>
     <string name="placing_banner">配置中: %1$s ×%2$d　空いているマスをタップ</string>
     <string name="placing_cancel">やめる</string>
 

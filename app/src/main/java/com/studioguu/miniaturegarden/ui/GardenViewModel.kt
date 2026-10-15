@@ -23,6 +23,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -236,6 +237,15 @@ class GardenViewModel @Inject constructor(
         combine(gardenRepository.observeInventory(), gardenRepository.observeUserProfile()) { slots, profile ->
             if (profile == null) slots else slots.filter { it.slotIndex < profile.inventoryCapacity }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** How the bag is sorted; kept in the settings, so it stays as the player left it. */
+    val inventorySort: StateFlow<InventorySort> = settingsRepository.settings.map { it.inventorySort }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, InventorySort.DEFAULT)
+
+    fun setInventorySort(sort: InventorySort) {
+        if (sort == inventorySort.value) return
+        viewModelScope.launch { settingsRepository.update { it.copy(inventorySort = sort) } }
+    }
 
     private val _placingSlotIndex = MutableStateFlow<Int?>(null)
 

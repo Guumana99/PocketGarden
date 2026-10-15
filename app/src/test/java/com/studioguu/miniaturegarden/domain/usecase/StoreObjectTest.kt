@@ -41,7 +41,7 @@ class StoreObjectTest {
         assertEquals(ActionResult.SUCCESS, store("rock"))
 
         assertTrue(repo.objects.isEmpty())
-        assertEquals(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1), repo.slots.getValue(0))
+        assertEquals(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1), repo.slots.getValue(0).contents())
         assertEquals(100L, repo.profile?.coins) // nothing paid, nothing refunded
         assertEquals(0, repo.profileSaves)
     }
@@ -57,7 +57,7 @@ class StoreObjectTest {
         store("stone")
 
         assertEquals(6, repo.slots.getValue(2).amount)
-        assertEquals(InventorySlot(1, GardenItem.FLOOR_COBBLESTONE.itemId, 1), repo.slots.getValue(1))
+        assertEquals(InventorySlot(1, GardenItem.FLOOR_COBBLESTONE.itemId, 1), repo.slots.getValue(1).contents())
         assertEquals(3, repo.slots.getValue(0).amount)
     }
 
@@ -76,7 +76,7 @@ class StoreObjectTest {
 
         FencePart.entries.forEach { assertEquals(ActionResult.SUCCESS, store(it.name)) }
 
-        assertEquals(InventorySlot(0, GardenItem.STRUCT_FENCE.itemId, 3), repo.slots.getValue(0))
+        assertEquals(InventorySlot(0, GardenItem.STRUCT_FENCE.itemId, 3), repo.slots.getValue(0).contents())
     }
 
     @Test
@@ -99,7 +99,7 @@ class StoreObjectTest {
         assertEquals(ActionResult.SUCCESS, store("rock"))
 
         assertEquals(InventorySlot.MAX_STACK, repo.slots.getValue(0).amount)
-        assertEquals(InventorySlot(1, GardenItem.DECO_ROCK.itemId, 1), repo.slots.getValue(1))
+        assertEquals(InventorySlot(1, GardenItem.DECO_ROCK.itemId, 1), repo.slots.getValue(1).contents())
     }
 
     @Test
@@ -139,7 +139,7 @@ class StoreObjectTest {
             store(repo.objects.values.single().instanceId)
         }
         assertEquals(80L, repo.profile?.currentXp)
-        assertEquals(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 1), repo.slots.getValue(0))
+        assertEquals(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 1), repo.slots.getValue(0).contents())
     }
 
     @Test

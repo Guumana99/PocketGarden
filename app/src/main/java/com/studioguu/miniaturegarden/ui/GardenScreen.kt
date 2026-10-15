@@ -65,6 +65,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.InventoryFilter
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.NotificationAccess
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -141,8 +142,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val season by viewModel.season.collectAsStateWithLifecycle()
     val inventorySlots by viewModel.inventorySlots.collectAsStateWithLifecycle()
     val savedView by viewModel.savedView.collectAsStateWithLifecycle()
+    val inventorySort by viewModel.inventorySort.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
+    // The bag's tab is kept while the app is open; its sort order is kept in the settings.
+    var inventoryFilter by rememberSaveable { mutableStateOf(InventoryFilter.ALL) }
     var showShop by rememberSaveable { mutableStateOf(false) }
     var showDebugMenu by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -462,6 +466,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     if (showInventory) {
         InventoryBottomSheet(
             slots = inventorySlots,
+            sort = inventorySort,
+            onSortChange = viewModel::setInventorySort,
+            filter = inventoryFilter,
+            onFilterChange = { inventoryFilter = it },
+            season = season,
             onSlotSelected = { slotIndex ->
                 viewModel.startPlacing(slotIndex)
                 showInventory = false

@@ -34,7 +34,7 @@ timeout 560 ./gradlew testDebugUnitTest --tests "*ConstructionTest" --tests "*Po
 ```
 
 ```bash
-# 全件テスト（約 490 件。指示があったとき、または広く触ったときだけ）
+# 全件テスト（約 500 件。指示があったとき、または広く触ったときだけ）
 timeout 560 ./gradlew testDebugUnitTest --console=plain
 ```
 
@@ -74,6 +74,7 @@ timeout 560 ./gradlew testDebugUnitTest --console=plain
 ```
 app/src/main/java/com/studioguu/miniaturegarden/
   domain/model/     GardenItem(ショップのマスター) GridObject GardenGrid Collection StructureData StructureEffect GardenExpansion WeatherType
+                    InventorySort(もちものの並び替え・タブ)
                     CreatureTable(生き物の組み合わせ表 VisitRule) CreatureVisits(来訪の判定・自然メモ)
   domain/usecase/   GardenActionUseCases ConstructionUseCases CalculateOfflineProgressUseCase OnboardingUseCases ほか
   data/             Room(local) DataStore(settings, reward) security asset audio ads notifications(WorkManager)

@@ -77,12 +77,14 @@ fun InventorySlotEntity.toDomain() = InventorySlot(
     slotIndex = slotIndex,
     itemId = itemId,
     amount = amount,
+    acquiredOrder = acquiredOrder,
 )
 
 fun InventorySlot.toEntity() = InventorySlotEntity(
     slotIndex = slotIndex,
     itemId = itemId,
     amount = amount,
+    acquiredOrder = acquiredOrder,
 )
 
 fun CollectionEntryEntity.toDomain() = CollectionRecord(

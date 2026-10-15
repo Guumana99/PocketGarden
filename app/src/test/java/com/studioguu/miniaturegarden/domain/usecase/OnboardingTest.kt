@@ -99,7 +99,7 @@ class OnboardingTest {
 
         assertTrue(repo.objects.values.none { it.isStarterCrate })
         val seeds = repo.slots.values.filter { !it.isEmpty }
-        assertEquals(listOf(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1)), seeds)
+        assertEquals(listOf(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1)), seeds.map { it.contents() })
         assertEquals(TutorialStep.TILL_SOIL, step)
         // Only once: the crate is gone.
         assertEquals(ActionResult.NOT_FOUND, openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID))
@@ -112,7 +112,7 @@ class OnboardingTest {
 
         assertEquals(ActionResult.SUCCESS, openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID))
 
-        assertEquals(InventorySlot(3, GardenItem.SEED_TULIP.itemId, 3), repo.slots[3])
+        assertEquals(InventorySlot(3, GardenItem.SEED_TULIP.itemId, 3), repo.slots[3]!!.contents())
         assertTrue(repo.slots[0]!!.isEmpty)
     }
 

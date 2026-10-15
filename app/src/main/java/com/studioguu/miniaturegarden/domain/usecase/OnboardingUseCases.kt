@@ -4,6 +4,7 @@ import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.StarterGarden
 import com.studioguu.miniaturegarden.domain.model.TutorialGuide
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
+import com.studioguu.miniaturegarden.domain.model.nextAcquisition
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import javax.inject.Inject
 
@@ -21,10 +22,11 @@ class OpenStarterCrateUseCase @Inject constructor(
 
         val itemId = StarterGarden.CRATE_REWARD.itemId
         val slots = gardenRepository.getInventory()
+        val acquired = slots.nextAcquisition()
         val slot = slots.firstOrNull { it.itemId == itemId && !it.isEmpty }
-            ?.let { it.copy(amount = it.amount + StarterGarden.CRATE_REWARD_AMOUNT) }
+            ?.let { it.copy(amount = it.amount + StarterGarden.CRATE_REWARD_AMOUNT, acquiredOrder = acquired) }
             ?: slots.firstOrNull { it.isEmpty }
-                ?.let { InventorySlot(it.slotIndex, itemId, StarterGarden.CRATE_REWARD_AMOUNT) }
+                ?.let { InventorySlot(it.slotIndex, itemId, StarterGarden.CRATE_REWARD_AMOUNT, acquired) }
             ?: return@runInTransaction ActionResult.INVENTORY_FULL
 
         gardenRepository.deleteGridObject(crate.instanceId)

@@ -22,6 +22,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
+import com.studioguu.miniaturegarden.domain.usecase.contents
 import org.junit.Test
 
 class FenceAutotileTest {
@@ -225,7 +226,7 @@ class FenceAutotileTest {
         assertEquals(ActionResult.SUCCESS, store(idAt(4, 4)))
         assertEquals(ActionResult.SUCCESS, store(idAt(4, 3)))
 
-        assertEquals(InventorySlot(0, GardenItem.STRUCT_FENCE.itemId, 2), repo.slots.getValue(0))
+        assertEquals(InventorySlot(0, GardenItem.STRUCT_FENCE.itemId, 2), repo.slots.getValue(0).contents())
         // The three that are left no longer touch each other.
         for ((x, y) in listOf(5 to 4, 4 to 5, 3 to 4)) assertEquals(0, maskNow(x, y))
 
