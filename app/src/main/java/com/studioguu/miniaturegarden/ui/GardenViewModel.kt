@@ -23,6 +23,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -40,6 +41,7 @@ import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
+import com.studioguu.miniaturegarden.domain.usecase.AdvanceSeasonUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CompleteWorkUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
@@ -109,6 +111,7 @@ class GardenViewModel @Inject constructor(
     private val expandGarden: ExpandGardenUseCase,
     private val scheduleNotifications: ScheduleGardenNotificationsUseCase,
     private val recordNatureNote: RecordNatureNoteUseCase,
+    private val advanceSeason: AdvanceSeasonUseCase,
     private val settingsRepository: SettingsRepository,
     private val grantReward: GrantRewardUseCase,
     private val rewardedAds: RewardedAdManager,
@@ -139,6 +142,35 @@ class GardenViewModel @Inject constructor(
 
     val season: StateFlow<Season> = progress.map { it?.season ?: Season.SPRING }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
+
+    /** The post, newest first. */
+    val letters: StateFlow<List<Letter>> = gardenRepository.observeLetters()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The player has opened the post: everything in it has been seen. */
+    fun markLettersRead() {
+        viewModelScope.launch { gardenRepository.markLettersRead() }
+    }
+
+    /** Debug menu: the rest of this season goes by at once, and the next one comes. */
+    fun debugNextSeason() {
+        viewModelScope.launch {
+            initJob.join()
+            val arrived = actionMutex.withLock { advanceSeason.skipSeason(System.currentTimeMillis()) }
+            arrived?.let(::announceSeason)
+        }
+    }
+
+    /** A season has come while the player is here: said in passing; the letter is in the post. */
+    private fun announceSeason(season: Season) {
+        audio.play(SoundEffect.LEVEL_UP)
+        _seasonArrived.trySend(season)
+    }
+
+    private val _seasonArrived = Channel<Season>(Channel.BUFFERED)
+
+    /** Seasons that have just come, for the screen to say so. */
+    val seasonArrived: Flow<Season> = _seasonArrived.receiveAsFlow()
 
     /** The cells the current first step points at with a sparkle. */
     val hintCells: StateFlow<Set<GridCell>> = combine(tutorialStep, gridObjects, gardenMap) { step, objects, map ->
@@ -430,6 +462,7 @@ class GardenViewModel @Inject constructor(
     fun sync() {
         viewModelScope.launch {
             initJob.join()
+            var arrived: Season? = null
             val finished = actionMutex.withLock {
                 val now = System.currentTimeMillis()
                 // Jobs are only finished on time that can be trusted; otherwise the sync has
@@ -437,7 +470,10 @@ class GardenViewModel @Inject constructor(
                 (if (syncGarden(now, currentWeather(now)).isTrusted) completeWork(now) else emptyList())
                     // A plant harvested or cleared away under the first steps lets them go.
                     .also { followTutorial() }
+                    // The year turns, and the post brings word of it.
+                    .also { arrived = advanceSeason(now) }
             }
+            arrived?.let(::announceSeason)
             if (finished.isNotEmpty()) {
                 audio.play(if (finished.any { it.kind == WorkKind.READY }) SoundEffect.COIN else SoundEffect.PLANT)
                 // A finished building is not announced yet, only pointed out: it is the player's

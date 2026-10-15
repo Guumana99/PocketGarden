@@ -43,6 +43,10 @@
     <string name="object_plant_tulip">チューリップ</string>
     <string name="object_plant_sunflower">ひまわり</string>
     <string name="object_plant_rose">バラ</string>
+    <string name="object_plant_cosmos">コスモス</string>
+    <string name="object_plant_snowdrop">スノードロップ</string>
+    <string name="object_plant_mint">ミント</string>
+    <string name="object_floor_greenhouse">ガラスの温室</string>
     <string name="object_deco_rock">岩</string>
     <string name="object_struct_hut">小屋</string>
     <string name="object_struct_well">井戸</string>
@@ -96,6 +100,9 @@
     <string name="item_seed_tulip">チューリップの種</string>
     <string name="item_seed_sunflower">ひまわりの種</string>
     <string name="item_seed_rose">バラの苗</string>
+    <string name="item_seed_cosmos">コスモスの種</string>
+    <string name="item_seed_snowdrop">スノードロップの球根</string>
+    <string name="item_seed_mint">ミントの苗</string>
     <string name="item_tile_river">川タイル</string>
 
     <!-- Inventory -->
@@ -163,6 +170,10 @@
     <string name="collection_unknown">？？？</string>
     <string name="collection_hint_harvest">そだてて　しゅうかく すると　とうろく される。</string>
     <string name="collection_hint_placement">にわに　おくと　とうろく される。</string>
+    <string name="flavor_cosmos">あきかぜに　ゆれる　うすべにの はな。\nほそい くきでも　かぜに まけない。</string>
+    <string name="flavor_snowdrop">ゆきの したから　かおを だす。\nしろい すずは　はるを まつ あいず。</string>
+    <string name="flavor_mint">きせつを えらばない　つよい はっぱ。\nふれると　すっと すずしい かおりが する。</string>
+    <string name="flavor_greenhouse">ガラスの なかは　いつも ぽかぽか。\nきせつはずれの はなも　ここなら そだつ。</string>
     <string name="flavor_tulip">はるの にわの　ていばん。\nそだてやすく　はじめての ひとにも やさしい。</string>
     <string name="flavor_sunflower">おひさまを　おいかけて　せを のばす。\nのどが かわきやすいので　みずやりは こまめに。</string>
     <string name="flavor_rose">はなの じょおう。\nてまは かかるが　さいたときの よろこびは ひとしお。</string>
@@ -239,6 +250,7 @@
     <string name="debug_skip_day">+1 日</string>
     <string name="debug_cycle_weather">天気を切り替え</string>
     <string name="debug_boost">+500 コイン・Lv+1</string>
+    <string name="debug_next_season">次の季節へ</string>
 
     <!-- Title screen -->
     <string name="title_subtitle">Pocket Garden</string>
@@ -287,6 +299,28 @@
     <string name="msg_expansion_locked">まだ庭を広げられません</string>
     <string name="msg_garden_at_max_size">庭はこれ以上広げられません</string>
     <string name="msg_garden_expanded">🌱 庭が広がりました</string>
+
+    <!-- Seasons, the post and the greenhouse -->
+    <string name="msg_out_of_season">🌱 いまは育てるのに適さない季節です。旬がくるまで、もちものにとっておきましょう</string>
+    <string name="msg_in_use">中で育っている作物を、先に収穫するか片づけてください</string>
+    <string name="msg_season_arrived">%1$s %2$sがやってきました。ポストにお便りが届いています</string>
+    <string name="shop_season_caption">%1$s いまは%2$sの種が並んでいます。季節がかわると入れかわります</string>
+    <string name="post_title">ポスト</string>
+    <string name="post_empty">まだお便りはありません</string>
+    <string name="post_new">あたらしい</string>
+    <string name="post_button">ポスト</string>
+    <string name="letter_arrived_title">%1$s %2$sがやってきました</string>
+    <string name="letter_arrived_body">ショップには%1$sの種が並んでいます。季節の花を育ててみませんか。</string>
+    <string name="letter_coming_title">%1$s もうすぐ%2$s</string>
+    <string name="letter_coming_body">もうすぐ%1$sがやってきます。いまの季節の種は、季節がかわるとショップから姿を消します。育てたい種があれば、いまのうちに買っておくと安心です。季節外れの種も、ガラスの温室なら育てられます。</string>
+    <string name="letter_scene_spring">やわらかな日ざしに、つぼみがほころびはじめました。</string>
+    <string name="letter_scene_summer">まぶしい日ざしに、庭の緑がいっそう濃くなりました。</string>
+    <string name="letter_scene_autumn">風が涼しくなって、葉っぱが色づきはじめました。</string>
+    <string name="letter_scene_winter">庭がうっすらと雪化粧をしました。</string>
+    <string name="reveal_post_name">📮 ポスト</string>
+    <string name="reveal_post_text">季節のたよりなど、
+庭へのお便りが届きます。
+右のポストのボタンから読めます。</string>
     <string name="expand_button">庭を広げる（%1$d×%1$d）</string>
     <string name="expand_needs_level">Lv.%1$d で %2$d×%2$d に広げられます</string>
     <string name="expand_max">庭はいちばん広くなりました</string>

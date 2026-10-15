@@ -14,6 +14,7 @@ import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
+import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
@@ -55,6 +56,11 @@ class ShopViewModel @Inject constructor(
 ) : ViewModel() {
 
     val items: List<GardenItem> = GardenItem.entries
+
+    /** The garden's season: the seed shelf only holds what is in season. */
+    val season: StateFlow<Season> = gardenRepository.observeProgress()
+        .map { it?.season ?: Season.SPRING }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
 
     val coins: StateFlow<Long> = gardenRepository.observeUserProfile()
         .map { it?.coins ?: 0L }

@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.nextAcquisition
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
@@ -56,6 +57,12 @@ enum class ActionResult {
 
     /** The garden cannot grow yet: see [com.studioguu.miniaturegarden.domain.model.ExpansionCheck]. */
     EXPANSION_LOCKED,
+
+    /** A seasonal crop was to be sown out of its season, outside a greenhouse, or bought out of season. */
+    OUT_OF_SEASON,
+
+    /** Something else is in the way: a greenhouse with a plant growing in it cannot be taken away. */
+    IN_USE,
 
     /** The garden is as large as it gets. */
     GARDEN_AT_MAX_SIZE,
@@ -209,6 +216,12 @@ class PlaceItemUseCase @Inject constructor(
             }
             if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX) && !grid.isTilled(gridX, gridY)) {
                 return@runInTransaction ActionResult.NEEDS_TILLED_SOIL
+            }
+            // Out of its season a crop only grows under glass. Seeds bought earlier stay in the
+            // bag for when their season comes round again.
+            val season = gardenRepository.getProgress()?.season
+            if (item.category == ItemCategory.SEED && season != null && !item.isInSeason(season) && !grid.isUnderGlass(gridX, gridY)) {
+                return@runInTransaction ActionResult.OUT_OF_SEASON
             }
 
             // A seed planted in composted soil starts off ahead, and that uses the compost up.
@@ -396,6 +409,9 @@ class PurchaseItemUseCase @Inject constructor(
         val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
         val pages = CollectionProgress(gardenRepository.getCollection()).revealed
         if (!item.isUnlockedFor(profile.stats.copy(collectionPages = pages))) return@runInTransaction ActionResult.ITEM_LOCKED
+        // Seasonal crops are only on sale in their season; the shop does not show them otherwise.
+        val season = gardenRepository.getProgress()?.season
+        if (season != null && !item.isInSeason(season)) return@runInTransaction ActionResult.OUT_OF_SEASON
         // One symbol building per garden, and one in the bag counts as well.
         if (item.isSymbol && gardenRepository.ownsSymbolBuilding()) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
         if (profile.coins < item.price) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
@@ -474,6 +490,9 @@ class SkipTimeUseCase @Inject constructor(
                 )
             }
             gardenRepository.upsertGridObjects(calculateOfflineProgress(aged, now, weather))
+            // The year turns with the skipped time as well.
+            gardenRepository.getProgress()?.takeIf { it.seasonStartedAt > 0L }
+                ?.let { gardenRepository.saveProgress(it.copy(seasonStartedAt = it.seasonStartedAt - millis)) }
             ActionResult.SUCCESS
         }
 }

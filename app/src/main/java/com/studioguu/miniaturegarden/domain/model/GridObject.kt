@@ -49,6 +49,12 @@ data class GridObject(
     val isTilledSoil: Boolean get() = objectId == TILLED_SOIL_OBJECT_ID
 
     /**
+     * A glass greenhouse bed: tilled soil under glass. Seeds can be sown in it like in tilled
+     * soil, and in any season.
+     */
+    val isGreenhouse: Boolean get() = objectId == GREENHOUSE_OBJECT_ID
+
+    /**
      * Tilled soil that a withered plant was dug into. The next seed planted here starts off
      * ahead (see [COMPOST_GROWTH_BONUS]), which uses the compost up. Soil has no growth of its
      * own, so its otherwise unused [growthProgress] holds this.
@@ -84,6 +90,9 @@ data class GridObject(
          * on it stands on top, and it and paving cannot share a cell.
          */
         const val TILLED_SOIL_OBJECT_ID = "floor_tilled"
+
+        /** A bed of soil under a small glass house; see [isGreenhouse]. */
+        const val GREENHOUSE_OBJECT_ID = "floor_greenhouse"
 
         /** Growth a seed starts with when it is planted in composted soil. */
         const val COMPOST_GROWTH_BONUS = 0.2f

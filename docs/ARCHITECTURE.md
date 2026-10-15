@@ -11,7 +11,7 @@
 | SDK | minSdk 26、target / compile 35 |
 | 広告 | Google Mobile Ads 23.6（リワード。**テスト ID**） |
 | 通知 | WorkManager 2.7.0（広告 SDK が既に使っている版をそのまま明示）、NotificationCompat |
-| テスト | JUnit4 の JVM ユニットテストのみ（502 件）。UI テストなし |
+| テスト | JUnit4 の JVM ユニットテストのみ（523 件）。UI テストなし |
 
 ## 層
 
@@ -203,7 +203,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v9**。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v10**。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|
@@ -215,6 +215,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 | 7 | `garden_progress.gardenSize`（既存の庭は 9） |
 | 8 | `nature_notes`（自然メモ。`noteId` が主キー、`firstSeenAt`、`count`）。作成 SQL は `AppDatabase.CREATE_NATURE_NOTES`（テストで `schemas/8.json` と照合） |
 | 9 | `inventory_slots.acquiredOrder`（入手の通し番号。既存の枠は 0＝いちばん古い扱い） |
+| 10 | `letters`（ポストのお便り。作成 SQL は `AppDatabase.CREATE_LETTERS`、テストで `schemas/10.json` と照合）、`garden_progress.seasonStartedAt`（季節の始まり。既存は 0＝次の同期で時計を始める） |
 
 - マイグレーションは `AppDatabase.MIGRATION_x_y`、登録は `di/DatabaseModule.kt`。
 - DB は SQLCipher。鍵は Android Keystore で包む。プロフィールは HMAC 署名付き（`SecurityManager`）。
@@ -311,25 +312,59 @@ FINISHED ──タップ──▶ REVEAL_RAIN ──タップ──▶ REVEAL_CO
 - 完了時は**木目調のダイアログ**（`TutorialDoneDialog`）。「準備はおしまい」と、自由な庭づくりへ送り出す文（改行は文言側で手で入れてある）、「庭づくりをはじめる」。
   タップするまで消えない。トーストは出さない。
 
-### 季節（`Season`）
+### 四季（#30）
 
-`garden_progress.season` に保存し、上部の天気チップに「🌸春」と出す。今は**春のまま進まない**。季節による変化は未実装。
+季節は庭ごとの時計で進む（`domain/model/Seasons.kt` の `SeasonClock`）。新しい庭は作った日に春から始まる（チュートリアルのチューリップがいつでも植えられるように）。
 
-### 四季（確定仕様・未実装）
+| 項目 | 内容 |
+|---|---|
+| めぐり | 春→夏→秋→冬→春。**1 季節 ＝ 実時間 `SeasonClock.DAYS_PER_SEASON`（10）日**。この 1 つの定数で速さを変えられる。不在中も進む |
+| 保存 | `garden_progress.season` と `seasonStartedAt`（今の季節が始まった時刻）。`seasonStartedAt == 0` は「まだ時計が動いていない」で、次の同期で今から始める |
+| 進める | `AdvanceSeasonUseCase`（`GardenViewModel.sync()` から毎回）。何季節分たっても「今の季節」だけを、本当に始まった時刻で保存する。時計が戻っても季節は戻さない |
+| お便り | 季節が来たら「〇〇がやってきました」（`LetterKind.SEASON_ARRIVED`）、終わりの 2 日前（`NOTICE_MILLIS`）から「もうすぐ〇〇」（`SEASON_COMING`、まとめ買いと温室の案内）。`letterId` に季節と時刻を入れて、同じ知らせは 2 通届かない。長く留守にしていたときは今の季節の 1 通だけ |
+| 遊んでいる最中に変わったら | 効果音と「〇〇がやってきました。ポストにお便りが届いています」のトースト |
+| 旬 | `GardenItem.seasons`（空＝通年）と `isInSeason`。作物以外はすべて通年 |
+| ショップ | 作物の棚は旬の物と通年の物だけ（`GardenItem.shelf(category, season)`、棚の上に「いまは〇の種が並んでいます」）。`PurchaseItemUseCase` も季節外れは `OUT_OF_SEASON` で断る。**まとめ買いは自由**、持ち物の種は季節が変わっても残る |
+| 植え付け | `PlaceItemUseCase`：季節外れの種・苗は `OUT_OF_SEASON`（「🌱 いまは育てるのに適さない季節です…」）。種は持ち物に残る。**ガラスの温室の上なら季節を問わない** |
+| すでに植わっている作物 | 季節が変わってもそのまま育つ（枯れたり止まったりしない。罰しない方針） |
+| デバッグ | 開発者メニューの「次の季節へ」（`AdvanceSeasonUseCase.skipSeason`）。「+1 時間／+1 日」の時間送りも季節の時計を進める |
 
-#28 の時点で仕様として確定したもの。実装はまだ無い。着手するときはここを起点に詳細を詰める。
+#### 作物の旬
 
-| 項目 | 確定した内容 | 実装の当たり（案） |
-|---|---|---|
-| めぐり | 春→夏→秋→冬。1 つの季節はゲーム内で **1〜2 週間**（ゲームの時間は実時間と同じ速さ） | `Season` を時刻から決める純関数（天候の `WeatherType.forTime` と同じく決定的に）。不在中の計算も季節の境で区切る |
-| 旬のショップ | その季節の作物は**その季節だけ**ショップに並ぶ。**まとめ買いは OK** | `GardenItem` に旬の季節を持たせ、`GardenItem.shelf` で絞る。購入数の上限は設けない |
-| 植付け制限 | 季節外れの種・苗は**植えられない**（持っておくのは自由） | `PlaceItemUseCase` に `ActionResult` を 1 つ足す（例「いまは季節ではありません」）。すでに植わっている作物の扱い（季節が変わったら）は着手時に決める |
-| プログレッション | 作物と家具（装飾・建物）を **Lv.1〜20** に配置 | `UnlockCondition.PlayerLevel` を使う。`LevelTable` は Lv.20 までの経験値を見直す |
-| 持ちもののソート | **入手順／種別／所持数／季節／レベル順** | **#29 で実装済み**（下の「もちものの並び替え」）。旬は `GardenItem.seasons` に仮の値 |
+| 作物 | 旬 | 解放 | 種の値段 |
+|---|---|---|---|
+| チューリップ | 春 | 最初から | 20 |
+| ひまわり | 夏 | Lv.2 | 35 |
+| バラ | 春・秋 | Lv.4 | 60 |
+| コスモス（#30 で追加） | 秋 | 最初から | 20 |
+| スノードロップ（#30 で追加） | 冬 | 最初から | 20 |
+| ミント（#30 で追加） | 通年 | 最初から | 15 |
+
+夏だけは最初から植えられる旬の作物が無い（ひまわりは Lv.2）。Lv.1 の夏はミントだけ。
+コスモス・スノードロップ・ミントは絵が無いので、コードで描いている（`ui/render/SeasonalArt.kt` の `drawCosmos` ほか）。
+
+#### ガラスの温室（`floor_greenhouse`）
+
+- Lv.18・300 コイン（コテージと同じ、店でいちばん高い物）・設置 XP 40。棚は「構造物」、持ち物のタブは「かぐ」。図鑑の「たてもの」の章に 1 ページ。
+- **1 マスの特殊な床**：耕した土の代わりになる床（`GridObject.isGreenhouse`、`GardenGrid.isTilled` は温室も含む、`isUnderGlass`）。芝生に置く。クワは要らない。
+- 描画は耕した土＋その上にかぶせるガラスの家（`drawGreenhouseGlass`、作物より手前に描く半透明の板と白い枠）。
+- 移動はできない。持ち物に戻す・壊すは、中で作物が育っている間は `IN_USE` で断る。
+
+#### 季節の見た目
+
+- 芝生のマスごとに季節の層を重ねる（`drawSeasonGround`、`SeasonGround`）：春は花びら、夏は濃い緑、秋は黄金色と落ち葉、冬は雪と小さなきらめき。位置はマス座標から決まる。
+- 背景（`GardenBackdrop(season = …)`）：丘と草原の色を季節の色へ寄せ、枝と茂みの葉の色を変える（秋は橙、冬は雪をかぶる）。空は天気の色のまま。
+- 作物・建物・川そのものの見た目は季節で変えていない。
+
+#### ポスト（お便り）
+
+- DB v10 の `letters` 表（`LetterEntity`、`LetterDao.insertIfAbsent`）。リポジトリは `observeLetters` `postLetter`（同じ id は無視）`markLettersRead`。
+- 画面右の 📮（チュートリアル後の機能解放の 4 番目、`GardenFeature.POST`）に未読数の赤丸。開くと木目のボードに新しい順、未読には「あたらしい」。開いた時点で全部既読。
+- 文面は種類と季節から画面側で組み立てる（`ui/post/PostDialog.kt`、`letter_*` の文字列）。保存するのは種類・季節・時刻・既読だけ。
 
 ## 画面
 
-- 遊ぶ画面は `GardenScreen` だけ（その前にタイトル）。開発者メニュー（デバッグビルドのみ）に時間送り・天気・「+500 コイン・Lv+1」。時間送りは建築・解体の残り時間も進める（#25 から）。ダイアログ（ショップ、図鑑、設定、持ち物）を上に出す。
+- 遊ぶ画面は `GardenScreen` だけ（その前にタイトル）。開発者メニュー（デバッグビルドのみ）に時間送り・天気・「+500 コイン・Lv+1」・「次の季節へ」。時間送りは建築・解体の残り時間も進める（#25 から）。ダイアログ（ショップ、図鑑、設定、持ち物）を上に出す。
 - 下部ツールバーは固定。選択パネルと各モードのバナーはその上に**重ねて**フェードで切り替える。
 - **庭の倍率と位置は保存する**（#28）：`AppSettings.gardenView`（`GardenView`：scale と pan。DataStore の `garden_view_*`）。
   `GardenCanvas` はプレイヤーが動かした（または庭が広がった）あと 0.6 秒止まったら `onViewChanged` で返し、`GardenViewModel.saveView` が書く。

@@ -55,8 +55,8 @@ class ShopAndEffectsTest {
         assertEquals(GardenItem.entries.toSet(), shelves.values.flatten().toSet())
         assertEquals(GardenItem.entries.size, shelves.values.sumOf { it.size })
 
-        assertEquals(3, shelves.getValue(ItemCategory.SEED).size)
-        assertEquals(4, shelves.getValue(ItemCategory.STRUCTURE).size)
+        assertEquals(6, shelves.getValue(ItemCategory.SEED).size)
+        assertEquals(5, shelves.getValue(ItemCategory.STRUCTURE).size)
         assertEquals(9, shelves.getValue(ItemCategory.DECORATION).size)
     }
 
@@ -84,11 +84,14 @@ class ShopAndEffectsTest {
         assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(7, 9))
 
         assertEquals(
-            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE),
+            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE),
             GardenItem.shelf(ItemCategory.STRUCTURE),
         )
         assertEquals(
-            listOf(GardenItem.SEED_TULIP, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_ROSE),
+            listOf(
+                GardenItem.SEED_MINT, GardenItem.SEED_TULIP, GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP,
+                GardenItem.SEED_SUNFLOWER, GardenItem.SEED_ROSE,
+            ),
             GardenItem.shelf(ItemCategory.SEED),
         )
     }
@@ -144,11 +147,12 @@ class ShopAndEffectsTest {
                 if (later.unlockLevel > earlier.unlockLevel) assertTrue("${later.name} after ${earlier.name}", later.price >= dearestSoFar[i])
             }
         }
-        // The symbol building is the dearest thing in the shop; after it come the two buildings
-        // that pay for themselves.
+        // Nothing costs more than the symbol building (the late greenhouse costs as much); after
+        // those two come the two buildings that pay for themselves.
         val byPrice = GardenItem.entries.sortedByDescending { it.price }
-        assertEquals(GardenItem.STRUCT_COTTAGE, byPrice.first())
-        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL), byPrice.drop(1).take(2).toSet())
+        assertTrue(GardenItem.entries.all { it.price <= GardenItem.STRUCT_COTTAGE.price })
+        assertEquals(setOf(GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE), byPrice.take(2).toSet())
+        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL), byPrice.drop(2).take(2).toSet())
     }
 
     @Test

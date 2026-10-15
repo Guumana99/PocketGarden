@@ -8,12 +8,14 @@ import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
 import com.studioguu.miniaturegarden.data.local.dao.GardenProgressDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
+import com.studioguu.miniaturegarden.data.local.dao.LetterDao
 import com.studioguu.miniaturegarden.data.local.dao.NatureNoteDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
 import com.studioguu.miniaturegarden.data.local.entity.CollectionEntryEntity
 import com.studioguu.miniaturegarden.data.local.entity.GardenProgressEntity
 import com.studioguu.miniaturegarden.data.local.entity.GridObjectEntity
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
+import com.studioguu.miniaturegarden.data.local.entity.LetterEntity
 import com.studioguu.miniaturegarden.data.local.entity.NatureNoteEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
 
@@ -25,8 +27,9 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         CollectionEntryEntity::class,
         GardenProgressEntity::class,
         NatureNoteEntity::class,
+        LetterEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,6 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun collectionEntryDao(): CollectionEntryDao
     abstract fun gardenProgressDao(): GardenProgressDao
     abstract fun natureNoteDao(): NatureNoteDao
+    abstract fun letterDao(): LetterDao
 
     companion object {
         const val NAME = "pocket_garden.db"
@@ -116,6 +120,22 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE inventory_slots ADD COLUMN acquiredOrder INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** The table v10 adds, exactly as Room expects it (checked against the exported schema by a test). */
+        const val CREATE_LETTERS =
+            "CREATE TABLE IF NOT EXISTS `letters` (`letterId` TEXT NOT NULL, `kind` TEXT NOT NULL, `season` TEXT NOT NULL, " +
+                "`sentAt` INTEGER NOT NULL, `read` INTEGER NOT NULL, PRIMARY KEY(`letterId`))"
+
+        /**
+         * v10 brings the seasons: the post, and when the current season began. The season clock of
+         * a garden saved before starts at its next sync (0 means "not started").
+         */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(CREATE_LETTERS)
+                db.execSQL("ALTER TABLE garden_progress ADD COLUMN seasonStartedAt INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

@@ -560,6 +560,10 @@ private fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.TULIP -> R.string.flavor_tulip
     CollectionEntry.SUNFLOWER -> R.string.flavor_sunflower
     CollectionEntry.ROSE -> R.string.flavor_rose
+    CollectionEntry.COSMOS -> R.string.flavor_cosmos
+    CollectionEntry.SNOWDROP -> R.string.flavor_snowdrop
+    CollectionEntry.MINT -> R.string.flavor_mint
+    CollectionEntry.GREENHOUSE -> R.string.flavor_greenhouse
     CollectionEntry.GRASS -> R.string.flavor_grass
     CollectionEntry.PEBBLE -> R.string.flavor_pebble
     CollectionEntry.ROCK -> R.string.flavor_rock

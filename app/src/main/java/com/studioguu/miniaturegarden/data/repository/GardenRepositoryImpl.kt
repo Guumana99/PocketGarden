@@ -6,6 +6,7 @@ import com.studioguu.miniaturegarden.data.local.dao.CollectionEntryDao
 import com.studioguu.miniaturegarden.data.local.dao.GardenProgressDao
 import com.studioguu.miniaturegarden.data.local.dao.GridObjectDao
 import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
+import com.studioguu.miniaturegarden.data.local.dao.LetterDao
 import com.studioguu.miniaturegarden.data.local.dao.NatureNoteDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
@@ -17,6 +18,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.StarterGarden
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -35,6 +37,7 @@ class GardenRepositoryImpl @Inject constructor(
     private val collectionEntryDao: CollectionEntryDao,
     private val gardenProgressDao: GardenProgressDao,
     private val natureNoteDao: NatureNoteDao,
+    private val letterDao: LetterDao,
     private val securityManager: SecurityManager,
 ) : GardenRepository {
 
@@ -46,8 +49,8 @@ class GardenRepositoryImpl @Inject constructor(
             ?: securityManager.stampAndSign(UserProfileEntity(coins = UserProfile.STARTING_COINS))
                 .also { userProfileDao.upsert(it) }
         if (existing == null) {
-            // A new garden: a small fenced plot with a tilled bed, and the crate whose seed is
-            // the first thing to plant. The player starts out with an empty bag.
+            // A new garden: bare lawn and the crate whose seed is the first thing to plant. The
+            // player starts out with an empty bag. Its season clock starts at the first sync.
             gridObjectDao.upsertAll(StarterGarden.objects(System.currentTimeMillis()).map { it.toEntity() })
             gardenProgressDao.upsert(GardenProgress.NEW_GARDEN.toEntity())
         } else if (gardenProgressDao.get() == null) {
@@ -67,6 +70,7 @@ class GardenRepositoryImpl @Inject constructor(
         collectionEntryDao.deleteAll()
         gardenProgressDao.deleteAll()
         natureNoteDao.deleteAll()
+        letterDao.deleteAll()
         userProfileDao.deleteAll()
     }
 
@@ -119,4 +123,12 @@ class GardenRepositoryImpl @Inject constructor(
     override suspend fun getNatureNotes(): List<NatureNote> = natureNoteDao.getAll().map { it.toDomain() }
 
     override suspend fun upsertNatureNote(note: NatureNote) = natureNoteDao.upsert(note.toEntity())
+
+    override fun observeLetters(): Flow<List<Letter>> = letterDao.observeAll().map { list -> list.mapNotNull { it.toDomain() } }
+
+    override suspend fun getLetters(): List<Letter> = letterDao.getAll().mapNotNull { it.toDomain() }
+
+    override suspend fun postLetter(letter: Letter): Boolean = letterDao.insertIfAbsent(letter.toEntity()) != -1L
+
+    override suspend fun markLettersRead() = letterDao.markAllRead()
 }

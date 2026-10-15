@@ -57,7 +57,9 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TileType
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -65,6 +67,11 @@ import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.render.Daylight
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
+import com.studioguu.miniaturegarden.ui.render.drawCosmos
+import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
+import com.studioguu.miniaturegarden.ui.render.drawMint
+import com.studioguu.miniaturegarden.ui.render.drawSeasonGround
+import com.studioguu.miniaturegarden.ui.render.drawSnowdrop
 import com.studioguu.miniaturegarden.ui.render.GustAxis
 import com.studioguu.miniaturegarden.ui.render.GustFront
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
@@ -124,6 +131,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param savedView the view to open with, once known; the garden is fitted to the screen until then.
  * @param onViewChanged told the view a moment after the player has zoomed or panned, to be kept.
  * @param paused holds the wind and the river still, while something covers the garden.
+ * @param season decides how the lawn looks: petals, deep green, fallen leaves or snow.
  * @param initialZoom how much closer than "all of it on screen" the garden first shows; above 1
  *   lets its corners run off the sides, for a garden meant to fill the view.
  */
@@ -146,6 +154,7 @@ fun GardenCanvas(
     onViewChanged: ((GardenView) -> Unit)? = null,
     paused: Boolean = false,
     initialZoom: Float = 1f,
+    season: Season = Season.SPRING,
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -283,7 +292,7 @@ fun GardenCanvas(
     ) {
         val transform = camera?.toTransform(metrics, size) ?: return@Canvas
         val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
-        val ambience = Ambience(Daylight.at(hourOfDay, weather), weather, windMillis)
+        val ambience = Ambience(Daylight.at(hourOfDay, weather), weather, windMillis, season = season)
 
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
             drawTerrain(transform, gardenMap, framed = true, ambience) { tile, center ->
@@ -379,6 +388,8 @@ private class Ambience(
     val windMillis: Long?,
     /** Wall clock, for how far along building jobs are. */
     val epochMillis: Long = System.currentTimeMillis(),
+    /** The garden's season, which the lawn shows. */
+    val season: Season = Season.SPRING,
 ) {
     /** How far something at this place in the grid leans right now, see [Wind.sway]. */
     fun sway(gridX: Float, gridY: Float): Float =
@@ -476,7 +487,7 @@ private fun submitObjects(
             // object and is drawn later, in the object layer, so it always appears on top.
             val paving = terrain.cobblestone
             submit(obj, RenderLayer.BASE_TERRAIN, 1f) {
-                if (obj.isTilledSoil) {
+                if (obj.isTilledSoil || obj.isGreenhouse) {
                     drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted)
                 } else if (obj.objectId == GridObject.WOOD_DECK_OBJECT_ID) {
                     drawWoodDeck(transform, obj.gridX, obj.gridY)
@@ -484,6 +495,12 @@ private fun submitObjects(
                     drawGroundTexture(paving, transform, obj.gridX, obj.gridY)
                 } else {
                     drawPath(transform.tilePath(obj.gridX, obj.gridY), PAVING_FALLBACK)
+                }
+            }
+            // The glass house of a greenhouse bed goes over whatever grows in it.
+            if (obj.isGreenhouse) {
+                submit(obj, RenderLayer.GRID_OBJECTS, LayerPipeline.depthOf(obj.gridX, obj.gridY, 0) + 0.5f) {
+                    drawGreenhouseGlass(transform, obj.gridX, obj.gridY)
                 }
             }
             continue
@@ -582,7 +599,7 @@ private fun submitObjects(
                 val reach = if (sprite != null) min(sprite.width * spriteScale * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
                     floor == null -> drawGrassAtFoot(base, unit, reach, sway, seed = obj.gridX * 31 + obj.gridY * 17)
-                    floor.isTilledSoil -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
+                    floor.isTilledSoil || floor.isGreenhouse -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
                 }
             }
         }
@@ -1123,12 +1140,15 @@ private fun DrawScope.drawTerrain(
     for (x in 0 until gridSize) for (y in 0 until gridSize) {
         val type = gardenMap.tileAt(x, y) ?: TileType.GRASS
         val tile = TileSetDefinition.groundTileFor(type, x, y)
-        if (drawTileSprite(tile, transform.tileCenter(x, y))) continue
-        when (tile) {
-            GroundTile.WATER -> drawWaterTile(transform, x, y, phase = 0)
-            GroundTile.GRASS -> drawGroundTile(transform, x, y, GRASS_LIGHT, ambience.sway(x + 0.5f, y + 0.5f))
-            else -> drawGroundTile(transform, x, y, GRASS_DARK, ambience.sway(x + 0.5f, y + 0.5f))
+        if (!drawTileSprite(tile, transform.tileCenter(x, y))) {
+            when (tile) {
+                GroundTile.WATER -> drawWaterTile(transform, x, y, phase = 0)
+                GroundTile.GRASS -> drawGroundTile(transform, x, y, GRASS_LIGHT, ambience.sway(x + 0.5f, y + 0.5f))
+                else -> drawGroundTile(transform, x, y, GRASS_DARK, ambience.sway(x + 0.5f, y + 0.5f))
+            }
         }
+        // The season, over the lawn: petals, a deeper green, fallen leaves or snow.
+        if (tile != GroundTile.WATER) drawSeasonGround(transform, x, y, ambience.season)
     }
     if (framed) {
         // The frame's inner edge, drawn over the outermost tiles so the ground reads as set into it.
@@ -1811,6 +1831,13 @@ private fun DrawScope.drawGroundCover(obj: GridObject, base: Offset, unit: Float
 
 private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {
     val withered = obj.status == PlantStatus.WITHERED
+    // The crops that came with the seasons have no artwork yet: each is drawn in its own shape.
+    when (PlantSpecies.fromObjectId(obj.objectId)) {
+        PlantSpecies.COSMOS -> return drawCosmos(base, unit, obj.growthProgress, withered)
+        PlantSpecies.SNOWDROP -> return drawSnowdrop(base, unit, obj.growthProgress, withered)
+        PlantSpecies.MINT -> return drawMint(base, unit, obj.growthProgress, withered)
+        else -> Unit
+    }
     val scale = plantScale(obj)
     val top = base - Offset(0f, unit * 0.55f * scale)
     val stemColor = if (withered) WITHERED_BROWN else STEM_GREEN

@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import androidx.compose.ui.graphics.lerp
+import com.studioguu.miniaturegarden.domain.model.Season
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -66,6 +68,44 @@ private val RAINY = BackdropPalette(
 
 private val LEAF_DARK = Color(0xFF5E8C3A)
 private val LEAF_LIGHT = Color(0xFF86B454)
+
+/** The leaves and flowers of the greenery round the edges, by season. */
+private class SeasonLeaves(val dark: Color, val light: Color, val blossoms: List<Color>, val snow: Boolean = false) {
+    companion object {
+        private val SPRING = SeasonLeaves(LEAF_DARK, LEAF_LIGHT, BLOSSOMS)
+        private val SUMMER = SeasonLeaves(Color(0xFF3F7F2E), Color(0xFF6BAA3E), listOf(Color(0xFFFFE08A)))
+        private val AUTUMN = SeasonLeaves(Color(0xFFB5552A), Color(0xFFE29A3A), emptyList())
+        private val WINTER = SeasonLeaves(Color(0xFF4F6B4A), Color(0xFF7D9478), emptyList(), snow = true)
+
+        fun of(season: Season): SeasonLeaves = when (season) {
+            Season.SPRING -> SPRING
+            Season.SUMMER -> SUMMER
+            Season.AUTUMN -> AUTUMN
+            Season.WINTER -> WINTER
+        }
+    }
+}
+
+/** This weather's palette, with the hills and the meadow turned to [season]. Spring leaves it as it is. */
+private fun BackdropPalette.inSeason(season: Season): BackdropPalette {
+    fun Color.toward(target: Color, amount: Float) = lerp(this, target, amount)
+    return when (season) {
+        Season.SPRING -> this
+        Season.SUMMER -> BackdropPalette(
+            skyTop, skyHorizon, hillFar.toward(Color(0xFF7FB069), 0.35f), hillMid.toward(Color(0xFF6FA552), 0.35f),
+            hillNear.toward(Color(0xFF5E9A44), 0.35f), meadowTop.toward(Color(0xFF8EC25A), 0.4f), meadowBottom, cloud, haze,
+        )
+        Season.AUTUMN -> BackdropPalette(
+            skyTop, skyHorizon.toward(Color(0xFFF7DDB4), 0.4f), hillFar.toward(Color(0xFFC9A86A), 0.5f), hillMid.toward(Color(0xFFC98A4B), 0.5f),
+            hillNear.toward(Color(0xFFB9783F), 0.45f), meadowTop.toward(Color(0xFFD3B06A), 0.5f), meadowBottom.toward(Color(0xFFD9B98A), 0.3f), cloud, haze,
+        )
+        Season.WINTER -> BackdropPalette(
+            skyTop.toward(Color(0xFFC9D8E2), 0.5f), skyHorizon.toward(Color(0xFFEFF3F5), 0.6f), hillFar.toward(Color(0xFFF2F5F7), 0.75f),
+            hillMid.toward(Color(0xFFE9EEF1), 0.75f), hillNear.toward(Color(0xFFE3E9EC), 0.7f), meadowTop.toward(Color(0xFFF1F4F6), 0.75f),
+            meadowBottom.toward(Color(0xFFE6E9EA), 0.6f), cloud, haze,
+        )
+    }
+}
 private val BRANCH = Color(0xFF7A5230)
 private val BLOSSOMS = listOf(Color(0xFFF7A8B8), Color(0xFFFFE08A), Color(0xFFFFFFFF))
 private val SUN_GLOW = Color(0xFFFFF4C2)
@@ -81,12 +121,13 @@ private const val HORIZON = 0.4f
  * Nothing in it moves or takes touches.
  */
 @Composable
-fun GardenBackdrop(weather: WeatherType, modifier: Modifier = Modifier) {
+fun GardenBackdrop(weather: WeatherType, modifier: Modifier = Modifier, season: Season = Season.SPRING) {
     val palette = when (weather) {
         WeatherType.SUNNY -> SUNNY
         WeatherType.CLOUDY -> CLOUDY
         WeatherType.RAINY -> RAINY
-    }
+    }.inSeason(season)
+    val leaves = SeasonLeaves.of(season)
     Canvas(modifier) {
         val horizon = size.height * HORIZON
         // Sky, down to a little below the horizon so no seam shows between the hills.
@@ -132,12 +173,12 @@ fun GardenBackdrop(weather: WeatherType, modifier: Modifier = Modifier) {
 
         // Greenery at the edges: a leafy branch reaching in from each top corner, and bushes in
         // the bottom corners, beside the tool bar.
-        drawBranch(Offset(-size.width * 0.02f, size.height * 0.105f), size.width * 0.34f, towardsRight = true)
-        drawBranch(Offset(size.width * 1.02f, size.height * 0.135f), size.width * 0.26f, towardsRight = false)
-        drawBush(Offset(size.width * 0.04f, size.height * 0.985f), size.width * 0.15f, seed = 3)
-        drawBush(Offset(size.width * 0.97f, size.height * 0.99f), size.width * 0.16f, seed = 11)
-        drawBush(Offset(-size.width * 0.02f, size.height * 0.80f), size.width * 0.085f, seed = 5)
-        drawBush(Offset(size.width * 1.03f, size.height * 0.76f), size.width * 0.095f, seed = 8)
+        drawBranch(Offset(-size.width * 0.02f, size.height * 0.105f), size.width * 0.34f, towardsRight = true, leaves)
+        drawBranch(Offset(size.width * 1.02f, size.height * 0.135f), size.width * 0.26f, towardsRight = false, leaves)
+        drawBush(Offset(size.width * 0.04f, size.height * 0.985f), size.width * 0.15f, seed = 3, leaves)
+        drawBush(Offset(size.width * 0.97f, size.height * 0.99f), size.width * 0.16f, seed = 11, leaves)
+        drawBush(Offset(-size.width * 0.02f, size.height * 0.80f), size.width * 0.085f, seed = 5, leaves)
+        drawBush(Offset(size.width * 1.03f, size.height * 0.76f), size.width * 0.095f, seed = 8, leaves)
 
         if (palette.haze != Color.Transparent) drawRect(palette.haze)
         // Darker towards the corners, which draws the eye to the box in the middle.
@@ -178,12 +219,12 @@ private fun DrawScope.drawHills(baseline: Float, amplitude: Float, waves: Float,
 }
 
 /** A bough reaching in from the side of the screen, sagging a little, with leaves along it. */
-private fun DrawScope.drawBranch(start: Offset, length: Float, towardsRight: Boolean) {
+private fun DrawScope.drawBranch(start: Offset, length: Float, towardsRight: Boolean, leaves: SeasonLeaves) {
     val direction = if (towardsRight) 1f else -1f
-    val leaves = 9
+    val count = 9
     var previous = start
-    for (i in 1..leaves) {
-        val t = i / leaves.toFloat()
+    for (i in 1..count) {
+        val t = i / count.toFloat()
         val point = start + Offset(direction * length * t, length * 0.16f * t * t)
         drawLine(BRANCH, previous, point, strokeWidth = length * 0.022f * (1.2f - t))
         previous = point
@@ -193,7 +234,7 @@ private fun DrawScope.drawBranch(start: Offset, length: Float, towardsRight: Boo
         val tilt = direction * (if (above) -38f else 34f) + (i * 37 % 17 - 8)
         rotate(tilt, pivot = point) {
             drawOval(
-                color = if ((i + if (towardsRight) 0 else 1) % 3 == 0) LEAF_LIGHT else LEAF_DARK,
+                color = if ((i + if (towardsRight) 0 else 1) % 3 == 0) leaves.light else leaves.dark,
                 topLeft = point + Offset(if (towardsRight) 0f else -leaf.width, -leaf.height / 2f),
                 size = leaf,
             )
@@ -205,7 +246,7 @@ private fun DrawScope.drawBranch(start: Offset, length: Float, towardsRight: Boo
  * A bush of the given radius sitting on [base]: a mound of leaf-coloured balls with a few
  * blossoms on it. [seed] decides how the balls and blossoms fall, so each bush differs.
  */
-private fun DrawScope.drawBush(base: Offset, radius: Float, seed: Int) {
+private fun DrawScope.drawBush(base: Offset, radius: Float, seed: Int, leaves: SeasonLeaves) {
     var state = seed * 7919 + 17
     fun next(): Float {
         state = state * 1103515245 + 12345
@@ -213,10 +254,14 @@ private fun DrawScope.drawBush(base: Offset, radius: Float, seed: Int) {
     }
     repeat(9) { i ->
         val at = base + Offset((next() - 0.5f) * radius * 1.9f, -next() * radius * 0.95f)
-        drawCircle(if (i % 3 == 0) LEAF_LIGHT else LEAF_DARK, radius * (0.38f + next() * 0.28f), at)
+        drawCircle(if (i % 3 == 0) leaves.light else leaves.dark, radius * (0.38f + next() * 0.28f), at)
     }
     repeat(5) { i ->
         val at = base + Offset((next() - 0.5f) * radius * 1.7f, -radius * (0.25f + next() * 0.9f))
-        drawCircle(BLOSSOMS[(i + seed) % BLOSSOMS.size], radius * 0.085f, at)
+        if (leaves.blossoms.isNotEmpty()) drawCircle(leaves.blossoms[(i + seed) % leaves.blossoms.size], radius * 0.085f, at)
+    }
+    // Snow settles on top of a bush in winter.
+    if (leaves.snow) {
+        drawOval(Color(0xF2FFFFFF), base + Offset(-radius * 0.8f, -radius * 1.25f), Size(radius * 1.6f, radius * 0.45f))
     }
 }

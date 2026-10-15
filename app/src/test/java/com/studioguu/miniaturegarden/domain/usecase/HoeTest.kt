@@ -106,11 +106,9 @@ class HoeTest {
     @Test
     fun `seeds and seedlings go into tilled soil and nowhere else`() = runBlocking {
         val seeds = GardenItem.entries.filter { it.category == ItemCategory.SEED }
-        assertEquals(3, seeds.size)
+        assertEquals(6, seeds.size)
         seeds.forEachIndexed { slot, seed -> repo.putSlot(InventorySlot(slot, seed.itemId, 2)) }
-        hoe(0, 0, t0)
-        hoe(1, 0, t0)
-        hoe(2, 0, t0)
+        seeds.indices.forEach { hoe(it, 0, t0) }
 
         seeds.indices.forEach { slot ->
             assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(slot, slot, 5, t0)) // open ground

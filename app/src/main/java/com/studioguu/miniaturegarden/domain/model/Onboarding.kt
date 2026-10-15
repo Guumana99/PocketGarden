@@ -1,8 +1,8 @@
 package com.studioguu.miniaturegarden.domain.model
 
 /**
- * The season the garden is in. Only the first one is used so far: a new garden starts in
- * spring, and nothing yet moves it on or changes with it.
+ * The season the garden is in. A new garden starts in spring; [SeasonClock] moves it on. It decides
+ * which seeds the shop sells and which can be sown outside a greenhouse, and how the garden looks.
  */
 enum class Season {
     SPRING,
@@ -22,7 +22,7 @@ enum class Season {
  *
  * The guided steps ([OPEN_CRATE] to [WATER_SEEDLING]) are followed by a closing board
  * ([FINISHED]) and then by the garden's other features being handed over one at a time
- * ([REVEAL_RAIN], [REVEAL_COLLECTION], [REVEAL_CAMERA]), each at the player's own tap.
+ * ([REVEAL_RAIN], [REVEAL_COLLECTION], [REVEAL_CAMERA], [REVEAL_POST]), each at the player's own tap.
  * Stored by name, so new steps can be put anywhere in the order.
  */
 enum class TutorialStep {
@@ -50,6 +50,9 @@ enum class TutorialStep {
     /** The camera has just been handed over and is being introduced. */
     REVEAL_CAMERA,
 
+    /** The post has just been handed over and is being introduced. */
+    REVEAL_POST,
+
     /** Done, or never started (a garden from before there were first steps): free play. */
     DONE;
 
@@ -76,6 +79,7 @@ enum class GardenFeature(val revealedAt: TutorialStep) {
     BLESSED_RAIN(TutorialStep.REVEAL_RAIN),
     COLLECTION(TutorialStep.REVEAL_COLLECTION),
     CAMERA(TutorialStep.REVEAL_CAMERA),
+    POST(TutorialStep.REVEAL_POST),
 }
 
 /** Where the garden as a whole stands: its season and the player's first steps. */
@@ -84,6 +88,8 @@ data class GardenProgress(
     val tutorialStep: TutorialStep = TutorialStep.DONE,
     /** How many cells the garden is across; see [GardenExpansion]. */
     val gardenSize: Int = GridObject.GRID_SIZE,
+    /** When the current season began (epoch millis); 0 until the season clock has started. */
+    val seasonStartedAt: Long = 0L,
 ) {
     companion object {
         /** A garden made just now: spring, with the first steps ahead. */

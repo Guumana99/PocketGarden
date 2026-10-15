@@ -12,7 +12,7 @@ enum class InventoryGroup {
     /** Furniture and buildings: things that stand on the garden. */
     FURNITURE,
 
-    /** Herbs and greenery: living ground cover. */
+    /** Herbs and greenery: living ground cover, and herbs grown from seed. */
     GREENERY,
 
     /** Soil and tiles: paving, stones and water laid on the ground. */
@@ -20,10 +20,11 @@ enum class InventoryGroup {
 
     companion object {
         fun of(item: GardenItem): InventoryGroup = when (item) {
-            GardenItem.SEED_TULIP, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_ROSE -> CROPS
+            GardenItem.SEED_TULIP, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_ROSE,
+            GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP -> CROPS
             GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE,
-            GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_LANTERN -> FURNITURE
-            GardenItem.GROUND_GRASS, GardenItem.GROUND_FLOWERS -> GREENERY
+            GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_LANTERN, GardenItem.FLOOR_GREENHOUSE -> FURNITURE
+            GardenItem.GROUND_GRASS, GardenItem.GROUND_FLOWERS, GardenItem.SEED_MINT -> GREENERY
             GardenItem.GROUND_PEBBLE, GardenItem.FLOOR_COBBLESTONE, GardenItem.FLOOR_WOOD, GardenItem.TILE_RIVER -> GROUND
         }
     }
@@ -33,7 +34,7 @@ enum class InventoryGroup {
 enum class InventoryFilter {
     ALL,
 
-    /** Seeds and seedlings. */
+    /** Seeds and seedlings, herbs included. */
     SEEDS,
 
     /** Furniture and buildings. */
@@ -44,9 +45,9 @@ enum class InventoryFilter {
 
     fun matches(item: GardenItem): Boolean = when (this) {
         ALL -> true
-        SEEDS -> InventoryGroup.of(item) == InventoryGroup.CROPS
+        SEEDS -> item.category == ItemCategory.SEED
         FURNITURE -> InventoryGroup.of(item) == InventoryGroup.FURNITURE
-        OTHER -> InventoryGroup.of(item).let { it == InventoryGroup.GREENERY || it == InventoryGroup.GROUND }
+        OTHER -> item.category != ItemCategory.SEED && InventoryGroup.of(item).let { it == InventoryGroup.GREENERY || it == InventoryGroup.GROUND }
     }
 }
 
