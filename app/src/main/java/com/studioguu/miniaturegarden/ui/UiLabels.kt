@@ -23,6 +23,12 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "plant_cosmos" -> R.string.object_plant_cosmos
     "plant_snowdrop" -> R.string.object_plant_snowdrop
     "plant_mint" -> R.string.object_plant_mint
+    "plant_tomato" -> R.string.object_plant_tomato
+    "plant_strawberry" -> R.string.object_plant_strawberry
+    "plant_watermelon" -> R.string.object_plant_watermelon
+    "plant_lavender" -> R.string.object_plant_lavender
+    "plant_pumpkin" -> R.string.object_plant_pumpkin
+    "plant_poinsettia" -> R.string.object_plant_poinsettia
     "floor_greenhouse" -> R.string.object_floor_greenhouse
     "deco_rock" -> R.string.object_deco_rock
     "struct_hut" -> R.string.object_struct_hut
@@ -55,6 +61,12 @@ fun itemDisplayName(item: GardenItem): String = when (item) {
     GardenItem.SEED_COSMOS -> stringResource(R.string.item_seed_cosmos)
     GardenItem.SEED_SNOWDROP -> stringResource(R.string.item_seed_snowdrop)
     GardenItem.SEED_MINT -> stringResource(R.string.item_seed_mint)
+    GardenItem.SEED_TOMATO -> stringResource(R.string.item_seed_tomato)
+    GardenItem.SEED_STRAWBERRY -> stringResource(R.string.item_seed_strawberry)
+    GardenItem.SEED_WATERMELON -> stringResource(R.string.item_seed_watermelon)
+    GardenItem.SEED_LAVENDER -> stringResource(R.string.item_seed_lavender)
+    GardenItem.SEED_PUMPKIN -> stringResource(R.string.item_seed_pumpkin)
+    GardenItem.SEED_POINSETTIA -> stringResource(R.string.item_seed_poinsettia)
     GardenItem.TILE_RIVER -> stringResource(R.string.item_tile_river)
     else -> objectDisplayName(item.objectId)
 }
@@ -79,6 +91,12 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_COSMOS -> "🏵️"
     GardenItem.SEED_SNOWDROP -> "🤍"
     GardenItem.SEED_MINT -> "🍃"
+    GardenItem.SEED_TOMATO -> "🍅"
+    GardenItem.SEED_STRAWBERRY -> "🍓"
+    GardenItem.SEED_WATERMELON -> "🍉"
+    GardenItem.SEED_LAVENDER -> "💜"
+    GardenItem.SEED_PUMPKIN -> "🎃"
+    GardenItem.SEED_POINSETTIA -> "🌺"
     GardenItem.FLOOR_GREENHOUSE -> "🪴"
 }
 

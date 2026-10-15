@@ -69,9 +69,15 @@ import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.drawCosmos
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
+import com.studioguu.miniaturegarden.ui.render.drawLavender
 import com.studioguu.miniaturegarden.ui.render.drawMint
+import com.studioguu.miniaturegarden.ui.render.drawPoinsettia
+import com.studioguu.miniaturegarden.ui.render.drawPumpkin
 import com.studioguu.miniaturegarden.ui.render.drawSeasonGround
 import com.studioguu.miniaturegarden.ui.render.drawSnowdrop
+import com.studioguu.miniaturegarden.ui.render.drawStrawberry
+import com.studioguu.miniaturegarden.ui.render.drawTomato
+import com.studioguu.miniaturegarden.ui.render.drawWatermelon
 import com.studioguu.miniaturegarden.ui.render.GustAxis
 import com.studioguu.miniaturegarden.ui.render.GustFront
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
@@ -1836,6 +1842,12 @@ private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {
         PlantSpecies.COSMOS -> return drawCosmos(base, unit, obj.growthProgress, withered)
         PlantSpecies.SNOWDROP -> return drawSnowdrop(base, unit, obj.growthProgress, withered)
         PlantSpecies.MINT -> return drawMint(base, unit, obj.growthProgress, withered)
+        PlantSpecies.TOMATO -> return drawTomato(base, unit, obj.growthProgress, withered)
+        PlantSpecies.STRAWBERRY -> return drawStrawberry(base, unit, obj.growthProgress, withered)
+        PlantSpecies.WATERMELON -> return drawWatermelon(base, unit, obj.growthProgress, withered)
+        PlantSpecies.LAVENDER -> return drawLavender(base, unit, obj.growthProgress, withered)
+        PlantSpecies.PUMPKIN -> return drawPumpkin(base, unit, obj.growthProgress, withered)
+        PlantSpecies.POINSETTIA -> return drawPoinsettia(base, unit, obj.growthProgress, withered)
         else -> Unit
     }
     val scale = plantScale(obj)

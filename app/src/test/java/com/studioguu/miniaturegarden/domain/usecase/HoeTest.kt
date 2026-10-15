@@ -106,19 +106,20 @@ class HoeTest {
     @Test
     fun `seeds and seedlings go into tilled soil and nowhere else`() = runBlocking {
         val seeds = GardenItem.entries.filter { it.category == ItemCategory.SEED }
-        assertEquals(6, seeds.size)
+        assertEquals(12, seeds.size)
         seeds.forEachIndexed { slot, seed -> repo.putSlot(InventorySlot(slot, seed.itemId, 2)) }
-        seeds.indices.forEach { hoe(it, 0, t0) }
+        // Two rows of tilled soil along the top, nine to a row.
+        seeds.indices.forEach { hoe(it % 9, it / 9, t0) }
 
         seeds.indices.forEach { slot ->
-            assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(slot, slot, 5, t0)) // open ground
-            assertEquals(2, repo.slots.getValue(slot).amount)                      // nothing used up
-            assertEquals(ActionResult.SUCCESS, place(slot, slot, 0, t0))           // tilled
+            assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(slot, slot % 9, 5 + slot / 9, t0)) // open ground
+            assertEquals(2, repo.slots.getValue(slot).amount)                                      // nothing used up
+            assertEquals(ActionResult.SUCCESS, place(slot, slot % 9, slot / 9, t0))               // tilled
             assertEquals(1, repo.slots.getValue(slot).amount)
         }
 
         assertEquals(PlantSpecies.entries.map { it.objectId }.toSet(), repo.plants.map { it.objectId }.toSet())
-        assertTrue(repo.plants.all { it.gridY == 0 })
+        assertTrue(repo.plants.all { it.gridY <= 1 })
     }
 
     @Test

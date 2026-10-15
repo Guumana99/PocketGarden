@@ -563,6 +563,12 @@ private fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.COSMOS -> R.string.flavor_cosmos
     CollectionEntry.SNOWDROP -> R.string.flavor_snowdrop
     CollectionEntry.MINT -> R.string.flavor_mint
+    CollectionEntry.TOMATO -> R.string.flavor_tomato
+    CollectionEntry.STRAWBERRY -> R.string.flavor_strawberry
+    CollectionEntry.WATERMELON -> R.string.flavor_watermelon
+    CollectionEntry.LAVENDER -> R.string.flavor_lavender
+    CollectionEntry.PUMPKIN -> R.string.flavor_pumpkin
+    CollectionEntry.POINSETTIA -> R.string.flavor_poinsettia
     CollectionEntry.GREENHOUSE -> R.string.flavor_greenhouse
     CollectionEntry.GRASS -> R.string.flavor_grass
     CollectionEntry.PEBBLE -> R.string.flavor_pebble

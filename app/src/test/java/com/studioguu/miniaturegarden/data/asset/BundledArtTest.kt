@@ -182,7 +182,10 @@ class BundledArtTest {
     @Test
     fun `every crop page can show its plant in full bloom from the atlas`() {
         // The crops that came with the seasons are drawn in code for now (ui/render/SeasonalArt.kt).
-        val drawnInCode = setOf(PlantSpecies.COSMOS, PlantSpecies.SNOWDROP, PlantSpecies.MINT)
+        val drawnInCode = setOf(
+            PlantSpecies.COSMOS, PlantSpecies.SNOWDROP, PlantSpecies.MINT, PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY,
+            PlantSpecies.WATERMELON, PlantSpecies.LAVENDER, PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
+        )
         for (species in PlantSpecies.entries - drawnInCode) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })

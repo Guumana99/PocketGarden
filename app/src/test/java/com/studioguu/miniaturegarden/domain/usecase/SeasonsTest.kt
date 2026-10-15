@@ -152,8 +152,8 @@ class SeasonsTest {
         for (s in Season.entries) {
             assertTrue(s.name, seeds.any { it.isInSeason(s) && it.unlock == UnlockCondition.None })
         }
-        // Spring, autumn and winter have a flower of their own from the start; summer's opens at Lv.2.
-        for (s in listOf(Season.SPRING, Season.AUTUMN, Season.WINTER)) {
+        // Every season has a crop of its own from the start: summer's is the tomato.
+        for (s in Season.entries) {
             assertTrue(s.name, seeds.any { s in it.seasons && it.unlock == UnlockCondition.None })
         }
         assertTrue(GardenItem.SEED_MINT.isAllSeasons)
@@ -161,6 +161,13 @@ class SeasonsTest {
         assertEquals(setOf(Season.SUMMER), GardenItem.SEED_SUNFLOWER.seasons)
         assertEquals(setOf(Season.AUTUMN), GardenItem.SEED_COSMOS.seasons)
         assertEquals(setOf(Season.WINTER), GardenItem.SEED_SNOWDROP.seasons)
+        assertEquals(setOf(Season.SUMMER), GardenItem.SEED_TOMATO.seasons)
+        assertEquals(UnlockCondition.None, GardenItem.SEED_TOMATO.unlock)
+        assertEquals(setOf(Season.SPRING), GardenItem.SEED_STRAWBERRY.seasons)
+        assertEquals(setOf(Season.SUMMER), GardenItem.SEED_WATERMELON.seasons)
+        assertEquals(setOf(Season.AUTUMN), GardenItem.SEED_PUMPKIN.seasons)
+        assertEquals(setOf(Season.WINTER), GardenItem.SEED_POINSETTIA.seasons)
+        assertTrue(GardenItem.SEED_LAVENDER.isAllSeasons)
         // Everything that is not a crop is good all year.
         assertTrue(GardenItem.entries.filter { it.category != ItemCategory.SEED }.all { it.isAllSeasons })
     }
@@ -170,12 +177,21 @@ class SeasonsTest {
     @Test
     fun `the seed shelf holds what is in season and what grows all year`() {
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_TULIP, GardenItem.SEED_ROSE),
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TULIP, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_ROSE),
             GardenItem.shelf(ItemCategory.SEED, Season.SPRING).toSet(),
         )
-        assertEquals(setOf(GardenItem.SEED_MINT, GardenItem.SEED_SUNFLOWER), GardenItem.shelf(ItemCategory.SEED, Season.SUMMER).toSet())
-        assertEquals(setOf(GardenItem.SEED_MINT, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS), GardenItem.shelf(ItemCategory.SEED, Season.AUTUMN).toSet())
-        assertEquals(setOf(GardenItem.SEED_MINT, GardenItem.SEED_SNOWDROP), GardenItem.shelf(ItemCategory.SEED, Season.WINTER).toSet())
+        assertEquals(
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TOMATO, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_WATERMELON),
+            GardenItem.shelf(ItemCategory.SEED, Season.SUMMER).toSet(),
+        )
+        assertEquals(
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS, GardenItem.SEED_PUMPKIN),
+            GardenItem.shelf(ItemCategory.SEED, Season.AUTUMN).toSet(),
+        )
+        assertEquals(
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_SNOWDROP, GardenItem.SEED_POINSETTIA),
+            GardenItem.shelf(ItemCategory.SEED, Season.WINTER).toSet(),
+        )
         // The other shelves are the same in every season.
         for (s in Season.entries) {
             assertEquals(GardenItem.shelf(ItemCategory.STRUCTURE), GardenItem.shelf(ItemCategory.STRUCTURE, s))
@@ -228,7 +244,7 @@ class SeasonsTest {
         for ((i, s) in Season.entries.withIndex()) {
             repo.progress = repo.progress!!.copy(season = s)
             for ((j, seed) in GardenItem.entries.filter { it.category == ItemCategory.SEED }.withIndex()) {
-                assertEquals("$seed in $s", ActionResult.SUCCESS, sow(seed, j, i, inGreenhouse = true))
+                assertEquals("$seed in $s", ActionResult.SUCCESS, sow(seed, j % 9, i + 4 * (j / 9), inGreenhouse = true))
                 repo.objects.values.removeIf { it.isPlant }
             }
         }
@@ -262,7 +278,7 @@ class SeasonsTest {
 
     @Test
     fun `the new crops are crops like the others`() {
-        for (species in listOf(PlantSpecies.COSMOS, PlantSpecies.SNOWDROP, PlantSpecies.MINT)) {
+        for (species in PlantSpecies.entries - PlantSpecies.TULIP - PlantSpecies.SUNFLOWER - PlantSpecies.ROSE) {
             assertTrue(GardenItem.entries.any { it.objectId == species.objectId && it.category == ItemCategory.SEED })
             assertTrue(CollectionEntry.fromObjectId(species.objectId)?.category == CollectionCategory.CROPS)
             assertTrue(species.objectId in TileSetDefinition.objectIds)

@@ -46,6 +46,12 @@
     <string name="object_plant_cosmos">コスモス</string>
     <string name="object_plant_snowdrop">スノードロップ</string>
     <string name="object_plant_mint">ミント</string>
+    <string name="object_plant_tomato">トマト</string>
+    <string name="object_plant_strawberry">イチゴ</string>
+    <string name="object_plant_watermelon">スイカ</string>
+    <string name="object_plant_lavender">ラベンダー</string>
+    <string name="object_plant_pumpkin">カボチャ</string>
+    <string name="object_plant_poinsettia">ポインセチア</string>
     <string name="object_floor_greenhouse">ガラスの温室</string>
     <string name="object_deco_rock">岩</string>
     <string name="object_struct_hut">小屋</string>
@@ -103,6 +109,12 @@
     <string name="item_seed_cosmos">コスモスの種</string>
     <string name="item_seed_snowdrop">スノードロップの球根</string>
     <string name="item_seed_mint">ミントの苗</string>
+    <string name="item_seed_tomato">トマトの苗</string>
+    <string name="item_seed_strawberry">イチゴの苗</string>
+    <string name="item_seed_watermelon">スイカの種</string>
+    <string name="item_seed_lavender">ラベンダーの苗</string>
+    <string name="item_seed_pumpkin">カボチャの種</string>
+    <string name="item_seed_poinsettia">ポインセチアの苗</string>
     <string name="item_tile_river">川タイル</string>
 
     <!-- Inventory -->
@@ -172,6 +184,12 @@
     <string name="collection_hint_placement">にわに　おくと　とうろく される。</string>
     <string name="flavor_cosmos">あきかぜに　ゆれる　うすべにの はな。\nほそい くきでも　かぜに まけない。</string>
     <string name="flavor_snowdrop">ゆきの したから　かおを だす。\nしろい すずは　はるを まつ あいず。</string>
+    <string name="flavor_tomato">なつの ひざしで　まっかに みのる。\nのどが かわきやすいので　みずやりは こまめに。</string>
+    <string name="flavor_strawberry">はるの ひだまりで　あかく ふくらむ。\nちいさくても　あまい かおりで いっぱい。</string>
+    <string name="flavor_watermelon">つるを のばして　まんまるに そだつ。\nなつの おひさまと　たっぷりの みずが すき。</string>
+    <string name="flavor_lavender">むらさきの ほが　かぜに ゆれる。\nきせつを とわず　やさしい かおりを とどける。</string>
+    <string name="flavor_pumpkin">あきの はたけの　おおもの。\nじっくり そだてて　ずっしり おもい。</string>
+    <string name="flavor_poinsettia">ふゆを いろどる　まっかな はっぱ。\nさむい ひでも　にわを あたたかく みせる。</string>
     <string name="flavor_mint">きせつを えらばない　つよい はっぱ。\nふれると　すっと すずしい かおりが する。</string>
     <string name="flavor_greenhouse">ガラスの なかは　いつも ぽかぽか。\nきせつはずれの はなも　ここなら そだつ。</string>
     <string name="flavor_tulip">はるの にわの　ていばん。\nそだてやすく　はじめての ひとにも やさしい。</string>
