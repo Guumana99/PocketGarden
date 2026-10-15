@@ -54,11 +54,14 @@
 | 設定・音・改ざん検出 | `SettingsRepositoryTest` `AudioManagerTest` `TimeTamperDetectionTest` |
 | タイトル・スターターガーデン・チュートリアル・機能の段階解放・季節 | `OnboardingTest` |
 | 庭の倍率の保存 | `SettingsRepositoryTest` `IsometricEngineTest` |
+| もちものの並び替え・タブ・入手の記録（DB v9） | `InventorySortTest`（＋設定の保存 `SettingsRepositoryTest`） |
 
 アイテムや図鑑ページを**増減**したら、数を固定値で見ているテストが落ちる
 （`ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`）。これは期待値の更新でよい。
 
 ### テストの癖
+
+- 枠を `InventorySlot(...)` と丸ごと比べるテストは、入手の通し番号を外して比べる（`slot.contents()`、`GardenActionUseCasesTest.kt` の末尾）。
 
 - テスト用の偽リポジトリ `FakeGardenRepository` は `GardenActionUseCasesTest.kt` の末尾にある（`till()` `discover()` `progress` など）。
   `GardenRepository` にメソッドを足したら、ここにも足す。

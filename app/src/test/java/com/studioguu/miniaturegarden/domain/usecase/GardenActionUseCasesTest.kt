@@ -272,7 +272,7 @@ class GardenActionUseCasesTest {
         assertEquals(0f, planted.growthProgress, 0f)
         assertEquals(1f, planted.moistureLevel, 0f)
         assertEquals(t0, planted.lastUpdatedTimestamp)
-        assertEquals(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1), repo.slots.getValue(0))
+        assertEquals(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1), repo.slots.getValue(0).contents())
     }
 
     @Test
@@ -481,7 +481,7 @@ class GardenActionUseCasesTest {
 
         assertEquals(ActionResult.SUCCESS, purchase(GardenItem.SEED_TULIP))
 
-        assertEquals(InventorySlot(1, GardenItem.SEED_TULIP.itemId, 1), repo.slots.getValue(1))
+        assertEquals(InventorySlot(1, GardenItem.SEED_TULIP.itemId, 1), repo.slots.getValue(1).contents())
         assertEquals(80L, repo.profile?.coins)
         assertEquals(1, repo.profileSaves)
     }
@@ -701,3 +701,6 @@ private class FakeSecurityRepository : SecurityRepository {
         this.flagged = flagged
     }
 }
+
+/** What a slot holds, leaving out when it came in: for comparing with a slot written out by hand. */
+fun InventorySlot.contents(): InventorySlot = copy(acquiredOrder = 0L)

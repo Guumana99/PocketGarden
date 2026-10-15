@@ -18,6 +18,8 @@ data class AppSettings(
     val notificationInviteShown: Boolean = false,
     /** How the garden was last zoomed and panned; null until the player has looked around. */
     val gardenView: GardenView? = null,
+    /** The order the bag was last sorted in; kept for next time. */
+    val inventorySort: InventorySort = InventorySort.DEFAULT,
 ) {
     /** The same settings with both volumes forced into 0..1; a non-number falls back to the default. */
     fun normalized(): AppSettings = copy(

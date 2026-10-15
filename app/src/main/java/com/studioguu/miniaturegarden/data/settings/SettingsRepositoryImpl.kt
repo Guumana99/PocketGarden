@@ -6,8 +6,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.domain.model.GardenView
+import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import java.io.IOException
 import javax.inject.Inject
@@ -36,6 +38,7 @@ class SettingsRepositoryImpl @Inject constructor(
             prefs[SE_VOLUME] = updated.soundEffectVolume
             prefs[NOTIFICATIONS_ENABLED] = updated.notificationsEnabled
             prefs[NOTIFICATION_INVITE_SHOWN] = updated.notificationInviteShown
+            prefs[INVENTORY_SORT] = updated.inventorySort.name
             val view = updated.gardenView
             if (view == null) {
                 prefs.remove(VIEW_SCALE)
@@ -60,6 +63,7 @@ class SettingsRepositoryImpl @Inject constructor(
             notificationInviteShown = prefs[NOTIFICATION_INVITE_SHOWN] ?: defaults.notificationInviteShown,
             gardenView = prefs[VIEW_SCALE]?.let { scale -> GardenView(scale, prefs[VIEW_PAN_X] ?: 0f, prefs[VIEW_PAN_Y] ?: 0f) }
                 ?.takeIf { it.isUsable },
+            inventorySort = InventorySort.fromName(prefs[INVENTORY_SORT]),
         ).normalized()
     }
 
@@ -75,5 +79,6 @@ class SettingsRepositoryImpl @Inject constructor(
         private val VIEW_SCALE = floatPreferencesKey("garden_view_scale")
         private val VIEW_PAN_X = floatPreferencesKey("garden_view_pan_x")
         private val VIEW_PAN_Y = floatPreferencesKey("garden_view_pan_y")
+        private val INVENTORY_SORT = stringPreferencesKey("inventory_sort")
     }
 }

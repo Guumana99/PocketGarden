@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.domain.model.GardenView
+import com.studioguu.miniaturegarden.domain.model.InventorySort
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -182,6 +183,17 @@ class SettingsRepositoryTest {
 
         second.update { it.copy(gardenView = null) }
         assertEquals(null, second.settings.first().gardenView)
+    }
+
+    @Test
+    fun `the bag's sort order is kept across a restart`() = runBlocking {
+        val (first, firstJob) = openRepository()
+        assertEquals(InventorySort.ACQUIRED, first.settings.first().inventorySort)
+        first.update { it.copy(inventorySort = InventorySort.SEASON) }
+        firstJob.cancelAndJoin()
+
+        val (second, _) = openRepository()
+        assertEquals(InventorySort.SEASON, second.settings.first().inventorySort)
     }
 
     @Test

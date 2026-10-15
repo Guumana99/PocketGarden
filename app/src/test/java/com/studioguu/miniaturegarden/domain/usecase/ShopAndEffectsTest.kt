@@ -192,7 +192,7 @@ class ShopAndEffectsTest {
         repo.discover(CollectionEntry.PEBBLE, revealed = true)
         assertEquals(ActionResult.SUCCESS, purchase(GardenItem.FLOOR_WOOD))
         assertEquals(1_000L - GardenItem.FLOOR_WOOD.price, repo.profile?.coins)
-        assertEquals(InventorySlot(0, GardenItem.FLOOR_WOOD.itemId, 1), repo.slots.getValue(0))
+        assertEquals(InventorySlot(0, GardenItem.FLOOR_WOOD.itemId, 1), repo.slots.getValue(0).contents())
 
         // The lantern needs four.
         assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.DECO_LANTERN))

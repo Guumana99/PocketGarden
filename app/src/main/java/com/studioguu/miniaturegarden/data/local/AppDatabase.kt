@@ -26,7 +26,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         GardenProgressEntity::class,
         NatureNoteEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -109,6 +109,13 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(CREATE_NATURE_NOTES)
+            }
+        }
+
+        /** v9 remembers when each slot was last filled, for sorting the bag. What is there already counts as oldest. */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE inventory_slots ADD COLUMN acquiredOrder INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

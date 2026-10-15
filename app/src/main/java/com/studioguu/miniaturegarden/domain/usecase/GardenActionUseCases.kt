@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.nextAcquisition
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -342,7 +343,7 @@ class StoreObjectUseCase @Inject constructor(
 
         gardenRepository.deleteGridObject(instanceId)
         val amount = if (slot.isEmpty) 1 else slot.amount + 1
-        gardenRepository.upsertInventorySlot(InventorySlot(slot.slotIndex, item.itemId, amount))
+        gardenRepository.upsertInventorySlot(InventorySlot(slot.slotIndex, item.itemId, amount, slots.nextAcquisition()))
         if (item.placeXp > 0) gardenRepository.saveUserProfile(profile.loseXp(item.placeXp))
         ActionResult.SUCCESS
     }
@@ -405,7 +406,7 @@ class PurchaseItemUseCase @Inject constructor(
             ?: return@runInTransaction ActionResult.INVENTORY_FULL
 
         val amount = if (target.isEmpty) 1 else target.amount + 1
-        gardenRepository.upsertInventorySlot(InventorySlot(target.slotIndex, item.itemId, amount))
+        gardenRepository.upsertInventorySlot(InventorySlot(target.slotIndex, item.itemId, amount, slots.nextAcquisition()))
         gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - item.price))
         ActionResult.SUCCESS
     }

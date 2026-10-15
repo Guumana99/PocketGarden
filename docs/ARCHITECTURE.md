@@ -11,7 +11,7 @@
 | SDK | minSdk 26、target / compile 35 |
 | 広告 | Google Mobile Ads 23.6（リワード。**テスト ID**） |
 | 通知 | WorkManager 2.7.0（広告 SDK が既に使っている版をそのまま明示）、NotificationCompat |
-| テスト | JUnit4 の JVM ユニットテストのみ（487 件）。UI テストなし |
+| テスト | JUnit4 の JVM ユニットテストのみ（502 件）。UI テストなし |
 
 ## 層
 
@@ -203,7 +203,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v8**。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v9**。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|
@@ -214,6 +214,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 | 6 | `garden_progress`（季節とチュートリアルの段階。1 行のみ）。行はマイグレーションではなく `ensureInitialized` が作る |
 | 7 | `garden_progress.gardenSize`（既存の庭は 9） |
 | 8 | `nature_notes`（自然メモ。`noteId` が主キー、`firstSeenAt`、`count`）。作成 SQL は `AppDatabase.CREATE_NATURE_NOTES`（テストで `schemas/8.json` と照合） |
+| 9 | `inventory_slots.acquiredOrder`（入手の通し番号。既存の枠は 0＝いちばん古い扱い） |
 
 - マイグレーションは `AppDatabase.MIGRATION_x_y`、登録は `di/DatabaseModule.kt`。
 - DB は SQLCipher。鍵は Android Keystore で包む。プロフィールは HMAC 署名付き（`SecurityManager`）。
@@ -324,7 +325,7 @@ FINISHED ──タップ──▶ REVEAL_RAIN ──タップ──▶ REVEAL_CO
 | 旬のショップ | その季節の作物は**その季節だけ**ショップに並ぶ。**まとめ買いは OK** | `GardenItem` に旬の季節を持たせ、`GardenItem.shelf` で絞る。購入数の上限は設けない |
 | 植付け制限 | 季節外れの種・苗は**植えられない**（持っておくのは自由） | `PlaceItemUseCase` に `ActionResult` を 1 つ足す（例「いまは季節ではありません」）。すでに植わっている作物の扱い（季節が変わったら）は着手時に決める |
 | プログレッション | 作物と家具（装飾・建物）を **Lv.1〜20** に配置 | `UnlockCondition.PlayerLevel` を使う。`LevelTable` は Lv.20 までの経験値を見直す |
-| 持ちもののソート | **入手順／種別／所持数／季節／レベル順** | 表示側の並べ替え（`InventoryBottomSheet` は `slots` を受け取るだけなので、並べ替えは呼び出し側で行える）。入手順には入手時刻の保存が要る（DB の版が上がる） |
+| 持ちもののソート | **入手順／種別／所持数／季節／レベル順** | **#29 で実装済み**（下の「もちものの並び替え」）。旬は `GardenItem.seasons` に仮の値 |
 
 ## 画面
 
@@ -335,6 +336,16 @@ FINISHED ──タップ──▶ REVEAL_RAIN ──タップ──▶ REVEAL_CO
   開くときは `savedView` が読めた時点で 1 回だけ `GardenCamera.restored` で戻す（画面に合う範囲に収め直す）。最初の「全体が収まる」倍率は保存しない。
 - **もちもの**（`InventoryBottomSheet`）は中身を `GardenViewModel.inventorySlots`（常に購読）から受け取り、`skipPartiallyExpanded` で最初から全高で開く。
   以前は開いてから中身を読み込んでいたため、せり上がる途中でシートが伸びてカクついていた。シートが出ている間は庭の風と川を止める（`GardenCanvas(paused)`）。
+- **もちものの並び替え**（#29、`domain/model/InventorySort.kt`）：純関数 `InventoryOrder.arrange(slots, sort, filter, season)`。
+  タブ（`InventoryFilter`：すべて／たね／かぐ／そのた）で絞ってから、`InventorySort` で並べ、空き枠は後ろ。ほかのタブの物の分は無地の枠で埋めて、どのタブでもマスの数を変えない。
+  - 入手順：`InventorySlot.acquiredOrder`（DB v9）の大きい順。時刻ではなく**通し番号**（`List<InventorySlot>.nextAcquisition()`＝今の最大＋1）なので、時計に左右されない。
+    買う・持ち物に戻す・木箱を開けるで更新し、同じ物の山に足したときも前へ出る。取り出し（置く）では変えない。
+  - 種別：`InventoryGroup`（作物／家具・建物／ハーブ・観葉＝芝生と野の花／土・タイル＝小石・石畳・ウッドデッキ・川）の順。タブの「そのた」はハーブ・観葉と土・タイル。
+  - 所持数順：多い順。季節順：旬（`GardenItem.seasons` に今の季節）→通年→旬が早く来る順（`InventoryOrder.seasonRank`）。
+  - レベル順：`GardenItem.openingRank`（最初から→Lv の低い順→図鑑で開く物）。ショップの棚の並びも同じ値を使う。
+  - 同じ順位は「新しく入った順→枠の番号」で決まる（並びが揺れない）。
+  - 並び順は `AppSettings.inventorySort`（DataStore の `inventory_sort`、名前で保存）、タブは `GardenScreen` の `rememberSaveable`。
+  - ヘッダー右の木の札（「⇅ 入手順 ▾」）でメニューを開く。並びが変わると枠は `animateItem` で新しい場所へ滑る。
 - 図鑑の赤丸（`CountBadge`）は、フォントの上余白を切って数字を円の中央に置く。
 - 通知は自前の `GardenToastHost`（レイアウトを動かさない）。
 - カメラモードは HUD 全体と排他の分岐。写真は庭の `graphicsLayer` を 4:5 の枠で切り抜く（`CameraFrame`）。
