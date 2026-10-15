@@ -213,7 +213,7 @@ class OnboardingTest {
             }
             seen = now
         }
-        assertEquals(listOf(GardenFeature.BLESSED_RAIN, GardenFeature.COLLECTION, GardenFeature.CAMERA), handedOver)
+        assertEquals(listOf(GardenFeature.BLESSED_RAIN, GardenFeature.COLLECTION, GardenFeature.CAMERA, GardenFeature.POST), handedOver)
         assertEquals(TutorialStep.DONE, step)
     }
 
@@ -304,7 +304,8 @@ class OnboardingTest {
         assertEquals(GardenExpansion.STAGES.first().size, TitleSampleGarden.SIZE)
         val ids = TitleSampleGarden.objects(0).map { it.objectId }.toSet()
         assertTrue(StructureData.entries.all { it.objectId in ids })
-        assertTrue(PlantSpecies.entries.all { it.objectId in ids })
+        // Every crop that has its artwork; the ones drawn in code wait for theirs.
+        assertTrue(listOf(PlantSpecies.TULIP, PlantSpecies.SUNFLOWER, PlantSpecies.ROSE).all { it.objectId in ids })
         assertTrue(TitleSampleGarden.visitors.isNotEmpty())
         // Most flowers are in bloom at any moment.
         val plants = TitleSampleGarden.objects(5).filter { it.isPlant }

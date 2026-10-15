@@ -30,6 +30,10 @@ class StartRemovalUseCase @Inject constructor(
                 ?: return@runInTransaction ActionResult.NOT_FOUND
             val item = StoreObjectUseCase.itemFor(target)
             if (toBag && item == null) return@runInTransaction ActionResult.NOT_RETURNABLE
+            // A greenhouse with something growing in it stays until that is harvested or cleared.
+            if (target.isGreenhouse && gardenRepository.getGridObjects().any { it.isPlant && it.gridX == target.gridX && it.gridY == target.gridY }) {
+                return@runInTransaction ActionResult.IN_USE
+            }
             // Already coming down: one job at a time.
             if (target.workKind == WorkKind.DEMOLISHING || target.workKind == WorkKind.PACKING) {
                 return@runInTransaction ActionResult.BUSY
@@ -164,6 +168,6 @@ class MoveObjectUseCase @Inject constructor(
 
     companion object {
         /** Whether [gridObject] is the kind of thing that can be moved at all. */
-        fun canMove(gridObject: GridObject): Boolean = StoreObjectUseCase.itemFor(gridObject) != null
+        fun canMove(gridObject: GridObject): Boolean = StoreObjectUseCase.itemFor(gridObject) != null && !gridObject.isGreenhouse
     }
 }

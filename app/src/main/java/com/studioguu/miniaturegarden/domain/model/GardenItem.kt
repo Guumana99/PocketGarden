@@ -23,10 +23,14 @@ enum class ItemCategory {
  *     crops        tulip        from start      20   50 coins + 50 XP after 48 h
  *                  sunflower    Lv.2            35   90 coins + 80 XP after 72 h, dries out fast
  *                  rose         Lv.4            60   160 coins + 140 XP after 120 h
+ *                  cosmos       from start      20   64 coins + 60 XP after 60 h (autumn only)
+ *                  snowdrop     from start      20   58 coins + 55 XP after 54 h (winter only)
+ *                  mint         from start      15   35 coins + 35 XP after 36 h (any season)
  *     structures   fence        from start      15   joins its neighbours; 20 s to build
  *                  well         Lv.3            80   30 XP; soil round it dries half as fast
  *                  hut          Lv.5           150   60 XP; plants round it grow 10 % faster
  *                  cottage      Lv.6           300   100 XP; symbol building (one per garden, 3x3); lets the garden grow
+ *                  greenhouse   Lv.18          300   40 XP; one cell of soil under glass, sown in any season
  *     decorations  grass        from start      10   ground cover
  *                  pebble       from start      10   ground cover
  *                  cobblestone  from start      10   paving; things can stand on it
@@ -36,6 +40,9 @@ enum class ItemCategory {
  *                  rock         Lv.2            30   ornament
  *                  bench        Lv.2            40   ornament
  *                  lantern      4 book pages    60   ornament
+ *
+ * Tulip, sunflower, rose, cosmos and snowdrop each have their season and are only on sale then
+ * ([seasons]); every season has at least one crop open from the start, and mint grows in all.
  *
  * How the prices hang together:
  * - A new player has 100 coins and one tulip seed, from the starter crate. Everything "from start" costs 20 or less,
@@ -132,6 +139,24 @@ enum class GardenItem(
     STRUCT_COTTAGE(
         "struct_cottage", price = 300, objectId = StructureData.COTTAGE.objectId, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(6), placeXp = 100, buildSeconds = 600,
+    ),
+
+    /** Autumn's flower. */
+    SEED_COSMOS("seed_cosmos", price = 20, objectId = PlantSpecies.COSMOS.objectId, category = ItemCategory.SEED),
+
+    /** Winter's flower, so that there is always something to sow. */
+    SEED_SNOWDROP("seed_snowdrop", price = 20, objectId = PlantSpecies.SNOWDROP.objectId, category = ItemCategory.SEED),
+
+    /** A herb for every season. */
+    SEED_MINT("seed_mint", price = 15, objectId = PlantSpecies.MINT.objectId, category = ItemCategory.SEED),
+
+    /**
+     * A one-cell glass greenhouse over a bed of soil. Seeds go into it as into tilled soil, and
+     * whatever the season. Paving-like: it lies in the cell's floor layer.
+     */
+    FLOOR_GREENHOUSE(
+        "floor_greenhouse", price = 300, objectId = GridObject.GREENHOUSE_OBJECT_ID, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(18), placeXp = 40,
     );
 
     /** A symbol building: one per garden, see [StructureData.isSymbol]. */
@@ -146,17 +171,25 @@ enum class GardenItem(
     val unlockLevel: Int get() = (unlock as? UnlockCondition.PlayerLevel)?.level ?: 1
 
     /**
-     * The seasons it is at its best in (its "shun"); empty for something good all year round.
-     * Only the bag's sorting reads this so far: the shop and planting do not follow the seasons
-     * yet (see "四季" in docs/ARCHITECTURE.md).
+     * The seasons it is at its best in (its "shun"); empty for something good all year round,
+     * which is everything but the seasonal crops. The shop only sells a seasonal crop in its
+     * season, and outside a greenhouse it can only be sown then.
      */
     val seasons: Set<Season>
         get() = when (this) {
             SEED_TULIP -> setOf(Season.SPRING)
             SEED_SUNFLOWER -> setOf(Season.SUMMER)
             SEED_ROSE -> setOf(Season.SPRING, Season.AUTUMN)
+            SEED_COSMOS -> setOf(Season.AUTUMN)
+            SEED_SNOWDROP -> setOf(Season.WINTER)
             else -> emptySet()
         }
+
+    /** Whether it is good all year round. */
+    val isAllSeasons: Boolean get() = seasons.isEmpty()
+
+    /** Whether [season] is a season for it: one of its own, or any for something good all year. */
+    fun isInSeason(season: Season): Boolean = isAllSeasons || season in seasons
 
     /**
      * How early it opens: what is for sale from the start comes first, then what a level opens
@@ -173,9 +206,13 @@ enum class GardenItem(
     companion object {
         fun fromItemId(itemId: String): GardenItem? = entries.firstOrNull { it.itemId == itemId }
 
-        /** The items of one shelf of the shop, in the order they are shown: soonest first, then cheapest. */
-        fun shelf(category: ItemCategory): List<GardenItem> =
-            entries.filter { it.category == category }.sortedWith(compareBy({ it.openingRank }, { it.price }))
+        /**
+         * The items of one shelf of the shop, in the order they are shown: soonest first, then
+         * cheapest. With a [season], only what is in season is on it (see [isInSeason]).
+         */
+        fun shelf(category: ItemCategory, season: Season? = null): List<GardenItem> =
+            entries.filter { it.category == category && (season == null || it.isInSeason(season)) }
+                .sortedWith(compareBy({ it.openingRank }, { it.price }))
 
         /** Items that are locked at [previousLevel] and for sale at [newLevel]. */
         fun unlockedBetween(previousLevel: Int, newLevel: Int): List<GardenItem> = entries.filter {

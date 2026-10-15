@@ -23,6 +23,7 @@ private const val DAY_MILLIS = 24 * HOUR_MILLIS
  *
  * @param onCycleWeather switches to the next kind of weather, overriding the day's own.
  * @param onBoost adds coins and a level, to reach what opens late (the symbol building) quickly.
+ * @param onNextSeason lets the rest of the season go by, so that the next one comes now.
  */
 @Composable
 fun DebugMenuDialog(
@@ -30,6 +31,7 @@ fun DebugMenuDialog(
     onCycleWeather: () -> Unit,
     onDismiss: () -> Unit,
     onBoost: () -> Unit = {},
+    onNextSeason: () -> Unit = {},
 ) {
     AlertDialog(
         modifier = Modifier.popIn(),
@@ -51,6 +53,9 @@ fun DebugMenuDialog(
                 }
                 FilledTonalButton(onClick = onBoost) {
                     Text(stringResource(R.string.debug_boost))
+                }
+                FilledTonalButton(onClick = onNextSeason) {
+                    Text(stringResource(R.string.debug_next_season))
                 }
             }
         },

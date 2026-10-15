@@ -122,6 +122,7 @@ class ProgressionTest {
             setOf(
                 GardenItem.SEED_TULIP, GardenItem.GROUND_GRASS, GardenItem.GROUND_PEBBLE, GardenItem.TILE_RIVER,
                 GardenItem.FLOOR_COBBLESTONE, GardenItem.STRUCT_FENCE, GardenItem.GROUND_FLOWERS,
+                GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP, GardenItem.SEED_MINT,
             ),
             unlockedAt(1),
         )
@@ -133,10 +134,11 @@ class ProgressionTest {
         assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE, unlockedAt(4))
         // Level opens everything but the two that the encyclopedia opens.
         val byPages = setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN)
-        // The symbol building comes last, at Lv.6.
-        assertEquals(GardenItem.entries.toSet() - byPages - GardenItem.STRUCT_COTTAGE, unlockedAt(5))
-        assertEquals(GardenItem.entries.toSet() - byPages, unlockedAt(6))
-        assertEquals(GardenItem.entries.toSet(), GardenItem.entries.filter { it.isUnlockedFor(statsAt(6).copy(collectionPages = 4)) }.toSet())
+        // The symbol building comes at Lv.6, the greenhouse much later, at Lv.18.
+        assertEquals(GardenItem.entries.toSet() - byPages - GardenItem.STRUCT_COTTAGE - GardenItem.FLOOR_GREENHOUSE, unlockedAt(5))
+        assertEquals(GardenItem.entries.toSet() - byPages - GardenItem.FLOOR_GREENHOUSE, unlockedAt(17))
+        assertEquals(GardenItem.entries.toSet() - byPages, unlockedAt(18))
+        assertEquals(GardenItem.entries.toSet(), GardenItem.entries.filter { it.isUnlockedFor(statsAt(18).copy(collectionPages = 4)) }.toSet())
     }
 
     @Test
@@ -174,13 +176,18 @@ class ProgressionTest {
 
     @Test
     fun `plants that unlock later earn more per hour, in coins and in experience`() {
-        val byUnlock = PlantSpecies.entries.sortedBy { (seedFor(it).unlock as? UnlockCondition.PlayerLevel)?.level ?: 1 }
-        assertEquals(listOf(PlantSpecies.TULIP, PlantSpecies.SUNFLOWER, PlantSpecies.ROSE), byUnlock)
+        fun level(species: PlantSpecies) = (seedFor(species).unlock as? UnlockCondition.PlayerLevel)?.level ?: 1
+        fun coinsPerHour(species: PlantSpecies) = (species.harvestCoins - seedFor(species).price).toDouble() / species.growthHours
+        fun xpPerHour(species: PlantSpecies) = species.harvestXp.toDouble() / species.growthHours
+        assertEquals(listOf(PlantSpecies.SUNFLOWER, PlantSpecies.ROSE), PlantSpecies.entries.filter { level(it) > 1 }.sortedBy(::level))
 
-        val coinsPerHour = byUnlock.map { (it.harvestCoins - seedFor(it).price).toDouble() / it.growthHours }
-        val xpPerHour = byUnlock.map { it.harvestXp.toDouble() / it.growthHours }
-        assertTrue("$coinsPerHour", coinsPerHour.zipWithNext().all { (a, b) -> b > a })
-        assertTrue("$xpPerHour", xpPerHour.zipWithNext().all { (a, b) -> b > a })
+        // Whatever opens at a higher level beats everything that opens lower, the seasonal crops
+        // of the first level included.
+        for (later in PlantSpecies.entries) for (earlier in PlantSpecies.entries) {
+            if (level(later) <= level(earlier)) continue
+            assertTrue("$later over $earlier in coins", coinsPerHour(later) > coinsPerHour(earlier))
+            assertTrue("$later over $earlier in XP", xpPerHour(later) > xpPerHour(earlier))
+        }
     }
 
     @Test
@@ -193,7 +200,7 @@ class ProgressionTest {
     @Test
     fun `only structures give experience for being placed`() {
         val paying = GardenItem.entries.filter { it.placeXp > 0 }
-        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_COTTAGE), paying.toSet())
+        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE), paying.toSet())
         assertTrue(GardenItem.STRUCT_HUT.placeXp > GardenItem.STRUCT_WELL.placeXp)
         // Buying a structure for its XP is never cheaper than growing tulips for it.
         for (item in paying) {

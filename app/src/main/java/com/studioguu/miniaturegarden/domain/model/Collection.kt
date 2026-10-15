@@ -36,6 +36,9 @@ enum class CollectionEntry(
     TULIP(PlantSpecies.TULIP.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 20),
     SUNFLOWER(PlantSpecies.SUNFLOWER.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 40),
     ROSE(PlantSpecies.ROSE.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 80),
+    COSMOS(PlantSpecies.COSMOS.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 30),
+    SNOWDROP(PlantSpecies.SNOWDROP.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 30),
+    MINT(PlantSpecies.MINT.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 20),
     GRASS("ground_grass", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     PEBBLE("ground_pebble", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     RIVER(GridObject.RIVER_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
@@ -48,7 +51,8 @@ enum class CollectionEntry(
     LANTERN("deco_lantern", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     WELL(StructureData.WELL.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 40),
     HUT(StructureData.HUT.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 80),
-    COTTAGE(StructureData.COTTAGE.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 100);
+    COTTAGE(StructureData.COTTAGE.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 100),
+    GREENHOUSE(GridObject.GREENHOUSE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 60);
 
     companion object {
         fun fromObjectId(objectId: String): CollectionEntry? = entries.firstOrNull { it.objectId == objectId }

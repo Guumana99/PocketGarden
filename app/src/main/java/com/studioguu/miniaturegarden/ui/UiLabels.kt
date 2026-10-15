@@ -20,6 +20,10 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "plant_tulip" -> R.string.object_plant_tulip
     "plant_sunflower" -> R.string.object_plant_sunflower
     "plant_rose" -> R.string.object_plant_rose
+    "plant_cosmos" -> R.string.object_plant_cosmos
+    "plant_snowdrop" -> R.string.object_plant_snowdrop
+    "plant_mint" -> R.string.object_plant_mint
+    "floor_greenhouse" -> R.string.object_floor_greenhouse
     "deco_rock" -> R.string.object_deco_rock
     "struct_hut" -> R.string.object_struct_hut
     "struct_well" -> R.string.object_struct_well
@@ -48,6 +52,9 @@ fun itemDisplayName(item: GardenItem): String = when (item) {
     GardenItem.SEED_TULIP -> stringResource(R.string.item_seed_tulip)
     GardenItem.SEED_SUNFLOWER -> stringResource(R.string.item_seed_sunflower)
     GardenItem.SEED_ROSE -> stringResource(R.string.item_seed_rose)
+    GardenItem.SEED_COSMOS -> stringResource(R.string.item_seed_cosmos)
+    GardenItem.SEED_SNOWDROP -> stringResource(R.string.item_seed_snowdrop)
+    GardenItem.SEED_MINT -> stringResource(R.string.item_seed_mint)
     GardenItem.TILE_RIVER -> stringResource(R.string.item_tile_river)
     else -> objectDisplayName(item.objectId)
 }
@@ -69,6 +76,10 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.DECO_BENCH -> "🪑"
     GardenItem.DECO_LANTERN -> "🏮"
     GardenItem.STRUCT_COTTAGE -> "🏡"
+    GardenItem.SEED_COSMOS -> "🏵️"
+    GardenItem.SEED_SNOWDROP -> "🤍"
+    GardenItem.SEED_MINT -> "🍃"
+    GardenItem.FLOOR_GREENHOUSE -> "🪴"
 }
 
 fun weatherEmoji(weather: WeatherType): String = when (weather) {
@@ -131,6 +142,8 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.ONLY_ONE_SYMBOL -> R.string.msg_only_one_symbol
     ActionResult.EXPANSION_LOCKED -> R.string.msg_expansion_locked
     ActionResult.GARDEN_AT_MAX_SIZE -> R.string.msg_garden_at_max_size
+    ActionResult.OUT_OF_SEASON -> R.string.msg_out_of_season
+    ActionResult.IN_USE -> R.string.msg_in_use
 }
 
 @StringRes

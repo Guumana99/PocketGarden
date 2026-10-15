@@ -4,6 +4,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
@@ -22,7 +23,7 @@ interface GardenRepository {
 
     /**
      * Throws the saved garden away entirely: profile, garden, inventory, encyclopedia, nature
-     * notes and progress. The next [ensureInitialized] starts a new one.
+     * notes, letters and progress. The next [ensureInitialized] starts a new one.
      */
     suspend fun deleteSavedGarden()
 
@@ -62,4 +63,13 @@ interface GardenRepository {
     fun observeNatureNotes(): Flow<List<NatureNote>>
     suspend fun getNatureNotes(): List<NatureNote>
     suspend fun upsertNatureNote(note: NatureNote)
+
+    /** The post: every letter that has come, newest first. */
+    fun observeLetters(): Flow<List<Letter>>
+    suspend fun getLetters(): List<Letter>
+
+    /** Puts [letter] in the post, unless one with its id is there already. @return whether it was new. */
+    suspend fun postLetter(letter: Letter): Boolean
+
+    suspend fun markLettersRead()
 }

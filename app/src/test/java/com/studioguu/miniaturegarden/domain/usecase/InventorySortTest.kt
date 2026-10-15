@@ -220,7 +220,7 @@ class InventorySortTest {
             .resolve("java/com/studioguu/miniaturegarden/data/local/AppDatabase.kt").readText()
         assertTrue(source.contains("ALTER TABLE inventory_slots ADD COLUMN acquiredOrder INTEGER NOT NULL DEFAULT 0"))
         assertTrue(
-            source.contains("version = 9") &&
+            source.contains("MIGRATION_8_9") &&
                 listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
                     .resolve("java/com/studioguu/miniaturegarden/di/DatabaseModule.kt").readText().contains("MIGRATION_8_9"),
         )

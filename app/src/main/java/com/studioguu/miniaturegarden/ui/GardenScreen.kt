@@ -95,6 +95,7 @@ import com.studioguu.miniaturegarden.ui.notifications.NotificationInviteDialog
 import com.studioguu.miniaturegarden.ui.notifications.hasNotificationPermission
 import com.studioguu.miniaturegarden.ui.notifications.rememberNotificationPermissionRequest
 import com.studioguu.miniaturegarden.ui.onboarding.FeatureRevealCard
+import com.studioguu.miniaturegarden.ui.post.PostDialog
 import com.studioguu.miniaturegarden.ui.onboarding.RevealBadge
 import com.studioguu.miniaturegarden.ui.onboarding.StarterCrateDialog
 import com.studioguu.miniaturegarden.ui.onboarding.TutorialDoneDialog
@@ -140,6 +141,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
     val openingCrate by viewModel.openingCrate.collectAsStateWithLifecycle()
     val season by viewModel.season.collectAsStateWithLifecycle()
+    val letters by viewModel.letters.collectAsStateWithLifecycle()
     val inventorySlots by viewModel.inventorySlots.collectAsStateWithLifecycle()
     val savedView by viewModel.savedView.collectAsStateWithLifecycle()
     val inventorySort by viewModel.inventorySort.collectAsStateWithLifecycle()
@@ -149,6 +151,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var inventoryFilter by rememberSaveable { mutableStateOf(InventoryFilter.ALL) }
     var showShop by rememberSaveable { mutableStateOf(false) }
     var showDebugMenu by rememberSaveable { mutableStateOf(false) }
+    var showPost by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCollection by rememberSaveable { mutableStateOf(false) }
     var confirmRain by rememberSaveable { mutableStateOf(false) }
@@ -192,6 +195,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { toast.show(context.getString(it)) }
     }
+    LaunchedEffect(viewModel) {
+        viewModel.seasonArrived.collect { season ->
+            toast.show(context.getString(R.string.msg_season_arrived, seasonEmoji(season), context.getString(seasonLabel(season))))
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
@@ -204,7 +212,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         ) {
             // Sky, hills and meadow behind the garden. Inside the recorded box, so a shared
             // picture has them too.
-            GardenBackdrop(weather, Modifier.fillMaxSize())
+            GardenBackdrop(weather, Modifier.fillMaxSize(), season = season)
             // The reach of the selected building's effect, if it has one and is finished.
             val aura = remember(selectedObject) {
                 selectedObject?.takeUnless { it.isWorking }
@@ -229,6 +237,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 savedView = savedView,
                 onViewChanged = viewModel::saveView,
                 paused = showInventory,
+                season = season,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
                 // the hoe), or when the selected cell is behind one of them.
                 fadedObjectIds = remember(gridObjects, selectedTile, placingSlot, hoeActive, movingObject, cameraMode) {
@@ -324,6 +333,19 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         // Whatever was in hand is put down, so that nothing of it is in the picture.
                         viewModel.enterCameraMode()
                         cameraMode = true
+                    }
+                }
+                RevealedFeature(
+                    visible = tutorialStep?.reveals(GardenFeature.POST),
+                    introducing = tutorialStep?.introducing == GardenFeature.POST,
+                ) {
+                    Box {
+                        SideButton("📮", stringResource(R.string.post_button)) { showPost = true }
+                        // Letters not read yet.
+                        val unread = letters.count { !it.read }
+                        if (unread > 0) {
+                            CountBadge(unread, Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp))
+                        }
                     }
                 }
                 if (BuildConfig.DEBUG) {
@@ -538,8 +560,12 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onSkipTime = viewModel::debugSkipTime,
             onCycleWeather = viewModel::debugCycleWeather,
             onBoost = viewModel::debugBoost,
+            onNextSeason = viewModel::debugNextSeason,
             onDismiss = { showDebugMenu = false },
         )
+    }
+    if (showPost) {
+        PostDialog(letters = letters, onOpened = viewModel::markLettersRead, onDismiss = { showPost = false })
     }
     if (showShop) {
         ShopDialog(onDismiss = { showShop = false })

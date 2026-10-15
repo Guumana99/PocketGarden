@@ -4,12 +4,15 @@ import com.studioguu.miniaturegarden.data.local.entity.CollectionEntryEntity
 import com.studioguu.miniaturegarden.data.local.entity.GardenProgressEntity
 import com.studioguu.miniaturegarden.data.local.entity.GridObjectEntity
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
+import com.studioguu.miniaturegarden.data.local.entity.LetterEntity
 import com.studioguu.miniaturegarden.data.local.entity.NatureNoteEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.Letter
+import com.studioguu.miniaturegarden.domain.model.LetterKind
 import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
@@ -105,13 +108,22 @@ fun GardenProgressEntity.toDomain() = GardenProgress(
     season = Season.fromName(season),
     tutorialStep = TutorialStep.fromName(tutorialStep),
     gardenSize = gardenSize,
+    seasonStartedAt = seasonStartedAt,
 )
 
 fun GardenProgress.toEntity() = GardenProgressEntity(
     season = season.name,
     tutorialStep = tutorialStep.name,
     gardenSize = gardenSize,
+    seasonStartedAt = seasonStartedAt,
 )
+
+/** Null for a letter of a kind this version does not know (written by a newer one). */
+fun LetterEntity.toDomain(): Letter? = LetterKind.fromName(kind)?.let {
+    Letter(letterId = letterId, kind = it, season = Season.fromName(season), sentAt = sentAt, read = read)
+}
+
+fun Letter.toEntity() = LetterEntity(letterId = letterId, kind = kind.name, season = season.name, sentAt = sentAt, read = read)
 
 fun NatureNoteEntity.toDomain() = NatureNote(noteId = noteId, firstSeenAt = firstSeenAt, count = count)
 

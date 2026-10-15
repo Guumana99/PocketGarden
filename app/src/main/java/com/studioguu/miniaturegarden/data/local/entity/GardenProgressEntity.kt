@@ -15,6 +15,8 @@ data class GardenProgressEntity(
     val tutorialStep: String,
     /** Cells across. Added in schema version 7. */
     @ColumnInfo(defaultValue = "9") val gardenSize: Int = 9,
+    /** When the current season began; 0 until the season clock has started. Added in schema version 10. */
+    @ColumnInfo(defaultValue = "0") val seasonStartedAt: Long = 0L,
 ) {
     companion object {
         const val SINGLETON_ID = 1

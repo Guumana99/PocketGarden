@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -638,6 +639,7 @@ internal class FakeGardenRepository : GardenRepository {
         slots.clear()
         collection.clear()
         natureNotes.clear()
+        letters.clear()
         progress = null
         profile = null
     }
@@ -682,6 +684,21 @@ internal class FakeGardenRepository : GardenRepository {
     override suspend fun upsertNatureNote(note: NatureNote) {
         natureNotes[note.noteId] = note
     }
+
+    val letters = LinkedHashMap<String, Letter>()
+
+    override fun observeLetters(): Flow<List<Letter>> = MutableStateFlow(lettersNewestFirst())
+    override suspend fun getLetters(): List<Letter> = lettersNewestFirst()
+    override suspend fun postLetter(letter: Letter): Boolean {
+        if (letter.letterId in letters) return false
+        letters[letter.letterId] = letter
+        return true
+    }
+    override suspend fun markLettersRead() {
+        letters.replaceAll { _, it -> it.copy(read = true) }
+    }
+
+    private fun lettersNewestFirst() = letters.values.sortedWith(compareByDescending<Letter> { it.sentAt }.thenBy { it.letterId })
 
     override fun observeInventory(): Flow<List<InventorySlot>> = MutableStateFlow(slots.values.toList())
     override suspend fun getInventory(): List<InventorySlot> = slots.values.toList()

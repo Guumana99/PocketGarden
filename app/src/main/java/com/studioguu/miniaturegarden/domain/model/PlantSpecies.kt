@@ -20,7 +20,16 @@ enum class PlantSpecies(
 ) {
     TULIP("plant_tulip", growthHours = 48, dryOutHours = 24, harvestCoins = 50, harvestXp = 50),
     SUNFLOWER("plant_sunflower", growthHours = 72, dryOutHours = 16, harvestCoins = 90, harvestXp = 80),
-    ROSE("plant_rose", growthHours = 120, dryOutHours = 36, harvestCoins = 160, harvestXp = 140);
+    ROSE("plant_rose", growthHours = 120, dryOutHours = 36, harvestCoins = 160, harvestXp = 140),
+
+    /** Autumn's own flower; light and quick to grow. */
+    COSMOS("plant_cosmos", growthHours = 60, dryOutHours = 20, harvestCoins = 64, harvestXp = 60),
+
+    /** The winter flower: slow to dry out in the cold. */
+    SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55),
+
+    /** A herb that grows in any season; quick, and worth a little less for it. */
+    MINT("plant_mint", growthHours = 36, dryOutHours = 18, harvestCoins = 35, harvestXp = 35);
 
     /** Growth progress (0..1) gained per healthy hour. */
     val growthPerHour: Float get() = 1f / growthHours

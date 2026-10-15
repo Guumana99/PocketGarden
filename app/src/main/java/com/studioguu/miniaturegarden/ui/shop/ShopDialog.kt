@@ -43,6 +43,8 @@ import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.itemEmoji
+import com.studioguu.miniaturegarden.ui.seasonEmoji
+import com.studioguu.miniaturegarden.ui.seasonLabel
 
 /**
  * Buy seeds, structures and decorations with coins; purchases go straight into the inventory.
@@ -54,6 +56,7 @@ fun ShopDialog(
     viewModel: ShopViewModel = hiltViewModel(),
 ) {
     val coins by viewModel.coins.collectAsStateWithLifecycle()
+    val season by viewModel.season.collectAsStateWithLifecycle()
     val feedback by viewModel.feedback.collectAsStateWithLifecycle()
     val notice by viewModel.notice.collectAsStateWithLifecycle()
     val playerStats by viewModel.playerStats.collectAsStateWithLifecycle()
@@ -90,7 +93,14 @@ fun ShopDialog(
                     modifier = Modifier.heightIn(min = SHELF_MIN_HEIGHT, max = SHELF_MAX_HEIGHT).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    for (item in GardenItem.shelf(category)) {
+                    if (category == ItemCategory.SEED) {
+                        Text(
+                            text = stringResource(R.string.shop_season_caption, seasonEmoji(season), stringResource(seasonLabel(season))),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    for (item in GardenItem.shelf(category, season)) {
                         ShopRow(
                             item = item,
                             locked = !item.isUnlockedFor(playerStats),

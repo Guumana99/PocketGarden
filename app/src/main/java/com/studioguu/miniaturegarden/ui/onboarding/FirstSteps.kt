@@ -129,6 +129,7 @@ private fun featureIntroduction(feature: GardenFeature): Pair<String, String> = 
     GardenFeature.BLESSED_RAIN -> stringResource(R.string.reveal_rain_name) to stringResource(R.string.reveal_rain_text)
     GardenFeature.COLLECTION -> stringResource(R.string.reveal_collection_name) to stringResource(R.string.reveal_collection_text)
     GardenFeature.CAMERA -> stringResource(R.string.reveal_camera_name) to stringResource(R.string.reveal_camera_text)
+    GardenFeature.POST -> stringResource(R.string.reveal_post_name) to stringResource(R.string.reveal_post_text)
 }
 
 /**

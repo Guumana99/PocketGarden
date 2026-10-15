@@ -56,8 +56,11 @@ class GardenGrid(
     /** The paving on (x, y), if any. */
     fun floorAt(x: Int, y: Int): GridObject? = floors[GridCell(x, y)]
 
-    /** Whether (x, y) has been tilled, with or without something growing on it. */
-    fun isTilled(x: Int, y: Int): Boolean = floorAt(x, y)?.isTilledSoil == true
+    /** Whether (x, y) is soil a seed can go into: tilled, or a greenhouse bed. */
+    fun isTilled(x: Int, y: Int): Boolean = floorAt(x, y)?.let { it.isTilledSoil || it.isGreenhouse } == true
+
+    /** Whether (x, y) is under glass, where anything grows whatever the season. */
+    fun isUnderGlass(x: Int, y: Int): Boolean = floorAt(x, y)?.isGreenhouse == true
 
     /** Whether a symbol building stands in the garden, finished or not. */
     val hasSymbol: Boolean = objects.any { it.isSymbol }
