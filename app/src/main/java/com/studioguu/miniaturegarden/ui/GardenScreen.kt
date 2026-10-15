@@ -2,8 +2,10 @@ package com.studioguu.miniaturegarden.ui
 
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -11,10 +13,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,7 +47,10 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -63,6 +70,7 @@ import com.studioguu.miniaturegarden.domain.model.NotificationAccess
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
+import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.collection.CollectionDialog
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
@@ -85,7 +93,11 @@ import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
 import com.studioguu.miniaturegarden.ui.notifications.NotificationInviteDialog
 import com.studioguu.miniaturegarden.ui.notifications.hasNotificationPermission
 import com.studioguu.miniaturegarden.ui.notifications.rememberNotificationPermissionRequest
+import com.studioguu.miniaturegarden.ui.onboarding.FeatureRevealCard
+import com.studioguu.miniaturegarden.ui.onboarding.RevealBadge
 import com.studioguu.miniaturegarden.ui.onboarding.StarterCrateDialog
+import com.studioguu.miniaturegarden.ui.onboarding.TutorialDoneDialog
+import com.studioguu.miniaturegarden.ui.onboarding.revealGlow
 import com.studioguu.miniaturegarden.ui.onboarding.TutorialHint
 import com.studioguu.miniaturegarden.ui.onboarding.tutorialHint
 import com.studioguu.miniaturegarden.ui.render.Occlusion
@@ -127,6 +139,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
     val openingCrate by viewModel.openingCrate.collectAsStateWithLifecycle()
     val season by viewModel.season.collectAsStateWithLifecycle()
+    val inventorySlots by viewModel.inventorySlots.collectAsStateWithLifecycle()
+    val savedView by viewModel.savedView.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     var showShop by rememberSaveable { mutableStateOf(false) }
@@ -208,6 +222,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 hintCells = if (cameraMode) emptySet() else hintCells,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
+                savedView = savedView,
+                onViewChanged = viewModel::saveView,
+                paused = showInventory,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
                 // the hoe), or when the selected cell is behind one of them.
                 fadedObjectIds = remember(gridObjects, selectedTile, placingSlot, hoeActive, movingObject, cameraMode) {
@@ -262,44 +279,48 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
             )
 
-            // Greyed out when today's rains are used up or none is ready to be shown.
-            WoodButton(
-                text = stringResource(R.string.reward_rain_button),
-                onClick = {
-                    if (viewModel.hasGrowingPlants()) confirmRain = true else viewModel.showMessage(R.string.msg_no_growing_plants)
-                },
-                enabled = rainRemaining > 0 && adReady,
+            // Greyed out when today's rains are used up or none is ready to be shown. Put away
+            // during the first steps, and handed over after them.
+            RevealedFeature(
+                visible = tutorialStep?.reveals(GardenFeature.BLESSED_RAIN),
+                introducing = tutorialStep?.introducing == GardenFeature.BLESSED_RAIN,
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 58.dp),
-            )
+            ) {
+                WoodButton(
+                    text = stringResource(R.string.reward_rain_button),
+                    onClick = {
+                        if (viewModel.hasGrowingPlants()) confirmRain = true else viewModel.showMessage(R.string.msg_no_growing_plants)
+                    },
+                    enabled = rainRemaining > 0 && adReady,
+                )
+            }
 
             Column(
                 modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 112.dp, end = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
-                Box {
-                    SideButton("📖", stringResource(R.string.collection_title)) { showCollection = true }
-                    // Pages waiting to be filled in.
-                    if (collectionReady > 0) {
-                        Text(
-                            text = collectionReady.toString(),
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(top = 4.dp, end = 4.dp)
-                                .size(18.dp)
-                                .background(MaterialTheme.colorScheme.error, CircleShape)
-                                .wrapContentSize(),
-                        )
+                RevealedFeature(
+                    visible = tutorialStep?.reveals(GardenFeature.COLLECTION),
+                    introducing = tutorialStep?.introducing == GardenFeature.COLLECTION,
+                ) {
+                    Box {
+                        SideButton("📖", stringResource(R.string.collection_title)) { showCollection = true }
+                        // Pages waiting to be filled in.
+                        if (collectionReady > 0) {
+                            CountBadge(collectionReady, Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp))
+                        }
                     }
                 }
-                SideButton("📷", stringResource(R.string.camera_button)) {
-                    // Whatever was in hand is put down, so that nothing of it is in the picture.
-                    viewModel.enterCameraMode()
-                    cameraMode = true
+                RevealedFeature(
+                    visible = tutorialStep?.reveals(GardenFeature.CAMERA),
+                    introducing = tutorialStep?.introducing == GardenFeature.CAMERA,
+                ) {
+                    SideButton("📷", stringResource(R.string.camera_button)) {
+                        // Whatever was in hand is put down, so that nothing of it is in the picture.
+                        viewModel.enterCameraMode()
+                        cameraMode = true
+                    }
                 }
                 if (BuildConfig.DEBUG) {
                     SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
@@ -311,6 +332,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 onFinished = viewModel::onEffectFinished,
                 modifier = Modifier.align(Alignment.Center),
             )
+
 
             // Short messages, laid over the garden below the buttons at the top. They take no room
             // in the layout, so nothing shifts when one comes or goes.
@@ -421,11 +443,25 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
 
                 }
             }
+
+            // A feature that has just been handed over: what it is and where it lives, beside the
+            // button that lights up for it. Laid last, over the panels above the tool bar. Gone at the player's tap, and the next one follows.
+            val introducing = tutorialStep?.introducing
+            if (introducing != null) {
+                key(introducing) {
+                    FeatureRevealCard(
+                        feature = introducing,
+                        onClose = { viewModel.acknowledgeTutorial(introducing.revealedAt) },
+                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+                    )
+                }
+            }
         }
     }
 
     if (showInventory) {
         InventoryBottomSheet(
+            slots = inventorySlots,
             onSlotSelected = { slotIndex ->
                 viewModel.startPlacing(slotIndex)
                 showInventory = false
@@ -438,6 +474,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     if (openingCrate != null) {
         StarterCrateDialog(onReceive = viewModel::openCrate, onDismiss = viewModel::closeCrate)
+    }
+    // The first steps are over: a board that stays until the player goes on.
+    if (tutorialStep == TutorialStep.FINISHED && !cameraMode) {
+        TutorialDoneDialog(onClose = { viewModel.acknowledgeTutorial(TutorialStep.FINISHED) })
     }
     // Once, after the first steps, and only where the device needs the player's permission.
     val requestNotificationPermission = rememberNotificationPermissionRequest { }
@@ -494,6 +534,60 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     if (showShop) {
         ShopDialog(onDismiss = { showShop = false })
+    }
+}
+
+/**
+ * A control that is put away during the first steps. It comes in with a small pop when it is
+ * handed over, and while it is being introduced it glows and wears a "NEW" tag. [visible] is
+ * null while that is not known yet; once it is, a control that is simply there from the start
+ * shows at once, without the pop.
+ */
+@Composable
+private fun RevealedFeature(
+    visible: Boolean?,
+    introducing: Boolean,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    if (visible == null) return
+    val state = remember { MutableTransitionState(visible) }
+    state.targetState = visible
+    AnimatedVisibility(
+        visibleState = state,
+        enter = fadeIn() + scaleIn(initialScale = 0.6f),
+        exit = fadeOut(),
+        modifier = modifier,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Box(Modifier.revealGlow(introducing)) { content() }
+            if (introducing) RevealBadge(Modifier.align(Alignment.TopStart).offset(x = (-10).dp, y = (-10).dp))
+        }
+    }
+}
+
+/**
+ * A small red disc with a number in it. The number is centred on the disc itself: the font's
+ * extra top padding is left out, which otherwise pushes it below the middle.
+ */
+@Composable
+private fun CountBadge(count: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.size(18.dp).background(MaterialTheme.colorScheme.error, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = count.toString(),
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            style = TextStyle(
+                fontSize = 11.sp,
+                lineHeight = 11.sp,
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+            ),
+        )
     }
 }
 

@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import com.studioguu.miniaturegarden.domain.model.AppSettings
+import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import java.io.IOException
 import javax.inject.Inject
@@ -35,6 +36,16 @@ class SettingsRepositoryImpl @Inject constructor(
             prefs[SE_VOLUME] = updated.soundEffectVolume
             prefs[NOTIFICATIONS_ENABLED] = updated.notificationsEnabled
             prefs[NOTIFICATION_INVITE_SHOWN] = updated.notificationInviteShown
+            val view = updated.gardenView
+            if (view == null) {
+                prefs.remove(VIEW_SCALE)
+                prefs.remove(VIEW_PAN_X)
+                prefs.remove(VIEW_PAN_Y)
+            } else {
+                prefs[VIEW_SCALE] = view.scale
+                prefs[VIEW_PAN_X] = view.panX
+                prefs[VIEW_PAN_Y] = view.panY
+            }
         }
     }
 
@@ -47,6 +58,8 @@ class SettingsRepositoryImpl @Inject constructor(
             soundEffectVolume = prefs[SE_VOLUME] ?: defaults.soundEffectVolume,
             notificationsEnabled = prefs[NOTIFICATIONS_ENABLED] ?: defaults.notificationsEnabled,
             notificationInviteShown = prefs[NOTIFICATION_INVITE_SHOWN] ?: defaults.notificationInviteShown,
+            gardenView = prefs[VIEW_SCALE]?.let { scale -> GardenView(scale, prefs[VIEW_PAN_X] ?: 0f, prefs[VIEW_PAN_Y] ?: 0f) }
+                ?.takeIf { it.isUsable },
         ).normalized()
     }
 
@@ -59,5 +72,8 @@ class SettingsRepositoryImpl @Inject constructor(
         private val SE_VOLUME = floatPreferencesKey("se_volume")
         private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         private val NOTIFICATION_INVITE_SHOWN = booleanPreferencesKey("notification_invite_shown")
+        private val VIEW_SCALE = floatPreferencesKey("garden_view_scale")
+        private val VIEW_PAN_X = floatPreferencesKey("garden_view_pan_x")
+        private val VIEW_PAN_Y = floatPreferencesKey("garden_view_pan_y")
     }
 }

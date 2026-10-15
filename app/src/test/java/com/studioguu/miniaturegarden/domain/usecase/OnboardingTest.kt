@@ -1,6 +1,8 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.GardenExpansion
+import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -10,8 +12,10 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.StarterGarden
+import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TutorialGuide
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -41,13 +45,15 @@ class OnboardingTest {
     private val care = CareForPlantUseCase(repo, CalculateOfflineProgressUseCase())
     private val remove = RemoveObjectUseCase(repo)
 
+    private val hoe = HoeUseCase(repo, GardenMap.DEFAULT)
+
     private val step get() = repo.progress?.tutorialStep
 
     /** Every object can be put where it is with the ones before it already in place. */
-    private fun assertNoOverlaps(objects: List<GridObject>) {
+    private fun assertNoOverlaps(objects: List<GridObject>, map: GardenMap = GardenMap.DEFAULT) {
         val placed = mutableListOf<GridObject>()
         for (obj in objects) {
-            val check = GardenGrid(GardenMap.DEFAULT, placed)
+            val check = GardenGrid(map, placed)
                 .checkPlacement(obj.footprint, obj.gridX, obj.gridY, PlacementKind.forObjectId(obj.objectId))
             assertEquals("${obj.objectId} at ${obj.gridX},${obj.gridY}", PlacementCheck.OK, check)
             placed += obj
@@ -66,18 +72,14 @@ class OnboardingTest {
     }
 
     @Test
-    fun `the starter garden is a fenced plot with a tilled bed and the crate in the middle`() {
+    fun `the starter garden is bare lawn with only the crate in the middle`() {
         val objects = StarterGarden.objects(t0)
         assertNoOverlaps(objects)
-        assertTrue(objects.all { GardenMap.DEFAULT.isInside(it.gridX, it.gridY) })
-        assertEquals(objects.size, objects.map { it.instanceId }.toSet().size)
-
-        val crate = objects.single { it.isStarterCrate }
+        val crate = objects.single()
+        assertTrue(crate.isStarterCrate)
         assertEquals(GridCell(4, 4), GridCell(crate.gridX, crate.gridY))
-        assertEquals(6, objects.count { it.isTilledSoil })
-        assertEquals(11, objects.count { it.isFence })
-        // Everything stands finished: nothing to wait for, nothing growing yet.
-        assertTrue(objects.none { it.isWorking || it.isPlant })
+        // No fences and no tilled soil: the garden is the player's to make.
+        assertTrue(objects.none { it.isTilledSoil || it.isFence || it.isWorking || it.isPlant })
         assertTrue(objects.all { it.objectId in TileSetDefinition.objectIds })
     }
 
@@ -98,7 +100,7 @@ class OnboardingTest {
         assertTrue(repo.objects.values.none { it.isStarterCrate })
         val seeds = repo.slots.values.filter { !it.isEmpty }
         assertEquals(listOf(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1)), seeds)
-        assertEquals(TutorialStep.PLANT_SEED, step)
+        assertEquals(TutorialStep.TILL_SOIL, step)
         // Only once: the crate is gone.
         assertEquals(ActionResult.NOT_FOUND, openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID))
         assertEquals(1, repo.slots.values.sumOf { it.amount })
@@ -126,18 +128,26 @@ class OnboardingTest {
 
     @Test
     fun `only the crate opens like a crate`() = runBlocking {
-        assertEquals(ActionResult.NOT_FOUND, openCrate("starter_fence_2_3"))
-        assertTrue(repo.objects.containsKey("starter_fence_2_3"))
+        repo.put(GridObject("a_fence", 1, 1, objectId = GridObject.FENCE_OBJECT_ID, lastUpdatedTimestamp = t0))
+        assertEquals(ActionResult.NOT_FOUND, openCrate("a_fence"))
+        assertTrue(repo.objects.containsKey("a_fence"))
     }
 
     // --- The whole way through ---
 
     @Test
-    fun `crate, sowing and watering lead to free play`() = runBlocking {
+    fun `crate, tilling, sowing and watering lead to the closing board`() = runBlocking {
         openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID)
-        val bed = TutorialGuide.hintCells(TutorialStep.PLANT_SEED, repo.objects.values.toList()).single()
-        assertTrue(bed in StarterGarden.BED)
+        assertEquals(TutorialStep.TILL_SOIL, follow())
 
+        // The bare lawn where the crate stood sparkles: that is where to till.
+        val patch = TutorialGuide.hintCells(TutorialStep.TILL_SOIL, repo.objects.values.toList()).single()
+        assertEquals(StarterGarden.CRATE, patch)
+        assertEquals(ActionResult.SUCCESS, hoe(patch.x, patch.y, t0))
+        assertEquals(TutorialStep.PLANT_SEED, follow())
+
+        val bed = TutorialGuide.hintCells(TutorialStep.PLANT_SEED, repo.objects.values.toList()).single()
+        assertEquals(patch, bed)
         assertEquals(ActionResult.SUCCESS, place(0, bed.x, bed.y, t0))
         assertEquals(TutorialStep.WATER_SEEDLING, follow())
 
@@ -148,12 +158,75 @@ class OnboardingTest {
 
         assertEquals(ActionResult.SUCCESS, care.water(seedling.instanceId, t0 + 60_000L, sunny))
         assertTrue(follow.wateringDone())
-        assertEquals(TutorialStep.DONE, step)
-        assertTrue(TutorialGuide.hintCells(TutorialStep.DONE, repo.objects.values.toList()).isEmpty())
+        assertEquals(TutorialStep.FINISHED, step)
+        assertTrue(TutorialGuide.hintCells(TutorialStep.FINISHED, repo.objects.values.toList()).isEmpty())
 
-        // Once done it stays done.
+        // The garden itself does not move the board on, and watering again changes nothing.
         assertFalse(follow.wateringDone())
-        assertEquals(TutorialStep.DONE, follow())
+        assertEquals(TutorialStep.FINISHED, follow())
+    }
+
+    @Test
+    fun `sowing waits for tilled soil`() = runBlocking {
+        openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID)
+        // Without tilled soil the seed cannot go in, so the step stays where it is.
+        assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(0, 4, 4, t0))
+        assertEquals(TutorialStep.TILL_SOIL, follow())
+        assertTrue(TutorialGuide.hintCells(TutorialStep.PLANT_SEED, repo.objects.values.toList()).isEmpty())
+    }
+
+    @Test
+    fun `tilling before the crate is opened skips straight to sowing`() = runBlocking {
+        repo.till(1, 1)
+        assertEquals(TutorialStep.OPEN_CRATE, follow())
+        openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID)
+        assertEquals(TutorialStep.PLANT_SEED, follow())
+    }
+
+    // --- Handing over the rest, one by one ---
+
+    @Test
+    fun `nothing else is in hand during the first steps`() {
+        for (guided in listOf(TutorialStep.OPEN_CRATE, TutorialStep.TILL_SOIL, TutorialStep.PLANT_SEED, TutorialStep.WATER_SEEDLING, TutorialStep.FINISHED)) {
+            assertTrue(GardenFeature.entries.none { guided.reveals(it) })
+            assertEquals(null, guided.introducing)
+        }
+        assertTrue(GardenFeature.entries.all { TutorialStep.DONE.reveals(it) })
+        assertEquals(null, TutorialStep.DONE.introducing)
+        // A garden from before there were first steps has everything.
+        assertTrue(GardenFeature.entries.all { GardenProgress.EXISTING_GARDEN.tutorialStep.reveals(it) })
+    }
+
+    @Test
+    fun `after the closing board the features come one at a time, each at the player's tap`() = runBlocking {
+        repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.FINISHED)
+
+        val handedOver = mutableListOf<GardenFeature>()
+        var seen = TutorialStep.FINISHED
+        while (seen != TutorialStep.DONE) {
+            val now = follow.acknowledge(seen)
+            now.introducing?.let { feature ->
+                handedOver += feature
+                // Only this one and those before it are in hand; the rest are still put away.
+                assertTrue(now.reveals(feature))
+                assertTrue(GardenFeature.entries.filter { it.ordinal > feature.ordinal }.none { now.reveals(it) })
+            }
+            seen = now
+        }
+        assertEquals(listOf(GardenFeature.BLESSED_RAIN, GardenFeature.COLLECTION, GardenFeature.CAMERA), handedOver)
+        assertEquals(TutorialStep.DONE, step)
+    }
+
+    @Test
+    fun `a tap on a board that is no longer showing changes nothing`() = runBlocking {
+        repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.REVEAL_COLLECTION)
+        assertEquals(TutorialStep.REVEAL_COLLECTION, follow.acknowledge(TutorialStep.REVEAL_RAIN))
+        assertEquals(TutorialStep.REVEAL_COLLECTION, step)
+        // Nor does one during the guided steps, or after them.
+        repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.PLANT_SEED)
+        assertEquals(TutorialStep.PLANT_SEED, follow.acknowledge(TutorialStep.PLANT_SEED))
+        repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.DONE)
+        assertEquals(TutorialStep.DONE, follow.acknowledge(TutorialStep.DONE))
     }
 
     @Test
@@ -176,14 +249,16 @@ class OnboardingTest {
     }
 
     @Test
-    fun `a seedling cleared away before its watering lets the first steps go`() = runBlocking {
+    fun `a seedling cleared away before its watering ends the guided steps`() = runBlocking {
         openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID)
+        hoe(4, 5, t0)
         place(0, 4, 5, t0)
-        follow()
+        assertEquals(TutorialStep.WATER_SEEDLING, follow())
 
         assertEquals(ActionResult.SUCCESS, remove(repo.plants.single().instanceId))
 
-        assertEquals(TutorialStep.DONE, follow())
+        // On to the closing board, so that the rest is still handed over.
+        assertEquals(TutorialStep.FINISHED, follow())
     }
 
     @Test
@@ -210,15 +285,30 @@ class OnboardingTest {
 
     @Test
     fun `the sample garden is a garden that could really be built`() {
+        val map = TitleSampleGarden.MAP
         for (beat in 0 until TitleSampleGarden.CYCLE_BEATS) {
             val objects = TitleSampleGarden.objects(beat)
-            assertNoOverlaps(objects.filter { !it.isPlant })
+            assertNoOverlaps(objects.filter { !it.isPlant }, map)
+            assertTrue(objects.all { map.isInside(it.gridX, it.gridY) })
             assertTrue(objects.all { it.objectId in TileSetDefinition.objectIds })
             // Its flowers all stand in tilled soil, as real ones must.
-            val grid = GardenGrid(GardenMap.DEFAULT, objects)
+            val grid = GardenGrid(map, objects)
             assertTrue(objects.filter { it.isPlant }.all { grid.isTilled(it.gridX, it.gridY) })
             assertEquals(objects.size, objects.map { it.instanceId }.toSet().size)
         }
+    }
+
+    @Test
+    fun `the sample garden shows off, as large as a grown garden and with every kind of thing in it`() {
+        // As large as a garden grows once its cottage stands.
+        assertEquals(GardenExpansion.STAGES.first().size, TitleSampleGarden.SIZE)
+        val ids = TitleSampleGarden.objects(0).map { it.objectId }.toSet()
+        assertTrue(StructureData.entries.all { it.objectId in ids })
+        assertTrue(PlantSpecies.entries.all { it.objectId in ids })
+        assertTrue(TitleSampleGarden.visitors.isNotEmpty())
+        // Most flowers are in bloom at any moment.
+        val plants = TitleSampleGarden.objects(5).filter { it.isPlant }
+        assertTrue(plants.count { it.growthProgress == 1f } * 2 > plants.size)
     }
 
     @Test

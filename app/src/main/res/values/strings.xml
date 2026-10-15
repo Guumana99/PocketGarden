@@ -77,7 +77,6 @@
     <string name="msg_busy">作業中です。終わるまでお待ちください</string>
     <string name="action_move">移動</string>
     <string name="move_banner">🚚 %1$s の移動先をタップ</string>
-    <string name="msg_moved">🚚 おひっこし完了</string>
     <string name="work_building">🔨 建築中</string>
     <string name="work_demolishing">🧹 解体中</string>
     <string name="work_packing">📦 片づけ中</string>
@@ -205,8 +204,8 @@
     <string name="settings_se">効果音</string>
     <string name="settings_volume_description">%1$s の音量</string>
     <string name="settings_notifications">通知</string>
-    <string name="settings_notifications_caption">作物が実ったときや、お水をほしがっているとき、建物ができあがったときに、そっとお知らせします。夜（21 時〜8 時）は朝まで待ちます。</string>
-    <string name="settings_notifications_denied">端末の設定で、通知が許可されていません。</string>
+    <string name="settings_notifications_caption">作物が実ったときや、お水をほしがっているとき、建物ができあがったときに、そっとお知らせします。</string>
+    <string name="settings_notifications_denied">端末の設定で、通知が許可されていません。スイッチを入れると、端末の設定が開きます。</string>
     <string name="settings_notifications_open_device">端末の設定を開く</string>
     <string name="settings_app_version">%1$s　v%2$s</string>
     <string name="settings_licenses">ライセンス</string>
@@ -252,11 +251,24 @@
     <string name="crate_reward">%1$s ×%2$d</string>
     <string name="crate_receive">受け取る</string>
     <string name="crate_later">あとで</string>
-    <string name="msg_crate_opened">🌷 チューリップの種を手に入れました</string>
-    <string name="msg_tutorial_done">✨ 準備はおしまい。あとは自由に育てましょう</string>
     <string name="tutorial_hint_open_crate">まんなかの木箱がきらきらしています。タップして開けてみましょう</string>
-    <string name="tutorial_hint_plant_seed">「もちもの」から種を選んで、きらきらしている土にまきましょう</string>
+    <string name="tutorial_hint_till">「クワ」を選んで、光る地面を耕しましょう</string>
+    <string name="tutorial_hint_plant_seed">「もちもの」の種を、耕した土にまきましょう</string>
     <string name="tutorial_hint_water">まいた種をタップして、水やりをしましょう</string>
+    <!-- The closing board. Lines are broken by hand so that no phrase is split. -->
+    <string name="tutorial_done_title">🌷 準備はおしまい</string>
+    <string name="tutorial_done_text">ここから先は、あなただけの庭づくり。\n花を並べても、柵で囲っても、\n小道をつくっても。\nすきなものを、すきな場所へ。\n少しずつ、思いえがいた景色に\n育てていきましょう。</string>
+    <string name="tutorial_done_ok">庭づくりをはじめる</string>
+    <!-- Features handed over one by one after the first steps. -->
+    <string name="reveal_title">あたらしく使えるようになりました</string>
+    <string name="reveal_badge">NEW</string>
+    <string name="reveal_ok">わかった</string>
+    <string name="reveal_rain_name">☔ 慈雨（じう）</string>
+    <string name="reveal_rain_text">慈雨を降らせると、\n育てている作物の成長時間が半分に。\n上のボタンから使えます。</string>
+    <string name="reveal_collection_name">📖 図鑑</string>
+    <string name="reveal_collection_text">育てた作物や置いたものが、\n図鑑に少しずつ記されていきます。\n右の本のボタンから開けます。</string>
+    <string name="reveal_camera_name">📷 カメラ</string>
+    <string name="reveal_camera_text">お気に入りの庭を写真に撮って、\nだれかに見せることができます。\n右のカメラのボタンから使えます。</string>
 
     <!-- Symbol building and garden expansion -->
     <string name="object_struct_cottage">コテージ</string>
@@ -279,7 +291,7 @@
     <string name="notification_building">%1$sができあがったようです。お披露目を待っています ✨</string>
     <string name="notification_building_many">%1$sなど、%2$dつの建物ができあがったようです ✨</string>
     <string name="notification_invite_title">お庭のようすをお知らせしましょうか？</string>
-    <string name="notification_invite_text">作物が実ったときや、建物ができあがったときに、そっとお知らせします。音は鳴らさず、夜は朝まで待ちます。設定からいつでも変えられます。</string>
+    <string name="notification_invite_text">作物が実ったときや、建物ができあがったときに、そっとお知らせします。音は鳴らしません。設定からいつでも変えられます。</string>
     <string name="notification_invite_ok">お知らせを受け取る</string>
     <string name="notification_invite_later">いまはいい</string>
 

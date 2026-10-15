@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import com.studioguu.miniaturegarden.domain.model.AppSettings
+import com.studioguu.miniaturegarden.domain.model.GardenView
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -164,6 +165,31 @@ class SettingsRepositoryTest {
         val (second, _) = openRepository() // ... and starts again
         assertTrue(file.exists())
         assertEquals(chosen, second.settings.first())
+    }
+
+    @Test
+    fun `the garden's zoom is kept across a restart, and can be forgotten`() = runBlocking {
+        val view = GardenView(scale = 0.62f, panX = 31f, panY = -12.5f)
+        val (first, firstJob) = openRepository()
+        assertEquals(null, first.settings.first().gardenView)
+        first.update { it.copy(gardenView = view) }
+        firstJob.cancelAndJoin()
+
+        val (second, _) = openRepository()
+        assertEquals(view, second.settings.first().gardenView)
+        // Other settings are left as they were.
+        assertEquals(AppSettings().bgmVolume, second.settings.first().bgmVolume)
+
+        second.update { it.copy(gardenView = null) }
+        assertEquals(null, second.settings.first().gardenView)
+    }
+
+    @Test
+    fun `a stored zoom that is not a usable number is not used`() {
+        assertFalse(GardenView(0f, 0f, 0f).isUsable)
+        assertFalse(GardenView(Float.NaN, 0f, 0f).isUsable)
+        assertFalse(GardenView(1f, Float.POSITIVE_INFINITY, 0f).isUsable)
+        assertTrue(GardenView(0.8f, -40f, 12f).isUsable)
     }
 
     @Test

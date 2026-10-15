@@ -108,6 +108,21 @@ class IsometricEngineTest {
     }
 
     @Test
+    fun `a kept view comes back as it was, within what the screen allows`() {
+        val fit = GardenCamera.fitting(viewport, metrics)
+        val kept = GardenCamera.restored(fit.scale * 1.5f, Offset(20f, -10f), viewport, metrics)
+        assertEquals(fit.scale * 1.5f, kept.scale, 1e-4f)
+        assertOffset(Offset(20f, -10f), kept.pan)
+        assertEquals(fit.minScale, kept.minScale, 0f)
+        // Too far in or out is brought back into range, and a pan off the garden is pulled back.
+        assertEquals(GardenCamera.MAX_SCALE, GardenCamera.restored(99f, Offset.Zero, viewport, metrics).scale, 0f)
+        assertEquals(fit.minScale, GardenCamera.restored(0.0001f, Offset.Zero, viewport, metrics).scale, 0f)
+        assertEquals(fit.scale, GardenCamera.restored(Float.NaN, Offset.Zero, viewport, metrics).scale, 0f)
+        val far = GardenCamera.restored(1f, Offset(1e6f, -1e6f), viewport, metrics)
+        assertEquals(far, far.clamped(metrics))
+    }
+
+    @Test
     fun `zoom is limited to the allowed range`() {
         val center = Offset(500f, 1000f)
         val zoomedIn = GardenCamera().transformedBy(center, Offset.Zero, 100f, viewport, metrics)
