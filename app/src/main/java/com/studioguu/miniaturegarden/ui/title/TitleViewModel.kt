@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
+import com.studioguu.miniaturegarden.data.audio.AudioManager
+import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -17,6 +19,7 @@ import kotlinx.coroutines.launch
 class TitleViewModel @Inject constructor(
     private val gardenRepository: GardenRepository,
     assetRepository: AssetRepository,
+    private val audio: AudioManager,
 ) : ViewModel() {
 
     private val _hasSavedGarden = MutableStateFlow<Boolean?>(null)
@@ -37,6 +40,20 @@ class TitleViewModel @Inject constructor(
         // The same artwork the garden uses; it stays loaded for the garden afterwards.
         viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
         viewModelScope.launch { _terrain.value = assetRepository.loadTerrainTextures() }
+    }
+
+    /**
+     * The title is in front: its music plays. For now that is the garden's own tune, so it simply
+     * carries on, without a break, once the garden opens.
+     */
+    fun onForeground() {
+        audio.playBgm(BgmTrack.GARDEN)
+        audio.resumeBgm()
+    }
+
+    /** The app has left the foreground from the title. */
+    fun onBackground() {
+        audio.pauseBgm()
     }
 
     /**

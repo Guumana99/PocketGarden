@@ -82,26 +82,30 @@ fun rememberNotificationPermissionRequest(onResult: (granted: Boolean) -> Unit):
 
 /**
  * The switch in the settings. It shows notifications as on only when they will really be posted:
- * switched on in the game and allowed by the device. Turning it on asks for whatever is missing;
- * when the device says no, a line explains that and offers the way to its settings. Looked at
+ * switched on in the game and allowed by the device, so it can never be on while the device
+ * says no. Turning it on without the device's leave takes the player to the device's settings
+ * instead; when they come back having allowed it there, the switch goes on by itself. Looked at
  * again whenever the screen comes back, in case the player changed something there.
  */
 @Composable
 fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) -> Unit) {
     val context = LocalContext.current
     var looks by remember { mutableIntStateOf(0) }
+    // Set while the player is away in the device's settings to allow what the switch needs.
+    var awaitingDevice by rememberSaveable { mutableStateOf(false) }
+    fun deviceReady() = NotificationAccess.deviceReady(Build.VERSION.SDK_INT, context.hasNotificationPermission(), context.deviceAllowsNotifications())
     LifecycleResumeEffect(Unit) {
         looks++
+        if (awaitingDevice) {
+            awaitingDevice = false
+            if (deviceReady()) onEnabledChange(true)
+        }
         onPauseOrDispose { }
     }
-    var refused by rememberSaveable { mutableStateOf(false) }
-    val access = remember(enabledInGame, looks, refused) {
+    val access = remember(enabledInGame, looks) {
         NotificationAccess.of(Build.VERSION.SDK_INT, context.hasNotificationPermission(), context.deviceAllowsNotifications(), enabledInGame)
     }
-    val requestPermission = rememberNotificationPermissionRequest { granted ->
-        refused = !granted
-        looks++
-    }
+    val deviceBlocks = remember(looks) { !deviceReady() }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
@@ -119,17 +123,18 @@ fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) ->
                     onEnabledChange(false)
                     return@Switch
                 }
-                onEnabledChange(true)
                 when (NotificationAccess.whenTurnedOn(Build.VERSION.SDK_INT, context.hasNotificationPermission(), context.deviceAllowsNotifications())) {
-                    TurnOnStep.REQUEST_PERMISSION -> requestPermission()
-                    TurnOnStep.OPEN_DEVICE_SETTINGS -> context.openNotificationSettings()
-                    TurnOnStep.NONE -> Unit
+                    TurnOnStep.OPEN_DEVICE_SETTINGS -> {
+                        awaitingDevice = true
+                        context.openNotificationSettings()
+                    }
+                    TurnOnStep.NONE -> onEnabledChange(true)
                 }
             },
         )
     }
     // Said only when the device stands in the way, never as a reproach.
-    if (access == NotificationAccess.BLOCKED_BY_DEVICE || (access == NotificationAccess.NEEDS_PERMISSION && refused)) {
+    if (deviceBlocks) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 stringResource(R.string.settings_notifications_denied),

@@ -86,12 +86,14 @@ class PolishTest {
 
     @Test
     fun `the everyday messages are short and say what happened`() {
-        for (name in listOf("msg_moved", "msg_stored", "work_started_building", "work_started_demolition", "msg_revived", "msg_composted")) {
+        for (name in listOf("msg_stored", "work_started_building", "work_started_demolition", "msg_revived", "msg_composted")) {
             val text = string(name)
             assertTrue("$name is too long: $text", text.length <= 14)
             assertFalse("$name still ends like a log line: $text", text.endsWith("を始めました"))
         }
         assertFalse(strings.contains(">移動しました<"))
+        // Moving says nothing at all: the thing is plainly in its new place.
+        assertFalse(strings.contains("msg_moved"))
         assertFalse(strings.contains(">持ち物に戻しました<"))
     }
 

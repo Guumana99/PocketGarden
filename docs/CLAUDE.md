@@ -34,7 +34,7 @@ timeout 560 ./gradlew testDebugUnitTest --tests "*ConstructionTest" --tests "*Po
 ```
 
 ```bash
-# 全件テスト（約 480 件。指示があったとき、または広く触ったときだけ）
+# 全件テスト（約 490 件。指示があったとき、または広く触ったときだけ）
 timeout 560 ./gradlew testDebugUnitTest --console=plain
 ```
 
@@ -78,7 +78,7 @@ app/src/main/java/com/studioguu/miniaturegarden/
   domain/usecase/   GardenActionUseCases ConstructionUseCases CalculateOfflineProgressUseCase OnboardingUseCases ほか
   data/             Room(local) DataStore(settings, reward) security asset audio ads notifications(WorkManager)
   ui/GardenScreen.kt GardenViewModel.kt   画面と状態
-  ui/title/         タイトル画面と見本の庭      ui/onboarding/  木箱のポップアップ、チュートリアルの札
+  ui/title/         タイトル画面と見本の庭      ui/onboarding/  木箱のポップアップ、チュートリアルの札、完了ダイアログ、機能の紹介
   ui/notifications/ 通知の権限・設定の行・招待ダイアログ
   ui/components/GardenCanvas.kt           庭の描画すべて（大きいファイル）
   ui/render/        IsometricTransform RiverAutotile FenceAutotile Atmosphere(風・光) SoilTexture Occlusion(建物の裏) CreatureSprites(生き物の仮の絵)

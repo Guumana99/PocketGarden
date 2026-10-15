@@ -16,6 +16,8 @@ data class AppSettings(
     val notificationsEnabled: Boolean = true,
     /** Whether the one-time invitation to turn notifications on has been shown. */
     val notificationInviteShown: Boolean = false,
+    /** How the garden was last zoomed and panned; null until the player has looked around. */
+    val gardenView: GardenView? = null,
 ) {
     /** The same settings with both volumes forced into 0..1; a non-number falls back to the default. */
     fun normalized(): AppSettings = copy(
@@ -30,4 +32,13 @@ data class AppSettings(
         const val DEFAULT_BGM_VOLUME = 0.35f
         const val DEFAULT_SOUND_EFFECT_VOLUME = 0.9f
     }
+}
+
+/**
+ * How the garden is looked at: its zoom, and how far its middle sits from the screen's middle
+ * in pixels. Kept so that the garden opens as the player left it.
+ */
+data class GardenView(val scale: Float, val panX: Float, val panY: Float) {
+    /** Whether every value is a usable number (a damaged file could hold anything). */
+    val isUsable: Boolean get() = scale > 0f && scale.isFinite() && panX.isFinite() && panY.isFinite()
 }

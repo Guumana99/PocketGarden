@@ -30,7 +30,7 @@ class NotificationsTest {
 
     private val utc: ZoneId = ZoneOffset.UTC
 
-    /** 09:00 UTC on a weekday morning: well clear of the quiet hours. */
+    /** 09:00 UTC on a weekday morning. */
     private val now = ZonedDateTime.of(2024, 1, 10, 9, 0, 0, 0, utc).toInstant().toEpochMilli()
     private val minute = 60_000L
     private val hour = 60 * minute
@@ -53,7 +53,7 @@ class NotificationsTest {
     @Test
     fun `a crop is announced when it comes into bloom`() {
         // 10 % to go of a tulip's 48 hours: 4.8 hours, well before its soil dries out.
-        val planned = plan(listOf(plant("a", growth = 0.9f)), now, WeatherType.SUNNY, utc)
+        val planned = plan(listOf(plant("a", growth = 0.9f)), now, WeatherType.SUNNY)
         val harvest = planned.of(GardenNotificationKind.HARVEST_READY)
         assertNear(now + 288 * minute, harvest?.atMillis)
         assertEquals("plant_tulip", harvest?.objectId)
@@ -63,21 +63,21 @@ class NotificationsTest {
     @Test
     fun `a crop is announced when its soil has dried out`() {
         // From half full to thirsty (20 %) is 30 % of a tulip's 24 hours: 7.2 hours.
-        val planned = plan(listOf(plant("a", moisture = 0.5f)), now, WeatherType.SUNNY, utc)
+        val planned = plan(listOf(plant("a", moisture = 0.5f)), now, WeatherType.SUNNY)
         assertNear(now + 432 * minute, planned.of(GardenNotificationKind.NEEDS_WATER)?.atMillis)
     }
 
     @Test
     fun `a crop that dries out before it blooms is only announced as thirsty`() {
         // Unwatered, a seed stops growing once it is thirsty: it would never bloom by itself.
-        val planned = plan(listOf(plant("a")), now, WeatherType.SUNNY, utc)
+        val planned = plan(listOf(plant("a")), now, WeatherType.SUNNY)
         assertNull(planned.of(GardenNotificationKind.HARVEST_READY))
         assertTrue(planned.of(GardenNotificationKind.NEEDS_WATER) != null)
     }
 
     @Test
     fun `rain keeps the soil wet, so nothing asks for water`() {
-        val planned = plan(listOf(plant("a", growth = 0.9f)), now, WeatherType.RAINY, utc)
+        val planned = plan(listOf(plant("a", growth = 0.9f)), now, WeatherType.RAINY)
         assertNull(planned.of(GardenNotificationKind.NEEDS_WATER))
         // And it grows a fifth faster: 4 hours instead of 4.8.
         assertNear(now + 240 * minute, planned.of(GardenNotificationKind.HARVEST_READY)?.atMillis)
@@ -91,7 +91,7 @@ class NotificationsTest {
                 plant("dry", moisture = 0.1f, growth = 0.5f),
                 plant("gone", growth = 0.5f).copy(status = PlantStatus.WITHERED),
             ),
-            now, WeatherType.SUNNY, utc,
+            now, WeatherType.SUNNY,
         )
         assertNull(planned.of(GardenNotificationKind.HARVEST_READY))
         // The bloomed one dries out later and is the only one that may ask for water.
@@ -111,7 +111,7 @@ class NotificationsTest {
                 site("bag", WorkKind.PACKING, 2 * minute),
                 site("wrapped", WorkKind.READY, 0),
             ),
-            now, WeatherType.SUNNY, utc,
+            now, WeatherType.SUNNY,
         )
         assertEquals(listOf(PlannedNotification(GardenNotificationKind.BUILDING_READY, now + 5 * minute, StructureData.HUT.objectId)), planned)
     }
@@ -122,7 +122,7 @@ class NotificationsTest {
             instanceId = "hut", gridX = 3, gridY = 3, objectId = StructureData.HUT.objectId, lastUpdatedTimestamp = now,
             workKind = WorkKind.BUILDING, workStartedAt = now, workEndsAt = now + NotificationPlan.HORIZON_MILLIS + hour,
         )
-        assertTrue(plan(listOf(far), now, WeatherType.SUNNY, utc).isEmpty())
+        assertTrue(plan(listOf(far), now, WeatherType.SUNNY).isEmpty())
     }
 
     @Test
@@ -134,7 +134,7 @@ class NotificationsTest {
                 plant("soon", objectId = "plant_rose", growth = 1f - 318f / (120 * 60), x = 1),
                 plant("later", growth = 0.8f, x = 2), // in 576 minutes: not with the others
             ),
-            now, WeatherType.SUNNY, utc,
+            now, WeatherType.SUNNY,
         )
         val harvest = planned.filter { it.kind == GardenNotificationKind.HARVEST_READY }
         assertEquals(1, harvest.size)
@@ -145,33 +145,19 @@ class NotificationsTest {
 
     @Test
     fun `the plan is in order of time, one per kind at most`() {
-        val planned = plan(listOf(plant("a", growth = 0.9f), plant("b", moisture = 0.5f, x = 1)), now, WeatherType.SUNNY, utc)
+        val planned = plan(listOf(plant("a", growth = 0.9f), plant("b", moisture = 0.5f, x = 1)), now, WeatherType.SUNNY)
         assertEquals(planned.sortedBy { it.atMillis }, planned)
         assertEquals(planned.size, planned.map { it.kind }.toSet().size)
     }
 
-    // --- Quiet hours ---
+    // --- Any hour ---
 
     @Test
-    fun `nothing is posted at night, it waits for the morning`() {
-        fun at(day: Int, hour: Int, minute: Int, zone: ZoneId) = ZonedDateTime.of(2024, 1, day, hour, minute, 0, 0, zone).toInstant().toEpochMilli()
-        val tokyo = ZoneId.of("Asia/Tokyo")
-        assertEquals(at(11, 8, 0, tokyo), PlanGardenNotificationsUseCase.outOfQuietHours(at(10, 23, 30, tokyo), tokyo))
-        assertEquals(at(10, 8, 0, tokyo), PlanGardenNotificationsUseCase.outOfQuietHours(at(10, 5, 0, tokyo), tokyo))
-        assertEquals(at(11, 8, 0, tokyo), PlanGardenNotificationsUseCase.outOfQuietHours(at(10, 21, 0, tokyo), tokyo))
-        // Daytime is left as it is, right up to the start of the quiet hours.
-        assertEquals(at(10, 12, 34, tokyo), PlanGardenNotificationsUseCase.outOfQuietHours(at(10, 12, 34, tokyo), tokyo))
-        assertEquals(at(10, 8, 0, tokyo), PlanGardenNotificationsUseCase.outOfQuietHours(at(10, 8, 0, tokyo), tokyo))
-        assertEquals(at(10, 20, 59, tokyo), PlanGardenNotificationsUseCase.outOfQuietHours(at(10, 20, 59, tokyo), tokyo))
-    }
-
-    @Test
-    fun `a crop that blooms in the night is told about in the morning`() {
-        // 13 hours from 09:00 is 22:00, in the quiet hours; its soil stays moist for 19 hours.
+    fun `a crop that blooms in the night is told about right then, not held until morning`() {
+        // 13 hours from 09:00 is 22:00; its soil stays moist for 19 hours.
         val growth = 1f - 13f / 48f
-        val planned = plan(listOf(plant("a", growth = growth)), now, WeatherType.SUNNY, utc)
-        val nextMorning = ZonedDateTime.of(2024, 1, 11, 8, 0, 0, 0, utc).toInstant().toEpochMilli()
-        assertEquals(nextMorning, planned.of(GardenNotificationKind.HARVEST_READY)?.atMillis)
+        val planned = plan(listOf(plant("a", growth = growth)), now, WeatherType.SUNNY)
+        assertNear(now + 13 * hour, planned.of(GardenNotificationKind.HARVEST_READY)?.atMillis)
     }
 
     @Test
@@ -247,8 +233,9 @@ class NotificationsTest {
     }
 
     @Test
-    fun `turning the switch on asks only for what is missing`() {
-        assertEquals(TurnOnStep.REQUEST_PERMISSION, NotificationAccess.whenTurnedOn(33, permissionGranted = false, deviceAllows = false))
+    fun `turning the switch on without the device's leave goes to the device's settings`() {
+        assertEquals(TurnOnStep.OPEN_DEVICE_SETTINGS, NotificationAccess.whenTurnedOn(33, permissionGranted = false, deviceAllows = false))
+        assertEquals(TurnOnStep.OPEN_DEVICE_SETTINGS, NotificationAccess.whenTurnedOn(33, permissionGranted = false, deviceAllows = true))
         assertEquals(TurnOnStep.OPEN_DEVICE_SETTINGS, NotificationAccess.whenTurnedOn(33, permissionGranted = true, deviceAllows = false))
         assertEquals(TurnOnStep.OPEN_DEVICE_SETTINGS, NotificationAccess.whenTurnedOn(30, permissionGranted = false, deviceAllows = false))
         assertEquals(TurnOnStep.NONE, NotificationAccess.whenTurnedOn(34, permissionGranted = true, deviceAllows = true))

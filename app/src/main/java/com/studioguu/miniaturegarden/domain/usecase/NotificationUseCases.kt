@@ -10,9 +10,6 @@ import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.NotificationScheduler
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
-import java.time.Instant
-import java.time.ZoneId
-import java.time.ZonedDateTime
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 
@@ -25,9 +22,8 @@ import kotlinx.coroutines.flow.first
  * into bloom, or its soil dries out; buildings say themselves when they will be done.
  *
  * At most one notification per [GardenNotificationKind]: the earliest, covering whatever else of
- * its kind gets there within the hour after it. None lands in the quiet hours of the night
- * ([NotificationPlan.QUIET_FROM_HOUR] to [NotificationPlan.QUIET_UNTIL_HOUR]); one that would
- * waits until the morning.
+ * its kind gets there within the hour after it. It is posted the moment it happens, whatever the
+ * hour: the channel is silent, so a notification at night only waits in the shade.
  */
 class PlanGardenNotificationsUseCase @Inject constructor(
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
@@ -36,7 +32,6 @@ class PlanGardenNotificationsUseCase @Inject constructor(
         objects: List<GridObject>,
         now: Long,
         weather: WeatherForecast = WeatherForecast.Daily,
-        zone: ZoneId = ZoneId.systemDefault(),
     ): List<PlannedNotification> {
         val until = now + NotificationPlan.HORIZON_MILLIS
         val events = buildList {
@@ -64,7 +59,7 @@ class PlanGardenNotificationsUseCase @Inject constructor(
             val first = ofKind.minWith(compareBy({ it.at }, { it.objectId }))
             PlannedNotification(
                 kind = kind,
-                atMillis = outOfQuietHours(first.at, zone),
+                atMillis = first.at,
                 objectId = first.objectId,
                 count = ofKind.count { it.at - first.at <= NotificationPlan.GROUPING_MILLIS },
             )
@@ -104,18 +99,6 @@ class PlanGardenNotificationsUseCase @Inject constructor(
                 before = after
             }
             return null
-        }
-
-        /** [at], or the end of the quiet hours it falls in, in the player's own time zone. */
-        fun outOfQuietHours(at: Long, zone: ZoneId): Long {
-            val local = ZonedDateTime.ofInstant(Instant.ofEpochMilli(at), zone)
-            val hour = local.hour
-            val morning = local.toLocalDate().atTime(NotificationPlan.QUIET_UNTIL_HOUR, 0).atZone(zone)
-            return when {
-                hour >= NotificationPlan.QUIET_FROM_HOUR -> morning.plusDays(1).toInstant().toEpochMilli()
-                hour < NotificationPlan.QUIET_UNTIL_HOUR -> morning.toInstant().toEpochMilli()
-                else -> at
-            }
         }
     }
 }

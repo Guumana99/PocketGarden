@@ -17,8 +17,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,8 +27,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
@@ -40,18 +38,21 @@ private const val COLUMNS = 4
 /**
  * The player's items in a grid. Tapping a filled slot picks it for placement.
  *
+ * The slots are read before the sheet opens and handed in, and the sheet opens straight to its
+ * full height: had it to wait for them, it would grow taller while still sliding up, which shows
+ * as a stutter.
+ *
+ * @param slots the slots the player has, in order.
  * @param onSlotSelected called with the chosen slot's index; the caller closes the sheet.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryBottomSheet(
+    slots: List<InventorySlot>,
     onSlotSelected: (slotIndex: Int) -> Unit,
     onDismiss: () -> Unit,
-    viewModel: InventoryViewModel = hiltViewModel(),
 ) {
-    val slots by viewModel.slots.collectAsStateWithLifecycle()
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             Text(stringResource(R.string.inventory_title), style = MaterialTheme.typography.titleLarge)
             Text(

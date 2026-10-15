@@ -11,7 +11,7 @@
 | SDK | minSdk 26、target / compile 35 |
 | 広告 | Google Mobile Ads 23.6（リワード。**テスト ID**） |
 | 通知 | WorkManager 2.7.0（広告 SDK が既に使っている版をそのまま明示）、NotificationCompat |
-| テスト | JUnit4 の JVM ユニットテストのみ（479 件）。UI テストなし |
+| テスト | JUnit4 の JVM ユニットテストのみ（487 件）。UI テストなし |
 
 ## 層
 
@@ -147,7 +147,7 @@ di/       Hilt の束ね
 - 予測は `PlanGardenNotificationsUseCase`。オフライン計算（`CalculateOfflineProgressUseCase`）で作物を未来へ進めて、その瞬間を探す。
   天気は日付で決まる（`WeatherForecast.Daily`）ので、予測は実際と一致する。30 分刻みで進め、見つかったら 1 分単位まで二分探索。先は 7 日まで。
   - 種類ごとに**いちばん早い 1 通だけ**。その後 1 時間以内に同じ種類が続くものはまとめて「〜など、N つの作物が…」。
-  - **21 時〜8 時は朝 8 時まで待つ**（端末のタイムゾーン）。
+  - **時間帯に関わらず、起きた瞬間に出す**（#28 で 21〜8 時の繰り延べを廃止。チャンネルが無音なので、夜は通知欄に溜まるだけ）。
 - 予約と発行は `WorkManagerNotificationScheduler`（`NotificationScheduler` の実装）と `GardenNotificationWorker`。
   種類ごとに 1 つのユニークジョブ（`REPLACE`）。WorkManager なので再起動をまたいでも残る。
   発行の直前に、設定のスイッチと端末の許可をもう一度確かめる。どちらかが無ければ何もしない。
@@ -158,10 +158,15 @@ di/       Hilt の束ね
 
 - スイッチは `AppSettings.notificationsEnabled`（既定 ON）。OFF にすると `NotificationScheduler.cancelAll()` で予約も表示中の通知も消す。
 - 画面のスイッチは**本当に届くときだけ ON に見える**（`NotificationAccess.of`）：ゲームの設定が ON、Android 13 以上なら `POST_NOTIFICATIONS` が許可済み、端末の通知設定でアプリが止められていない。
-- スイッチを ON にしたときに足りないものだけを求める（`NotificationAccess.whenTurnedOn`）：権限が無ければシステムの確認、端末で止められていれば端末の設定画面。
-  断られたら「端末の設定で、通知が許可されていません。」と「端末の設定を開く」を出す。ゲームはそのまま遊べる。
-- **一度だけの招待**：チュートリアルが終わったあと、Android 13 以上で権限が無ければ、木目調のダイアログで「お知らせを受け取る／いまはいい」を聞く。
+  **端末が許可していなければ、ゲームのスイッチは ON にならない**。
+- 端末が許可していない状態でスイッチを ON にしようとすると（`NotificationAccess.whenTurnedOn` が `OPEN_DEVICE_SETTINGS`）、ゲームの設定は変えずに**端末のアプリ通知設定を開く**。
+  戻ってきたとき端末が許可していれば（`NotificationAccess.deviceReady`）、そこで初めてゲームの設定を ON にする（`NotificationSettingRow` の `awaitingDevice`）。
+  端末が許可していない間は「端末の設定で、通知が許可されていません。スイッチを入れると、端末の設定が開きます。」と「端末の設定を開く」を出す。ゲームはそのまま遊べる。
+  システムの権限ダイアログを出すのは、下の招待の「お知らせを受け取る」だけ。
+- **一度だけの招待**：チュートリアルと機能の解放がすべて終わったあと（`TutorialStep.DONE`）、Android 13 以上で権限が無ければ、木目調のダイアログで「お知らせを受け取る／いまはいい」を聞く。
   どちらを選んでも二度と出ない（`AppSettings.notificationInviteShown`）。既存の庭（チュートリアル済み）では、更新後に最初に庭へ入ったときに出る。
+  - 「はじめる」直後に一瞬出て消える不具合を #28 で修正：新しい庭の `garden_progress` が作られる前は段階が読めず、以前は「DONE」とみなしていたため。
+    今は段階が読めるまで `GardenViewModel.tutorialStep` は null、招待は初期化（`initJob`）が済んでから判定する。
 
 ## 時間の計算（作物）
 
@@ -264,36 +269,72 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
   花が 1.2 秒ごとに 1 段ずつ育ち、満開でしばらく止まってから最初に戻る）。見本の上に透明な層を重ね、触っても動かない。
   - 「はじめる」：セーブが無ければそのまま庭へ。あれば確認のうえ `deleteSavedGarden()` で全部消してから庭へ。
   - 「つづきから」：セーブがあるときだけ押せる。セーブの有無は `hasSavedGarden()`（プロフィールの行があるか）。
+- タイトル画面では庭と同じ BGM（`BgmTrack.GARDEN`）を仮に流す（`TitleViewModel.onForeground/onBackground`、ライフサイクルの RESUME/PAUSE で）。
+  庭に入っても同じ曲なので、`playBgm` は「もう鳴っている」として途切れずに続く。専用曲は `ROADMAP.md` の「音楽」。
+- 見本の庭（`TitleSampleGarden`）は **11×11**（`TitleSampleGarden.MAP`）。コテージ・小屋・井戸、バラ・チューリップ・ひまわりの花壇、石畳、柵、川、ウッドデッキ、
+  ベンチ・石どうろう・岩・野の花などを並べ、生き物（屋根とベンチのことり、花壇のちょうちょ）を常にいさせる（`visitors`、来訪の時刻は 0〜`Long.MAX_VALUE`）。
+  花は 8 拍で育ち 12 拍満開のまま（多くがいつも咲いている）。`GardenCanvas(initialZoom = 1.22)` で全体が収まる倍率より少し寄せ、左右の角が少しはみ出すくらいに大きく見せる。
+- 看板（`TitleSign`）は 2 本のロープで上から吊るした木の板。木目・縁の溝・釘をコードで描き、名前は影付きの大きな文字、下に「POCKET GARDEN」と左右の小枝（`Sprig`）。絵文字は使わない。
 - 新しい庭は `GardenRepositoryImpl.ensureInitialized` が作る：プロフィール（100 コイン）、空の持ち物、
-  `StarterGarden.objects()`（中央の柵の区画、耕した土 6 マス、木箱）、`GardenProgress.NEW_GARDEN`（春・木箱から）。
+  `StarterGarden.objects()`（**更地に木箱 1 つだけ**。#28 で柵と耕した土をなくした）、`GardenProgress.NEW_GARDEN`（春・木箱から）。
   **最初の種は持ち物に入っていない**（以前は 3 個。今は木箱の 1 個だけ）。
   セーブ済みで `garden_progress` が無い庭（v5 以前）には `EXISTING_GARDEN`（春・チュートリアル済み）を入れる。
 
 ### チュートリアル（`TutorialStep`）
 
 ```
-OPEN_CRATE ──木箱を開ける──▶ PLANT_SEED ──作物が庭にある──▶ WATER_SEEDLING ──水やり──▶ DONE
+OPEN_CRATE ──木箱を開ける──▶ TILL_SOIL ──耕した土がある──▶ PLANT_SEED ──作物が庭にある──▶ WATER_SEEDLING ──水やり──▶ FINISHED
+FINISHED ──タップ──▶ REVEAL_RAIN ──タップ──▶ REVEAL_COLLECTION ──タップ──▶ REVEAL_CAMERA ──タップ──▶ DONE
 ```
+
+- 段階は名前で保存する（`garden_progress.tutorialStep`）ので、段階を足しても DB の版は上げない。知らない名前は `DONE`。
+- `OPEN_CRATE`〜`WATER_SEEDLING` が導き（`TutorialStep.isGuiding`）：札とまたたく星が出る。
+- **機能の段階解放**（`GardenFeature`）：「慈雨」「図鑑」「カメラ」は導きの間と `FINISHED` では画面に出さない。
+  `TutorialStep.reveals(feature)` が true になった順に、ボタンがぽんと現れる（`GardenScreen` の `RevealedFeature`）。
+  紹介中（`TutorialStep.introducing`）のボタンには金色の光る枠（`revealGlow`）と「NEW」札、画面の中央に木の札（`FeatureRevealCard`、名前・ひとこと・場所・「わかった」）。
+  札はダイアログにせず庭に重ねるので、光るボタンが同時に見える。「わかった」で `FollowTutorialUseCase.acknowledge` が次へ進める（今の段階と違う札のタップは無視）。
+  ゲームを閉じても段階は残るので、次に開いたときに続きから紹介される。チュートリアル済みの既存の庭（`DONE`）は全部最初から出ている。
+  段階が読めるまで（起動直後）はどのボタンも出さず、読めたときに最初からある物はアニメーションなしで出す。
 
 - 木箱 `deco_starter_crate` はアイテムではない（買えない・動かせない・しまえない）。タップで選択の代わりに木目のポップアップが開き、
   「受け取る」で `OpenStarterCrateUseCase`：木箱を消し、チューリップの種 1 個を持ち物へ（同じ種に重ねる／空き枠へ。満杯なら何もしない）。
-- 段階を進めるのは `FollowTutorialUseCase`。**プレイヤーの操作ではなく庭の状態を見て**進める（起動時・同期ごと・置いた後に呼ぶ）。
-  途中でアプリを閉じても、別の手順で達成しても、次に見たときに追いつく。
+- 段階を進めるのは `FollowTutorialUseCase`。**プレイヤーの操作ではなく庭の状態を見て**進める（起動時・同期ごと・置いた後・耕した後に呼ぶ）。
+  途中でアプリを閉じても、別の手順で達成しても、次に見たときに追いつく。いくつかの段階が一度に済んでいれば、まとめて進める。
+  - 耕す段階は、どこかに耕した土があれば済み。星は木箱のあった中央の芝生（空いている中で中央にいちばん近いマス）に出る。
   - 種まきの段階で作物が現れたら、その作物の水分を 50%（`SOWN_SEED_MOISTURE`）にする。新しい作物は水分 100% で、
     水やり（80% 未満のときだけできる）がすぐにはできないため。
   - 水やりの段階は `wateringDone()` で終わる。雨などで「まだ湿っている」になった水やりも 1 回と数える。
-  - 水やりの前に作物が無くなったら（収穫・撤去）、そのまま `DONE`。
+  - 水やりの前に作物が無くなったら（収穫・撤去）、`FINISHED` へ（機能の解放はそのまま続く）。
 - 導きは控えめに：対象のマス（`TutorialGuide.hintCells`）に小さな星 3 つとほのかな光（`drawHintTwinkle`）、
   ツールバーの上に木の札の一文（`TutorialHint`）。札は他のパネルが出ているあいだは引っ込む。操作は何も制限しない。
-- 完了時は「✨ 準備はおしまい。あとは自由に育てましょう」のトースト。
+- 完了時は**木目調のダイアログ**（`TutorialDoneDialog`）。「準備はおしまい」と、自由な庭づくりへ送り出す文（改行は文言側で手で入れてある）、「庭づくりをはじめる」。
+  タップするまで消えない。トーストは出さない。
 
 ### 季節（`Season`）
 
 `garden_progress.season` に保存し、上部の天気チップに「🌸春」と出す。今は**春のまま進まない**。季節による変化は未実装。
 
+### 四季（確定仕様・未実装）
+
+#28 の時点で仕様として確定したもの。実装はまだ無い。着手するときはここを起点に詳細を詰める。
+
+| 項目 | 確定した内容 | 実装の当たり（案） |
+|---|---|---|
+| めぐり | 春→夏→秋→冬。1 つの季節はゲーム内で **1〜2 週間**（ゲームの時間は実時間と同じ速さ） | `Season` を時刻から決める純関数（天候の `WeatherType.forTime` と同じく決定的に）。不在中の計算も季節の境で区切る |
+| 旬のショップ | その季節の作物は**その季節だけ**ショップに並ぶ。**まとめ買いは OK** | `GardenItem` に旬の季節を持たせ、`GardenItem.shelf` で絞る。購入数の上限は設けない |
+| 植付け制限 | 季節外れの種・苗は**植えられない**（持っておくのは自由） | `PlaceItemUseCase` に `ActionResult` を 1 つ足す（例「いまは季節ではありません」）。すでに植わっている作物の扱い（季節が変わったら）は着手時に決める |
+| プログレッション | 作物と家具（装飾・建物）を **Lv.1〜20** に配置 | `UnlockCondition.PlayerLevel` を使う。`LevelTable` は Lv.20 までの経験値を見直す |
+| 持ちもののソート | **入手順／種別／所持数／季節／レベル順** | 表示側の並べ替え（`InventoryBottomSheet` は `slots` を受け取るだけなので、並べ替えは呼び出し側で行える）。入手順には入手時刻の保存が要る（DB の版が上がる） |
+
 ## 画面
 
 - 遊ぶ画面は `GardenScreen` だけ（その前にタイトル）。開発者メニュー（デバッグビルドのみ）に時間送り・天気・「+500 コイン・Lv+1」。時間送りは建築・解体の残り時間も進める（#25 から）。ダイアログ（ショップ、図鑑、設定、持ち物）を上に出す。
 - 下部ツールバーは固定。選択パネルと各モードのバナーはその上に**重ねて**フェードで切り替える。
+- **庭の倍率と位置は保存する**（#28）：`AppSettings.gardenView`（`GardenView`：scale と pan。DataStore の `garden_view_*`）。
+  `GardenCanvas` はプレイヤーが動かした（または庭が広がった）あと 0.6 秒止まったら `onViewChanged` で返し、`GardenViewModel.saveView` が書く。
+  開くときは `savedView` が読めた時点で 1 回だけ `GardenCamera.restored` で戻す（画面に合う範囲に収め直す）。最初の「全体が収まる」倍率は保存しない。
+- **もちもの**（`InventoryBottomSheet`）は中身を `GardenViewModel.inventorySlots`（常に購読）から受け取り、`skipPartiallyExpanded` で最初から全高で開く。
+  以前は開いてから中身を読み込んでいたため、せり上がる途中でシートが伸びてカクついていた。シートが出ている間は庭の風と川を止める（`GardenCanvas(paused)`）。
+- 図鑑の赤丸（`CountBadge`）は、フォントの上余白を切って数字を円の中央に置く。
 - 通知は自前の `GardenToastHost`（レイアウトを動かさない）。
 - カメラモードは HUD 全体と排他の分岐。写真は庭の `graphicsLayer` を 4:5 の枠で切り抜く（`CameraFrame`）。

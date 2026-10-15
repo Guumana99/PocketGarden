@@ -19,6 +19,7 @@ import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
@@ -128,16 +129,19 @@ class GardenViewModel @Inject constructor(
         .map { GardenMap.allGrass(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GardenMap.DEFAULT)
 
-    /** The player's first steps; [TutorialStep.DONE] in free play. */
-    val tutorialStep: StateFlow<TutorialStep> = progress.map { it?.tutorialStep ?: TutorialStep.DONE }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TutorialStep.DONE)
+    /**
+     * The player's first steps; [TutorialStep.DONE] in free play. Null until the garden has been
+     * read, so that nothing is shown (or hidden) by a guess in the meantime.
+     */
+    val tutorialStep: StateFlow<TutorialStep?> = progress.map { it?.tutorialStep }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val season: StateFlow<Season> = progress.map { it?.season ?: Season.SPRING }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
 
     /** The cells the current first step points at with a sparkle. */
     val hintCells: StateFlow<Set<GridCell>> = combine(tutorialStep, gridObjects, gardenMap) { step, objects, map ->
-        TutorialGuide.hintCells(step, objects, map)
+        if (step == null) emptySet() else TutorialGuide.hintCells(step, objects, map)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private val _openingCrateId = MutableStateFlow<String?>(null)
@@ -224,6 +228,15 @@ class GardenViewModel @Inject constructor(
         objects.objectAt(tile)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /**
+     * The player's slots in order, limited to the capacity they have unlocked. Kept up to date
+     * all along, so that the bag opens with its contents already there.
+     */
+    val inventorySlots: StateFlow<List<InventorySlot>> =
+        combine(gardenRepository.observeInventory(), gardenRepository.observeUserProfile()) { slots, profile ->
+            if (profile == null) slots else slots.filter { it.slotIndex < profile.inventoryCapacity }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     private val _placingSlotIndex = MutableStateFlow<Int?>(null)
 
     /** Non-null while in placement mode: the inventory slot whose item the next tile tap places. */
@@ -264,10 +277,13 @@ class GardenViewModel @Inject constructor(
 
     // Sync and player actions all read-modify-write the same rows; run them one at a time.
     private val actionMutex = Mutex()
+    private val _initialized = MutableStateFlow(false)
+    private val initialized: StateFlow<Boolean> = _initialized.asStateFlow()
     private val initJob = viewModelScope.launch {
         gardenRepository.ensureInitialized()
         hoe.tillUnderExistingPlants(System.currentTimeMillis())
         followTutorial()
+        _initialized.value = true
     }
 
     init {
@@ -363,9 +379,34 @@ class GardenViewModel @Inject constructor(
      * over, the player has not switched notifications off, and they have not been asked before.
      * Whether the device needs asking at all is for the screen to tell.
      */
-    val notificationInviteDue: StateFlow<Boolean> = combine(settingsRepository.settings, tutorialStep) { settings, step ->
-        step == TutorialStep.DONE && settings.notificationsEnabled && !settings.notificationInviteShown
+    val notificationInviteDue: StateFlow<Boolean> = combine(settingsRepository.settings, tutorialStep, initialized) { settings, step, ready ->
+        // Only once the garden is known to be past its first steps: a new garden's progress is
+        // still missing for a moment while it is being made, and that is not "done".
+        ready && step == TutorialStep.DONE && settings.notificationsEnabled && !settings.notificationInviteShown
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** How the player last left the garden zoomed and panned, to open it the same way. */
+    val savedView: StateFlow<GardenView?> = settingsRepository.settings.map { it.gardenView }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun saveView(view: GardenView) {
+        if (view == savedView.value) return
+        viewModelScope.launch { settingsRepository.update { it.copy(gardenView = view) } }
+    }
+
+    /**
+     * The player has read the closing board of the first steps, or the introduction of a feature
+     * that was just handed over: the next one comes, or the garden is theirs.
+     */
+    fun acknowledgeTutorial(seen: TutorialStep) {
+        // The selection's panel would stand in front of what is being introduced.
+        _selectedTile.value = null
+        viewModelScope.launch {
+            initJob.join()
+            val now = actionMutex.withLock { followTutorial.acknowledge(seen) }
+            now.introducing?.let { audio.play(SoundEffect.LEVEL_UP) }
+        }
+    }
 
     fun markNotificationInviteShown() {
         viewModelScope.launch { settingsRepository.update { it.copy(notificationInviteShown = true) } }
@@ -429,7 +470,6 @@ class GardenViewModel @Inject constructor(
                         _movingId.value = null
                         _selectedTile.value = tile
                         audio.play(SoundEffect.PLANT)
-                        _messages.trySend(R.string.msg_moved)
                     }
                 ) { _, _ -> moveObject(movingId, tile.x, tile.y) }
             }
@@ -449,7 +489,9 @@ class GardenViewModel @Inject constructor(
             ) { _, _ -> unveilBuilding(site.instanceId) }
         } else if (_hoeActive.value) {
             if (tile != null) {
-                act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ -> hoe(tile.x, tile.y, now) }
+                act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ ->
+                    hoe(tile.x, tile.y, now).also { if (it == ActionResult.SUCCESS) followTutorial() }
+                }
             }
         } else if (slotIndex == null) {
             _selectedTile.value = tile.takeIf { it != _selectedTile.value }
@@ -526,20 +568,16 @@ class GardenViewModel @Inject constructor(
     }
 
     fun waterSelected() = withSelectedObject { obj ->
-        var tutorialFinished = false
         act(
             onSuccess = {
                 audio.play(SoundEffect.WATER)
                 showEffect { GardenEffect.Xp(it, CareForPlantUseCase.WATER_XP) }
             },
-            // After the action's own message, so that this is the one left showing.
-            afterAll = { if (tutorialFinished) _messages.trySend(R.string.msg_tutorial_done) },
         ) { now, weather ->
             careForPlant.water(obj.instanceId, now, weather).also {
                 // Under the first steps a try counts even when the soil is moist already (rain).
-                if (it == ActionResult.SUCCESS || it == ActionResult.ALREADY_MOIST) {
-                    tutorialFinished = followTutorial.wateringDone()
-                }
+                // What follows is the closing board, shown by the screen from the stored step.
+                if (it == ActionResult.SUCCESS || it == ActionResult.ALREADY_MOIST) followTutorial.wateringDone()
             }
         }
     }
@@ -551,7 +589,6 @@ class GardenViewModel @Inject constructor(
             onSuccess = {
                 _openingCrateId.value = null
                 audio.play(SoundEffect.COIN)
-                _messages.trySend(R.string.msg_crate_opened)
             }
         ) { _, _ ->
             openStarterCrate(crateId).also { if (it == ActionResult.SUCCESS) followTutorial() }
@@ -719,7 +756,6 @@ class GardenViewModel @Inject constructor(
 
     private fun act(
         onSuccess: () -> Unit = {},
-        afterAll: () -> Unit = {},
         block: suspend (now: Long, weather: WeatherForecast) -> ActionResult,
     ) {
         viewModelScope.launch {
@@ -730,7 +766,6 @@ class GardenViewModel @Inject constructor(
             }
             if (result == ActionResult.SUCCESS) onSuccess() else audio.play(SoundEffect.ERROR)
             actionResultMessage(result)?.let { _messages.send(it) }
-            afterAll()
         }
     }
 

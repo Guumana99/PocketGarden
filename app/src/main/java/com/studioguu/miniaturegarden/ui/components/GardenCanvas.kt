@@ -54,6 +54,7 @@ import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -120,6 +121,11 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
  *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
+ * @param savedView the view to open with, once known; the garden is fitted to the screen until then.
+ * @param onViewChanged told the view a moment after the player has zoomed or panned, to be kept.
+ * @param paused holds the wind and the river still, while something covers the garden.
+ * @param initialZoom how much closer than "all of it on screen" the garden first shows; above 1
+ *   lets its corners run off the sides, for a garden meant to fill the view.
  */
 @Composable
 fun GardenCanvas(
@@ -136,6 +142,10 @@ fun GardenCanvas(
     hintCells: Set<GridCell> = emptySet(),
     fadedObjectIds: Set<String> = emptySet(),
     visitors: List<CreatureVisit> = emptyList(),
+    savedView: GardenView? = null,
+    onViewChanged: ((GardenView) -> Unit)? = null,
+    paused: Boolean = false,
+    initialZoom: Float = 1f,
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -150,11 +160,34 @@ fun GardenCanvas(
     // When the garden grows, the view zooms out to show all of it again.
     var viewport by remember { mutableStateOf(Size.Zero) }
     var fittedGridSize by rememberSaveable { mutableStateOf(metrics.gridSize) }
+    // Whether the view has been changed here (by the fingers, or by the garden growing), which
+    // is when it is worth keeping; the first fitting is not.
+    var viewMoved by remember { mutableStateOf(false) }
     LaunchedEffect(metrics, viewport) {
         if (fittedGridSize != metrics.gridSize && viewport != Size.Zero) {
             camera = GardenCamera.fitting(viewport, metrics)
             fittedGridSize = metrics.gridSize
+            viewMoved = true
         }
+    }
+    // The view the player left the garden with, taken up once when it is known (it is read from
+    // storage, so it may come a moment after the first layout).
+    var viewRestored by remember { mutableStateOf(false) }
+    LaunchedEffect(savedView, viewport, metrics) {
+        if (!viewRestored && savedView != null && viewport != Size.Zero) {
+            camera = GardenCamera.restored(savedView.scale, Offset(savedView.panX, savedView.panY), viewport, metrics)
+            viewRestored = true
+        }
+    }
+    // And the view as it is now is handed back once the fingers have rested a moment, not at
+    // every step of a pinch.
+    val currentOnViewChanged by rememberUpdatedState(onViewChanged)
+    LaunchedEffect(camera) {
+        val settled = camera ?: return@LaunchedEffect
+        val report = currentOnViewChanged ?: return@LaunchedEffect
+        if (!viewMoved) return@LaunchedEffect
+        delay(VIEW_SAVE_DELAY_MILLIS)
+        report(GardenView(settled.scale, settled.pan.x, settled.pan.y))
     }
     // Buildings fade to see-through and back; the last set faded is kept while fading back.
     val fade by animateFloatAsState(if (fadedObjectIds.isEmpty()) 0f else 1f, tween(FADE_MILLIS), label = "fade")
@@ -163,13 +196,15 @@ fun GardenCanvas(
     val fadeAlpha = 1f - (1f - FADED_ALPHA) * fade
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     val pipeline = remember { LayerPipeline() }
-    val waterTick by rememberWaterTick(running = gridObjects.any { it.isTerrain })
+    val waterTick by rememberWaterTick(running = !paused && gridObjects.any { it.isTerrain })
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
     // The wind's clock. It is read while drawing only, so a new value redraws the garden without
     // recomposing anything. A breeze is slow: a modest frame rate is plenty and saves battery.
-    val windMillis by produceState(0L) {
-        while (true) {
+    // Held still while something covers the garden, so that a sheet sliding up over it has the
+    // frames to itself.
+    val windMillis by produceState(0L, paused) {
+        while (!paused) {
             withFrameMillis { value = it }
             delay(WIND_FRAME_MILLIS)
         }
@@ -226,11 +261,17 @@ fun GardenCanvas(
         modifier = modifier
             .onSizeChanged { size ->
                 viewport = size.toSize()
-                camera = camera?.clamped(metrics) ?: GardenCamera.fitting(size.toSize(), metrics)
+                // A camera brought back from saved state does not know how far out this screen
+                // lets it zoom; that is worked out afresh.
+                camera = camera?.let { GardenCamera.restored(it.scale, it.pan, size.toSize(), metrics) }
+                    ?: GardenCamera.fitting(size.toSize(), metrics).let { fit ->
+                        if (initialZoom == 1f) fit else GardenCamera.restored(fit.scale * initialZoom, Offset.Zero, size.toSize(), metrics)
+                    }
             }
             .pointerInput(metrics) {
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     camera = camera?.transformedBy(centroid, pan, zoom, size.toSize(), metrics)
+                    viewMoved = true
                 }
             }
             .pointerInput(metrics) {
@@ -320,6 +361,9 @@ private val AURA_EDGE = Color(0x994FC3F7)
 
 /** How long the garden waits between two frames of wind. */
 private const val WIND_FRAME_MILLIS = 50L
+
+/** How long the view must rest before it is handed back to be kept. */
+private const val VIEW_SAVE_DELAY_MILLIS = 600L
 
 /** Local time as hours since midnight, minutes included as a fraction. */
 private fun currentHourOfDay(): Float = LocalTime.now().let { it.hour + it.minute / 60f }

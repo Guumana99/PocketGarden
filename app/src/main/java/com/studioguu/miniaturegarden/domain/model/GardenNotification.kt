@@ -19,7 +19,7 @@ enum class GardenNotificationKind {
 /**
  * One notification to post later.
  *
- * @property atMillis when to post it (epoch millis), already moved out of the quiet hours.
+ * @property atMillis when to post it (epoch millis): the moment it happens, at any hour.
  * @property objectId what it is about: the first of its kind to get there.
  * @property count how many things it covers: that one and the others of its kind that get
  *   there within [NotificationPlan.GROUPING_MILLIS] after it.
@@ -38,12 +38,6 @@ object NotificationPlan {
 
     /** Things of one kind that get there this soon after the first are told about together. */
     const val GROUPING_MILLIS = 60L * 60 * 1000
-
-    /** No notification is posted from this hour of the evening ... */
-    const val QUIET_FROM_HOUR = 21
-
-    /** ... until this hour of the morning; one that falls in between waits until then. */
-    const val QUIET_UNTIL_HOUR = 8
 }
 
 /** Where notifications stand for the player, all things considered. */
@@ -78,15 +72,18 @@ enum class NotificationAccess {
         }
 
         /**
-         * What has to happen when the player turns the switch on, beyond remembering that they did:
-         * ask for the permission (Android 13+, not granted yet), send them to the device's settings
-         * (the app is switched off there), or nothing more.
+         * What happens when the player turns the switch on. When the device lets the app post,
+         * the switch simply goes on ([TurnOnStep.NONE]). When it does not (Android 13+ without
+         * the permission, or the app switched off in the device's settings), the switch stays
+         * off and the player is taken to the device's settings ([TurnOnStep.OPEN_DEVICE_SETTINGS]):
+         * the game's switch can never be on while the device says no.
          */
-        fun whenTurnedOn(sdkInt: Int, permissionGranted: Boolean, deviceAllows: Boolean): TurnOnStep = when {
-            sdkInt >= PERMISSION_SDK && !permissionGranted -> TurnOnStep.REQUEST_PERMISSION
-            !deviceAllows -> TurnOnStep.OPEN_DEVICE_SETTINGS
-            else -> TurnOnStep.NONE
-        }
+        fun whenTurnedOn(sdkInt: Int, permissionGranted: Boolean, deviceAllows: Boolean): TurnOnStep =
+            if (deviceReady(sdkInt, permissionGranted, deviceAllows)) TurnOnStep.NONE else TurnOnStep.OPEN_DEVICE_SETTINGS
+
+        /** Whether the device, for its part, lets this app post notifications. */
+        fun deviceReady(sdkInt: Int, permissionGranted: Boolean, deviceAllows: Boolean): Boolean =
+            (sdkInt < PERMISSION_SDK || permissionGranted) && deviceAllows
 
         /** Whether to offer the one-time invitation to turn notifications on. */
         fun shouldInvite(sdkInt: Int, permissionGranted: Boolean, enabledInGame: Boolean, alreadyInvited: Boolean): Boolean =
@@ -95,4 +92,4 @@ enum class NotificationAccess {
 }
 
 /** See [NotificationAccess.whenTurnedOn]. */
-enum class TurnOnStep { NONE, REQUEST_PERMISSION, OPEN_DEVICE_SETTINGS }
+enum class TurnOnStep { NONE, OPEN_DEVICE_SETTINGS }

@@ -87,6 +87,16 @@ data class GardenCamera(
             val scale = fit.coerceAtMost(1f)
             return GardenCamera(scale = scale, minScale = minOf(MIN_SCALE, scale))
         }
+
+        /**
+         * A view kept from before (saved state, or the player's last visit) put back on this
+         * screen: its zoom kept within what this screen allows, its pan within the garden.
+         */
+        fun restored(scale: Float, pan: Offset, viewport: Size, metrics: IsometricMetrics): GardenCamera {
+            val fit = fitting(viewport, metrics)
+            val usable = if (scale.isFinite() && scale > 0f) scale else fit.scale
+            return GardenCamera(usable.coerceIn(fit.minScale, MAX_SCALE), pan, fit.minScale).clamped(metrics)
+        }
     }
 }
 

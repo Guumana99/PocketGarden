@@ -31,7 +31,7 @@ class OpenStarterCrateUseCase @Inject constructor(
         gardenRepository.upsertInventorySlot(slot)
         gardenRepository.getProgress()
             ?.takeIf { it.tutorialStep == TutorialStep.OPEN_CRATE }
-            ?.let { gardenRepository.saveProgress(it.copy(tutorialStep = TutorialStep.PLANT_SEED)) }
+            ?.let { gardenRepository.saveProgress(it.copy(tutorialStep = TutorialStep.TILL_SOIL)) }
         ActionResult.SUCCESS
     }
 }
@@ -42,10 +42,14 @@ class OpenStarterCrateUseCase @Inject constructor(
  * some other way (or the app was closed half-way through one).
  *
  * - Opening the crate: done once the crate is gone.
+ * - Tilling: done once there is tilled soil anywhere (a plant always stands on some).
  * - Sowing: done once a living plant stands in the garden. A seed comes out of the shop with the
  *   soil round it moist, which would leave nothing to water; the tutorial's seed is set a little
  *   dry instead, below [CareForPlantUseCase.WATERING_THRESHOLD], so the next step can be done.
- * - Watering: done by [wateringDone], at the player's tap; or skipped if the plant is gone.
+ * - Watering: done by [wateringDone], at the player's tap; or passed over if the plant is gone.
+ *
+ * After that the closing board and the handing over of features wait for the player's own taps
+ * ([acknowledge]); the garden does not move them on.
  */
 class FollowTutorialUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -55,14 +59,20 @@ class FollowTutorialUseCase @Inject constructor(
         val progress = gardenRepository.getProgress() ?: return@runInTransaction TutorialStep.DONE
         val objects = gardenRepository.getGridObjects()
         val plant = TutorialGuide.tutorialPlant(objects)
-        val next = when (progress.tutorialStep) {
-            TutorialStep.OPEN_CRATE -> if (objects.none { it.isStarterCrate }) TutorialStep.PLANT_SEED else TutorialStep.OPEN_CRATE
-            TutorialStep.PLANT_SEED -> if (plant != null) TutorialStep.WATER_SEEDLING else TutorialStep.PLANT_SEED
-            TutorialStep.WATER_SEEDLING -> if (plant != null) TutorialStep.WATER_SEEDLING else TutorialStep.DONE
-            TutorialStep.DONE -> TutorialStep.DONE
+        val tilled = objects.any { it.isTilledSoil }
+        // Several steps may have been done since the last look: take them all at once.
+        var settled = progress.tutorialStep
+        while (true) {
+            val next = when (settled) {
+                TutorialStep.OPEN_CRATE -> if (objects.none { it.isStarterCrate }) TutorialStep.TILL_SOIL else settled
+                TutorialStep.TILL_SOIL -> if (tilled || plant != null) TutorialStep.PLANT_SEED else settled
+                TutorialStep.PLANT_SEED -> if (plant != null) TutorialStep.WATER_SEEDLING else settled
+                TutorialStep.WATER_SEEDLING -> if (plant != null) settled else TutorialStep.FINISHED
+                else -> settled
+            }
+            if (next == settled) break
+            settled = next
         }
-        // The crate opened and the seed sown since the last look: both steps are taken at once.
-        val settled = if (next == TutorialStep.PLANT_SEED && plant != null) TutorialStep.WATER_SEEDLING else next
         if (settled == TutorialStep.WATER_SEEDLING && progress.tutorialStep != TutorialStep.WATER_SEEDLING && plant != null &&
             plant.moistureLevel >= CareForPlantUseCase.WATERING_THRESHOLD
         ) {
@@ -74,15 +84,31 @@ class FollowTutorialUseCase @Inject constructor(
 
     /**
      * The player has watered (or tried to water, in the rain) while the watering step was the
-     * current one: the first steps are over.
+     * current one: the guided steps are over and the closing board is due.
      *
      * @return true if this is what finished them.
      */
     suspend fun wateringDone(): Boolean = gardenRepository.runInTransaction {
         val progress = gardenRepository.getProgress()
         if (progress?.tutorialStep != TutorialStep.WATER_SEEDLING) return@runInTransaction false
-        gardenRepository.saveProgress(progress.copy(tutorialStep = TutorialStep.DONE))
+        gardenRepository.saveProgress(progress.copy(tutorialStep = TutorialStep.FINISHED))
         true
+    }
+
+    /**
+     * The player has read the closing board, or the introduction of a feature just handed over
+     * ([seen] is the step that was showing): the next feature is handed over, or after the last
+     * one the garden is theirs. A tap on a board that is no longer current changes nothing.
+     *
+     * @return the step the player is on now.
+     */
+    suspend fun acknowledge(seen: TutorialStep): TutorialStep = gardenRepository.runInTransaction {
+        val progress = gardenRepository.getProgress() ?: return@runInTransaction TutorialStep.DONE
+        val current = progress.tutorialStep
+        if (current != seen || current.isGuiding || current == TutorialStep.DONE) return@runInTransaction current
+        val next = TutorialStep.entries[current.ordinal + 1]
+        gardenRepository.saveProgress(progress.copy(tutorialStep = next))
+        next
     }
 
     companion object {
