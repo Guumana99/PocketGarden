@@ -123,6 +123,7 @@ class ProgressionTest {
                 GardenItem.SEED_TULIP, GardenItem.GROUND_GRASS, GardenItem.GROUND_PEBBLE, GardenItem.TILE_RIVER,
                 GardenItem.FLOOR_COBBLESTONE, GardenItem.STRUCT_FENCE, GardenItem.GROUND_FLOWERS,
                 GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP, GardenItem.SEED_MINT,
+                GardenItem.SEED_TOMATO, GardenItem.SEED_STRAWBERRY,
             ),
             unlockedAt(1),
         )
@@ -130,7 +131,7 @@ class ProgressionTest {
             unlockedAt(1) + GardenItem.SEED_SUNFLOWER + GardenItem.DECO_ROCK + GardenItem.DECO_BENCH,
             unlockedAt(2),
         )
-        assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL, unlockedAt(3))
+        assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL + GardenItem.SEED_WATERMELON + GardenItem.SEED_LAVENDER, unlockedAt(3))
         assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE, unlockedAt(4))
         // Level opens everything but the two that the encyclopedia opens.
         val byPages = setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN)
@@ -148,7 +149,7 @@ class ProgressionTest {
             GardenItem.unlockedBetween(1, 2).toSet(),
         )
         assertEquals(
-            setOf(GardenItem.STRUCT_WELL, GardenItem.SEED_ROSE),
+            setOf(GardenItem.STRUCT_WELL, GardenItem.SEED_WATERMELON, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE),
             GardenItem.unlockedBetween(2, 4).toSet(),
         )
         assertEquals(setOf(GardenItem.STRUCT_COTTAGE), GardenItem.unlockedBetween(5, 6).toSet())
@@ -179,7 +180,13 @@ class ProgressionTest {
         fun level(species: PlantSpecies) = (seedFor(species).unlock as? UnlockCondition.PlayerLevel)?.level ?: 1
         fun coinsPerHour(species: PlantSpecies) = (species.harvestCoins - seedFor(species).price).toDouble() / species.growthHours
         fun xpPerHour(species: PlantSpecies) = species.harvestXp.toDouble() / species.growthHours
-        assertEquals(listOf(PlantSpecies.SUNFLOWER, PlantSpecies.ROSE), PlantSpecies.entries.filter { level(it) > 1 }.sortedBy(::level))
+        assertEquals(
+            listOf(
+                PlantSpecies.SUNFLOWER, PlantSpecies.WATERMELON, PlantSpecies.LAVENDER, PlantSpecies.ROSE,
+                PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
+            ),
+            PlantSpecies.entries.filter { level(it) > 1 }.sortedBy(::level),
+        )
 
         // Whatever opens at a higher level beats everything that opens lower, the seasonal crops
         // of the first level included.

@@ -29,7 +29,25 @@ enum class PlantSpecies(
     SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55),
 
     /** A herb that grows in any season; quick, and worth a little less for it. */
-    MINT("plant_mint", growthHours = 36, dryOutHours = 18, harvestCoins = 35, harvestXp = 35);
+    MINT("plant_mint", growthHours = 36, dryOutHours = 18, harvestCoins = 35, harvestXp = 35),
+
+    /** Summer's crop from the start: thirsty in the heat, like the sunflower. */
+    TOMATO("plant_tomato", growthHours = 48, dryOutHours = 16, harvestCoins = 54, harvestXp = 52),
+
+    /** A small spring fruit; quick to come, worth a little less for it. */
+    STRAWBERRY("plant_strawberry", growthHours = 42, dryOutHours = 20, harvestCoins = 48, harvestXp = 44),
+
+    /** A big summer fruit at Lv.3; it drinks a lot. */
+    WATERMELON("plant_watermelon", growthHours = 96, dryOutHours = 16, harvestCoins = 122, harvestXp = 110),
+
+    /** A herb for every season at Lv.3; it keeps well between waterings. */
+    LAVENDER("plant_lavender", growthHours = 84, dryOutHours = 30, harvestCoins = 108, harvestXp = 96),
+
+    /** Autumn's big crop at Lv.5. */
+    PUMPKIN("plant_pumpkin", growthHours = 132, dryOutHours = 30, harvestCoins = 190, harvestXp = 160),
+
+    /** Winter's red leaves at Lv.5; slow to dry out in the cold. */
+    POINSETTIA("plant_poinsettia", growthHours = 120, dryOutHours = 36, harvestCoins = 180, harvestXp = 150);
 
     /** Growth progress (0..1) gained per healthy hour. */
     val growthPerHour: Float get() = 1f / growthHours

@@ -26,6 +26,12 @@ enum class ItemCategory {
  *                  cosmos       from start      20   64 coins + 60 XP after 60 h (autumn only)
  *                  snowdrop     from start      20   58 coins + 55 XP after 54 h (winter only)
  *                  mint         from start      15   35 coins + 35 XP after 36 h (any season)
+ *                  tomato       from start      20   54 coins + 52 XP after 48 h (summer only), dries out fast
+ *                  strawberry   from start      20   48 coins + 44 XP after 42 h (spring only)
+ *                  watermelon   Lv.3            45   122 coins + 110 XP after 96 h (summer only), dries out fast
+ *                  lavender     Lv.3            40   108 coins + 96 XP after 84 h (any season)
+ *                  pumpkin      Lv.5            70   190 coins + 160 XP after 132 h (autumn only)
+ *                  poinsettia   Lv.5            70   180 coins + 150 XP after 120 h (winter only)
  *     structures   fence        from start      15   joins its neighbours; 20 s to build
  *                  well         Lv.3            80   30 XP; soil round it dries half as fast
  *                  hut          Lv.5           150   60 XP; plants round it grow 10 % faster
@@ -41,8 +47,8 @@ enum class ItemCategory {
  *                  bench        Lv.2            40   ornament
  *                  lantern      4 book pages    60   ornament
  *
- * Tulip, sunflower, rose, cosmos and snowdrop each have their season and are only on sale then
- * ([seasons]); every season has at least one crop open from the start, and mint grows in all.
+ * Every crop but mint and lavender has its season and is only on sale then ([seasons]); every
+ * season has a crop of its own open from the start (summer's is the tomato), and mint grows in all.
  *
  * How the prices hang together:
  * - A new player has 100 coins and one tulip seed, from the starter crate. Everything "from start" costs 20 or less,
@@ -150,6 +156,36 @@ enum class GardenItem(
     /** A herb for every season. */
     SEED_MINT("seed_mint", price = 15, objectId = PlantSpecies.MINT.objectId, category = ItemCategory.SEED),
 
+    /** Summer's crop from the start, so that the first summer has something of its own to sow. */
+    SEED_TOMATO("seed_tomato", price = 20, objectId = PlantSpecies.TOMATO.objectId, category = ItemCategory.SEED),
+
+    /** Spring's fruit. */
+    SEED_STRAWBERRY("seed_strawberry", price = 20, objectId = PlantSpecies.STRAWBERRY.objectId, category = ItemCategory.SEED),
+
+    /** Summer's big fruit. */
+    SEED_WATERMELON(
+        "seed_watermelon", price = 45, objectId = PlantSpecies.WATERMELON.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(3),
+    ),
+
+    /** A herb for every season, a step up from mint. */
+    SEED_LAVENDER(
+        "seed_lavender", price = 40, objectId = PlantSpecies.LAVENDER.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(3),
+    ),
+
+    /** Autumn's big crop. */
+    SEED_PUMPKIN(
+        "seed_pumpkin", price = 70, objectId = PlantSpecies.PUMPKIN.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(5),
+    ),
+
+    /** Winter's red. */
+    SEED_POINSETTIA(
+        "seed_poinsettia", price = 70, objectId = PlantSpecies.POINSETTIA.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(5),
+    ),
+
     /**
      * A one-cell glass greenhouse over a bed of soil. Seeds go into it as into tilled soil, and
      * whatever the season. Paving-like: it lies in the cell's floor layer.
@@ -182,6 +218,11 @@ enum class GardenItem(
             SEED_ROSE -> setOf(Season.SPRING, Season.AUTUMN)
             SEED_COSMOS -> setOf(Season.AUTUMN)
             SEED_SNOWDROP -> setOf(Season.WINTER)
+            SEED_TOMATO -> setOf(Season.SUMMER)
+            SEED_STRAWBERRY -> setOf(Season.SPRING)
+            SEED_WATERMELON -> setOf(Season.SUMMER)
+            SEED_PUMPKIN -> setOf(Season.AUTUMN)
+            SEED_POINSETTIA -> setOf(Season.WINTER)
             else -> emptySet()
         }
 
