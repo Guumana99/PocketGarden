@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.ui.collection
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,17 +24,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
@@ -48,26 +55,46 @@ import com.studioguu.miniaturegarden.ui.render.STILL_CLOCK
 import com.studioguu.miniaturegarden.ui.render.drawCreature
 import com.studioguu.miniaturegarden.ui.render.drawCreatureShadow
 import com.studioguu.miniaturegarden.ui.render.flies
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.launch
 
 /**
- * The nature notes: one page per creature, written in as it is met. A creature met shows its
- * picture, a few words about it, and the combinations it has been seen coming for. For what is
- * not found yet there is only rumour: a quiet hint of what the creature seems to like, never the
- * exact recipe. Nothing here is counted or paid; it is a notebook, not a checklist.
+ * The nature notes: a contents page, then one page per creature, written in as it is met. The
+ * contents show every creature at a glance: the ones met in colour, the rest as a faint shadow.
+ * A creature met shows its picture, a few words about it, the day it first came and the
+ * combinations it has been seen coming for. For what is not found yet there is only rumour: a
+ * quiet hint of what the creature seems to like, never the exact recipe. Nothing here is counted
+ * or paid; it is a notebook, not a checklist.
+ *
+ * A creature newly met is marked "new" until its page is turned to ([onOpenNote]); the mark stays
+ * for as long as the book is open, so it does not vanish under the player's eyes.
  */
 @Composable
-internal fun NatureNotesChapter(notes: NatureNotes, onDismiss: () -> Unit) {
+internal fun NatureNotesChapter(notes: NatureNotes, onOpenNote: (Creature) -> Unit, onDismiss: () -> Unit) {
     val creatures = Creature.entries
-    // Open at the last creature met, or at the first page.
+    val newOnes = remember { creatures.filter(notes::isNew).toSet() }
+    // Page 0 is the contents; creature i is on page i + 1. Open at the first creature newly met,
+    // or at the contents.
     val pagerState = rememberPagerState(
-        initialPage = creatures.indexOfLast(notes::hasMet).coerceAtLeast(0),
-        pageCount = { creatures.size },
+        initialPage = creatures.indexOfFirst { it in newOnes } + 1,
+        pageCount = { creatures.size + 1 },
     )
     val scope = rememberCoroutineScope()
+    LaunchedEffect(pagerState.currentPage) {
+        val creature = creatures.getOrNull(pagerState.currentPage - 1) ?: return@LaunchedEffect
+        if (notes.isNew(creature)) onOpenNote(creature)
+    }
 
     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().height(SPREAD_HEIGHT)) { page ->
-        NaturePage(creatures[page], notes)
+        if (page == 0) {
+            ContentsPage(notes, newOnes) { creature ->
+                scope.launch { pagerState.animateScrollToPage(creatures.indexOf(creature) + 1) }
+            }
+        } else {
+            val creature = creatures[page - 1]
+            NaturePage(creature, notes, isNew = creature in newOnes)
+        }
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -75,12 +102,16 @@ internal fun NatureNotesChapter(notes: NatureNotes, onDismiss: () -> Unit) {
             scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
         }
         Text(
-            text = stringResource(R.string.collection_page, pagerState.currentPage + 1, creatures.size),
+            text = if (pagerState.currentPage == 0) {
+                stringResource(R.string.nature_index)
+            } else {
+                stringResource(R.string.collection_page, pagerState.currentPage, creatures.size)
+            },
             color = GoldLeaf,
             fontFamily = BookFont,
             style = MaterialTheme.typography.titleSmall,
         )
-        PageButton("▶", enabled = pagerState.currentPage < creatures.lastIndex) {
+        PageButton("▶", enabled = pagerState.currentPage < creatures.size) {
             scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
         }
         Spacer(Modifier.weight(1f))
@@ -90,12 +121,83 @@ internal fun NatureNotesChapter(notes: NatureNotes, onDismiss: () -> Unit) {
     }
 }
 
+/** Every creature at a glance, three to a row; a tap turns to its page. */
 @Composable
-private fun NaturePage(creature: Creature, notes: NatureNotes) {
+private fun ContentsPage(notes: NatureNotes, newOnes: Set<Creature>, onPick: (Creature) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(6.dp))
+            .background(Paper)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (notes.met == 0) {
+            Text(
+                text = stringResource(R.string.nature_none_yet),
+                color = InkFaded,
+                fontFamily = BookFont,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Creature.entries.chunked(CONTENTS_COLUMNS).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { creature -> ContentsCell(creature, notes.hasMet(creature), creature in newOnes, Modifier.weight(1f), onPick) }
+                repeat(CONTENTS_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContentsCell(creature: Creature, met: Boolean, isNew: Boolean, modifier: Modifier, onPick: (Creature) -> Unit) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(4.dp))
+            .background(PaperShade.copy(alpha = 0.6f))
+            .border(1.dp, InkFaded, RoundedCornerShape(4.dp))
+            .clickable { onPick(creature) }
+            .padding(4.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) { CreaturePicture(creature, silhouette = !met) }
+            Text(
+                text = if (met) stringResource(creatureName(creature)) else stringResource(R.string.nature_unknown),
+                color = if (met) Ink else InkFaded,
+                fontFamily = BookFont,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+            )
+        }
+        if (isNew) NewMark(Modifier.align(Alignment.TopEnd))
+    }
+}
+
+/** The small red "new" label on a creature newly met. */
+@Composable
+private fun NewMark(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(R.string.nature_new),
+        color = Color.White,
+        fontFamily = BookFont,
+        fontWeight = FontWeight.Bold,
+        fontSize = 10.sp,
+        modifier = modifier
+            .background(ReadyMark, RoundedCornerShape(3.dp))
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    )
+}
+
+@Composable
+private fun NaturePage(creature: Creature, notes: NatureNotes, isNew: Boolean) {
     val met = notes.hasMet(creature)
     val rules = VisitRule.forCreature(creature)
     Row(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp))) {
-        // Left page: the picture, or a question mark.
+        // Left page: the picture, or the creature's faint shadow.
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -112,7 +214,8 @@ private fun NaturePage(creature: Creature, notes: NatureNotes) {
                     .clip(RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (met) CreaturePicture(creature) else Text("？", color = InkFaded, fontSize = 64.sp, fontFamily = BookFont)
+                CreaturePicture(creature, silhouette = !met)
+                if (isNew) NewMark(Modifier.align(Alignment.TopEnd).padding(6.dp))
             }
         }
         Box(Modifier.width(2.dp).fillMaxHeight().background(InkFaded))
@@ -142,6 +245,10 @@ private fun NaturePage(creature: Creature, notes: NatureNotes) {
             Box(Modifier.fillMaxWidth().height(1.dp).background(InkFaded))
             if (met) {
                 BookText(stringResource(creatureFlavor(creature)))
+                notes.noteOf(creature)?.let { note ->
+                    val day = Instant.ofEpochMilli(note.firstSeenAt).atZone(ZoneId.systemDefault()).toLocalDate()
+                    BookText(stringResource(R.string.nature_first_met, day.monthValue, day.dayOfMonth), faded = true)
+                }
                 val found = rules.filter(notes::hasFound)
                 if (found.isNotEmpty()) {
                     BookHeading(stringResource(R.string.nature_heading_found))
@@ -157,13 +264,18 @@ private fun NaturePage(creature: Creature, notes: NatureNotes) {
     }
 }
 
-/** The creature as the garden draws it, standing still on a small patch of lawn. */
+/**
+ * The creature as the garden draws it, standing still on a small patch of lawn. Not met yet, it
+ * is only a faint shadow of its shape, with no lawn under it.
+ */
 @Composable
-private fun CreaturePicture(creature: Creature) {
-    Canvas(Modifier.fillMaxSize()) {
+private fun CreaturePicture(creature: Creature, silhouette: Boolean = false) {
+    // The shadow is the picture with its colours replaced: drawn on a layer of its own, then filled.
+    val layer = if (silhouette) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier
+    Canvas(Modifier.fillMaxSize().then(layer)) {
         val unit = size.minDimension * 2.2f
         val ground = Offset(size.width / 2f, size.height * 0.72f)
-        drawOval(LAWN, ground - Offset(unit * 0.2f, unit * 0.05f), Size(unit * 0.4f, unit * 0.1f))
+        if (!silhouette) drawOval(LAWN, ground - Offset(unit * 0.2f, unit * 0.05f), Size(unit * 0.4f, unit * 0.1f))
         if (creature.flies()) {
             // It hovers well above its spot in the garden; here it is brought down into the frame,
             // with its shadow on the lawn below it.
@@ -172,6 +284,7 @@ private fun CreaturePicture(creature: Creature) {
         } else {
             drawCreature(creature, ground, unit, STILL_CLOCK)
         }
+        if (silhouette) drawRect(SHADOW, blendMode = BlendMode.SrcIn)
     }
 }
 
@@ -192,3 +305,5 @@ private fun BookText(text: String, faded: Boolean = false) {
 }
 
 private val LAWN = Color(0xFFB9CF8C)
+private val SHADOW = Color(0x668A6F55)
+private const val CONTENTS_COLUMNS = 3

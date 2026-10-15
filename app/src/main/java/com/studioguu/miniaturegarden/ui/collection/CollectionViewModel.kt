@@ -11,10 +11,12 @@ import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
+import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
+import com.studioguu.miniaturegarden.domain.usecase.OpenNatureNoteUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RevealCollectionEntryUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
@@ -37,6 +39,7 @@ class CollectionViewModel @Inject constructor(
     assetRepository: AssetRepository,
     private val revealEntry: RevealCollectionEntryUseCase,
     private val grantReward: GrantRewardUseCase,
+    private val openNatureNote: OpenNatureNoteUseCase,
     private val audio: AudioManager,
 ) : ViewModel() {
 
@@ -90,6 +93,11 @@ class CollectionViewModel @Inject constructor(
             audio.play(SoundEffect.COIN)
             show(R.string.collection_revealed_coins, coins)
         }
+    }
+
+    /** The player turned to [creature]'s page in the nature notes: it is no longer new. */
+    fun openNote(creature: Creature) {
+        viewModelScope.launch { openNatureNote(creature) }
     }
 
     fun onNoticeShown(id: Long) {

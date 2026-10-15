@@ -10,6 +10,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenSnapshot
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.VisitPlacement
 import com.studioguu.miniaturegarden.domain.model.VisitRule
@@ -37,14 +38,29 @@ class CreatureVisitTest {
         VisitRule.BIRD_BENCH -> listOf(at(4, 4, "deco_bench"), at(0, 0, "struct_fence"), at(1, 0, "struct_fence"), at(2, 0, "struct_fence"))
         VisitRule.BIRD_COTTAGE -> listOf(at(3, 3, StructureData.COTTAGE.objectId))
         VisitRule.SQUIRREL_SUNFLOWER -> listOf(at(1, 1, "plant_sunflower", 1f), at(5, 5, "deco_rock"))
-        VisitRule.FROG_RAIN -> listOf(at(0, 4, GridObject.RIVER_OBJECT_ID), at(1, 4, GridObject.RIVER_OBJECT_ID), at(2, 4, GridObject.RIVER_OBJECT_ID))
+        VisitRule.FROG_RAIN, VisitRule.FROG_SUMMER ->
+            listOf(at(0, 4, GridObject.RIVER_OBJECT_ID), at(1, 4, GridObject.RIVER_OBJECT_ID), at(2, 4, GridObject.RIVER_OBJECT_ID))
+        VisitRule.SQUIRREL_AUTUMN -> listOf(at(5, 5, "deco_rock"))
+        VisitRule.DRAGONFLY_AUTUMN -> listOf(at(0, 4, GridObject.RIVER_OBJECT_ID), at(1, 4, GridObject.RIVER_OBJECT_ID))
     }
 
     private fun weatherFor(rule: VisitRule) = if (rule == VisitRule.FROG_RAIN) WeatherType.RAINY else sunny
 
+    /** The season a combination needs; spring for those that come in any. */
+    private fun seasonFor(rule: VisitRule) = when (rule) {
+        VisitRule.FROG_SUMMER -> Season.SUMMER
+        VisitRule.SQUIRREL_AUTUMN, VisitRule.DRAGONFLY_AUTUMN -> Season.AUTUMN
+        else -> Season.SPRING
+    }
+
     /** Visits over many periods: [periods] consecutive ones from the start of time. */
-    private fun visitsOver(periods: Int, objects: List<GridObject>, weather: WeatherType = sunny): List<CreatureVisit> =
-        (0 until periods).flatMap { CreatureVisits.visitorsAt(it * CreatureVisits.PERIOD_MILLIS + 1, objects, weather, map) }
+    private fun visitsOver(
+        periods: Int,
+        objects: List<GridObject>,
+        weather: WeatherType = sunny,
+        season: Season = Season.SPRING,
+    ): List<CreatureVisit> =
+        (0 until periods).flatMap { CreatureVisits.visitorsAt(it * CreatureVisits.PERIOD_MILLIS + 1, objects, weather, map, season) }
 
     // --- The table ---
 
@@ -64,12 +80,13 @@ class CreatureVisitTest {
     fun `each combination is met by its own garden and by nothing less`() {
         for (rule in VisitRule.entries) {
             val objects = gardenFor(rule)
-            assertTrue(rule.name, rule.isMetBy(GardenSnapshot(objects, weatherFor(rule))))
+            val season = seasonFor(rule)
+            assertTrue(rule.name, rule.isMetBy(GardenSnapshot(objects, weatherFor(rule), season)))
             // Take any one thing away and it is no longer met.
             for (missing in objects) {
-                assertFalse("${rule.name} without ${missing.objectId}", rule.isMetBy(GardenSnapshot(objects - missing, weatherFor(rule))))
+                assertFalse("${rule.name} without ${missing.objectId}", rule.isMetBy(GardenSnapshot(objects - missing, weatherFor(rule), season)))
             }
-            assertFalse(rule.name, rule.isMetBy(GardenSnapshot(emptyList(), weatherFor(rule))))
+            assertFalse(rule.name, rule.isMetBy(GardenSnapshot(emptyList(), weatherFor(rule), season)))
         }
     }
 
@@ -116,7 +133,7 @@ class CreatureVisitTest {
     fun `each combination comes about as often as its chance says`() {
         for (rule in VisitRule.entries) {
             val periods = 2_000
-            val came = visitsOver(periods, gardenFor(rule), weatherFor(rule)).count { it.rule == rule }
+            val came = visitsOver(periods, gardenFor(rule), weatherFor(rule), seasonFor(rule)).count { it.rule == rule }
             val rate = came.toFloat() / periods
             assertTrue("${rule.name}: $rate against ${rule.chance}", kotlin.math.abs(rate - rule.chance) < 0.05f)
         }
@@ -165,7 +182,7 @@ class CreatureVisitTest {
         for (rule in VisitRule.entries) {
             val objects = gardenFor(rule)
             val grid = GardenGrid(map, objects)
-            val visits = visitsOver(100, objects, weatherFor(rule)).filter { it.rule == rule }
+            val visits = visitsOver(100, objects, weatherFor(rule), seasonFor(rule)).filter { it.rule == rule }
             assertTrue(rule.name, visits.isNotEmpty())
             for (visit in visits) {
                 when (rule.placement) {

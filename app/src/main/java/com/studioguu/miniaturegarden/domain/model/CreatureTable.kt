@@ -15,8 +15,14 @@ package com.studioguu.miniaturegarden.domain.model
  *     BIRD_COTTAGE        bird       a finished cottage                             on its roof
  *     SQUIRREL_SUNFLOWER  squirrel   a sunflower in full bloom and a rock           beside the rock
  *     FROG_RAIN           frog       3 river tiles, on a rainy day                  beside the river
+ *     FROG_SUMMER         frog       3 river tiles, in summer                       beside the river
+ *     SQUIRREL_AUTUMN     squirrel   a rock, in autumn                              beside the rock
+ *     DRAGONFLY_AUTUMN    dragonfly  2 river tiles, in autumn, not raining          over the river
  *
  * Only finished things count: a work site is no place to sit.
+ *
+ * New entries go at the end: a visit is rolled from the entry's place in the table, so moving
+ * the old ones would change who comes when. Higher up is also tried first.
  *
  * @property conditions all of them must hold.
  * @property anchor what the creature settles on or next to.
@@ -76,6 +82,31 @@ enum class VisitRule(
         anchor = Anchor(setOf(GridObject.RIVER_OBJECT_ID)),
         placement = VisitPlacement.BESIDE_ANCHOR,
         chance = 0.7f,
+    ),
+    FROG_SUMMER(
+        Creature.FROG,
+        conditions = listOf(VisitCondition.Things(setOf(GridObject.RIVER_OBJECT_ID), atLeast = 3), VisitCondition.SeasonIs(setOf(Season.SUMMER))),
+        anchor = Anchor(setOf(GridObject.RIVER_OBJECT_ID)),
+        placement = VisitPlacement.BESIDE_ANCHOR,
+        chance = 0.4f,
+    ),
+    SQUIRREL_AUTUMN(
+        Creature.SQUIRREL,
+        conditions = listOf(VisitCondition.SeasonIs(setOf(Season.AUTUMN)), VisitCondition.Things(setOf("deco_rock"))),
+        anchor = Anchor(setOf("deco_rock")),
+        placement = VisitPlacement.BESIDE_ANCHOR,
+        chance = 0.4f,
+    ),
+    DRAGONFLY_AUTUMN(
+        Creature.DRAGONFLY,
+        conditions = listOf(
+            VisitCondition.SeasonIs(setOf(Season.AUTUMN)),
+            VisitCondition.Things(setOf(GridObject.RIVER_OBJECT_ID), atLeast = 2),
+            VisitCondition.WeatherNot(WeatherType.RAINY),
+        ),
+        anchor = Anchor(setOf(GridObject.RIVER_OBJECT_ID)),
+        placement = VisitPlacement.ON_ANCHOR,
+        chance = 0.5f,
     );
 
     /** Whether the garden as it is would draw this creature. */
@@ -93,10 +124,13 @@ enum class Creature(val id: String) {
     BIRD("bird"),
     SQUIRREL("squirrel"),
     FROG("frog"),
+
+    /** Added after the first five; it only comes in autumn. */
+    DRAGONFLY("dragonfly"),
 }
 
-/** The garden as the visitors see it: what stands in it and today's weather. */
-data class GardenSnapshot(val objects: List<GridObject>, val weather: WeatherType) {
+/** The garden as the visitors see it: what stands in it, today's weather and the season. */
+data class GardenSnapshot(val objects: List<GridObject>, val weather: WeatherType, val season: Season = Season.SPRING) {
     /** Everything finished: plants that are alive, and anything that is not a work site. */
     val settled: List<GridObject> = objects.filter { !it.isWorking && !(it.isPlant && it.status == PlantStatus.WITHERED) }
 }
@@ -120,6 +154,11 @@ sealed interface VisitCondition {
     /** Today's weather is [weather]. */
     data class WeatherIs(val weather: WeatherType) : VisitCondition {
         override fun isMetBy(garden: GardenSnapshot): Boolean = garden.weather == weather
+    }
+
+    /** The garden's season is one of [seasons]. */
+    data class SeasonIs(val seasons: Set<Season>) : VisitCondition {
+        override fun isMetBy(garden: GardenSnapshot): Boolean = garden.season in seasons
     }
 
     /** Today's weather is anything but [weather]. */

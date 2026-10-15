@@ -61,11 +61,17 @@ object CreatureVisits {
 
     /**
      * The visitors of the period [now] falls in, for the garden as it is: [objects] on [map],
-     * under [weather]. Visits whose time has already passed are included; see [CreatureVisit.isPresentAt].
+     * under [weather], in [season]. Visits whose time has already passed are included; see [CreatureVisit.isPresentAt].
      */
-    fun visitorsAt(now: Long, objects: List<GridObject>, weather: WeatherType, map: GardenMap): List<CreatureVisit> {
+    fun visitorsAt(
+        now: Long,
+        objects: List<GridObject>,
+        weather: WeatherType,
+        map: GardenMap,
+        season: Season = Season.SPRING,
+    ): List<CreatureVisit> {
         val period = periodOf(now)
-        val garden = GardenSnapshot(objects, weather)
+        val garden = GardenSnapshot(objects, weather, season)
         val grid = GardenGrid(map, objects)
         val taken = HashSet<GridCell>()
         val visits = ArrayList<CreatureVisit>()
@@ -146,8 +152,10 @@ object CreatureVisits {
  *
  * @property noteId [NatureNotes.creatureKey] or [NatureNotes.ruleKey].
  * @property count how many visits it has been seen on. Kept, not shown.
+ * @property opened whether the player has looked at its page since it was written. A creature
+ *   met for the first time is not, until its page is turned to: the book marks it as new.
  */
-data class NatureNote(val noteId: String, val firstSeenAt: Long, val count: Int)
+data class NatureNote(val noteId: String, val firstSeenAt: Long, val count: Int, val opened: Boolean = true)
 
 /** The nature notes as a whole: what has been met and found so far. */
 class NatureNotes(notes: List<NatureNote>) {
@@ -161,6 +169,12 @@ class NatureNotes(notes: List<NatureNote>) {
 
     /** Creatures met so far. */
     val met: Int get() = Creature.entries.count(::hasMet)
+
+    /** Met, and its page not looked at since: shown as new in the book. */
+    fun isNew(creature: Creature): Boolean = noteOf(creature)?.opened == false
+
+    /** Creatures met whose page has not been looked at yet. */
+    val unopened: Int get() = Creature.entries.count(::isNew)
 
     companion object {
         fun creatureKey(creature: Creature) = "creature:${creature.id}"

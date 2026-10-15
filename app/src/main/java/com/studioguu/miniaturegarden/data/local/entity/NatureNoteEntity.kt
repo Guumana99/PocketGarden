@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -12,4 +13,6 @@ data class NatureNoteEntity(
     val firstSeenAt: Long,
     /** How many visits it has been seen on. */
     val count: Int,
+    /** Whether its page has been looked at since it was written (schema version 11; earlier lines count as looked at). */
+    @ColumnInfo(defaultValue = "1") val opened: Boolean = true,
 )
