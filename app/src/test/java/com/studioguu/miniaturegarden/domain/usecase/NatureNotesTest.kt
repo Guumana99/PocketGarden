@@ -36,7 +36,8 @@ class NatureNotesTest {
         assertTrue(notes.hasFound(VisitRule.BUTTERFLY_BLOOMS))
         assertFalse(notes.hasMet(Creature.BIRD))
         assertEquals(1, notes.met)
-        assertEquals(NatureNote(NatureNotes.creatureKey(Creature.BUTTERFLY), t0, 1), notes.noteOf(Creature.BUTTERFLY))
+        // Newly met, it waits in the book as new until its page is looked at.
+        assertEquals(NatureNote(NatureNotes.creatureKey(Creature.BUTTERFLY), t0, 1, opened = false), notes.noteOf(Creature.BUTTERFLY))
     }
 
     @Test

@@ -45,6 +45,7 @@
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | 生き物の来訪・組み合わせ表 | `CreatureVisitTest` |
 | 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |
+| 生き物の季節の条件・自然メモの「あたらしい」・DB v11 | `NatureNotesEngineTest`（＋表の網羅 `CreatureVisitTest`） |
 | リワード・1 日の回数 | `RewardTest` |
 | 川・フェンスの連結、川の位相 | `FloorAndFenceTest` `FenceAutotileTest` `FlowAndSoilTest` |
 | 風・影・耕した土 | `AtmosphereTest` `FlowAndSoilTest` |

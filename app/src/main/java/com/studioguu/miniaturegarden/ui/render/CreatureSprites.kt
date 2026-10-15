@@ -29,11 +29,12 @@ fun DrawScope.drawCreature(creature: Creature, base: Offset, unit: Float, clock:
         Creature.BIRD -> drawBird(base, unit, clock)
         Creature.SQUIRREL -> drawSquirrel(base, unit, clock)
         Creature.FROG -> drawFrog(base, unit, clock)
+        Creature.DRAGONFLY -> drawDragonfly(base, unit, clock)
     }
 }
 
 /** Whether [creature] keeps to the air: it casts no shadow at its feet. */
-fun Creature.flies(): Boolean = this == Creature.BUTTERFLY
+fun Creature.flies(): Boolean = this == Creature.BUTTERFLY || this == Creature.DRAGONFLY
 
 /** A small soft shadow under a creature on the ground. */
 fun DrawScope.drawCreatureShadow(base: Offset, unit: Float, width: Float) {
@@ -170,6 +171,40 @@ private fun DrawScope.drawFrog(base: Offset, unit: Float, clock: Long) {
         drawOval(FROG_GREEN, body + Offset(side * unit * 0.055f - unit * 0.02f, unit * 0.02f), Size(unit * 0.04f, unit * 0.02f))
     }
     drawArc(BODY_DARK.copy(alpha = 0.6f), 20f, 140f, false, body + Offset(-unit * 0.03f, -unit * 0.035f), Size(unit * 0.06f, unit * 0.03f), style = Stroke(unit * 0.005f))
+}
+
+private val DRAGONFLY_BODY = Color(0xFFD9573B)
+private val DRAGONFLY_WING = Color(0x88E3F2FA)
+private val DRAGONFLY_WING_EDGE = Color(0xAA9FB8C4)
+
+/**
+ * A red dragonfly hovering over the water: it holds still, darts a little way and holds again,
+ * its four clear wings shimmering.
+ */
+private fun DrawScope.drawDragonfly(base: Offset, unit: Float, clock: Long) {
+    // Holds for most of each beat, then darts to the next spot of a slow figure.
+    val beat = clock / 2400L
+    val within = (clock % 2400L) / 2400f
+    fun spot(n: Long) = Offset(sin(n * 1.7).toFloat() * unit * 0.08f, sin(n * 2.3).toFloat() * unit * 0.03f)
+    val dart = ((within - 0.8f) / 0.2f).coerceIn(0f, 1f)
+    val drift = spot(beat) + (spot(beat + 1) - spot(beat)) * dart
+    val centre = base + Offset(0f, -unit * 0.38f) + drift
+    val shimmer = 0.6f + 0.4f * abs(sin(clock / 60.0).toFloat())
+    // Two pairs of long wings, spread flat.
+    for (side in floatArrayOf(-1f, 1f)) {
+        scale(scaleX = side, scaleY = 1f, pivot = centre) {
+            for ((dy, length) in listOf(-0.012f to 0.12f, 0.012f to 0.1f)) {
+                val wing = Size(unit * length, unit * 0.028f * shimmer)
+                val at = centre + Offset(unit * 0.008f, unit * dy - wing.height / 2f)
+                drawOval(DRAGONFLY_WING, at, wing)
+                drawOval(DRAGONFLY_WING_EDGE, at, wing, style = Stroke(unit * 0.003f))
+            }
+        }
+    }
+    // A long thin tail, the body and big eyes.
+    drawLine(DRAGONFLY_BODY, centre + Offset(0f, -unit * 0.01f), centre + Offset(0f, unit * 0.11f), unit * 0.012f, StrokeCap.Round)
+    drawOval(DRAGONFLY_BODY, centre - Offset(unit * 0.012f, unit * 0.03f), Size(unit * 0.024f, unit * 0.045f))
+    drawCircle(BODY_DARK, unit * 0.012f, centre + Offset(0f, -unit * 0.035f))
 }
 
 /** Pictures in the nature notes are still: the same moment every time. */

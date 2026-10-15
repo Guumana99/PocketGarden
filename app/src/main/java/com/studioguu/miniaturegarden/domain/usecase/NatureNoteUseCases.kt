@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.VisitRule
@@ -31,12 +32,23 @@ class RecordNatureNoteUseCase @Inject constructor(
         val ruleKey = NatureNotes.ruleKey(rule)
         val creature = notes[creatureKey]
         val combination = notes[ruleKey]
-        gardenRepository.upsertNatureNote(creature?.copy(count = creature.count + 1) ?: NatureNote(creatureKey, now, 1))
+        // A creature met for the first time waits in the book as new until its page is looked at.
+        gardenRepository.upsertNatureNote(creature?.copy(count = creature.count + 1) ?: NatureNote(creatureKey, now, 1, opened = false))
         gardenRepository.upsertNatureNote(combination?.copy(count = combination.count + 1) ?: NatureNote(ruleKey, now, 1))
         when {
             creature == null -> NoteResult.NEW_CREATURE
             combination == null -> NoteResult.NEW_COMBINATION
             else -> NoteResult.SEEN_BEFORE
         }
+    }
+}
+
+/** The player turned to [Creature]'s page in the nature notes: it is no longer new. */
+class OpenNatureNoteUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+) {
+    suspend operator fun invoke(creature: Creature) = gardenRepository.runInTransaction {
+        val note = gardenRepository.getNatureNotes().firstOrNull { it.noteId == NatureNotes.creatureKey(creature) }
+        if (note != null && !note.opened) gardenRepository.upsertNatureNote(note.copy(opened = true))
     }
 }

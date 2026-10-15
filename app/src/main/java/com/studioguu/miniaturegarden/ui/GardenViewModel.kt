@@ -26,6 +26,7 @@ import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.model.LevelTable
+import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
@@ -196,9 +197,13 @@ class GardenViewModel @Inject constructor(
 
     val adReady: StateFlow<Boolean> = rewardedAds.isReady
 
-    /** Pages of the encyclopedia waiting for the player to fill them in. */
-    val collectionReady: StateFlow<Int> = gardenRepository.observeCollection()
-        .map { CollectionProgress(it).ready }
+    /**
+     * What the book's badge counts: pages of the encyclopedia waiting for the player to fill them
+     * in, and creatures newly met whose page in the nature notes has not been looked at yet.
+     */
+    val collectionReady: StateFlow<Int> = combine(gardenRepository.observeCollection(), gardenRepository.observeNatureNotes()) { pages, notes ->
+        CollectionProgress(pages).ready + NatureNotes(notes).unopened
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     private val _blessedRainFalling = MutableStateFlow(false)
@@ -361,10 +366,12 @@ class GardenViewModel @Inject constructor(
         }
         viewModelScope.launch {
             initJob.join()
-            combine(gridObjects, _weather, gardenMap, periods) { objects, weather, map, period -> Visiting(objects, weather, map, period) }
+            combine(gridObjects, _weather, gardenMap, season, periods) { objects, weather, map, season, period ->
+                Visiting(objects, weather, map, season, period)
+            }
                 .collectLatest { visiting ->
                     val now = System.currentTimeMillis()
-                    val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map)
+                    val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season)
                         .filter { it.leavesAt > now }
                     _visitors.value = visits
                     coroutineScope {
@@ -379,7 +386,7 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    private class Visiting(val objects: List<GridObject>, val weather: WeatherType, val map: GardenMap, val period: Long)
+    private class Visiting(val objects: List<GridObject>, val weather: WeatherType, val map: GardenMap, val season: Season, val period: Long)
 
     private suspend fun noteVisit(period: Long, visit: CreatureVisit) {
         if (!notedVisits.add(period to visit.rule)) return

@@ -29,7 +29,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         NatureNoteEntity::class,
         LetterEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -136,6 +136,13 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(CREATE_LETTERS)
                 db.execSQL("ALTER TABLE garden_progress ADD COLUMN seasonStartedAt INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Nature notes remember whether their page has been looked at. Creatures already met are not new. */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE nature_notes ADD COLUMN opened INTEGER NOT NULL DEFAULT 1")
             }
         }
     }

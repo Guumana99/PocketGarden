@@ -125,6 +125,6 @@ fun LetterEntity.toDomain(): Letter? = LetterKind.fromName(kind)?.let {
 
 fun Letter.toEntity() = LetterEntity(letterId = letterId, kind = kind.name, season = season.name, sentAt = sentAt, read = read)
 
-fun NatureNoteEntity.toDomain() = NatureNote(noteId = noteId, firstSeenAt = firstSeenAt, count = count)
+fun NatureNoteEntity.toDomain() = NatureNote(noteId = noteId, firstSeenAt = firstSeenAt, count = count, opened = opened)
 
-fun NatureNote.toEntity() = NatureNoteEntity(noteId = noteId, firstSeenAt = firstSeenAt, count = count)
+fun NatureNote.toEntity() = NatureNoteEntity(noteId = noteId, firstSeenAt = firstSeenAt, count = count, opened = opened)

@@ -145,11 +145,15 @@ fun CollectionDialog(
                 var category by rememberSaveable {
                     mutableStateOf(CollectionCategory.entries.firstOrNull { loaded.readyIn(it) > 0 } ?: CollectionCategory.CROPS)
                 }
-                // The last chapter, the nature notes, is a different kind of page.
-                var natureOpen by rememberSaveable { mutableStateOf(false) }
+                // The last chapter, the nature notes, is a different kind of page. With no page
+                // waiting elsewhere, the book opens there when a creature newly met is in it.
+                var natureOpen by rememberSaveable {
+                    mutableStateOf(loaded.ready == 0 && (natureNotes?.unopened ?: 0) > 0)
+                }
                 CategoryTabs(
                     selected = category.takeUnless { natureOpen },
                     progress = loaded,
+                    natureNew = (natureNotes?.unopened ?: 0) > 0,
                     onSelect = {
                         category = it
                         natureOpen = false
@@ -158,7 +162,7 @@ fun CollectionDialog(
                 )
                 val notes = natureNotes
                 if (natureOpen && notes != null) {
-                    NatureNotesChapter(notes, onDismiss)
+                    NatureNotesChapter(notes, onOpenNote = viewModel::openNote, onDismiss = onDismiss)
                 } else if (natureOpen) {
                     Spacer(Modifier.height(SPREAD_HEIGHT))
                 } else key(category) {
@@ -243,12 +247,14 @@ private fun NoticeStrip(notice: BookNotice?) {
 
 /**
  * The chapters, as bookmarks. A red dot marks a chapter with a page waiting to be filled in. The
- * last bookmark is the nature notes; [selected] is null while that is open.
+ * last bookmark is the nature notes; [selected] is null while that is open. Its dot, [natureNew],
+ * marks a creature newly met whose page has not been looked at.
  */
 @Composable
 private fun CategoryTabs(
     selected: CollectionCategory?,
     progress: CollectionProgress,
+    natureNew: Boolean,
     onSelect: (CollectionCategory) -> Unit,
     onSelectNature: () -> Unit,
 ) {
@@ -302,6 +308,15 @@ private fun CategoryTabs(
                 style = MaterialTheme.typography.labelMedium,
                 maxLines = 1,
             )
+            if (natureNew) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-4).dp, y = (-4).dp)
+                        .size(8.dp)
+                        .background(ReadyMark, CircleShape)
+                )
+            }
         }
     }
 }

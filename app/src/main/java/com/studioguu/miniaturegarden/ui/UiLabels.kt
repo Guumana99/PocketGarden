@@ -171,6 +171,7 @@ fun creatureName(creature: Creature): Int = when (creature) {
     Creature.BIRD -> R.string.creature_bird
     Creature.SQUIRREL -> R.string.creature_squirrel
     Creature.FROG -> R.string.creature_frog
+    Creature.DRAGONFLY -> R.string.creature_dragonfly
 }
 
 /** Said once, the first time a creature comes. */
@@ -181,6 +182,7 @@ fun creatureMetMessage(creature: Creature): Int = when (creature) {
     Creature.BIRD -> R.string.msg_met_bird
     Creature.SQUIRREL -> R.string.msg_met_squirrel
     Creature.FROG -> R.string.msg_met_frog
+    Creature.DRAGONFLY -> R.string.msg_met_dragonfly
 }
 
 /** What the nature notes say about a creature once it has been met. */
@@ -191,6 +193,7 @@ fun creatureFlavor(creature: Creature): Int = when (creature) {
     Creature.BIRD -> R.string.creature_flavor_bird
     Creature.SQUIRREL -> R.string.creature_flavor_squirrel
     Creature.FROG -> R.string.creature_flavor_frog
+    Creature.DRAGONFLY -> R.string.creature_flavor_dragonfly
 }
 
 /** A combination once found, in a few words. */
@@ -202,6 +205,9 @@ fun combinationLabel(rule: VisitRule): Int = when (rule) {
     VisitRule.BIRD_COTTAGE -> R.string.combo_bird_cottage
     VisitRule.SQUIRREL_SUNFLOWER -> R.string.combo_squirrel_sunflower
     VisitRule.FROG_RAIN -> R.string.combo_frog_rain
+    VisitRule.FROG_SUMMER -> R.string.combo_frog_summer
+    VisitRule.SQUIRREL_AUTUMN -> R.string.combo_squirrel_autumn
+    VisitRule.DRAGONFLY_AUTUMN -> R.string.combo_dragonfly_autumn
 }
 
 /** A quiet hint for a combination not found yet: what the creature seems to like. */
@@ -213,4 +219,7 @@ fun combinationHint(rule: VisitRule): Int = when (rule) {
     VisitRule.BIRD_COTTAGE -> R.string.hint_bird_cottage
     VisitRule.SQUIRREL_SUNFLOWER -> R.string.hint_squirrel_sunflower
     VisitRule.FROG_RAIN -> R.string.hint_frog_rain
+    VisitRule.FROG_SUMMER -> R.string.hint_frog_summer
+    VisitRule.SQUIRREL_AUTUMN -> R.string.hint_squirrel_autumn
+    VisitRule.DRAGONFLY_AUTUMN -> R.string.hint_dragonfly_autumn
 }
