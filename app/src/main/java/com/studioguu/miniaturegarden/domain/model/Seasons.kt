@@ -43,13 +43,19 @@ data class SeasonState(val season: Season, val startedAt: Long)
 /** The season [count] seasons after this one. */
 fun Season.after(count: Int = 1): Season = Season.entries[Math.floorMod(ordinal + count, Season.entries.size)]
 
-/** What a letter in the post is about. Its words are written by the screen, from the kind and the season. */
+/** What a letter in the post is about. Its words are written by the screen, from the kind, the season and the topic. */
 enum class LetterKind {
     /** The season is about to turn: [Letter.season] is the one coming. */
     SEASON_COMING,
 
     /** A new season has come: [Letter.season] is the one that came. */
-    SEASON_ARRIVED;
+    SEASON_ARRIVED,
+
+    /** A word of advice about the garden: [Letter.topic] names a [LetterTip]. */
+    TIP,
+
+    /** New things in the shop after a level-up: [Letter.topic] is `from-to` ([Letter.stockLevels]). */
+    NEW_STOCK;
 
     companion object {
         fun fromName(name: String): LetterKind? = entries.firstOrNull { it.name == name }
@@ -57,10 +63,13 @@ enum class LetterKind {
 }
 
 /**
- * A letter in the garden's post.
+ * A letter in the garden's post. Letters are kept: the post is an archive the player can read
+ * back through, and each letter is read on its own, when its page is opened.
  *
  * @property letterId says what it is about and when (e.g. `arrived:SUMMER:1700000000000`), so the
  *   same news is never posted twice.
+ * @property season the season the letter is about, or the one it was sent in.
+ * @property topic what in particular, for the kinds that need it (see [LetterKind]); empty otherwise.
  */
 data class Letter(
     val letterId: String,
@@ -68,12 +77,31 @@ data class Letter(
     val season: Season,
     val sentAt: Long,
     val read: Boolean = false,
+    val topic: String = "",
 ) {
+    /** For a [LetterKind.TIP]: which piece of advice. Null for other kinds, or one this version does not know. */
+    val tip: LetterTip? get() = if (kind == LetterKind.TIP) LetterTip.fromName(topic) else null
+
+    /** For a [LetterKind.NEW_STOCK]: the level before and after. */
+    val stockLevels: IntRange? get() = if (kind != LetterKind.NEW_STOCK) {
+        null
+    } else {
+        topic.split('-').mapNotNull { it.toIntOrNull() }.takeIf { it.size == 2 }?.let { (from, to) -> from..to }
+    }
+
     companion object {
         fun arrived(season: Season, at: Long) = Letter("arrived:${season.name}:$at", LetterKind.SEASON_ARRIVED, season, at)
 
         /** About [season], which comes at [comesAt]; posted at [sentAt]. */
         fun coming(season: Season, comesAt: Long, sentAt: Long) =
             Letter("coming:${season.name}:$comesAt", LetterKind.SEASON_COMING, season, sentAt)
+
+        /** A piece of advice, sent in [season]. Each one comes once. */
+        fun tip(tip: LetterTip, season: Season, at: Long) =
+            Letter("tip:${tip.name}", LetterKind.TIP, season, at, topic = tip.name)
+
+        /** What the shop put out when the level went from [fromLevel] to [toLevel]. */
+        fun newStock(fromLevel: Int, toLevel: Int, season: Season, at: Long) =
+            Letter("stock:$toLevel", LetterKind.NEW_STOCK, season, at, topic = "$fromLevel-$toLevel")
     }
 }

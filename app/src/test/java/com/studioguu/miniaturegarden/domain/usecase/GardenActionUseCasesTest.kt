@@ -694,8 +694,8 @@ internal class FakeGardenRepository : GardenRepository {
         letters[letter.letterId] = letter
         return true
     }
-    override suspend fun markLettersRead() {
-        letters.replaceAll { _, it -> it.copy(read = true) }
+    override suspend fun markLetterRead(letterId: String) {
+        letters.computeIfPresent(letterId) { _, it -> it.copy(read = true) }
     }
 
     private fun lettersNewestFirst() = letters.values.sortedWith(compareByDescending<Letter> { it.sentAt }.thenBy { it.letterId })

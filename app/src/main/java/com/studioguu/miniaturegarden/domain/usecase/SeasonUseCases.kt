@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.Letter
+import com.studioguu.miniaturegarden.domain.model.PostOffice
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.SeasonClock
 import com.studioguu.miniaturegarden.domain.model.after
@@ -55,10 +56,27 @@ class AdvanceSeasonUseCase @Inject constructor(
     }
 }
 
-/** The post: the letters, newest first, and putting them down as read. */
+/** The post: putting a letter down as read once its page has been opened. */
 class ReadLettersUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
 ) {
-    /** The player has opened the post and seen everything in it. */
-    suspend fun markAllRead() = gardenRepository.markLettersRead()
+    /** The player has opened [letterId]. The others keep their mark until they are opened too. */
+    suspend fun markRead(letterId: String) = gardenRepository.markLetterRead(letterId)
+}
+
+/** The letters that are not about the seasons: advice now and then, and what the shop has new. */
+class PostLettersUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+) {
+    /** Posts the letter of advice due at [now] ([PostOffice.nextTip]), if one is. @return it, if posted. */
+    suspend fun tipIfDue(now: Long): Letter? = gardenRepository.runInTransaction {
+        val season = gardenRepository.getProgress()?.season ?: return@runInTransaction null
+        PostOffice.nextTip(gardenRepository.getLetters(), season, now)?.takeIf { gardenRepository.postLetter(it) }
+    }
+
+    /** Posts word of what the level going from [fromLevel] to [toLevel] put in the shop, if anything. */
+    suspend fun newStock(fromLevel: Int, toLevel: Int, now: Long): Letter? = gardenRepository.runInTransaction {
+        val season = gardenRepository.getProgress()?.season ?: Season.SPRING
+        PostOffice.newStock(fromLevel, toLevel, season, now)?.takeIf { gardenRepository.postLetter(it) }
+    }
 }

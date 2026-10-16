@@ -120,10 +120,10 @@ fun GardenProgress.toEntity() = GardenProgressEntity(
 
 /** Null for a letter of a kind this version does not know (written by a newer one). */
 fun LetterEntity.toDomain(): Letter? = LetterKind.fromName(kind)?.let {
-    Letter(letterId = letterId, kind = it, season = Season.fromName(season), sentAt = sentAt, read = read)
+    Letter(letterId = letterId, kind = it, season = Season.fromName(season), sentAt = sentAt, read = read, topic = topic)
 }
 
-fun Letter.toEntity() = LetterEntity(letterId = letterId, kind = kind.name, season = season.name, sentAt = sentAt, read = read)
+fun Letter.toEntity() = LetterEntity(letterId = letterId, kind = kind.name, season = season.name, sentAt = sentAt, read = read, topic = topic)
 
 fun NatureNoteEntity.toDomain() = NatureNote(noteId = noteId, firstSeenAt = firstSeenAt, count = count, opened = opened)
 

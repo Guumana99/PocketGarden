@@ -44,6 +44,8 @@ import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.AdvanceSeasonUseCase
+import com.studioguu.miniaturegarden.domain.usecase.PostLettersUseCase
+import com.studioguu.miniaturegarden.domain.usecase.ReadLettersUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CompleteWorkUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
@@ -114,6 +116,8 @@ class GardenViewModel @Inject constructor(
     private val scheduleNotifications: ScheduleGardenNotificationsUseCase,
     private val recordNatureNote: RecordNatureNoteUseCase,
     private val advanceSeason: AdvanceSeasonUseCase,
+    private val postLetters: PostLettersUseCase,
+    private val readLetters: ReadLettersUseCase,
     private val settingsRepository: SettingsRepository,
     private val grantReward: GrantRewardUseCase,
     private val rewardedAds: RewardedAdManager,
@@ -145,13 +149,13 @@ class GardenViewModel @Inject constructor(
     val season: StateFlow<Season> = progress.map { it?.season ?: Season.SPRING }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
 
-    /** The post, newest first. */
+    /** The post, newest first: every letter that has come, read or not. */
     val letters: StateFlow<List<Letter>> = gardenRepository.observeLetters()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** The player has opened the post: everything in it has been seen. */
-    fun markLettersRead() {
-        viewModelScope.launch { gardenRepository.markLettersRead() }
+    /** The player has opened one letter's page: that one has been read. */
+    fun markLetterRead(letterId: String) {
+        viewModelScope.launch { readLetters.markRead(letterId) }
     }
 
     /** Debug menu: the rest of this season goes by at once, and the next one comes. */
@@ -485,6 +489,8 @@ class GardenViewModel @Inject constructor(
                     .also { followTutorial() }
                     // The year turns, and the post brings word of it.
                     .also { arrived = advanceSeason(now) }
+                    // Now and then, a word of advice.
+                    .also { postLetters.tipIfDue(now) }
             }
             arrived?.let(::announceSeason)
             if (finished.isNotEmpty()) {
@@ -777,6 +783,8 @@ class GardenViewModel @Inject constructor(
                     if (level > previous) {
                         audio.play(SoundEffect.LEVEL_UP)
                         _levelUp.update { LevelUpNotice.after(it, previous, level) }
+                        // The shop's news also comes by post, to be read again later.
+                        postLetters.newStock(previous, level, System.currentTimeMillis())
                     }
                 }
                 lastLevel = level

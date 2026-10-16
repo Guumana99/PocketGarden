@@ -173,7 +173,7 @@ class NatureNotesEngineTest {
     @Test
     fun `the move to schema 11 adds the column, with everything met before counted as looked at`() {
         val database = mainSource("java/com/studioguu/miniaturegarden/data/local/AppDatabase.kt")
-        assertTrue(database.contains("version = 11"))
+        // The version itself has moved on since (see PostTest); the step to 11 stays.
         assertTrue(database.contains("MIGRATION_10_11"))
         assertTrue(database.contains("ALTER TABLE nature_notes ADD COLUMN opened INTEGER NOT NULL DEFAULT 1"))
         assertTrue(mainSource("java/com/studioguu/miniaturegarden/di/DatabaseModule.kt").contains("MIGRATION_10_11"))

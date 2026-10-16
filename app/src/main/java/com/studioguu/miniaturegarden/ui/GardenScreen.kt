@@ -573,7 +573,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         )
     }
     if (showPost) {
-        PostDialog(letters = letters, onOpened = viewModel::markLettersRead, onDismiss = { showPost = false })
+        PostDialog(letters = letters, onRead = viewModel::markLetterRead, onDismiss = { showPost = false })
     }
     if (showShop) {
         ShopDialog(onDismiss = { showShop = false })

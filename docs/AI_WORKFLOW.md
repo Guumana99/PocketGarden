@@ -56,6 +56,7 @@
 | タイトル・スターターガーデン・チュートリアル・機能の段階解放・季節 | `OnboardingTest` |
 | 庭の倍率の保存 | `SettingsRepositoryTest` `IsometricEngineTest` |
 | もちものの並び替え・タブ・入手の記録（DB v9） | `InventorySortTest`（＋設定の保存 `SettingsRepositoryTest`） |
+| ポストのアーカイブ・既読・ヒントと入荷のお便り（DB v12） | `PostTest`（＋季節の手紙 `SeasonsTest`） |
 | 四季・お便り・旬のショップ・植え付け制限・温室（DB v10） | `SeasonsTest`（＋棚や数を見る `ShopAndEffectsTest` `ProgressionTest` `CollectionTest` `HoeTest`） |
 
 アイテムや図鑑ページを**増減**したら、数を固定値で見ているテストが落ちる
