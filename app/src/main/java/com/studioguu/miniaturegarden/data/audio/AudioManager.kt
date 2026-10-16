@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import com.studioguu.miniaturegarden.domain.model.AppSettings
+import com.studioguu.miniaturegarden.domain.model.Season
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,9 +38,34 @@ enum class SoundEffect(val resourceName: String, val gain: Float = 1f) {
     ERROR("se_error"),                    // -25.3 dBFS
 }
 
-/** Looping background music; [resourceName] works like [SoundEffect.resourceName]. */
+/**
+ * Looping background music: the title's, and one for each season in the garden.
+ * [resourceName] works like [SoundEffect.resourceName].
+ *
+ * A track whose own file is not there yet plays [FALLBACK_RESOURCE] (the spring tune) instead,
+ * so new tunes can be dropped into `res/raw` under these names one at a time, with nothing else
+ * to change. Two tracks that come down to the same file are one piece of music: moving between
+ * them does not restart it.
+ */
 enum class BgmTrack(val resourceName: String) {
-    GARDEN("bgm_garden"),
+    TITLE("bgm_title"),
+    SPRING("bgm_spring"),
+    SUMMER("bgm_summer"),
+    AUTUMN("bgm_autumn"),
+    WINTER("bgm_winter");
+
+    companion object {
+        /** What plays for a track that has no file of its own. */
+        const val FALLBACK_RESOURCE = "bgm_spring"
+
+        /** The garden's music in [season]. */
+        fun forSeason(season: Season): BgmTrack = when (season) {
+            Season.SPRING -> SPRING
+            Season.SUMMER -> SUMMER
+            Season.AUTUMN -> AUTUMN
+            Season.WINTER -> WINTER
+        }
+    }
 }
 
 /**
@@ -48,6 +74,9 @@ enum class BgmTrack(val resourceName: String) {
  * Sound files are optional. They are looked up in `res/raw` by name at runtime rather than
  * through `R.raw`, so the app compiles and runs with none, some or all of them present: a
  * missing or unreadable file simply makes that sound a silent no-op.
+ *
+ * Music moves from one tune to the next by crossfading ([AudioEngine.startBgm]); asking for a
+ * track that comes down to the file already playing leaves it running ([BgmTrack]).
  *
  * Effects and music are mixed by the system and never cut each other off. To keep effects
  * clear, the music sits well below them by default and is briefly "ducked" (turned down
@@ -72,6 +101,9 @@ class AudioManager internal constructor(
 
     private var wantedTrack: BgmTrack? = null
     private var playingTrack: BgmTrack? = null
+
+    /** The raw resource [playingTrack] is playing, which another track may share. */
+    private var playingResId = 0
     private var bgmPaused = false
 
     var soundEffectsEnabled: Boolean = true
@@ -133,7 +165,10 @@ class AudioManager internal constructor(
         }
     }
 
-    /** Loops [track] until [stopBgm] or another track is requested. Does nothing if it is already playing. */
+    /**
+     * Loops [track] until [stopBgm] or another track is requested. Does nothing if it is already
+     * playing, or if it comes down to the same file as what is; otherwise the music crossfades.
+     */
     fun playBgm(track: BgmTrack) {
         wantedTrack = track
         startBgmIfPossible()
@@ -153,6 +188,7 @@ class AudioManager internal constructor(
     fun stopBgm() {
         wantedTrack = null
         playingTrack = null
+        playingResId = 0
         engine.stopBgm()
     }
 
@@ -161,6 +197,7 @@ class AudioManager internal constructor(
         engine.release()
         loadedEffects.clear()
         playingTrack = null
+        playingResId = 0
     }
 
     private fun loadedEffectFor(effect: SoundEffect): LoadedEffect? {
@@ -171,6 +208,13 @@ class AudioManager internal constructor(
         return loadedEffects[effect]
     }
 
+    /** The track that should be heard now, or null while the music is stopped. */
+    val currentTrack: BgmTrack? get() = wantedTrack
+
+    /** The file [track] plays: its own, or the fallback; 0 when neither is there. */
+    internal fun resourceFor(track: BgmTrack): Int =
+        resolveRawId(track.resourceName).takeIf { it != 0 } ?: resolveRawId(BgmTrack.FALLBACK_RESOURCE)
+
     private fun startBgmIfPossible() {
         val track = wantedTrack ?: return
         if (!bgmEnabled || bgmPaused) return
@@ -178,8 +222,16 @@ class AudioManager internal constructor(
             engine.resumeBgm()
             return
         }
-        val resId = resolveRawId(track.resourceName)
-        playingTrack = if (resId != 0 && engine.startBgm(resId, bgmVolume)) track else null
+        val resId = resourceFor(track)
+        if (resId != 0 && resId == playingResId) {
+            // Another name for the music already playing: it simply carries on.
+            playingTrack = track
+            engine.resumeBgm()
+            return
+        }
+        val started = resId != 0 && engine.startBgm(resId, bgmVolume)
+        playingTrack = if (started) track else null
+        playingResId = if (started) resId else 0
     }
 
     companion object {
@@ -209,7 +261,10 @@ internal interface AudioEngine {
     fun loadEffect(resId: Int): LoadedEffect?
     fun playEffect(handle: Int, volume: Float)
 
-    /** Replaces any current music with a looping [resId]; false if it could not be started. */
+    /**
+     * Replaces any current music with a looping [resId], crossfading: what was sounding fades
+     * out while the new tune fades in to [volume]. False if it could not be started.
+     */
     fun startBgm(resId: Int, volume: Float): Boolean
     fun pauseBgm()
     fun resumeBgm()
@@ -229,6 +284,13 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
 
     private var soundPool: SoundPool? = null
     private var bgmPlayer: MediaPlayer? = null
+
+    /** The tune being faded out after another took its place; released when the fade ends. */
+    private var fadingPlayer: MediaPlayer? = null
+    private val fadeToken = Any()
+
+    /** The music's volume as last asked for; fades work towards it. */
+    private var bgmVolume = 0f
 
     private val handler = Handler(Looper.getMainLooper())
     private val duckToken = Any()
@@ -267,7 +329,16 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     }
 
     override fun startBgm(resId: Int, volume: Float): Boolean {
-        stopBgm()
+        // What is sounding now fades out over the same time the new tune fades in; a paused
+        // or broken player simply goes.
+        val previous = bgmPlayer?.takeIf { runCatching { it.isPlaying }.getOrDefault(false) }
+        if (previous == null) {
+            stopBgm()
+        } else {
+            bgmPlayer = null
+            cancelDuck()
+            endFade()
+        }
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_GAME)
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -276,16 +347,54 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
         val player = runCatching {
             val systemAudio = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
             MediaPlayer.create(context, resId, attributes, systemAudio.generateAudioSessionId())
-        }.getOrNull() ?: return false
-        return runCatching {
+        }.getOrNull() ?: run {
+            previous?.let(::releasePlayer)
+            return false
+        }
+        bgmVolume = volume
+        val started = runCatching {
             player.isLooping = true
-            player.setVolume(volume, volume)
+            player.setVolume(0f, 0f)
             player.start()
             bgmPlayer = player
         }.onFailure { runCatching { player.release() } }.isSuccess
+        if (!started) {
+            previous?.let(::releasePlayer)
+            return false
+        }
+        fadingPlayer = previous
+        val start = SystemClock.uptimeMillis()
+        for (step in 1..FADE_STEPS) {
+            handler.postAtTime(
+                {
+                    val t = step.toFloat() / FADE_STEPS
+                    applyBgmVolume(bgmVolume * t)
+                    fadingPlayer?.let { old -> runCatching { old.setVolume(volume * (1f - t), volume * (1f - t)) } }
+                    if (step == FADE_STEPS) endFade()
+                },
+                fadeToken,
+                start + FADE_MILLIS * step / FADE_STEPS,
+            )
+        }
+        return true
+    }
+
+    /** Ends any fade where it is: the old tune goes, the new one is set to its full volume. */
+    private fun endFade() {
+        handler.removeCallbacksAndMessages(fadeToken)
+        fadingPlayer?.let(::releasePlayer)
+        fadingPlayer = null
+        applyBgmVolume(bgmVolume)
+    }
+
+    private fun releasePlayer(player: MediaPlayer) {
+        runCatching { player.stop() }
+        runCatching { player.release() }
     }
 
     override fun pauseBgm() {
+        // A tune halfway out is not worth coming back to.
+        endFade()
         runCatching { bgmPlayer?.takeIf { it.isPlaying }?.pause() }
     }
 
@@ -295,16 +404,20 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
 
     override fun stopBgm() {
         cancelDuck()
+        handler.removeCallbacksAndMessages(fadeToken)
+        fadingPlayer?.let(::releasePlayer)
+        fadingPlayer = null
         val player = bgmPlayer ?: return
         bgmPlayer = null
-        runCatching { player.stop() }
-        runCatching { player.release() }
+        releasePlayer(player)
     }
 
     override fun setBgmVolume(volume: Float) {
-        // An explicit volume change wins over a duck still waiting to restore the old one.
+        // An explicit volume change wins over a duck still waiting to restore the old one, and
+        // over a fade still on its way to the old one.
         cancelDuck()
-        applyBgmVolume(volume)
+        bgmVolume = volume
+        endFade()
     }
 
     override fun duckBgm(duckedVolume: Float, restoreVolume: Float, holdMillis: Long) {
@@ -347,5 +460,9 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
 
         const val RESTORE_MILLIS = 300L
         const val RESTORE_STEPS = 6
+
+        /** How long one tune takes to give way to the next. */
+        const val FADE_MILLIS = 1_200L
+        const val FADE_STEPS = 12
     }
 }

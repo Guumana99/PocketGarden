@@ -289,8 +289,18 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
   花が 1.2 秒ごとに 1 段ずつ育ち、満開でしばらく止まってから最初に戻る）。見本の上に透明な層を重ね、触っても動かない。
   - 「はじめる」：セーブが無ければそのまま庭へ。あれば確認のうえ `deleteSavedGarden()` で全部消してから庭へ。
   - 「つづきから」：セーブがあるときだけ押せる。セーブの有無は `hasSavedGarden()`（プロフィールの行があるか）。
-- タイトル画面では庭と同じ BGM（`BgmTrack.GARDEN`）を仮に流す（`TitleViewModel.onForeground/onBackground`、ライフサイクルの RESUME/PAUSE で）。
-  庭に入っても同じ曲なので、`playBgm` は「もう鳴っている」として途切れずに続く。専用曲は `ROADMAP.md` の「音楽」。
+- **BGM は 5 つ**（#35、`BgmTrack`）：`TITLE`（`bgm_title`）と、季節ごとの `SPRING` `SUMMER` `AUTUMN` `WINTER`（`bgm_spring` ほか）。
+  - 入っているファイルは今のところ `bgm_spring.mp3` だけ（以前の `bgm_garden.mp3` を改名）。**自分のファイルが無い曲は春の曲で鳴る**（`BgmTrack.FALLBACK_RESOURCE`、`AudioManager.resourceFor`）。
+    新しい曲は `res/raw` に同じ名前で置くだけでよい（コードの変更は不要）。
+  - 同じファイルに行き着く曲どうしの切り替え（例：曲の無いタイトル→春の庭）は、`playBgm` が「もう鳴っている」として途切れずに続ける。
+    違うファイルなら `AudioEngine.startBgm` が**クロスフェード**（1.2 秒、12 段）。鳴っていた曲は下がりながら止まり、新しい曲は 0 から設定の音量まで上がる。
+    一時停止中・ミュート中に曲が変わったら、戻ったときに新しい曲から始まる。
+  - タイトルは `TitleViewModel.onForeground` で `TITLE`。庭は `GardenViewModel.watchSeasonForMusic` が庭の季節を見て `BgmTrack.forSeason`。
+    遊んでいる最中に季節が変わるとその場でクロスフェード。庭が読めるまでは何も選ばず、タイトルの曲が鳴り続ける（仮の季節で一瞬鳴らさない）。
+  - ライフサイクルは従来どおり RESUME/PAUSE で `resumeBgm` / `pauseBgm`。
+- **設定との連動**：BGM の音量スライダーとオン・オフは `SettingsViewModel.change` が**保存より先に** `AudioManager.apply` へ渡す（指の動きにそのまま追従）。
+  保存は DataStore（`bgm_enabled` `bgm_volume`）。起動時は `PocketGardenApplication` が保存値を同期で読んでから鳴らし、以後は保存値の変化も `apply` に流す。
+  ミュートは一時停止（再開すると同じ位置から）、音量を変えるとダッキングやフェードの途中でもその値が勝つ。
 - 見本の庭（`TitleSampleGarden`）は **11×11**（`TitleSampleGarden.MAP`）。コテージ・小屋・井戸、バラ・チューリップ・ひまわりの花壇、石畳、柵、川、ウッドデッキ、
   ベンチ・石どうろう・岩・野の花などを並べ、生き物（屋根とベンチのことり、花壇のちょうちょ）を常にいさせる（`visitors`、来訪の時刻は 0〜`Long.MAX_VALUE`）。
   花は 8 拍で育ち 12 拍満開のまま（多くがいつも咲いている）。`GardenCanvas(initialZoom = 1.22)` で全体が収まる倍率より少し寄せ、左右の角が少しはみ出すくらいに大きく見せる。

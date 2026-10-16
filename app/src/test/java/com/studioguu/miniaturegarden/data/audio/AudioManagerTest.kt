@@ -1,6 +1,8 @@
 package com.studioguu.miniaturegarden.data.audio
 
 import com.studioguu.miniaturegarden.domain.model.AppSettings
+import com.studioguu.miniaturegarden.domain.model.Season
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -25,7 +27,7 @@ class AudioManagerTest {
     fun `everything is a silent no-op when no sound file exists`() {
         audio.preload()
         SoundEffect.entries.forEach(audio::play)
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.SPRING)
         audio.pauseBgm()
         audio.resumeBgm()
         audio.bgmVolume = 0.3f
@@ -168,8 +170,8 @@ class AudioManagerTest {
 
     @Test
     fun `a changed music volume reaches the player at once`() {
-        rawFiles["bgm_garden"] = 50
-        audio.playBgm(BgmTrack.GARDEN)
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.SPRING)
 
         audio.apply(AppSettings(bgmVolume = 0.8f))
 
@@ -180,8 +182,8 @@ class AudioManagerTest {
 
     @Test
     fun `muting through settings pauses the music and unmuting continues it at the saved volume`() {
-        rawFiles["bgm_garden"] = 50
-        audio.playBgm(BgmTrack.GARDEN)
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.SPRING)
 
         audio.apply(AppSettings(bgmEnabled = false, bgmVolume = 0.6f))
         assertEquals(listOf("pause"), engine.bgmCalls)
@@ -194,10 +196,10 @@ class AudioManagerTest {
 
     @Test
     fun `settings applied before any music decide how it starts`() {
-        rawFiles["bgm_garden"] = 50
+        rawFiles["bgm_spring"] = 50
 
         audio.apply(AppSettings(bgmEnabled = false))
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.SPRING)
         assertTrue(engine.bgmStarts.isEmpty())
 
         audio.apply(AppSettings(bgmEnabled = true, bgmVolume = 0.1f))
@@ -206,8 +208,8 @@ class AudioManagerTest {
 
     @Test
     fun `re-applying the same settings does nothing`() {
-        rawFiles["bgm_garden"] = 50
-        audio.playBgm(BgmTrack.GARDEN)
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.SPRING)
         val settings = AppSettings(bgmVolume = 0.5f)
 
         audio.apply(settings)
@@ -228,10 +230,10 @@ class AudioManagerTest {
 
     @Test
     fun `an effect ducks the music for its own length`() {
-        rawFiles["bgm_garden"] = 50
+        rawFiles["bgm_spring"] = 50
         rawFiles["se_coin"] = 2
         engine.durations[2] = 1_500L
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.SPRING)
 
         audio.play(SoundEffect.COIN)
 
@@ -241,10 +243,10 @@ class AudioManagerTest {
 
     @Test
     fun `a long effect ducks the music only for the capped time`() {
-        rawFiles["bgm_garden"] = 50
+        rawFiles["bgm_spring"] = 50
         rawFiles["se_level_up"] = 3
         engine.durations[3] = 4_130L
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.SPRING)
 
         audio.play(SoundEffect.LEVEL_UP)
 
@@ -253,9 +255,9 @@ class AudioManagerTest {
 
     @Test
     fun `ducking follows the current music volume and is skipped while music is not sounding`() {
-        rawFiles["bgm_garden"] = 50
+        rawFiles["bgm_spring"] = 50
         rawFiles["se_tap"] = 1
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.SPRING)
 
         audio.bgmVolume = 0.8f
         audio.play(SoundEffect.TAP)
@@ -275,18 +277,18 @@ class AudioManagerTest {
 
     @Test
     fun `bgm starts once and repeated requests do not restart it`() {
-        rawFiles["bgm_garden"] = 50
+        rawFiles["bgm_spring"] = 50
 
-        audio.playBgm(BgmTrack.GARDEN)
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.SPRING)
+        audio.playBgm(BgmTrack.SPRING)
 
         assertEquals(listOf(50 to AudioManager.DEFAULT_BGM_VOLUME), engine.bgmStarts)
     }
 
     @Test
     fun `pause and resume continue the same playback`() {
-        rawFiles["bgm_garden"] = 50
-        audio.playBgm(BgmTrack.GARDEN)
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.SPRING)
 
         audio.pauseBgm()
         audio.resumeBgm()
@@ -297,10 +299,10 @@ class AudioManagerTest {
 
     @Test
     fun `bgm requested while paused waits for resume`() {
-        rawFiles["bgm_garden"] = 50
+        rawFiles["bgm_spring"] = 50
 
         audio.pauseBgm()
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.SPRING)
         assertTrue(engine.bgmStarts.isEmpty())
 
         audio.resumeBgm()
@@ -310,12 +312,12 @@ class AudioManagerTest {
 
     @Test
     fun `muting pauses the music and unmuting continues it from where it was`() {
-        rawFiles["bgm_garden"] = 50
-        audio.playBgm(BgmTrack.GARDEN)
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.SPRING)
 
         audio.bgmEnabled = false
         assertEquals(listOf("pause"), engine.bgmCalls)
-        audio.playBgm(BgmTrack.GARDEN) // asking again while muted changes nothing
+        audio.playBgm(BgmTrack.SPRING) // asking again while muted changes nothing
 
         audio.bgmEnabled = true
         assertEquals(listOf("pause", "resume"), engine.bgmCalls)
@@ -324,8 +326,8 @@ class AudioManagerTest {
 
     @Test
     fun `music muted in the background stays silent on return and continues when unmuted`() {
-        rawFiles["bgm_garden"] = 50
-        audio.playBgm(BgmTrack.GARDEN)
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.SPRING)
         audio.bgmEnabled = false
 
         audio.pauseBgm()  // app to the background
@@ -339,8 +341,8 @@ class AudioManagerTest {
 
     @Test
     fun `stopped bgm does not come back on resume`() {
-        rawFiles["bgm_garden"] = 50
-        audio.playBgm(BgmTrack.GARDEN)
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.SPRING)
 
         audio.stopBgm()
         audio.pauseBgm()
@@ -351,9 +353,9 @@ class AudioManagerTest {
 
     @Test
     fun `bgm that cannot be decoded is retried on the next request instead of crashing`() {
-        rawFiles["bgm_garden"] = 50
+        rawFiles["bgm_spring"] = 50
         engine.bgmStartSucceeds = false
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.SPRING)
 
         engine.bgmStartSucceeds = true
         audio.resumeBgm()
@@ -366,6 +368,153 @@ class AudioManagerTest {
         audio.bgmVolume = 2f
         audio.bgmVolume = 0.25f
         assertEquals(listOf(1f, 0.25f), engine.bgmVolumes)
+    }
+
+    // --- Five tunes: the title and the four seasons ---
+
+    @Test
+    fun `there is a tune for the title and one for each season`() {
+        assertEquals(
+            listOf("bgm_title", "bgm_spring", "bgm_summer", "bgm_autumn", "bgm_winter"),
+            BgmTrack.entries.map { it.resourceName },
+        )
+        assertEquals(
+            listOf(BgmTrack.SPRING, BgmTrack.SUMMER, BgmTrack.AUTUMN, BgmTrack.WINTER),
+            Season.entries.map(BgmTrack::forSeason),
+        )
+        // The spring tune is the one every other track falls back on.
+        assertEquals(BgmTrack.SPRING.resourceName, BgmTrack.FALLBACK_RESOURCE)
+    }
+
+    @Test
+    fun `the spring tune is in the app, and the others are optional`() {
+        val raw = listOf(File("src/main/res/raw"), File("app/src/main/res/raw")).first { it.isDirectory }
+        val tunes = raw.listFiles()!!.map { it.nameWithoutExtension }.filter { it.startsWith("bgm_") }
+        assertTrue(BgmTrack.FALLBACK_RESOURCE in tunes)
+        // Every tune in the folder is one the game knows how to play.
+        assertTrue(tunes.all { name -> BgmTrack.entries.any { it.resourceName == name } })
+    }
+
+    @Test
+    fun `a track without its own file plays the spring tune`() {
+        rawFiles["bgm_spring"] = 50
+
+        audio.playBgm(BgmTrack.WINTER)
+
+        assertEquals(listOf(50 to AudioManager.DEFAULT_BGM_VOLUME), engine.bgmStarts)
+        assertEquals(BgmTrack.WINTER, audio.currentTrack)
+    }
+
+    @Test
+    fun `moving between tracks that share a file carries the music on without a restart`() {
+        rawFiles["bgm_spring"] = 50
+
+        audio.playBgm(BgmTrack.TITLE)   // the title has no tune of its own yet
+        audio.playBgm(BgmTrack.SPRING)  // into a spring garden
+        audio.playBgm(BgmTrack.SUMMER)  // and on into summer, also without one
+
+        assertEquals(1, engine.bgmStarts.size)
+        assertFalse("stop" in engine.bgmCalls)
+    }
+
+    @Test
+    fun `a season with its own tune takes over from the one before`() {
+        rawFiles["bgm_spring"] = 50
+        rawFiles["bgm_summer"] = 51
+        rawFiles["bgm_title"] = 52
+
+        audio.playBgm(BgmTrack.TITLE)
+        audio.playBgm(BgmTrack.SPRING)
+        audio.playBgm(BgmTrack.SUMMER)
+        audio.playBgm(BgmTrack.SUMMER)
+
+        // Each change hands over to the engine, which crossfades; asking again changes nothing.
+        assertEquals(listOf(52, 50, 51), engine.bgmStarts.map { it.first })
+        assertFalse("stop" in engine.bgmCalls)
+    }
+
+    @Test
+    fun `back to a season whose tune is shared, after one with its own, starts it again`() {
+        rawFiles["bgm_spring"] = 50
+        rawFiles["bgm_winter"] = 53
+
+        audio.playBgm(BgmTrack.WINTER)
+        audio.playBgm(BgmTrack.AUTUMN) // no file: falls back on spring's
+        audio.playBgm(BgmTrack.SPRING) // the same file as autumn's: no restart
+
+        assertEquals(listOf(53, 50), engine.bgmStarts.map { it.first })
+    }
+
+    @Test
+    fun `a season that turns while the music is muted is the tune heard when it comes back`() {
+        rawFiles["bgm_spring"] = 50
+        rawFiles["bgm_autumn"] = 54
+        audio.playBgm(BgmTrack.SPRING)
+        audio.bgmEnabled = false
+
+        audio.playBgm(BgmTrack.AUTUMN)
+        assertEquals(1, engine.bgmStarts.size)
+
+        audio.bgmEnabled = true
+        assertEquals(54 to AudioManager.DEFAULT_BGM_VOLUME, engine.bgmStarts.last())
+    }
+
+    @Test
+    fun `a season that turns in the background is the tune heard on return`() {
+        rawFiles["bgm_spring"] = 50
+        rawFiles["bgm_summer"] = 51
+        audio.playBgm(BgmTrack.SPRING)
+        audio.pauseBgm()
+
+        audio.playBgm(BgmTrack.SUMMER)
+        assertEquals(1, engine.bgmStarts.size)
+
+        audio.resumeBgm()
+        assertEquals(51, engine.bgmStarts.last().first)
+    }
+
+    // --- The settings screen and the music ---
+
+    @Test
+    fun `the slider and the switch reach the music as they move`() {
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.SPRING)
+        val settings = AppSettings()
+
+        audio.apply(settings.copy(bgmVolume = 0.6f))
+        audio.apply(settings.copy(bgmVolume = 0.1f))
+        assertEquals(listOf(0.6f, 0.1f), engine.bgmVolumes)
+
+        audio.apply(settings.copy(bgmVolume = 0.1f, bgmEnabled = false))
+        assertEquals("pause", engine.bgmCalls.last())
+        audio.apply(settings.copy(bgmVolume = 0.1f, bgmEnabled = true))
+        assertEquals("resume", engine.bgmCalls.last())
+        // A new tune after that starts at the chosen volume.
+        rawFiles["bgm_winter"] = 53
+        audio.playBgm(BgmTrack.WINTER)
+        assertEquals(53 to 0.1f, engine.bgmStarts.last())
+    }
+
+    @Test
+    fun `saved settings reach the music before it starts, and every change after`() {
+        val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+        val app = main.resolve("java/com/studioguu/miniaturegarden/PocketGardenApplication.kt").readText()
+        assertTrue(app.contains("audio.apply(runBlocking { settingsRepository.settings.first() })"))
+        assertTrue(app.contains("settingsRepository.settings.collect(audio::apply)"))
+        // The settings screen plays each change at once, then saves it.
+        val screen = main.resolve("java/com/studioguu/miniaturegarden/ui/settings/SettingsViewModel.kt").readText()
+        val change = screen.substringAfter("private fun change(")
+        assertTrue(change.indexOf("audio.apply(updated)") in 0 until change.indexOf("settingsRepository.update"))
+    }
+
+    @Test
+    fun `the garden plays its season's tune and the title its own`() {
+        val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+        val garden = main.resolve("java/com/studioguu/miniaturegarden/ui/GardenViewModel.kt").readText()
+        assertTrue(garden.contains("audio.playBgm(BgmTrack.forSeason(season))"))
+        assertTrue(garden.contains("musicSeason?.let { audio.playBgm(BgmTrack.forSeason(it)) }"))
+        val title = main.resolve("java/com/studioguu/miniaturegarden/ui/title/TitleViewModel.kt").readText()
+        assertTrue(title.contains("audio.playBgm(BgmTrack.TITLE)"))
     }
 }
 
