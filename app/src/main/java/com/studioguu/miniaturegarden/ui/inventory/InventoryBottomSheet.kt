@@ -62,8 +62,8 @@ private const val COLUMNS = 4
  *
  * Tabs along the top narrow it down to one kind of item, and the sort button beside the title
  * puts what is left in order ([InventoryOrder]). Whatever the tab, the grid keeps every empty
- * slot, so the sheet does not change height; items slide to their new places when the order
- * changes.
+ * slot, so the sheet does not change height. Switching tabs or orders swaps the cells in place at
+ * once: the cells carry no item animation, as items sliding across the grid read as a stutter.
  *
  * @param slots the slots the player has, in slot order.
  * @param season the garden's season, for sorting by season.
@@ -103,12 +103,12 @@ fun InventoryBottomSheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(arranged, key = { it.slotIndex }) { slot ->
-                    SlotCell(slot, onClick = { onSlotSelected(slot.slotIndex) }, modifier = Modifier.animateItem())
+                    SlotCell(slot, onClick = { onSlotSelected(slot.slotIndex) })
                 }
                 // The places of the items another tab holds, left as plain cells, so that the grid
                 // stays whole and the same size under every tab.
                 items(slots.size - arranged.size, key = { "hidden_$it" }) {
-                    SlotCell(InventorySlot(slotIndex = -1), onClick = {}, modifier = Modifier.animateItem())
+                    SlotCell(InventorySlot(slotIndex = -1), onClick = {})
                 }
             }
         }

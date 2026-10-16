@@ -26,6 +26,7 @@ import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.model.LevelTable
+import com.studioguu.miniaturegarden.domain.model.LevelUpNotice
 import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -342,6 +343,11 @@ class GardenViewModel @Inject constructor(
         watchWork()
         watchVisitors()
     }
+
+    private val _levelUp = MutableStateFlow<LevelUpNotice?>(null)
+
+    /** A level-up waiting on its board until the player taps OK; null when there is none. */
+    val levelUp: StateFlow<LevelUpNotice?> = _levelUp.asStateFlow()
 
     private val _visitors = MutableStateFlow<List<CreatureVisit>>(emptyList())
 
@@ -759,8 +765,8 @@ class GardenViewModel @Inject constructor(
     }
 
     /**
-     * Announces a level-up whenever the stored level rises above the one last seen, and says so
-     * when the new level opens something in the shop.
+     * Raises the level-up board whenever the stored level rises above the one last seen. Levels
+     * gained while the board is still up join it ([LevelUpNotice.after]).
      */
     private fun watchForLevelUps() {
         viewModelScope.launch {
@@ -770,15 +776,17 @@ class GardenViewModel @Inject constructor(
                 lastLevel?.let { previous ->
                     if (level > previous) {
                         audio.play(SoundEffect.LEVEL_UP)
-                        showEffect { GardenEffect.LevelUp(it, level) }
-                        if (GardenItem.unlockedBetween(previous, level).isNotEmpty()) {
-                            _messages.trySend(R.string.msg_new_items_unlocked)
-                        }
+                        _levelUp.update { LevelUpNotice.after(it, previous, level) }
                     }
                 }
                 lastLevel = level
             }
         }
+    }
+
+    /** The player tapped OK on the level-up board. */
+    fun acknowledgeLevelUp() {
+        _levelUp.value = null
     }
 
     /**

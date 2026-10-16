@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -271,14 +272,7 @@ private fun CategoryTabs(
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = stringResource(categoryLabel(category)),
-                    color = if (isSelected) Ink else GoldLeaf,
-                    fontFamily = BookFont,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    style = MaterialTheme.typography.labelMedium,
-                    maxLines = 1,
-                )
+                TabLabel(stringResource(categoryLabel(category)), isSelected)
                 if (progress.readyIn(category) > 0) {
                     Box(
                         Modifier
@@ -300,14 +294,7 @@ private fun CategoryTabs(
                 .padding(vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = stringResource(R.string.nature_tab),
-                color = if (natureSelected) Ink else GoldLeaf,
-                fontFamily = BookFont,
-                fontWeight = if (natureSelected) FontWeight.Bold else FontWeight.Normal,
-                style = MaterialTheme.typography.labelMedium,
-                maxLines = 1,
-            )
+            TabLabel(stringResource(R.string.nature_tab), natureSelected)
             if (natureNew) {
                 Box(
                     Modifier
@@ -319,6 +306,40 @@ private fun CategoryTabs(
             }
         }
     }
+}
+
+/** The smallest a bookmark's label may shrink to before it is left clipped. */
+private val MinTabLabelSize = 8.sp
+
+/**
+ * A bookmark's label on one line. When it is wider than its bookmark (a narrow screen, or a
+ * large font setting), it shrinks a step at a time until it fits, and is drawn only once it
+ * does, so the cut-off text is never seen.
+ */
+@Composable
+private fun TabLabel(text: String, selected: Boolean) {
+    val style = MaterialTheme.typography.labelMedium
+    var fontSize by remember(text, selected, style) { mutableStateOf(style.fontSize) }
+    var fits by remember(text, selected, style) { mutableStateOf(false) }
+    Text(
+        text = text,
+        color = if (selected) Ink else GoldLeaf,
+        fontFamily = BookFont,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+        style = style.copy(fontSize = fontSize),
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { layout ->
+            if (layout.hasVisualOverflow && fontSize > MinTabLabelSize) {
+                fontSize = maxOf(fontSize.value * 0.9f, MinTabLabelSize.value).sp
+            } else {
+                fits = true
+            }
+        },
+        modifier = Modifier
+            .padding(horizontal = 2.dp)
+            .drawWithContent { if (fits) drawContent() },
+    )
 }
 
 /** The pages of one category, with the controls for turning them. */

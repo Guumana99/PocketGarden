@@ -233,13 +233,52 @@ class NotificationsTest {
     }
 
     @Test
-    fun `turning the switch on without the device's leave goes to the device's settings`() {
-        assertEquals(TurnOnStep.OPEN_DEVICE_SETTINGS, NotificationAccess.whenTurnedOn(33, permissionGranted = false, deviceAllows = false))
-        assertEquals(TurnOnStep.OPEN_DEVICE_SETTINGS, NotificationAccess.whenTurnedOn(33, permissionGranted = false, deviceAllows = true))
+    fun `turning the switch on without the permission explains it first, and the OK asks the system`() {
+        assertEquals(TurnOnStep.EXPLAIN_PERMISSION, NotificationAccess.whenTurnedOn(33, permissionGranted = false, deviceAllows = false))
+        assertEquals(TurnOnStep.EXPLAIN_PERMISSION, NotificationAccess.whenTurnedOn(34, permissionGranted = false, deviceAllows = true))
+    }
+
+    @Test
+    fun `turning the switch on when only the device's settings say no goes to the device's settings`() {
         assertEquals(TurnOnStep.OPEN_DEVICE_SETTINGS, NotificationAccess.whenTurnedOn(33, permissionGranted = true, deviceAllows = false))
         assertEquals(TurnOnStep.OPEN_DEVICE_SETTINGS, NotificationAccess.whenTurnedOn(30, permissionGranted = false, deviceAllows = false))
         assertEquals(TurnOnStep.NONE, NotificationAccess.whenTurnedOn(34, permissionGranted = true, deviceAllows = true))
         assertEquals(TurnOnStep.NONE, NotificationAccess.whenTurnedOn(30, permissionGranted = false, deviceAllows = true))
+    }
+
+    @Test
+    fun `the switch goes on only once the system says yes`() {
+        assertEquals(
+            TurnOnStep.NONE,
+            NotificationAccess.afterPermissionAnswer(granted = true, deviceAllows = true, rationaleBefore = false, rationaleAfter = false),
+        )
+        // Allowed, but the app's notifications are still switched off in the device's settings.
+        assertEquals(
+            TurnOnStep.OPEN_DEVICE_SETTINGS,
+            NotificationAccess.afterPermissionAnswer(granted = true, deviceAllows = false, rationaleBefore = false, rationaleAfter = false),
+        )
+    }
+
+    @Test
+    fun `a refusal leaves the switch off and asks nothing more`() {
+        // The first refusal: the system now offers a rationale.
+        assertEquals(
+            TurnOnStep.STAY_OFF,
+            NotificationAccess.afterPermissionAnswer(granted = false, deviceAllows = false, rationaleBefore = false, rationaleAfter = true),
+        )
+        // Refused again, after a rationale was on offer.
+        assertEquals(
+            TurnOnStep.STAY_OFF,
+            NotificationAccess.afterPermissionAnswer(granted = false, deviceAllows = false, rationaleBefore = true, rationaleAfter = false),
+        )
+    }
+
+    @Test
+    fun `when the system refuses without asking, the device's settings are the way left`() {
+        assertEquals(
+            TurnOnStep.OPEN_DEVICE_SETTINGS,
+            NotificationAccess.afterPermissionAnswer(granted = false, deviceAllows = false, rationaleBefore = false, rationaleAfter = false),
+        )
     }
 
     @Test

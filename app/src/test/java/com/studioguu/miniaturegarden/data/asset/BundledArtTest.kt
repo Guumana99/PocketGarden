@@ -211,7 +211,10 @@ class BundledArtTest {
         )) {
             assertTrue("missing string $name", strings.contains("name=\"$name\""))
         }
-        assertTrue(strings.contains("さくもつ") && strings.contains("ちけい・みち") && strings.contains("たてもの・さく"))
+        // Short enough for four bookmarks side by side; "たてもの・さく" used to be cut off.
+        assertTrue(strings.contains("<string name=\"collection_tab_crops\">さくもつ</string>"))
+        assertTrue(strings.contains("<string name=\"collection_tab_terrain\">ちけい</string>"))
+        assertTrue(strings.contains("<string name=\"collection_tab_structures\">たてもの</string>"))
         assertTrue(strings.contains("✨ とうろく"))
     }
 

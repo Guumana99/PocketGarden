@@ -26,3 +26,22 @@ object LevelTable {
         return level
     }
 }
+
+/**
+ * A level-up the player has yet to see: from [fromLevel] to [toLevel]. It stays on screen as a
+ * board until the player taps OK, so it cannot pass by unnoticed like a floating message.
+ */
+data class LevelUpNotice(val fromLevel: Int, val toLevel: Int) {
+    /** What the new level put in the shop; the board only speaks of new items when there are some. */
+    val unlockedItems: List<GardenItem> get() = GardenItem.unlockedBetween(fromLevel, toLevel)
+
+    companion object {
+        /**
+         * The notice to show after the level went from [previous] to [level], given the one
+         * still [pending] on screen, if any. Levels gained while a board is up join it, so the
+         * player taps OK once and hears of everything that opened since they last looked.
+         */
+        fun after(pending: LevelUpNotice?, previous: Int, level: Int): LevelUpNotice? =
+            if (level <= previous) pending else LevelUpNotice(pending?.fromLevel ?: previous, level)
+    }
+}

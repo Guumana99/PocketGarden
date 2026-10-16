@@ -175,7 +175,7 @@ fun FeatureRevealCard(feature: GardenFeature, onClose: () -> Unit, modifier: Mod
 
 /** A wooden board with a title burnt into it and a parchment inset holding [content]. */
 @Composable
-private fun WoodBoard(title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun WoodBoard(title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Surface(
         modifier = modifier.popIn(),
         shape = RoundedCornerShape(14.dp),

@@ -171,10 +171,14 @@ di/       Hilt の束ね
 - スイッチは `AppSettings.notificationsEnabled`（既定 ON）。OFF にすると `NotificationScheduler.cancelAll()` で予約も表示中の通知も消す。
 - 画面のスイッチは**本当に届くときだけ ON に見える**（`NotificationAccess.of`）：ゲームの設定が ON、Android 13 以上なら `POST_NOTIFICATIONS` が許可済み、端末の通知設定でアプリが止められていない。
   **端末が許可していなければ、ゲームのスイッチは ON にならない**。
-- 端末が許可していない状態でスイッチを ON にしようとすると（`NotificationAccess.whenTurnedOn` が `OPEN_DEVICE_SETTINGS`）、ゲームの設定は変えずに**端末のアプリ通知設定を開く**。
-  戻ってきたとき端末が許可していれば（`NotificationAccess.deviceReady`）、そこで初めてゲームの設定を ON にする（`NotificationSettingRow` の `awaitingDevice`）。
-  端末が許可していない間は「端末の設定で、通知が許可されていません。スイッチを入れると、端末の設定が開きます。」と「端末の設定を開く」を出す。ゲームはそのまま遊べる。
-  システムの権限ダイアログを出すのは、下の招待の「お知らせを受け取る」だけ。
+- スイッチを ON にしたときの流れは `NotificationAccess.whenTurnedOn`（#33）。どの場合も、端末が許可するまでゲームの設定は変えない。
+  - Android 13 以上で `POST_NOTIFICATIONS` が無い（`EXPLAIN_PERMISSION`）：木目調の案内ダイアログ（`NotificationPermissionDialog`）で
+    「お便りや季節のお知らせを受け取るには、通知の許可が必要です」と伝え、「OK」でシステムの権限ダイアログを出す。「やめておく」ならスイッチは OFF のまま。
+    答えのあとは `NotificationAccess.afterPermissionAnswer`：許可→ON（端末のチャンネル設定がまだ止めていれば端末の設定へ）、拒否→OFF のまま。
+    ただし以前「今後表示しない」で拒否されていてシステムが何も聞かずに断ったとき（問う前も後も `shouldShowRequestPermissionRationale` が false）は、端末の設定を開く。
+  - 権限はあるが端末の通知設定でアプリが止められている（`OPEN_DEVICE_SETTINGS`）：**端末のアプリ通知設定を開く**。
+    戻ってきたとき端末が許可していれば（`NotificationAccess.deviceReady`）、そこで初めてゲームの設定を ON にする（`NotificationSettingRow` の `awaitingDevice`）。
+  端末が許可していない間は「端末で、通知が許可されていません。スイッチを入れると、許可の手続きにすすみます。」と「端末の設定を開く」を出す。ゲームはそのまま遊べる。
 - **一度だけの招待**：チュートリアルと機能の解放がすべて終わったあと（`TutorialStep.DONE`）、Android 13 以上で権限が無ければ、木目調のダイアログで「お知らせを受け取る／いまはいい」を聞く。
   どちらを選んでも二度と出ない（`AppSettings.notificationInviteShown`）。既存の庭（チュートリアル済み）では、更新後に最初に庭へ入ったときに出る。
   - 「はじめる」直後に一瞬出て消える不具合を #28 で修正：新しい庭の `garden_progress` が作られる前は段階が読めず、以前は「DONE」とみなしていたため。
@@ -403,7 +407,13 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
   - レベル順：`GardenItem.openingRank`（最初から→Lv の低い順→図鑑で開く物）。ショップの棚の並びも同じ値を使う。
   - 同じ順位は「新しく入った順→枠の番号」で決まる（並びが揺れない）。
   - 並び順は `AppSettings.inventorySort`（DataStore の `inventory_sort`、名前で保存）、タブは `GardenScreen` の `rememberSaveable`。
-  - ヘッダー右の木の札（「⇅ 入手順 ▾」）でメニューを開く。並びが変わると枠は `animateItem` で新しい場所へ滑る。
+  - ヘッダー右の木の札（「⇅ 入手順 ▾」）でメニューを開く。タブや並びを変えても枠は滑らず、その場でぱっと入れ替わる（#33 で `animateItem` を外した。滑る動きがカクつきに見えたため）。
 - 図鑑の赤丸（`CountBadge`）は、フォントの上余白を切って数字を円の中央に置く。
+- 図鑑のしおり（タブ）は「さくもつ／ちけい／たてもの／いきもの」（#33 で「ちけい・みち」「たてもの・さく」を短くした。4 つ並ぶと見切れていたため）。
+  ラベル（`TabLabel`）は 1 行で、幅に入らなければ 1 割ずつ縮め（下限 8sp）、収まってから描く。
+- **レベルアップ**（#33）は浮かぶ文字やトーストではなく、画面中央の木目調のボード（`LevelUpDialog`、「🎉 レベルが上がりました！」）。
+  「OK」を押すまで閉じない（外側タップ・戻るでは閉じない）。新しく並んだ物があるときだけ「新しいアイテムが解放されました」と、その名前（最大 6 つ）を出す。
+  状態は `GardenViewModel.levelUp`（`LevelUpNotice`）。ボードが出ている間にさらに上がったら 1 枚にまとめる（`LevelUpNotice.after`：元のレベルはそのまま、行き先を更新）。
+  木箱・チュートリアル完了のボード・カメラモードの間は待たせ、通知の招待はボードが出ている間は出さない。
 - 通知は自前の `GardenToastHost`（レイアウトを動かさない）。
 - カメラモードは HUD 全体と排他の分岐。写真は庭の `graphicsLayer` を 4:5 の枠で切り抜く（`CameraFrame`）。

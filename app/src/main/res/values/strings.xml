@@ -158,21 +158,19 @@
     <string name="msg_not_enough_coins">コインが足りません</string>
     <string name="msg_inventory_full">もちものがいっぱいです</string>
     <string name="msg_item_locked">まだ開放されていません</string>
-    <string name="msg_new_items_unlocked">ショップに新しいアイテムが並びました</string>
     <string name="msg_select_plant">先に植物をタップして選んでください</string>
 
     <!-- Floating effects -->
     <string name="effect_harvest">+%1$d 🪙　+%2$d XP</string>
     <string name="effect_xp">+%1$d XP</string>
-    <string name="effect_level_up">レベルアップ！ Lv.%1$d</string>
 
     <!-- Garden encyclopedia. Written like an old cartridge game: kana, with spaces. -->
     <string name="collection_title">ガーデンずかん</string>
     <string name="collection_progress">あつめた かず　%1$d / %2$d　（%3$d%%）</string>
     <string name="collection_ready_count">とうろく まちの ページ　%1$d</string>
     <string name="collection_tab_crops">さくもつ</string>
-    <string name="collection_tab_terrain">ちけい・みち</string>
-    <string name="collection_tab_structures">たてもの・さく</string>
+    <string name="collection_tab_terrain">ちけい</string>
+    <string name="collection_tab_structures">たてもの</string>
     <string name="collection_ready_hint">じょうけん たっせい！\nボタンを おして　ずかんに とうろく しよう。</string>
     <string name="collection_reveal_button">✨ とうろく する</string>
     <string name="collection_revealed_coins">とうろく かんりょう！　+%1$d 🪙</string>
@@ -244,7 +242,11 @@
     <string name="settings_volume_description">%1$s の音量</string>
     <string name="settings_notifications">通知</string>
     <string name="settings_notifications_caption">作物が実ったときや、お水をほしがっているとき、建物ができあがったときに、そっとお知らせします。</string>
-    <string name="settings_notifications_denied">端末の設定で、通知が許可されていません。スイッチを入れると、端末の設定が開きます。</string>
+    <string name="settings_notifications_denied">端末で、通知が許可されていません。スイッチを入れると、許可の手続きにすすみます。</string>
+    <string name="notification_permission_title">通知の許可をおねがいします</string>
+    <string name="notification_permission_text">お便りや季節のお知らせを受け取るには、通知の許可が必要です</string>
+    <string name="notification_permission_ok">OK</string>
+    <string name="notification_permission_cancel">やめておく</string>
     <string name="settings_notifications_open_device">端末の設定を開く</string>
     <string name="settings_app_version">%1$s　v%2$s</string>
     <string name="settings_licenses">ライセンス</string>
@@ -403,4 +405,11 @@
     <string name="hint_frog_summer">なつの あいだ　かわべで ひとやすみ するらしい</string>
     <string name="hint_squirrel_autumn">あきに なると　いわの あたりで みかけるという</string>
     <string name="hint_dragonfly_autumn">あきの はれた ひ　かわの うえを とぶらしい</string>
+
+    <!-- Level-up board -->
+    <string name="level_up_title">🎉 レベルが上がりました！</string>
+    <string name="level_up_level">Lv.%1$d になりました</string>
+    <string name="level_up_unlocked">新しいアイテムが解放されました</string>
+    <string name="level_up_no_unlock">これからも、のんびりお庭を育てていきましょう</string>
+    <string name="level_up_ok">OK</string>
 </resources>

@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.domain.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -155,6 +156,25 @@ class ProgressionTest {
         assertEquals(setOf(GardenItem.STRUCT_COTTAGE), GardenItem.unlockedBetween(5, 6).toSet())
         assertTrue(GardenItem.unlockedBetween(6, 7).isEmpty())
         assertTrue(GardenItem.unlockedBetween(3, 3).isEmpty())
+    }
+
+    @Test
+    fun `a level-up waits as one notice, and levels gained meanwhile join it`() {
+        val first = LevelUpNotice.after(pending = null, previous = 1, level = 2)
+        assertEquals(LevelUpNotice(1, 2), first)
+        // Still on screen when the level rises again: one board, from where it started.
+        assertEquals(LevelUpNotice(1, 4), LevelUpNotice.after(first, previous = 2, level = 4))
+        // The level did not rise: nothing new to say.
+        assertNull(LevelUpNotice.after(pending = null, previous = 3, level = 3))
+        assertEquals(first, LevelUpNotice.after(first, previous = 2, level = 2))
+    }
+
+    @Test
+    fun `the level-up notice names what the shop just opened`() {
+        assertEquals(GardenItem.unlockedBetween(1, 4).toSet(), LevelUpNotice(1, 4).unlockedItems.toSet())
+        assertTrue(LevelUpNotice(1, 2).unlockedItems.isNotEmpty())
+        // A level that opens nothing: the board does not speak of new items.
+        assertTrue(LevelUpNotice(6, 7).unlockedItems.isEmpty())
     }
 
     // --- Economy ---
