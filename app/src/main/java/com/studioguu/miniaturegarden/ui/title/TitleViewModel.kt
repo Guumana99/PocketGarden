@@ -43,11 +43,12 @@ class TitleViewModel @Inject constructor(
     }
 
     /**
-     * The title is in front: its music plays. For now that is the garden's own tune, so it simply
-     * carries on, without a break, once the garden opens.
+     * The title is in front: its music plays. Until the title has a tune of its own it plays the
+     * spring one ([BgmTrack.FALLBACK_RESOURCE]); then, opening a spring garden, the music simply
+     * carries on, and opening one in another season crossfades to that season's tune.
      */
     fun onForeground() {
-        audio.playBgm(BgmTrack.GARDEN)
+        audio.playBgm(BgmTrack.TITLE)
         audio.resumeBgm()
     }
 

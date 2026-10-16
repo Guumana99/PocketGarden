@@ -79,6 +79,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -346,6 +347,27 @@ class GardenViewModel @Inject constructor(
         watchCollection()
         watchWork()
         watchVisitors()
+        watchSeasonForMusic()
+    }
+
+    /** The garden's season as last read, for its music; null until the garden has been read. */
+    private var musicSeason: Season? = null
+
+    /** Whether the garden is on screen, so its music should be heard. */
+    private var inForeground = false
+
+    /**
+     * Each season has its own tune. When the season turns while the player is here, the music
+     * crossfades to the new one ([AudioManager.playBgm]); while away, the right tune is waiting
+     * for [onForeground].
+     */
+    private fun watchSeasonForMusic() {
+        viewModelScope.launch {
+            gardenRepository.observeProgress().map { it?.season }.filterNotNull().distinctUntilChanged().collect { season ->
+                musicSeason = season
+                if (inForeground) audio.playBgm(BgmTrack.forSeason(season))
+            }
+        }
     }
 
     private val _levelUp = MutableStateFlow<LevelUpNotice?>(null)
@@ -407,9 +429,14 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    /** The garden came to the foreground: start (or continue) its music. */
+    /**
+     * The garden came to the foreground: start (or continue) the music of its season. Until the
+     * garden has been read, whatever was playing (the title's tune) carries on, and gives way
+     * to the season's as soon as it is known, rather than a guess starting first.
+     */
     fun onForeground() {
-        audio.playBgm(BgmTrack.GARDEN)
+        inForeground = true
+        musicSeason?.let { audio.playBgm(BgmTrack.forSeason(it)) }
         audio.resumeBgm()
         // The player is here and sees the garden: nothing needs telling while they are.
         scheduleNotifications.cancel()
@@ -421,6 +448,7 @@ class GardenViewModel @Inject constructor(
      * profile's clocks up to this very moment as well, so time away is measured from here.
      */
     fun onBackground() {
+        inForeground = false
         audio.pauseBgm()
         sync()
         // What the garden will have to tell them while they are away. Worked out from what is
