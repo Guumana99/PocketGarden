@@ -387,10 +387,13 @@ class AudioManagerTest {
     }
 
     @Test
-    fun `the spring tune is in the app, and the others are optional`() {
+    fun `the title, spring and summer tunes are in the app, and the others are optional`() {
         val raw = listOf(File("src/main/res/raw"), File("app/src/main/res/raw")).first { it.isDirectory }
         val tunes = raw.listFiles()!!.map { it.nameWithoutExtension }.filter { it.startsWith("bgm_") }
         assertTrue(BgmTrack.FALLBACK_RESOURCE in tunes)
+        for (track in listOf(BgmTrack.TITLE, BgmTrack.SPRING, BgmTrack.SUMMER)) {
+            assertTrue("missing ${track.resourceName}", track.resourceName in tunes)
+        }
         // Every tune in the folder is one the game knows how to play.
         assertTrue(tunes.all { name -> BgmTrack.entries.any { it.resourceName == name } })
     }

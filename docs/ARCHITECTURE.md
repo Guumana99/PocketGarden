@@ -290,7 +290,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
   - 「はじめる」：セーブが無ければそのまま庭へ。あれば確認のうえ `deleteSavedGarden()` で全部消してから庭へ。
   - 「つづきから」：セーブがあるときだけ押せる。セーブの有無は `hasSavedGarden()`（プロフィールの行があるか）。
 - **BGM は 5 つ**（#35、`BgmTrack`）：`TITLE`（`bgm_title`）と、季節ごとの `SPRING` `SUMMER` `AUTUMN` `WINTER`（`bgm_spring` ほか）。
-  - 入っているファイルは今のところ `bgm_spring.mp3` だけ（以前の `bgm_garden.mp3` を改名）。**自分のファイルが無い曲は春の曲で鳴る**（`BgmTrack.FALLBACK_RESOURCE`、`AudioManager.resourceFor`）。
+  - 入っているファイルは `bgm_title.mp3` `bgm_spring.mp3`（以前の `bgm_garden.mp3` を改名）`bgm_summer.mp3`（#36 で追加）。秋・冬はまだ無い。**自分のファイルが無い曲は春の曲で鳴る**（`BgmTrack.FALLBACK_RESOURCE`、`AudioManager.resourceFor`）。
     新しい曲は `res/raw` に同じ名前で置くだけでよい（コードの変更は不要）。
   - 同じファイルに行き着く曲どうしの切り替え（例：曲の無いタイトル→春の庭）は、`playBgm` が「もう鳴っている」として途切れずに続ける。
     違うファイルなら `AudioEngine.startBgm` が**クロスフェード**（1.2 秒、12 段）。鳴っていた曲は下がりながら止まり、新しい曲は 0 から設定の音量まで上がる。

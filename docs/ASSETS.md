@@ -13,7 +13,7 @@
 | `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 18 枚を 1 枚に詰めたもの（2043×1686、1 タイル 512px） | `tools/asset_packer.py` |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
-| `app/src/main/res/raw/` | BGM 1 曲（春。タイトル・夏・秋・冬はファイル待ち）、効果音 8 個（mp3） | 外部で用意されたもの |
+| `app/src/main/res/raw/` | BGM 3 曲（タイトル・春・夏。秋・冬はファイル待ち）、効果音 8 個（mp3） | 外部で用意されたもの |
 
 ### スプライトの内訳
 
@@ -79,9 +79,10 @@ python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-w
 
 ## 音
 
-- `bgm_spring.mp3`（#35 で `bgm_garden.mp3` から改名）、`se_{water,fertilize,plant,harvest,coin,level_up,error,tap}.mp3`。
-- BGM の名前は `bgm_title` `bgm_spring` `bgm_summer` `bgm_autumn` `bgm_winter` の 5 つ（`BgmTrack`）。今あるのは春だけで、ほかは置けばそのまま使われる。無いあいだは春の曲で鳴る。
+- `bgm_title.mp3`・`bgm_summer.mp3`（#36 で追加）、`bgm_spring.mp3`（#35 で `bgm_garden.mp3` から改名）、`se_{water,fertilize,plant,harvest,coin,level_up,error,tap}.mp3`。
+- BGM の名前は `bgm_title` `bgm_spring` `bgm_summer` `bgm_autumn` `bgm_winter` の 5 つ（`BgmTrack`）。今あるのはタイトル・春・夏で、秋・冬は置けばそのまま使われる。無いあいだは春の曲で鳴る。
   ループ再生なので、曲の頭と終わりが継ぎ目なくつながるように書き出すこと。音量は春の曲に揃える（`tools/measure_audio.py`）。
+  #36 時点の実測（全体の RMS／いちばん大きい 400ms、dBFS）：タイトル -17.1／-13.2、春 -17.9／-14.6、夏 -16.8／-13.5。いずれも約 3 分、48kHz ステレオ。
 - 名前で実行時に探す（`AudioManager`）。無くても落ちない。`res/raw/keep.xml` で削除を防いでいる。
 - 効果音は実測の音量差をもとに個別のゲインを掛けている（`tools/measure_audio.py`）。
 - `se_tap` はマスのタップ音としては使っていない（うるさいため外した）。
