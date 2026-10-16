@@ -29,7 +29,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         NatureNoteEntity::class,
         LetterEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -143,6 +143,13 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE nature_notes ADD COLUMN opened INTEGER NOT NULL DEFAULT 1")
+            }
+        }
+
+        /** v12: letters can carry a topic (a tip, new stock). The season letters already there have none. */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE letters ADD COLUMN topic TEXT NOT NULL DEFAULT ''")
             }
         }
     }

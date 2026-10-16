@@ -134,12 +134,16 @@ class SeasonsTest {
     }
 
     @Test
-    fun `opening the post marks every letter read`() = runBlocking {
+    fun `opening a letter marks that one read, and the post keeps every letter`() = runBlocking {
         advance(t0)
         advance(t0 + season)
-        assertTrue(repo.getLetters().any { !it.read })
-        ReadLettersUseCase(repo).markAllRead()
-        assertTrue(repo.getLetters().all { it.read })
+        val letters = repo.getLetters()
+        assertTrue(letters.all { !it.read })
+        ReadLettersUseCase(repo).markRead(letters.first().letterId)
+        assertTrue(repo.getLetters().first().read)
+        // The others keep their mark until they are opened, and nothing is thrown away.
+        assertTrue(repo.getLetters().drop(1).none { it.read })
+        assertEquals(letters.size, repo.getLetters().size)
         // Newest first.
         assertEquals(Season.SUMMER, repo.getLetters().first().season)
     }

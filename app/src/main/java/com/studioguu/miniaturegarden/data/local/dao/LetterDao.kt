@@ -20,8 +20,8 @@ interface LetterDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(letter: LetterEntity): Long
 
-    @Query("UPDATE letters SET read = 1 WHERE read = 0")
-    suspend fun markAllRead()
+    @Query("UPDATE letters SET read = 1 WHERE letterId = :letterId")
+    suspend fun markRead(letterId: String)
 
     @Query("DELETE FROM letters")
     suspend fun deleteAll()

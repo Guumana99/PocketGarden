@@ -64,12 +64,13 @@ interface GardenRepository {
     suspend fun getNatureNotes(): List<NatureNote>
     suspend fun upsertNatureNote(note: NatureNote)
 
-    /** The post: every letter that has come, newest first. */
+    /** The post: every letter that has come, newest first. Letters are never thrown away (only with the whole garden). */
     fun observeLetters(): Flow<List<Letter>>
     suspend fun getLetters(): List<Letter>
 
     /** Puts [letter] in the post, unless one with its id is there already. @return whether it was new. */
     suspend fun postLetter(letter: Letter): Boolean
 
-    suspend fun markLettersRead()
+    /** The player has opened [letterId]. */
+    suspend fun markLetterRead(letterId: String)
 }

@@ -130,5 +130,5 @@ class GardenRepositoryImpl @Inject constructor(
 
     override suspend fun postLetter(letter: Letter): Boolean = letterDao.insertIfAbsent(letter.toEntity()) != -1L
 
-    override suspend fun markLettersRead() = letterDao.markAllRead()
+    override suspend fun markLetterRead(letterId: String) = letterDao.markRead(letterId)
 }

@@ -219,7 +219,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v11**（v10→v11 は `nature_notes.opened`、既存の行は既読＝1）。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v12**（v11→v12 は `letters.topic`、既存の手紙は空文字）。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|
@@ -232,6 +232,8 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 | 8 | `nature_notes`（自然メモ。`noteId` が主キー、`firstSeenAt`、`count`）。作成 SQL は `AppDatabase.CREATE_NATURE_NOTES`（テストで `schemas/8.json` と照合） |
 | 9 | `inventory_slots.acquiredOrder`（入手の通し番号。既存の枠は 0＝いちばん古い扱い） |
 | 10 | `letters`（ポストのお便り。作成 SQL は `AppDatabase.CREATE_LETTERS`、テストで `schemas/10.json` と照合）、`garden_progress.seasonStartedAt`（季節の始まり。既存は 0＝次の同期で時計を始める） |
+| 11 | `nature_notes.opened`（既存の行は既読＝1） |
+| 12 | `letters.topic`（#34、`MIGRATION_11_12`。ヒントの種類・入荷のレベル。既存の手紙は空文字） |
 
 - マイグレーションは `AppDatabase.MIGRATION_x_y`、登録は `di/DatabaseModule.kt`。
 - DB は SQLCipher。鍵は Android Keystore で包む。プロフィールは HMAC 署名付き（`SecurityManager`）。
@@ -385,9 +387,22 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
 
 #### ポスト（お便り）
 
-- DB v10 の `letters` 表（`LetterEntity`、`LetterDao.insertIfAbsent`）。リポジトリは `observeLetters` `postLetter`（同じ id は無視）`markLettersRead`。
-- 画面右の 📮（チュートリアル後の機能解放の 4 番目、`GardenFeature.POST`）に未読数の赤丸。開くと木目のボードに新しい順、未読には「あたらしい」。開いた時点で全部既読。
-- 文面は種類と季節から画面側で組み立てる（`ui/post/PostDialog.kt`、`letter_*` の文字列）。保存するのは種類・季節・時刻・既読だけ。
+- DB v10 の `letters` 表（`LetterEntity`、`LetterDao.insertIfAbsent`）、v12 で `topic` 列（#34）。リポジトリは `observeLetters` `postLetter`（同じ id は無視）`markLetterRead(letterId)`。
+- **アーカイブ**（#34）：手紙は消さない（消えるのは「はじめる」で庭ごとやり直したときだけ）。ポストは新しい順の一覧（`LazyColumn`）で、いつでもさかのぼって読める。
+- **既読は 1 通ずつ**（#34）：一覧をタップすると手紙のページが開き、そのとき初めてその 1 通が既読になる（`PostDialog` の `LaunchedEffect` → `ReadLettersUseCase.markRead`）。ポストを開いただけでは既読にしない（#30〜#33 は開いた時点で全部既読だった）。
+  未読は封をした封筒 ✉️・太字・赤い「NEW」のスタンプ（少し傾けた赤い札）、既読は 📄 と一段濃い紙。一覧の上に「まだ読んでいないお便り：N 通」。戻る／「一覧へもどる」で一覧へ。
+- 画面右の 📮（チュートリアル後の機能解放の 4 番目、`GardenFeature.POST`）に未読数の赤丸（読んだ分だけ減る）。
+- 文面は種類・季節・`topic` から画面側で組み立てる（`ui/post/PostDialog.kt`、`letter_*` の文字列）。保存するのは種類・季節・時刻・既読・topic だけ。
+
+| 種類（`LetterKind`） | いつ | 中身 |
+|---|---|---|
+| `SEASON_ARRIVED` | 季節が来たとき | 庭のようす＋「ショップには〇の種」＋「この季節が旬の作物：…」（#34 で追加。`GardenItem.seasons` から） |
+| `SEASON_COMING` | 季節の終わりの 2 日前 | まとめ買いと温室の案内 |
+| `TIP`（#34） | 庭の最初の手紙から `PostOffice.TIP_INTERVAL_MILLIS`（2 日）後、以後は前のヒントから 2 日ごと | `LetterTip` の順に 1 通ずつ、各 1 回：お水→雨→たい肥→模様がえ（持ち物に戻す）→生き物→ガラスの温室（「温室を使うと、冬でも作物が育ちます」） |
+| `NEW_STOCK`（#34） | レベルアップでショップに新しい物が並んだとき（`GardenViewModel.watchForLevelUps`） | 新しく並んだ物の一覧（作物には旬）。`topic` は「元のレベル-新しいレベル」、id は `stock:<新しいレベル>` |
+
+- ヒントは同期のたび（`GardenViewModel.sync` → `PostLettersUseCase.tipIfDue`）に判定する。何を送ったかは手紙そのもの（`kind = TIP` の `topic`）から分かるので、別の記録は持たない。長い留守のあとでも 1 回の同期で届くのは 1 通だけ。
+- ヒントの文面は、ゲームが本当にそうなっていることだけを書く。新しいヒントは `LetterTip` の最後に足す（途中に入れると、すでに届いた庭で順番がずれる）。
 
 ## 画面
 
