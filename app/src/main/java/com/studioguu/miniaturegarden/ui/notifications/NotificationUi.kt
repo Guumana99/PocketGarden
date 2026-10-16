@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -43,6 +44,7 @@ import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.NotificationAccess
 import com.studioguu.miniaturegarden.domain.model.TurnOnStep
 import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
@@ -83,9 +85,12 @@ fun rememberNotificationPermissionRequest(onResult: (granted: Boolean) -> Unit):
 /**
  * The switch in the settings. It shows notifications as on only when they will really be posted:
  * switched on in the game and allowed by the device, so it can never be on while the device
- * says no. Turning it on without the device's leave takes the player to the device's settings
- * instead; when they come back having allowed it there, the switch goes on by itself. Looked at
- * again whenever the screen comes back, in case the player changed something there.
+ * says no. Turning it on on Android 13+ without the permission does not turn it on yet: a board
+ * says why the permission is needed, and its OK brings up the system's question; the switch goes
+ * on once the answer is yes ([NotificationAccess.afterPermissionAnswer]). When only the device's
+ * own settings stand in the way, the player is taken there instead; when they come back having
+ * allowed it, the switch goes on by itself. Looked at again whenever the screen comes back, in
+ * case the player changed something there.
  */
 @Composable
 fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) -> Unit) {
@@ -106,6 +111,28 @@ fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) ->
         NotificationAccess.of(Build.VERSION.SDK_INT, context.hasNotificationPermission(), context.deviceAllowsNotifications(), enabledInGame)
     }
     val deviceBlocks = remember(looks) { !deviceReady() }
+    var explainPermission by rememberSaveable { mutableStateOf(false) }
+
+    fun follow(step: TurnOnStep) {
+        when (step) {
+            TurnOnStep.NONE -> onEnabledChange(true)
+            TurnOnStep.EXPLAIN_PERMISSION -> explainPermission = true
+            TurnOnStep.OPEN_DEVICE_SETTINGS -> {
+                awaitingDevice = true
+                context.openNotificationSettings()
+            }
+            TurnOnStep.STAY_OFF -> Unit
+        }
+    }
+
+    fun rationale(): Boolean = context.findActivity()?.let {
+        ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS)
+    } ?: false
+    var rationaleBefore by rememberSaveable { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        looks++
+        follow(NotificationAccess.afterPermissionAnswer(granted, context.deviceAllowsNotifications(), rationaleBefore, rationale()))
+    }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
@@ -123,14 +150,18 @@ fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) ->
                     onEnabledChange(false)
                     return@Switch
                 }
-                when (NotificationAccess.whenTurnedOn(Build.VERSION.SDK_INT, context.hasNotificationPermission(), context.deviceAllowsNotifications())) {
-                    TurnOnStep.OPEN_DEVICE_SETTINGS -> {
-                        awaitingDevice = true
-                        context.openNotificationSettings()
-                    }
-                    TurnOnStep.NONE -> onEnabledChange(true)
-                }
+                follow(NotificationAccess.whenTurnedOn(Build.VERSION.SDK_INT, context.hasNotificationPermission(), context.deviceAllowsNotifications()))
             },
+        )
+    }
+    if (explainPermission) {
+        NotificationPermissionDialog(
+            onOk = {
+                explainPermission = false
+                rationaleBefore = rationale()
+                permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            },
+            onDismiss = { explainPermission = false },
         )
     }
     // Said only when the device stands in the way, never as a reproach.
@@ -143,6 +174,58 @@ fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) ->
             )
             TextButton(onClick = { context.openNotificationSettings() }) {
                 Text(stringResource(R.string.settings_notifications_open_device))
+            }
+        }
+    }
+}
+
+/**
+ * Says why the switch needs the device's permission before the system asks for it. OK brings
+ * up the system's question; closing it leaves the switch off.
+ */
+@Composable
+fun NotificationPermissionDialog(onOk: () -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.popIn(),
+            shape = RoundedCornerShape(14.dp),
+            color = GardenColors.Wood,
+            border = BorderStroke(3.dp, GardenColors.WoodDark),
+            shadowElevation = 10.dp,
+        ) {
+            Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "🔔 " + stringResource(R.string.notification_permission_title),
+                    color = GardenColors.Cream,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 6.dp),
+                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = GardenColors.Parchment,
+                    border = BorderStroke(1.dp, GardenColors.WoodLight),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("✉️ 🍂", fontSize = 26.sp)
+                        Text(
+                            text = stringResource(R.string.notification_permission_text),
+                            color = GardenColors.Ink,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier.padding(top = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.notification_permission_cancel), color = GardenColors.Cream) }
+                    WoodButton(text = stringResource(R.string.notification_permission_ok), onClick = onOk)
+                }
             }
         }
     }

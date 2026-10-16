@@ -155,4 +155,49 @@ class PolishTest {
         assertEquals(samples.subList(peak, samples.size).sortedDescending(), samples.subList(peak, samples.size))
         assertTrue(samples.zipWithNext { a, b -> kotlin.math.abs(a - b) }.max() < 0.06f)
     }
+
+    // --- UI polish (#33) ---
+
+    @Test
+    fun `the bag's cells swap in place when the tab or the order changes`() {
+        val sheet = source("ui/inventory/InventoryBottomSheet.kt")
+        assertFalse(sheet.contains("animateItem"))
+        assertFalse(sheet.contains("animateItemPlacement"))
+    }
+
+    @Test
+    fun `the book's bookmarks are short, and shrink rather than clip`() {
+        assertEquals("ちけい", string("collection_tab_terrain"))
+        assertEquals("たてもの", string("collection_tab_structures"))
+        val book = source("ui/collection/CollectionDialog.kt")
+        assertTrue(book.contains("hasVisualOverflow"))
+        assertEquals(2, Regex("""TabLabel\(stringResource""").findAll(book).count())
+    }
+
+    @Test
+    fun `a level-up is a board that stays until OK`() {
+        assertEquals("🎉 レベルが上がりました！", string("level_up_title"))
+        assertEquals("新しいアイテムが解放されました", string("level_up_unlocked"))
+        assertEquals("OK", string("level_up_ok"))
+        val board = source("ui/hud/LevelUpDialog.kt")
+        assertTrue(board.contains("dismissOnBackPress = false"))
+        assertTrue(board.contains("dismissOnClickOutside = false"))
+        assertTrue(board.contains("WoodBoard("))
+        // No longer a floating text or a toast that can pass by unseen.
+        val viewModel = source("ui/GardenViewModel.kt")
+        assertFalse(viewModel.contains("GardenEffect.LevelUp"))
+        assertFalse(viewModel.contains("msg_new_items_unlocked"))
+        assertTrue(source("ui/GardenScreen.kt").contains("LevelUpDialog("))
+    }
+
+    @Test
+    fun `turning notifications on without the permission explains why before the system asks`() {
+        assertEquals("お便りや季節のお知らせを受け取るには、通知の許可が必要です", string("notification_permission_text"))
+        assertEquals("OK", string("notification_permission_ok"))
+        val row = source("ui/notifications/NotificationUi.kt")
+        assertTrue(row.contains("NotificationPermissionDialog("))
+        // The system's question comes from the board's OK, not from the switch itself.
+        val ok = row.substringAfter("onOk = {").substringBefore("onDismiss")
+        assertTrue(ok.contains("permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)"))
+    }
 }

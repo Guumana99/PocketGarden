@@ -31,7 +31,6 @@ sealed interface GardenEffect {
 
     data class Harvest(override val id: Long, val coins: Int, val xp: Int) : GardenEffect
     data class Xp(override val id: Long, val amount: Int) : GardenEffect
-    data class LevelUp(override val id: Long, val level: Int) : GardenEffect
 
     /** A page of the encyclopedia became ready to be filled in. */
     data class Discovery(override val id: Long) : GardenEffect
@@ -44,7 +43,7 @@ private const val DURATION_MILLIS = 1600
 private val RISE = 96.dp
 
 /**
- * One action can set off several effects at once (harvest, first discovery, level-up). Each kind
+ * One action can set off several effects at once (harvest, first discovery). Each kind
  * starts one step higher than the last so they stack instead of overlap.
  */
 private val LIFT_STEP = 60.dp
@@ -52,7 +51,6 @@ private val LIFT_STEP = 60.dp
 private fun liftSteps(effect: GardenEffect): Int = when (effect) {
     is GardenEffect.Harvest, is GardenEffect.Xp -> 0
     is GardenEffect.Discovery -> 1
-    is GardenEffect.LevelUp -> 2
     is GardenEffect.WorkDone -> 1
 }
 
@@ -82,14 +80,13 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
         currentOnFinished(effect.id)
     }
 
-    // The big moments get the larger, filled style.
-    val isLevelUp = effect is GardenEffect.LevelUp ||
-        (effect is GardenEffect.WorkDone && effect.kind == WorkKind.BUILDING)
+    // The big moments get the larger, filled style. A level-up has a board of its own
+    // (LevelUpDialog), so that it cannot float past unseen.
+    val isBig = effect is GardenEffect.WorkDone && effect.kind == WorkKind.BUILDING
     val lift = LIFT_STEP * liftSteps(effect)
     val text = when (effect) {
         is GardenEffect.Harvest -> stringResource(R.string.effect_harvest, effect.coins, effect.xp)
         is GardenEffect.Xp -> stringResource(R.string.effect_xp, effect.amount)
-        is GardenEffect.LevelUp -> stringResource(R.string.effect_level_up, effect.level)
         is GardenEffect.Discovery -> stringResource(R.string.effect_discovery)
         is GardenEffect.WorkDone -> stringResource(
             when (effect.kind) {
@@ -102,9 +99,9 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
     }
     Text(
         text = text,
-        style = if (isLevelUp) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
+        style = if (isBig) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        color = if (isLevelUp) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        color = if (isBig) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .graphicsLayer {
                 val t = progress.value
@@ -112,12 +109,12 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
                 // Fully visible for the first 60%, then fade.
                 alpha = 1f - ((t - 0.6f) / 0.4f).coerceIn(0f, 1f)
                 // The big ones pop in from slightly small.
-                val pop = if (isLevelUp) 0.8f + 0.2f * (t / 0.2f).coerceAtMost(1f) else 1f
+                val pop = if (isBig) 0.8f + 0.2f * (t / 0.2f).coerceAtMost(1f) else 1f
                 scaleX = pop
                 scaleY = pop
             }
             .background(
-                color = if (isLevelUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                color = if (isBig) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                 shape = CircleShape,
             )
             .padding(horizontal = 16.dp, vertical = 8.dp),

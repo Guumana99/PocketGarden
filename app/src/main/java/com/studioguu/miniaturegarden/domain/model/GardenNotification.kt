@@ -73,13 +73,43 @@ enum class NotificationAccess {
 
         /**
          * What happens when the player turns the switch on. When the device lets the app post,
-         * the switch simply goes on ([TurnOnStep.NONE]). When it does not (Android 13+ without
-         * the permission, or the app switched off in the device's settings), the switch stays
-         * off and the player is taken to the device's settings ([TurnOnStep.OPEN_DEVICE_SETTINGS]):
-         * the game's switch can never be on while the device says no.
+         * the switch simply goes on ([TurnOnStep.NONE]). Otherwise it stays off for now: on
+         * Android 13+ without the permission, a board first says why it is needed and its OK
+         * brings up the system's question ([TurnOnStep.EXPLAIN_PERMISSION]); when only the
+         * device's own settings stand in the way, the player is taken there
+         * ([TurnOnStep.OPEN_DEVICE_SETTINGS]). The game's switch can never be on while the
+         * device says no.
          */
-        fun whenTurnedOn(sdkInt: Int, permissionGranted: Boolean, deviceAllows: Boolean): TurnOnStep =
-            if (deviceReady(sdkInt, permissionGranted, deviceAllows)) TurnOnStep.NONE else TurnOnStep.OPEN_DEVICE_SETTINGS
+        fun whenTurnedOn(sdkInt: Int, permissionGranted: Boolean, deviceAllows: Boolean): TurnOnStep = when {
+            sdkInt >= PERMISSION_SDK && !permissionGranted -> TurnOnStep.EXPLAIN_PERMISSION
+            !deviceAllows -> TurnOnStep.OPEN_DEVICE_SETTINGS
+            else -> TurnOnStep.NONE
+        }
+
+        /**
+         * What follows the system's answer to the permission question asked from the switch.
+         *
+         * Granted: the switch goes on, unless the device's settings still block the app, in
+         * which case the player is taken there. Refused: the switch stays off, except when the
+         * system refused without asking at all (the player had said no for good before): then
+         * the player, who has just said yes on our board, is taken to the device's settings,
+         * the only place left to allow it. That case is told by the system offering no
+         * rationale either before or after the question; after a first refusal it offers one.
+         *
+         * @param rationaleBefore `shouldShowRequestPermissionRationale` just before asking.
+         * @param rationaleAfter the same, just after the answer came back.
+         */
+        fun afterPermissionAnswer(
+            granted: Boolean,
+            deviceAllows: Boolean,
+            rationaleBefore: Boolean,
+            rationaleAfter: Boolean,
+        ): TurnOnStep = when {
+            granted && deviceAllows -> TurnOnStep.NONE
+            granted -> TurnOnStep.OPEN_DEVICE_SETTINGS
+            !rationaleBefore && !rationaleAfter -> TurnOnStep.OPEN_DEVICE_SETTINGS
+            else -> TurnOnStep.STAY_OFF
+        }
 
         /** Whether the device, for its part, lets this app post notifications. */
         fun deviceReady(sdkInt: Int, permissionGranted: Boolean, deviceAllows: Boolean): Boolean =
@@ -91,5 +121,17 @@ enum class NotificationAccess {
     }
 }
 
-/** See [NotificationAccess.whenTurnedOn]. */
-enum class TurnOnStep { NONE, OPEN_DEVICE_SETTINGS }
+/** See [NotificationAccess.whenTurnedOn] and [NotificationAccess.afterPermissionAnswer]. */
+enum class TurnOnStep {
+    /** Nothing stands in the way: the switch goes on. */
+    NONE,
+
+    /** Show the board that says why the permission is needed; its OK asks the system. */
+    EXPLAIN_PERMISSION,
+
+    /** Take the player to this app's notification settings on the device. */
+    OPEN_DEVICE_SETTINGS,
+
+    /** The player said no: the switch stays off and nothing more is asked. */
+    STAY_OFF,
+}
