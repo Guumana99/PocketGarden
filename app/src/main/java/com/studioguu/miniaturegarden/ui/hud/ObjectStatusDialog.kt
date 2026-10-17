@@ -104,6 +104,7 @@ fun ObjectStatusDialog(
                 gridObject.isPlant && gridObject.status == PlantStatus.WITHERED -> R.string.hint_withered
                 gridObject.isPlant && gridObject.growthProgress >= 1f -> R.string.hint_overripe
                 gridObject.isComposted -> R.string.hint_composted
+                gridObject.isPlant && PlantSpecies.forObjectId(gridObject.objectId).isRepeatable -> R.string.hint_repeatable
                 else -> null
             }
             if (hint != null) {
@@ -149,7 +150,8 @@ fun ObjectStatusDialog(
                         Text(stringResource(R.string.action_water))
                     }
                     Button(onClick = onHarvest, enabled = alive && gridObject.growthProgress >= 1f) {
-                        Text(stringResource(R.string.action_harvest, PlantSpecies.forObjectId(gridObject.objectId).harvestCoins))
+                        val reward = PlantSpecies.forObjectId(gridObject.objectId).harvestReward(gridObject.harvestCount)
+                        Text(stringResource(R.string.action_harvest, reward.coins))
                     }
                 }
                 if (MoveObjectUseCase.canMove(gridObject) && !gridObject.isWorking) {

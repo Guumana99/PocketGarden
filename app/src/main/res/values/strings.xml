@@ -25,6 +25,7 @@
     <string name="label_vitality">元気</string>
     <string name="hint_overripe">満開です。収穫しないまま置いておくと、やがて枯れてしまいます</string>
     <string name="hint_withered">枯れています。コインで復活させるか、撤去するとたい肥になり、次に植える作物が少し育った状態で始まります</string>
+    <string name="hint_repeatable">🔁 収穫しても株は残り、また実ります（2回目からの収穫は少なめ）</string>
     <string name="hint_composted">たい肥入りの土です。次に植える作物が少し育った状態で始まります</string>
     <string name="action_revive">🌱 復活 (🪙%1$d)</string>
     <string name="msg_revived">🌱 元気になりました</string>
@@ -52,6 +53,8 @@
     <string name="object_plant_lavender">ラベンダー</string>
     <string name="object_plant_pumpkin">カボチャ</string>
     <string name="object_plant_poinsettia">ポインセチア</string>
+    <string name="object_plant_paprika">パプリカ</string>
+    <string name="object_plant_daikon">大根</string>
     <string name="object_floor_greenhouse">ガラスの温室</string>
     <string name="object_deco_rock">岩</string>
     <string name="object_struct_hut">小屋</string>
@@ -115,6 +118,8 @@
     <string name="item_seed_lavender">ラベンダーの苗</string>
     <string name="item_seed_pumpkin">カボチャの種</string>
     <string name="item_seed_poinsettia">ポインセチアの苗</string>
+    <string name="item_seed_paprika">パプリカの苗</string>
+    <string name="item_seed_daikon">大根の種</string>
     <string name="item_tile_river">川タイル</string>
 
     <!-- Inventory -->
@@ -188,6 +193,8 @@
     <string name="flavor_lavender">むらさきの ほが　かぜに ゆれる。\nきせつを とわず　やさしい かおりを とどける。</string>
     <string name="flavor_pumpkin">あきの はたけの　おおもの。\nじっくり そだてて　ずっしり おもい。</string>
     <string name="flavor_poinsettia">ふゆを いろどる　まっかな はっぱ。\nさむい ひでも　にわを あたたかく みせる。</string>
+    <string name="flavor_paprika">つやつやの　あかい み。\nひとつ とっても　またつぎが　ふくらんでくる。</string>
+    <string name="flavor_daikon">つちの なかで　しろく ふとる。\nさむく なるほど　あまみが ます。</string>
     <string name="flavor_mint">きせつを えらばない　つよい はっぱ。\nふれると　すっと すずしい かおりが する。</string>
     <string name="flavor_greenhouse">ガラスの なかは　いつも ぽかぽか。\nきせつはずれの はなも　ここなら そだつ。</string>
     <string name="flavor_tulip">はるの にわの　ていばん。\nそだてやすく　はじめての ひとにも やさしい。</string>

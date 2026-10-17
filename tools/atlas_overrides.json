@@ -16,5 +16,21 @@
   "plant_rose_withered": {"anchorX": 0.50, "anchorY": 0.88},
   "struct_fence": {"anchorX": 0.50, "anchorY": 0.93},
   "struct_fence_rail": {"anchorX": 0.50, "anchorY": 0.93},
-  "struct_fence_post": {"anchorX": 0.50, "anchorY": 0.93}
+  "struct_fence_post": {"anchorX": 0.50, "anchorY": 0.93},
+  "plant_tomato_stage1": {"anchorX": 0.495, "anchorY": 0.797},
+  "plant_tomato_stage2": {"anchorX": 0.580, "anchorY": 0.880},
+  "plant_tomato_stage3": {"anchorX": 0.524, "anchorY": 0.824},
+  "plant_tomato_withered": {"anchorX": 0.541, "anchorY": 0.867},
+  "plant_strawberry_stage1": {"anchorX": 0.504, "anchorY": 0.796},
+  "plant_strawberry_stage2": {"anchorX": 0.492, "anchorY": 0.782},
+  "plant_strawberry_stage3": {"anchorX": 0.499, "anchorY": 0.824},
+  "plant_strawberry_withered": {"anchorX": 0.526, "anchorY": 0.837},
+  "plant_paprika_stage1": {"anchorX": 0.515, "anchorY": 0.817},
+  "plant_paprika_stage2": {"anchorX": 0.496, "anchorY": 0.869},
+  "plant_paprika_stage3": {"anchorX": 0.502, "anchorY": 0.793},
+  "plant_paprika_withered": {"anchorX": 0.576, "anchorY": 0.878},
+  "plant_daikon_stage1": {"anchorX": 0.502, "anchorY": 0.845},
+  "plant_daikon_stage2": {"anchorX": 0.478, "anchorY": 0.872},
+  "plant_daikon_stage3": {"anchorX": 0.491, "anchorY": 0.833},
+  "plant_daikon_withered": {"anchorX": 0.499, "anchorY": 0.832}
 }

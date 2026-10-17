@@ -24,6 +24,8 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "plant_snowdrop" -> R.string.object_plant_snowdrop
     "plant_mint" -> R.string.object_plant_mint
     "plant_tomato" -> R.string.object_plant_tomato
+    "plant_paprika" -> R.string.object_plant_paprika
+    "plant_daikon" -> R.string.object_plant_daikon
     "plant_strawberry" -> R.string.object_plant_strawberry
     "plant_watermelon" -> R.string.object_plant_watermelon
     "plant_lavender" -> R.string.object_plant_lavender
@@ -62,6 +64,8 @@ fun itemDisplayName(item: GardenItem): String = when (item) {
     GardenItem.SEED_SNOWDROP -> stringResource(R.string.item_seed_snowdrop)
     GardenItem.SEED_MINT -> stringResource(R.string.item_seed_mint)
     GardenItem.SEED_TOMATO -> stringResource(R.string.item_seed_tomato)
+    GardenItem.SEED_PAPRIKA -> stringResource(R.string.item_seed_paprika)
+    GardenItem.SEED_DAIKON -> stringResource(R.string.item_seed_daikon)
     GardenItem.SEED_STRAWBERRY -> stringResource(R.string.item_seed_strawberry)
     GardenItem.SEED_WATERMELON -> stringResource(R.string.item_seed_watermelon)
     GardenItem.SEED_LAVENDER -> stringResource(R.string.item_seed_lavender)
@@ -92,6 +96,9 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_SNOWDROP -> "🤍"
     GardenItem.SEED_MINT -> "🍃"
     GardenItem.SEED_TOMATO -> "🍅"
+    GardenItem.SEED_PAPRIKA -> "🫑"
+    // There is no daikon emoji; a leafy green is the closest.
+    GardenItem.SEED_DAIKON -> "🥬"
     GardenItem.SEED_STRAWBERRY -> "🍓"
     GardenItem.SEED_WATERMELON -> "🍉"
     GardenItem.SEED_LAVENDER -> "💜"

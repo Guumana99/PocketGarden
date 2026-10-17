@@ -36,6 +36,7 @@
 | 触った場所 | 回すクラス |
 |---|---|
 | 作物の成長・天候・枯れ | `CalculateOfflineProgressUseCaseTest` `WitherAndWeatherTest` `RiverAndWeatherTest` |
+| 収穫のしかた（単発・連続）・枯れた作物の撤去・DB v13 | `HarvestTypeTest`（＋絵 `BundledArtTest`、稼ぎの規則 `ProgressionTest`、作物を増減したら数を見る 4 クラス） |
 | 配置・水やり・収穫・購入 | `GardenActionUseCasesTest` `HoeTest` `FloorAndFenceTest` |
 | ショップ・価格・解放・建物効果 | `ShopAndEffectsTest` `ProgressionTest` |
 | 図鑑 | `CollectionTest` |

@@ -26,12 +26,17 @@ enum class ItemCategory {
  *                  cosmos       from start      20   64 coins + 60 XP after 60 h (autumn only)
  *                  snowdrop     from start      20   58 coins + 55 XP after 54 h (winter only)
  *                  mint         from start      15   35 coins + 35 XP after 36 h (any season)
- *                  tomato       from start      20   54 coins + 52 XP after 48 h (summer only), dries out fast
- *                  strawberry   from start      20   48 coins + 44 XP after 42 h (spring only)
+ *                  tomato       from start      20   54 coins + 52 XP after 48 h (summer only), dries out fast;
+ *                                                    bears again: 17 coins + 26 XP every 24 h after that
+ *                  strawberry   from start      20   48 coins + 44 XP after 42 h (spring only);
+ *                                                    bears again: 14 coins + 22 XP every 21 h after that
+ *                  daikon       Lv.2            30   80 coins + 70 XP after 64 h (autumn and winter)
  *                  watermelon   Lv.3            45   122 coins + 110 XP after 96 h (summer only), dries out fast
  *                  lavender     Lv.3            40   108 coins + 96 XP after 84 h (any season)
  *                  pumpkin      Lv.5            70   190 coins + 160 XP after 132 h (autumn only)
  *                  poinsettia   Lv.5            70   180 coins + 150 XP after 120 h (winter only)
+ *                  paprika      Lv.4            55   140 coins + 118 XP after 100 h (summer only);
+ *                                                    bears again: 42 coins + 59 XP every 50 h after that
  *     structures   fence        from start      15   joins its neighbours; 20 s to build
  *                  well         Lv.3            80   30 XP; soil round it dries half as fast
  *                  hut          Lv.5           150   60 XP; plants round it grow 10 % faster
@@ -55,7 +60,8 @@ enum class ItemCategory {
  *   so the first session can already shape the garden, and two tulip harvests buy anything on
  *   the first tier several times over.
  * - Each plant earns more per hour than the one before it, which is what makes the next level
- *   worth reaching.
+ *   worth reaching. A crop that bears again pays less for each later harvest, at the same rate
+ *   per hour as its first one: no seed to buy and no sowing is its whole advantage.
  * - Things that only look nice get dearer as they get later; the two that are opened by the
  *   encyclopedia instead of by level reward the player who places and registers a little of
  *   everything, and are within reach of a first-day garden (the pages of the from-start items
@@ -186,6 +192,18 @@ enum class GardenItem(
         unlock = UnlockCondition.PlayerLevel(5),
     ),
 
+    /** Summer's peppers, a step up from the tomato; they keep bearing. */
+    SEED_PAPRIKA(
+        "seed_paprika", price = 55, objectId = PlantSpecies.PAPRIKA.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(4),
+    ),
+
+    /** The cold months' root. */
+    SEED_DAIKON(
+        "seed_daikon", price = 30, objectId = PlantSpecies.DAIKON.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(2),
+    ),
+
     /**
      * A one-cell glass greenhouse over a bed of soil. Seeds go into it as into tilled soil, and
      * whatever the season. Paving-like: it lies in the cell's floor layer.
@@ -223,6 +241,8 @@ enum class GardenItem(
             SEED_WATERMELON -> setOf(Season.SUMMER)
             SEED_PUMPKIN -> setOf(Season.AUTUMN)
             SEED_POINSETTIA -> setOf(Season.WINTER)
+            SEED_PAPRIKA -> setOf(Season.SUMMER)
+            SEED_DAIKON -> setOf(Season.AUTUMN, Season.WINTER)
             else -> emptySet()
         }
 

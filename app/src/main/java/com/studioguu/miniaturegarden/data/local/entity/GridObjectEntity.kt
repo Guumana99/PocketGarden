@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -28,4 +29,7 @@ data class GridObjectEntity(
     /** Epoch millis; 0 without a job. Added in schema version 5. */
     val workStartedAt: Long = 0L,
     val workEndsAt: Long = 0L,
+    /** Times a repeatable crop has been harvested. Added in schema version 13. */
+    @ColumnInfo(defaultValue = "0")
+    val harvestCount: Int = 0,
 )

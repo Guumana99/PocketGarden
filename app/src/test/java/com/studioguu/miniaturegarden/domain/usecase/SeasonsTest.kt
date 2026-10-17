@@ -185,15 +185,18 @@ class SeasonsTest {
             GardenItem.shelf(ItemCategory.SEED, Season.SPRING).toSet(),
         )
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TOMATO, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_WATERMELON),
+            setOf(
+                GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TOMATO, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_WATERMELON,
+                GardenItem.SEED_PAPRIKA,
+            ),
             GardenItem.shelf(ItemCategory.SEED, Season.SUMMER).toSet(),
         )
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS, GardenItem.SEED_PUMPKIN),
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS, GardenItem.SEED_PUMPKIN, GardenItem.SEED_DAIKON),
             GardenItem.shelf(ItemCategory.SEED, Season.AUTUMN).toSet(),
         )
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_SNOWDROP, GardenItem.SEED_POINSETTIA),
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_SNOWDROP, GardenItem.SEED_POINSETTIA, GardenItem.SEED_DAIKON),
             GardenItem.shelf(ItemCategory.SEED, Season.WINTER).toSet(),
         )
         // The other shelves are the same in every season.
