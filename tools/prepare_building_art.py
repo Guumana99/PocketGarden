@@ -200,7 +200,7 @@ def base_of(rgba: np.ndarray, band: float = 0.35) -> tuple[float, float, int]:
     The base (a plinth of stone, say) is seen as a diamond. Its left and right corners are the
     furthest points out at the bottom of the picture, at the foot of the plinth's side edges; the
     footprint's centre is halfway between them. (The pictures are not drawn at quite the game's
-    2:1 angle, so the front corner is not used: it would put the centre too high or too low.)
+    2:1 angle, so the front corner is not used here; see [ground_centre_y].)
     """
     opaque = rgba[:, :, 3] > ALPHA_MIN
     h, w = opaque.shape
@@ -212,6 +212,24 @@ def base_of(rgba: np.ndarray, band: float = 0.35) -> tuple[float, float, int]:
     left_y = ys[xs <= left_x + near].max()
     right_y = ys[xs >= right_x - near].max()
     return (left_x + right_x) / 2, (left_y + right_y) / 2, int(right_x - left_x)
+
+
+def ground_centre_y(rgba: np.ndarray) -> float:
+    """
+    The height in the picture to stand on the footprint's centre, fitted to all three ground
+    corners of the base that can be seen: left, right and front.
+
+    The buildings are drawn flatter than the game's 2:1 diamond, so no single height puts every
+    corner on the footprint. Standing the side corners on it leaves the front corner short of
+    the footprint's front, and the building looks set back and floating; standing the front
+    corner on it lets the sides sink below the footprint. Halfway between the two keeps both
+    misses to half as much.
+    """
+    _, side_y, width = base_of(rgba)
+    ys, _ = np.where(rgba[:, :, 3] > ALPHA_MIN)
+    front_y = ys.max()
+    # On a 2:1 diamond the front corner is a quarter of its width below the centre.
+    return (side_y + (front_y - width / 4)) / 2
 
 
 def top_face_of(rgba: np.ndarray) -> tuple[float, float, float, float]:
@@ -262,7 +280,8 @@ def prepare_building(rgba: np.ndarray, tiles: int) -> tuple[np.ndarray, dict]:
     else:
         # Enlarging would only make the atlas bigger without adding detail: drawn larger instead.
         scale = wanted / width
-    cx, cy, _ = base_of(rgba)
+    cx, _, _ = base_of(rgba)
+    cy = ground_centre_y(rgba)
     h, w = rgba.shape[:2]
     override = {"anchorX": round(float(cx / w), 4), "anchorY": round(float(cy / h), 4)}
     if scale != 1.0:

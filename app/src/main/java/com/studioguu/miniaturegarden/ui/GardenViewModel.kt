@@ -16,6 +16,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.CreatureVisits
+import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -570,13 +571,15 @@ class GardenViewModel @Inject constructor(
         val movingId = _movingId.value
         if (movingId != null) {
             if (tile != null) {
+                val footprint = gridObjects.value.firstOrNull { it.instanceId == movingId }?.footprint ?: Footprint.SINGLE
+                val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
                 act(
                     onSuccess = {
                         _movingId.value = null
                         _selectedTile.value = tile
                         audio.play(SoundEffect.PLANT)
                     }
-                ) { _, _ -> moveObject(movingId, tile.x, tile.y) }
+                ) { _, _ -> moveObject(movingId, origin.x, origin.y) }
             }
         } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.isStarterCrate == true) {
             // The starter crate is not selected like other things: a tap opens it.
@@ -603,6 +606,9 @@ class GardenViewModel @Inject constructor(
         } else if (tile != null) {
             val item = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }
             val placeXp = item?.placeXp ?: 0
+            // A building larger than one cell is fitted round the tapped cell, inside the garden.
+            val footprint = item?.let { Footprint.forObjectId(it.objectId) } ?: Footprint.SINGLE
+            val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
             act(
                 onSuccess = {
                     audio.play(SoundEffect.PLANT)
@@ -610,7 +616,7 @@ class GardenViewModel @Inject constructor(
                     if ((item?.buildSeconds ?: 0) > 0) _messages.trySend(R.string.work_started_building)
                 }
             ) { now, _ ->
-                placeItem(slotIndex, tile.x, tile.y, now, flipped = _placingFlipped.value).also {
+                placeItem(slotIndex, origin.x, origin.y, now, flipped = _placingFlipped.value).also {
                     val slotNowEmpty = gardenRepository.getInventory()
                         .none { it.slotIndex == slotIndex && !it.isEmpty }
                     if (slotNowEmpty) _placingSlotIndex.value = null
