@@ -8,7 +8,7 @@
     {
       "assetId": "floor_greenhouse",
       "anchorX": 0.4993,
-      "anchorY": 0.7666,
+      "anchorY": 0.7366,
       "width": 513,
       "height": 439,
       "isFlippedAllowed": true,
@@ -338,7 +338,7 @@
     {
       "assetId": "struct_cottage",
       "anchorX": 0.4994,
-      "anchorY": 0.7975,
+      "anchorY": 0.7481,
       "width": 616,
       "height": 513,
       "isFlippedAllowed": true,
@@ -379,7 +379,7 @@
     {
       "assetId": "struct_windmill",
       "anchorX": 0.5299,
-      "anchorY": 0.8448,
+      "anchorY": 0.8295,
       "width": 334,
       "height": 424,
       "isFlippedAllowed": true,

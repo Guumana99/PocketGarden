@@ -36,8 +36,8 @@
   "tile_grass": {"anchorX": 0.4993, "anchorY": 0.4325, "isFlippedAllowed": false},
   "tile_grass_dark": {"anchorX": 0.4993, "anchorY": 0.4325, "isFlippedAllowed": false},
   "floor_tilled": {"anchorX": 0.4993, "anchorY": 0.4517, "isFlippedAllowed": false},
-  "struct_cottage": {"anchorX": 0.4994, "anchorY": 0.7975, "scale": 2.4971},
-  "floor_greenhouse": {"anchorX": 0.4993, "anchorY": 0.7666},
-  "struct_windmill": {"anchorX": 0.5299, "anchorY": 0.8448, "scale": 3.2802, "attachX": 0.8422, "attachY": 0.25},
+  "struct_cottage": {"anchorX": 0.4994, "anchorY": 0.7481, "scale": 2.4971},
+  "floor_greenhouse": {"anchorX": 0.4993, "anchorY": 0.7366},
+  "struct_windmill": {"anchorX": 0.5299, "anchorY": 0.8295, "scale": 3.2802, "attachX": 0.8422, "attachY": 0.25},
   "struct_windmill_blades": {"anchorX": 0.4912, "anchorY": 0.515, "scale": 3.2802}
 }

@@ -13,6 +13,22 @@ data class Footprint(val width: Int, val height: Int) {
     fun cells(originX: Int, originY: Int): List<GridCell> =
         (0 until height).flatMap { dy -> (0 until width).map { dx -> GridCell(originX + dx, originY + dy) } }
 
+    /**
+     * The first cell to give this footprint when the player taps (tapX, tapY) in a garden of
+     * [gardenSize] cells each way. The footprint is centred on the tapped cell (for an even span the
+     * tapped cell is the back one of the middle two), then slid back
+     * inside the garden if that would leave part of it outside: a tap anywhere inside the garden
+     * always names a spot the whole footprint fits in, so a building can stand right against
+     * the edge. A single cell is placed on the tapped cell itself.
+     */
+    fun originFor(tapX: Int, tapY: Int, gardenSize: Int): GridCell {
+        fun axis(tap: Int, span: Int): Int {
+            val centred = tap - (span - 1) / 2
+            return if (span > gardenSize) centred else centred.coerceIn(0, gardenSize - span)
+        }
+        return GridCell(axis(tapX, width), axis(tapY, height))
+    }
+
     companion object {
         val SINGLE = Footprint(1, 1)
 

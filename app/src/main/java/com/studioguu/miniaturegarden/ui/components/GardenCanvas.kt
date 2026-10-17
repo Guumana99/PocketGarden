@@ -49,6 +49,7 @@ import com.studioguu.miniaturegarden.data.asset.GroundCover
 import com.studioguu.miniaturegarden.data.asset.GroundTile
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
+import com.studioguu.miniaturegarden.data.asset.AssetManifest
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.FencePart
@@ -104,6 +105,8 @@ import java.time.LocalTime
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlinx.coroutines.CoroutineStart
@@ -1080,6 +1083,73 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
 /** The lawn of a preview sits on a slab of soil this thick, in tile heights (see drawTerrain). */
 private const val PREVIEW_SOIL = 0.6f
 
+/** Room left round a building that reaches past its patch of lawn, in tile widths. */
+private const val PREVIEW_MARGIN = 0.08f
+
+/**
+ * How far the picture of a preview reaches on screen, in tile widths, from the patch's far
+ * corner: its lawn and the soil under it, the [headroom] above, and the buildings standing on
+ * it, roof, balcony and turning sails included. A building's picture is often taller and wider
+ * than its patch (a windmill's sails reach well past its side), so the preview is fitted to this
+ * rather than to the patch alone.
+ *
+ * @param sprites the sprite for an asset id, or null when the atlas has none.
+ * @param atlasTileWidth atlas pixels per tile width.
+ * @param heightStep one height step, in tile widths.
+ */
+internal data class PreviewExtent(val left: Float, val top: Float, val right: Float, val bottom: Float) {
+    val width: Float get() = right - left
+    val height: Float get() = bottom - top
+
+    companion object {
+        fun of(
+            gridSize: Int,
+            headroom: Float,
+            objects: List<GridObject>,
+            sprites: (String) -> AssetManifest?,
+            atlasTileWidth: Float,
+            heightStep: Float,
+        ): PreviewExtent {
+            val n = gridSize.toFloat()
+            var left = -n / 2f
+            var right = n / 2f
+            var top = -headroom
+            val bottom = (n + PREVIEW_SOIL) / 2f
+            val transform = IsometricTransform(tileWidth = 1f, tileHeight = 0.5f, heightStep = heightStep)
+            val scale = 1f / atlasTileWidth
+            fun reach(l: Float, t: Float, r: Float) {
+                left = min(left, l - PREVIEW_MARGIN)
+                right = max(right, r + PREVIEW_MARGIN)
+                top = min(top, t - PREVIEW_MARGIN)
+            }
+            for (obj in objects) {
+                val structure = StructureData.fromObjectId(obj.objectId) ?: continue
+                val footprint = structure.footprint
+                val base = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
+                val sprite = sprites(TileSetDefinition.assetIdFor(obj))
+                if (sprite == null) {
+                    // The drawn stand-in reaches no higher than the building is tall.
+                    reach(base.x - footprint.width / 2f, base.y - structure.heightSteps * heightStep, base.x + footprint.width / 2f)
+                    continue
+                }
+                val spriteLeft = sprite.drawLeft(base.x, scale)
+                reach(spriteLeft, sprite.drawTop(base.y, scale), spriteLeft + sprite.drawnWidth(scale))
+                val sails = if (obj.objectId == WindmillSails.MILL_OBJECT_ID) sprites(WindmillSails.SAILS_ASSET_ID) else null
+                val hub = sprite.attachmentAt(base.x, base.y, scale, obj.isFlipped)
+                if (sails != null && hub != null) {
+                    // Turning, the sails sweep a circle round the hub as wide as their furthest corner.
+                    val radius = hypot(
+                        max(sails.anchorX, 1f - sails.anchorX) * sails.drawnWidth(scale),
+                        max(sails.anchorY, 1f - sails.anchorY) * sails.drawnHeight(scale),
+                    )
+                    reach(hub.first - radius, hub.second - radius, hub.first + radius)
+                }
+            }
+            return PreviewExtent(left, top, right, bottom)
+        }
+    }
+}
+
 /**
  * A picture of the object with id [objectId] as it appears in the garden, drawn by the very code
  * that draws the garden, so the two cannot drift apart. Fitted into whatever size it is given.
@@ -1099,17 +1169,18 @@ fun ObjectPreview(
     val waterTick by rememberWaterTick(running = scene.objects.any { it.isTerrain })
 
     Canvas(modifier) {
-        val n = scene.gridSize
-        // On screen the patch is n tiles wide and n half-tiles tall, with the soil under it and
-        // the headroom above. Heights are in tile widths; a tile is half as tall as it is wide.
-        val heightInTiles = scene.headroom + (n + PREVIEW_SOIL) / 2f
-        val tileWidth = min(size.width / n, size.height / heightInTiles)
+        // Everything the picture shows, buildings included, fitted into the frame and centred
+        // in it. Sizes are in tile widths; a tile is half as tall as it is wide.
+        val extent = PreviewExtent.of(
+            scene.gridSize, scene.headroom, scene.objects, { atlas[it] }, atlas.manifest.tileWidth.toFloat(), HEIGHT_STEP / TILE_WIDTH,
+        )
+        val tileWidth = min(size.width / extent.width, size.height / extent.height)
         val transform = IsometricTransform(
             tileWidth = tileWidth,
             tileHeight = tileWidth / 2f,
             heightStep = tileWidth * (HEIGHT_STEP / TILE_WIDTH),
-            offsetX = size.width / 2f,
-            offsetY = (size.height - heightInTiles * tileWidth) / 2f + scene.headroom * tileWidth,
+            offsetX = size.width / 2f - (extent.left + extent.right) / 2f * tileWidth,
+            offsetY = size.height / 2f - (extent.top + extent.bottom) / 2f * tileWidth,
         )
         val spriteScale = tileWidth / atlas.manifest.tileWidth
         pipeline.submit(RenderLayer.BASE_TERRAIN) {

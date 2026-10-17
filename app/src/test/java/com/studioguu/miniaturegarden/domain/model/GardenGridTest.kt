@@ -178,4 +178,40 @@ class GardenGridTest {
         assertEquals(PlacementCheck.OK, grid.checkPlacement(Footprint(2, 2), 0, 2))
         assertEquals(PlacementCheck.OK, grid.checkPlacement(Footprint.SINGLE, 3, 0))
     }
+
+    // --- Where a tap puts a footprint ---
+
+    @Test
+    fun `a single cell goes where it is tapped`() {
+        for (x in 0 until 6) for (y in 0 until 6) {
+            assertEquals(GridCell(x, y), Footprint.SINGLE.originFor(x, y, gardenSize = 6))
+        }
+    }
+
+    @Test
+    fun `a building is fitted round the tapped cell`() {
+        // 2x2: the tapped cell is the back one of the middle; 3x3: it is the middle.
+        assertEquals(GridCell(2, 3), Footprint(2, 2).originFor(2, 3, gardenSize = 6))
+        assertEquals(GridCell(1, 2), Footprint(3, 3).originFor(2, 3, gardenSize = 6))
+        assertEquals(GridCell(2, 2), Footprint(1, 2).originFor(2, 2, gardenSize = 6))
+    }
+
+    @Test
+    fun `a tap on the edge of the garden slides a building back inside, never out`() {
+        val size = 6
+        for (footprint in listOf(Footprint(2, 2), Footprint(1, 2), Footprint(3, 3))) {
+            for (x in 0 until size) for (y in 0 until size) {
+                val origin = footprint.originFor(x, y, size)
+                val cells = footprint.cells(origin.x, origin.y)
+                assertTrue("$footprint at ($x, $y)", cells.all { it.x in 0 until size && it.y in 0 until size })
+                // The building still covers the cell that was tapped.
+                assertTrue("$footprint at ($x, $y)", GridCell(x, y) in cells)
+                assertEquals(PlacementCheck.OK, GardenGrid(GardenMap.allGrass(size), emptyList()).checkPlacement(footprint, origin.x, origin.y))
+            }
+        }
+        // The far edges, where a 2x2 used to be "outside the garden".
+        assertEquals(GridCell(4, 4), Footprint(2, 2).originFor(5, 5, size))
+        assertEquals(GridCell(4, 0), Footprint(2, 2).originFor(5, 0, size))
+        assertEquals(GridCell(0, 4), Footprint(2, 2).originFor(0, 5, size))
+    }
 }
