@@ -10,7 +10,7 @@
 
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
-| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 34 枚を 1 枚に詰めたもの（1960×3956、約 9.1MB、1 タイル 512px） | `tools/asset_packer.py` |
+| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 41 枚を 1 枚に詰めたもの（4019×2408、約 11MB、メモリ上 約 39MB、1 タイル 512px） | `tools/asset_packer.py` |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
 | `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
@@ -18,6 +18,9 @@
 ### スプライトの内訳
 
 - 作物 3 種 × 5 枚：`plant_{tulip,sunflower,rose}_stage{1..4}.png` と `_withered.png`
+- 地面と建物（#40、`tools/prepare_building_art.py` で加工）：
+  - `tile_grass`・`tile_grass_dark`（芝生。市松の 2 色。暗い方は同じ絵を 0.9 倍の明るさにしたもの）、`floor_tilled`（耕した土）
+  - `struct_cottage`（コテージ）、`floor_greenhouse`（ガラスの温室）、`struct_windmill`（風車の本体）、`struct_windmill_blades`（風車の羽根）
 - 作物 4 種 × 4 枚（#39）：`plant_{tomato,strawberry,paprika,daikon}_stage{1..3}.png` と `_withered.png`（3 段階）
   - 受け取ったときは `res/drawable/crop_*.png` に置かれていた。アトラスに詰めるため `tools/raw_assets/` へ移し、`plant_<作物>_…` に改名した。
     大根は受け取ったファイル名が `crop_radish_*`（`radish`）だったので `plant_daikon_*` に、枯れの 1 枚は `rop_radish_withered.png`（先頭の c が欠けていた）だったので直した。
@@ -29,7 +32,7 @@
 
 ### 画像が無く、プログラムで描いているもの
 
-岩、芝生、小石、野の花、ウッドデッキ、ベンチ、石どうろう、井戸、小屋、耕した土、
+岩、芝生（地面に置く草の飾り）、小石、野の花、ウッドデッキ、ベンチ、石どうろう、井戸、小屋、
 フェンスの横木と杭、工事現場（シート・足場）、木枠、背景（空・丘・茂み）、影、風の筋。
 すべて `ui/components/GardenCanvas.kt` と `ui/effects/GardenBackdrop.kt` にある。
 絵を用意できれば、同じ assetId でアトラスに入れるだけで差し替わる（スプライトがあればそちらを優先して描く）。
@@ -42,6 +45,12 @@
 |---|---|
 | `item_fence_wood.png` | 正面向きのパーツ集。柵・支柱・横木を切り出して使用 |
 | `tile_path_cobblestone.png` | 石畳。そのまま使用 |
+| `building_cottage.png` | コテージ（#40）。透過はきれいだった。切り抜いて 3 マス分の幅で描く（描画倍率 約 2.5） |
+| `building_greenhouse.png` | ガラスの温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |
+| `building_windmill_body.jpg` | 風車の本体（#40）。**JPEG で透過が無く、灰色の市松模様（48px、2 トーン）が背景として描き込まれていた**。マスごとの色で抜いた |
+| `building_windmill_blades.jpg` | 風車の羽根（#40）。同じく白と灰色の市松模様（約 12px）と、白いにじみが描き込まれていた。色で抜いた |
+| `tile_grass_default.png` | 芝生のタイル（#40）。縁に白いにじみ。1 マス幅に縮め、上面が 2:1 のひし形になるよう縦に伸ばした（元は約 2.35:1） |
+| `tile_dirt_plowed.png` | 耕した土のタイル（#40）。縁に白いにじみと、右上に青い点（ゴミ）。同様に加工（元の上面は約 2.7:1） |
 | `tile_river_atlas.png` | **未使用**。4×4 に並んでいるが、16 種のつながり方に対応した並びではなく、隣と継ぎ目が合わず、背景も不透明だった。色だけ参考にして、川は生成している |
 
 ## 加工の手順
@@ -55,10 +64,28 @@ python tools/build_terrain_assets.py
 
 ```bash
 # スプライトをアトラスに詰め直す（この引数の組み合わせを変えないこと）
-python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json
+python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --max-width 4096
 ```
 
 - 原画は **1 タイル 720px** の縮尺で描かれている。アトラスは 512px に縮めて軽くしている。
+- `--max-width 4096`（#40 から）：アトラスの縦横どちらも 4096px 以内に収めるため。幅 2048 のままだと縦が 4733px になり、
+  4096px までしか扱えない端末で描けなくなるおそれがあった（`BuildingArtTest` が 4096 以内を見ている）。
+- `atlas_overrides.json` の追加の鍵（#40）：`scale`（描画倍率。アトラスでは拡大せず、描くときに大きくする）と
+  `attachX`/`attachY`（別のスプライトを取り付ける点。風車の羽根の軸）。マニフェストには `drawScale`・`attachX`・`attachY` として出る（使うときだけ）。
+
+### 受け取った地面・建物の絵を入れるとき（#40）
+
+```bash
+python tools/prepare_building_art.py --preview <確認用フォルダ>
+```
+
+- `tools/source_art/` の原画から `tools/raw_assets/` の 7 枚を作り、`atlas_overrides.json` のアンカー・`scale`・`attachX/Y` を書き換える。そのあと上の `asset_packer.py` を回す。
+- していること：JPEG の描き込み市松模様の除去（灰色で、マスの色に一致し、外側か大きな隙間につながる部分）、
+  縁の白いにじみの除去、本体から離れた小さな点の除去、タイルを 1 マス幅・上面 2:1 に、建物を土台が足場（1・2・3 マス）の幅になるよう縮小または描画倍率で拡大。
+- 接地点：タイルは上面の中心（左右の角の中点）。建物は土台の左右の角（いちばん外側の点の下端）の中点。
+- 風車の羽根の軸は、羽根の中央の暗い木の輪の中心。本体側の取り付け点は原画の (855, 252)（破風の小さな輪の中心）を手で読んだもの。
+- 羽根は本体の土台と同じくらいの幅に縮めている（大きさは好みで調整可。`prepare_windmill` の `body_width / span`）。
+- `--preview` は各スプライトを派手な縞の上に置き、接地点（赤）と取り付け点（青）を打った絵を出す。透過の抜け残りはこれで見る。
 - `--alpha-threshold 8`：ごく薄い縁を余白として切り落とす。
 - `tools/atlas_overrides.json`：スプライトごとの**接地点**（アンカー）。既定は下端中央。
   作物は土の盛り上がりが絵に含まれるので、アンカーを 0.77〜0.93 あたりに上げてある。

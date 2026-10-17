@@ -64,7 +64,7 @@ class StoreObjectTest {
     @Test
     fun `everything that is placed from an item can go back as that item`() = runBlocking {
         val placeable = GardenItem.entries.filter { it.category != ItemCategory.SEED }
-        assertEquals(14, placeable.size)
+        assertEquals(15, placeable.size)
         for (item in placeable) {
             assertEquals(item.name, item, StoreObjectUseCase.itemFor(obj("x", item.objectId)))
         }

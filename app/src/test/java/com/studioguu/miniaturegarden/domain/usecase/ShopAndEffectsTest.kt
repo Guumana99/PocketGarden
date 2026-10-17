@@ -56,7 +56,7 @@ class ShopAndEffectsTest {
         assertEquals(GardenItem.entries.size, shelves.values.sumOf { it.size })
 
         assertEquals(14, shelves.getValue(ItemCategory.SEED).size)
-        assertEquals(5, shelves.getValue(ItemCategory.STRUCTURE).size)
+        assertEquals(6, shelves.getValue(ItemCategory.STRUCTURE).size)
         assertEquals(9, shelves.getValue(ItemCategory.DECORATION).size)
     }
 
@@ -84,7 +84,7 @@ class ShopAndEffectsTest {
         assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(7, 9))
 
         assertEquals(
-            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE),
+            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE),
             GardenItem.shelf(ItemCategory.STRUCTURE),
         )
         assertEquals(
@@ -150,11 +150,11 @@ class ShopAndEffectsTest {
             }
         }
         // Nothing costs more than the symbol building (the late greenhouse costs as much); after
-        // those two come the two buildings that pay for themselves.
+        // those two come the buildings that pay for themselves, with their effects.
         val byPrice = GardenItem.entries.sortedByDescending { it.price }
         assertTrue(GardenItem.entries.all { it.price <= GardenItem.STRUCT_COTTAGE.price })
         assertEquals(setOf(GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE), byPrice.take(2).toSet())
-        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL), byPrice.drop(2).take(2).toSet())
+        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_WELL), byPrice.drop(2).take(3).toSet())
     }
 
     @Test

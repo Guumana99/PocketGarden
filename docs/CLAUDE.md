@@ -34,7 +34,7 @@ timeout 560 ./gradlew testDebugUnitTest --tests "*ConstructionTest" --tests "*Po
 ```
 
 ```bash
-# 全件テスト（約 590 件。指示があったとき、または広く触ったときだけ）
+# 全件テスト（約 610 件。指示があったとき、または広く触ったときだけ）
 timeout 560 ./gradlew testDebugUnitTest --console=plain
 ```
 

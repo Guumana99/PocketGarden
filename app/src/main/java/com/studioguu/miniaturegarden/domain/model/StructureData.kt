@@ -38,8 +38,18 @@ enum class StructureData(
     HUT("struct_hut", Footprint(width = 2, height = 2), heightSteps = 7f),
     WELL("struct_well", Footprint(width = 1, height = 2), heightSteps = 2.4f),
 
-    /** A cottage with a chimney: the first symbol building. */
-    COTTAGE("struct_cottage", Footprint(width = 3, height = 3), heightSteps = 8f, isSymbol = true);
+    /**
+     * A cottage with a chimney: the first symbol building. As tall as its picture (#40): the
+     * chimney top stands 16 steps up.
+     */
+    COTTAGE("struct_cottage", Footprint(width = 3, height = 3), heightSteps = 16f, isSymbol = true),
+
+    /**
+     * A wooden windmill whose sails turn in the wind, pumping water for the beds round it
+     * ([StructureEffect.WINDMILL]). The roof is 18 steps up and the sails reach a little higher
+     * as they go round.
+     */
+    WINDMILL("struct_windmill", Footprint(width = 2, height = 2), heightSteps = 20f);
 
     companion object {
         fun fromObjectId(objectId: String): StructureData? = entries.firstOrNull { it.objectId == objectId }

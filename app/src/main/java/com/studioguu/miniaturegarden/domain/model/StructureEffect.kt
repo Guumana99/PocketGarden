@@ -19,7 +19,13 @@ enum class StructureEffect(
     WELL(StructureData.WELL, range = 1, moistureDrainFactor = 0.5f),
 
     /** Shelter from the wind: what grows in the lee of the hut grows a little faster. */
-    HUT(StructureData.HUT, range = 1, growthFactor = 1.1f);
+    HUT(StructureData.HUT, range = 1, growthFactor = 1.1f),
+
+    /**
+     * A windmill pumps water up for the beds round it: less than a well gives the cells beside
+     * it, but further out, two cells all round.
+     */
+    WINDMILL(StructureData.WINDMILL, range = 2, moistureDrainFactor = 0.75f);
 
     /**
      * The cells this effect reaches when its building stands with its first cell at

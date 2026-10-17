@@ -52,6 +52,7 @@ import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
 import com.studioguu.miniaturegarden.domain.usecase.NoteResult
 import com.studioguu.miniaturegarden.domain.usecase.RecordNatureNoteUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ScheduleGardenNotificationsUseCase
+import com.studioguu.miniaturegarden.domain.usecase.FlipObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
@@ -107,6 +108,7 @@ class GardenViewModel @Inject constructor(
     private val startRemoval: StartRemovalUseCase,
     private val completeWork: CompleteWorkUseCase,
     private val moveObject: MoveObjectUseCase,
+    private val flipObject: FlipObjectUseCase,
     private val unveilBuilding: UnveilBuildingUseCase,
     private val skipTime: SkipTimeUseCase,
     private val hoe: HoeUseCase,
@@ -291,6 +293,16 @@ class GardenViewModel @Inject constructor(
     }
 
     private val _placingSlotIndex = MutableStateFlow<Int?>(null)
+
+    private val _placingFlipped = MutableStateFlow(false)
+
+    /** Which way a building being placed will face; switched on the placing banner. */
+    val placingFlipped: StateFlow<Boolean> = _placingFlipped.asStateFlow()
+
+    /** Turns the building in hand to face the other way before it is put down. */
+    fun togglePlacingFlip() {
+        _placingFlipped.value = !_placingFlipped.value
+    }
 
     /** Non-null while in placement mode: the inventory slot whose item the next tile tap places. */
     val placingSlot: StateFlow<InventorySlot?> =
@@ -598,7 +610,7 @@ class GardenViewModel @Inject constructor(
                     if ((item?.buildSeconds ?: 0) > 0) _messages.trySend(R.string.work_started_building)
                 }
             ) { now, _ ->
-                placeItem(slotIndex, tile.x, tile.y, now).also {
+                placeItem(slotIndex, tile.x, tile.y, now, flipped = _placingFlipped.value).also {
                     val slotNowEmpty = gardenRepository.getInventory()
                         .none { it.slotIndex == slotIndex && !it.isEmpty }
                     if (slotNowEmpty) _placingSlotIndex.value = null
@@ -646,6 +658,8 @@ class GardenViewModel @Inject constructor(
     }
 
     fun startPlacing(slotIndex: Int) {
+        // Each thing taken out of the bag starts facing the usual way.
+        _placingFlipped.value = false
         _hoeActive.value = false
         _movingId.value = null
         _selectedTile.value = null
@@ -755,6 +769,11 @@ class GardenViewModel @Inject constructor(
                 _messages.trySend(if (takesTime) R.string.work_started_demolition else R.string.msg_stored)
             }
         ) { now, _ -> startRemoval(obj.instanceId, toBag = true, now) }
+    }
+
+    /** Turns the selected building to face the other way, where it stands. */
+    fun flipSelected() = withSelectedObject { obj ->
+        act(onSuccess = { audio.play(SoundEffect.PLANT) }) { _, _ -> flipObject(obj.instanceId) }
     }
 
     /** Pays to bring the selected withered plant back. */

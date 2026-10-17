@@ -24,7 +24,7 @@ enum class InventoryGroup {
             GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP, GardenItem.SEED_TOMATO, GardenItem.SEED_STRAWBERRY,
             GardenItem.SEED_WATERMELON, GardenItem.SEED_PUMPKIN, GardenItem.SEED_POINSETTIA,
             GardenItem.SEED_PAPRIKA, GardenItem.SEED_DAIKON -> CROPS
-            GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE,
+            GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WINDMILL,
             GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_LANTERN, GardenItem.FLOOR_GREENHOUSE -> FURNITURE
             GardenItem.GROUND_GRASS, GardenItem.GROUND_FLOWERS, GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER -> GREENERY
             GardenItem.GROUND_PEBBLE, GardenItem.FLOOR_COBBLESTONE, GardenItem.FLOOR_WOOD, GardenItem.TILE_RIVER -> GROUND

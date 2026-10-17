@@ -55,6 +55,7 @@ fun ObjectStatusDialog(
     onRevive: () -> Unit,
     onMove: () -> Unit,
     onDismiss: () -> Unit,
+    onFlip: () -> Unit = {},
     modifier: Modifier = Modifier,
     surroundings: PlantSurroundings = PlantSurroundings.OPEN_GROUND,
     gardenSize: Int = GridObject.GRID_SIZE,
@@ -122,6 +123,7 @@ fun ObjectStatusDialog(
                     when (StructureEffect.forObjectId(gridObject.objectId)) {
                         StructureEffect.WELL -> add(R.string.hint_well_effect)
                         StructureEffect.HUT -> add(R.string.hint_hut_effect)
+                        StructureEffect.WINDMILL -> add(R.string.hint_windmill_effect)
                         null -> Unit
                     }
                 }
@@ -156,6 +158,10 @@ fun ObjectStatusDialog(
                 }
                 if (MoveObjectUseCase.canMove(gridObject) && !gridObject.isWorking) {
                     FilledTonalButton(onClick = onMove) { Text(stringResource(R.string.action_move)) }
+                }
+                // A building can be turned round where it stands, even while it is going up.
+                if (gridObject.canFlip) {
+                    FilledTonalButton(onClick = onFlip) { Text(stringResource(R.string.action_flip)) }
                 }
                 Spacer(Modifier.weight(1f))
                 OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }

@@ -60,6 +60,7 @@ enum class CollectionEntry(
     WELL(StructureData.WELL.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 40),
     HUT(StructureData.HUT.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 80),
     COTTAGE(StructureData.COTTAGE.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 100),
+    WINDMILL(StructureData.WINDMILL.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 60),
     GREENHOUSE(GridObject.GREENHOUSE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 60);
 
     companion object {

@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.IntOffset
@@ -27,14 +28,16 @@ fun DrawScope.drawSprite(
     anchor: Offset,
     scale: Float,
     flipped: Boolean = false,
+    alpha: Float = 1f,
+    tint: Color? = null,
 ) {
     val dstOffset = IntOffset(
         asset.drawLeft(anchor.x, scale).roundToInt(),
         asset.drawTop(anchor.y, scale).roundToInt(),
     )
     val dstSize = IntSize(
-        (asset.width * scale).roundToInt().coerceAtLeast(1),
-        (asset.height * scale).roundToInt().coerceAtLeast(1),
+        asset.drawnWidth(scale).roundToInt().coerceAtLeast(1),
+        asset.drawnHeight(scale).roundToInt().coerceAtLeast(1),
     )
     scale(scaleX = if (flipped && asset.isFlippedAllowed) -1f else 1f, scaleY = 1f, pivot = anchor) {
         drawImage(
@@ -43,9 +46,27 @@ fun DrawScope.drawSprite(
             srcSize = IntSize(asset.width, asset.height),
             dstOffset = dstOffset,
             dstSize = dstSize,
+            alpha = alpha,
+            colorFilter = tint?.let { ColorFilter.tint(it, BlendMode.Modulate) },
             filterQuality = FilterQuality.Medium,
         )
     }
+}
+
+/**
+ * Draws a sprite turned [degrees] clockwise about its anchor, which lands on [pivot]: the sails
+ * of a windmill on their hub. Mirrored first when [flipped], so a turned building's sails sit
+ * on its other side and turn the other way, as they would seen from there.
+ */
+fun DrawScope.drawTurningSprite(
+    atlasImage: ImageBitmap,
+    asset: AssetManifest,
+    pivot: Offset,
+    scale: Float,
+    degrees: Float,
+    flipped: Boolean = false,
+) {
+    rotate(degrees, pivot) { drawSprite(atlasImage, asset, pivot, scale, flipped) }
 }
 
 // Reused between draws; all drawing happens on the main thread.
@@ -102,8 +123,8 @@ fun DrawScope.drawSpriteShadow(
     if (light.alpha <= 0f) return
     val rowsAboveAnchor = (asset.anchorY * asset.height).roundToInt().coerceIn(1, asset.height)
     val dstSize = IntSize(
-        (asset.width * scale).roundToInt().coerceAtLeast(1),
-        (rowsAboveAnchor * scale).roundToInt().coerceAtLeast(1),
+        asset.drawnWidth(scale).roundToInt().coerceAtLeast(1),
+        (rowsAboveAnchor * scale * asset.drawScale).roundToInt().coerceAtLeast(1),
     )
     val dstOffset = IntOffset(
         asset.drawLeft(anchor.x, scale).roundToInt(),

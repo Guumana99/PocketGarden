@@ -37,6 +37,13 @@ Anchors
 
   Override anchors are fractions of the *cropped* image, 0..1 from the top-left.
 
+  Two more keys, written into the manifest only when given:
+    "scale"              draw the sprite this many times larger than the atlas scale (for a
+                         building whose picture is smaller than its footprint; enlarging it in
+                         the atlas would only make the atlas bigger)
+    "attachX", "attachY" a point on the sprite (fractions, like the anchor) where another sprite
+                         is hung, e.g. the hub of a windmill's sails
+
 Requires Pillow:  pip install Pillow
 """
 
@@ -56,7 +63,7 @@ ATLAS_NAME = "atlas.png"
 
 DEFAULT_ANCHOR_X = 0.5
 DEFAULT_ANCHOR_Y = 1.0
-OVERRIDE_KEYS = {"anchorX", "anchorY", "isFlippedAllowed"}
+OVERRIDE_KEYS = {"anchorX", "anchorY", "isFlippedAllowed", "scale", "attachX", "attachY"}
 
 
 @dataclass
@@ -66,6 +73,12 @@ class Sprite:
     anchor_x: float = DEFAULT_ANCHOR_X
     anchor_y: float = DEFAULT_ANCHOR_Y
     is_flipped_allowed: bool = True
+    # How much larger than the atlas scale to draw it (a building that would otherwise have to
+    # be enlarged in the atlas to cover its footprint).
+    draw_scale: float = 1.0
+    # A point on the sprite where another one is hung (the hub a windmill's sails turn on).
+    attach_x: float | None = None
+    attach_y: float | None = None
     atlas_x: int = 0
     atlas_y: int = 0
 
@@ -132,6 +145,15 @@ def apply_overrides(sprites: list[Sprite], overrides: dict) -> None:
                 setattr(sprite, attribute, value)
         if "isFlippedAllowed" in values:
             sprite.is_flipped_allowed = bool(values["isFlippedAllowed"])
+        if "scale" in values:
+            value = float(values["scale"])
+            if not value > 0.0:
+                raise ValueError(f"'{asset_id}': scale must be positive, got {value}")
+            sprite.draw_scale = value
+        if ("attachX" in values) != ("attachY" in values):
+            raise ValueError(f"'{asset_id}': attachX and attachY go together")
+        if "attachX" in values:
+            sprite.attach_x, sprite.attach_y = float(values["attachX"]), float(values["attachY"])
 
 
 def pack(sprites: list[Sprite], max_width: int = 2048, padding: int = 2) -> tuple[int, int]:
@@ -176,19 +198,30 @@ def build_manifest(sprites: list[Sprite], size: tuple[int, int], tile_width: int
         "atlasHeight": size[1],
         "tileWidth": tile_width,
         "assets": [
-            {
-                "assetId": sprite.asset_id,
-                "anchorX": round(sprite.anchor_x, 4),
-                "anchorY": round(sprite.anchor_y, 4),
-                "width": sprite.width,
-                "height": sprite.height,
-                "isFlippedAllowed": sprite.is_flipped_allowed,
-                "atlasX": sprite.atlas_x,
-                "atlasY": sprite.atlas_y,
-            }
+            sprite_entry(sprite)
             for sprite in sorted(sprites, key=lambda s: s.asset_id)
         ],
     }
+
+
+def sprite_entry(sprite: Sprite) -> dict:
+    entry = {
+        "assetId": sprite.asset_id,
+        "anchorX": round(sprite.anchor_x, 4),
+        "anchorY": round(sprite.anchor_y, 4),
+        "width": sprite.width,
+        "height": sprite.height,
+        "isFlippedAllowed": sprite.is_flipped_allowed,
+        "atlasX": sprite.atlas_x,
+        "atlasY": sprite.atlas_y,
+    }
+    # Only written when used, so that the manifest of a plain sprite stays as it was.
+    if sprite.draw_scale != 1.0:
+        entry["drawScale"] = round(sprite.draw_scale, 4)
+    if sprite.attach_x is not None:
+        entry["attachX"] = round(sprite.attach_x, 4)
+        entry["attachY"] = round(sprite.attach_y, 4)
+    return entry
 
 
 def run(

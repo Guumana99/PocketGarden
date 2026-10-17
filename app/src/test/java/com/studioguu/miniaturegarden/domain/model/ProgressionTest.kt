@@ -133,7 +133,7 @@ class ProgressionTest {
             unlockedAt(2),
         )
         assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL + GardenItem.SEED_WATERMELON + GardenItem.SEED_LAVENDER, unlockedAt(3))
-        assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE + GardenItem.SEED_PAPRIKA, unlockedAt(4))
+        assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE + GardenItem.SEED_PAPRIKA + GardenItem.STRUCT_WINDMILL, unlockedAt(4))
         // Level opens everything but the two that the encyclopedia opens.
         val byPages = setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN)
         // The symbol building comes at Lv.6, the greenhouse much later, at Lv.18.
@@ -150,7 +150,10 @@ class ProgressionTest {
             GardenItem.unlockedBetween(1, 2).toSet(),
         )
         assertEquals(
-            setOf(GardenItem.STRUCT_WELL, GardenItem.SEED_WATERMELON, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_PAPRIKA),
+            setOf(
+                GardenItem.STRUCT_WELL, GardenItem.SEED_WATERMELON, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_PAPRIKA,
+                GardenItem.STRUCT_WINDMILL,
+            ),
             GardenItem.unlockedBetween(2, 4).toSet(),
         )
         assertEquals(setOf(GardenItem.STRUCT_COTTAGE), GardenItem.unlockedBetween(5, 6).toSet())
@@ -253,7 +256,10 @@ class ProgressionTest {
     @Test
     fun `only structures give experience for being placed`() {
         val paying = GardenItem.entries.filter { it.placeXp > 0 }
-        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE), paying.toSet())
+        assertEquals(
+            setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WINDMILL, GardenItem.FLOOR_GREENHOUSE),
+            paying.toSet(),
+        )
         assertTrue(GardenItem.STRUCT_HUT.placeXp > GardenItem.STRUCT_WELL.placeXp)
         // Buying a structure for its XP is never cheaper than growing tulips for it.
         for (item in paying) {

@@ -39,6 +39,7 @@ enum class ItemCategory {
  *                                                    bears again: 42 coins + 59 XP every 50 h after that
  *     structures   fence        from start      15   joins its neighbours; 20 s to build
  *                  well         Lv.3            80   30 XP; soil round it dries half as fast
+ *                  windmill     Lv.4           120   45 XP; 2x2, its sails turn; soil within two cells dries a little slower
  *                  hut          Lv.5           150   60 XP; plants round it grow 10 % faster
  *                  cottage      Lv.6           300   100 XP; symbol building (one per garden, 3x3); lets the garden grow
  *                  greenhouse   Lv.18          300   40 XP; one cell of soil under glass, sown in any season
@@ -151,6 +152,12 @@ enum class GardenItem(
     STRUCT_COTTAGE(
         "struct_cottage", price = 300, objectId = StructureData.COTTAGE.objectId, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(6), placeXp = 100, buildSeconds = 600,
+    ),
+
+    /** A windmill with turning sails, between the well and the hut. */
+    STRUCT_WINDMILL(
+        "struct_windmill", price = 120, objectId = StructureData.WINDMILL.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(4), placeXp = 45, buildSeconds = 240,
     ),
 
     /** Autumn's flower. */

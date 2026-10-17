@@ -620,5 +620,6 @@ private fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.FENCE -> R.string.flavor_fence
     CollectionEntry.WELL -> R.string.flavor_well
     CollectionEntry.HUT -> R.string.flavor_hut
+    CollectionEntry.WINDMILL -> R.string.flavor_windmill
     CollectionEntry.COTTAGE -> R.string.flavor_cottage
 }
