@@ -387,15 +387,30 @@ class AudioManagerTest {
     }
 
     @Test
-    fun `the title, spring and summer tunes are in the app, and the others are optional`() {
+    fun `all five tunes are in the app, one file each`() {
         val raw = listOf(File("src/main/res/raw"), File("app/src/main/res/raw")).first { it.isDirectory }
-        val tunes = raw.listFiles()!!.map { it.nameWithoutExtension }.filter { it.startsWith("bgm_") }
-        assertTrue(BgmTrack.FALLBACK_RESOURCE in tunes)
-        for (track in listOf(BgmTrack.TITLE, BgmTrack.SPRING, BgmTrack.SUMMER)) {
+        val files = raw.listFiles()!!.filter { it.name.startsWith("bgm_") }
+        val tunes = files.map { it.nameWithoutExtension }
+        for (track in BgmTrack.entries) {
             assertTrue("missing ${track.resourceName}", track.resourceName in tunes)
         }
-        // Every tune in the folder is one the game knows how to play.
-        assertTrue(tunes.all { name -> BgmTrack.entries.any { it.resourceName == name } })
+        // Exactly the five, no stray or duplicate (an .mp3 and an .ogg of the same name would clash).
+        assertEquals(BgmTrack.entries.map { it.resourceName }.sorted(), tunes.sorted())
+        assertTrue(files.all { it.extension == "mp3" && it.length() > 0 })
+    }
+
+    @Test
+    fun `with every tune present, each track plays its own and the fallback is not used`() {
+        BgmTrack.entries.forEachIndexed { i, track -> rawFiles[track.resourceName] = 60 + i }
+
+        assertEquals(BgmTrack.entries.indices.map { 60 + it }, BgmTrack.entries.map(audio::resourceFor))
+
+        // The year going round: every change is a new tune, handed to the engine to crossfade.
+        audio.playBgm(BgmTrack.TITLE)
+        Season.entries.forEach { audio.playBgm(BgmTrack.forSeason(it)) }
+        audio.playBgm(BgmTrack.SPRING)
+        assertEquals(listOf(60, 61, 62, 63, 64, 61), engine.bgmStarts.map { it.first })
+        assertFalse("stop" in engine.bgmCalls)
     }
 
     @Test
