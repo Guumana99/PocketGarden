@@ -59,13 +59,13 @@ class GardenActionUseCasesTest {
     // --- Watering / fertilizing ---
 
     @Test
-    fun `watering refills moisture after applying the time already passed`() = runBlocking {
+    fun `watering adds to moisture after applying the time already passed`() = runBlocking {
         repo.put(tulip())
 
         assertEquals(ActionResult.SUCCESS, care.water("p1", t0 + 12 * hour, sunny))
 
         val watered = stored()
-        assertEquals(1f, watered.moistureLevel, 0f)
+        assertEquals(0.5f + CareForPlantUseCase.WATER_AMOUNT, watered.moistureLevel, 1e-4f) // 50% after 12 h, then +35
         assertEquals(0.25f, watered.growthProgress, 1e-4f)  // the 12 h before watering still counted
         assertEquals(t0 + 12 * hour, watered.lastUpdatedTimestamp)
     }
@@ -77,9 +77,9 @@ class GardenActionUseCasesTest {
 
         val later = calc(stored(), t0 + 24 * hour, sunny)
 
-        // 24 healthy hours in total -> half grown; 12 h since the refill -> half dry.
+        // 24 healthy hours in total -> half grown; 85% at the watering, 12 h of drying since.
         assertEquals(0.5f, later.growthProgress, 1e-4f)
-        assertEquals(0.5f, later.moistureLevel, 1e-4f)
+        assertEquals(0.85f - 0.5f, later.moistureLevel, 1e-4f)
         assertEquals(1f - 24f / 72f, later.nutritionLevel, 1e-4f)
     }
 
@@ -92,8 +92,11 @@ class GardenActionUseCasesTest {
         val watered = stored()
         assertEquals(PlantStatus.HEALTHY, watered.status)
         assertEquals(0.25f, watered.stressRate, 1e-4f)  // 6 thirsty hours stay on the record
-        val later = calc(watered, t0 + 12 * hour, sunny)
+        // One can from bone dry gives 35%: the stress eases while it lasts...
+        val later = calc(watered, t0 + 9 * hour, sunny)
         assertTrue(later.stressRate < watered.stressRate)
+        // ...but a tulip dries 1/24 an hour, so it is thirsty again before long unless given more.
+        assertEquals(PlantStatus.THIRSTY, calc(watered, t0 + 12 * hour, sunny).status)
     }
 
     @Test
@@ -137,6 +140,44 @@ class GardenActionUseCasesTest {
 
         // 75% after six hours.
         assertEquals(ActionResult.SUCCESS, care.water("p1", t0 + 6 * hour, sunny))
+    }
+
+    @Test
+    fun `one watering adds 35 points of moisture, never above 100 percent`() {
+        assertEquals(0.35f, CareForPlantUseCase.WATER_AMOUNT, 0f)
+        assertEquals(0.37f, CareForPlantUseCase.wateredMoisture(0.02f), 1e-4f)
+        assertEquals(0.35f, CareForPlantUseCase.wateredMoisture(0f), 1e-4f)
+        assertEquals(0.85f, CareForPlantUseCase.wateredMoisture(0.5f), 1e-4f)
+        assertEquals(1f, CareForPlantUseCase.wateredMoisture(0.65f), 1e-4f)
+        assertEquals(1f, CareForPlantUseCase.wateredMoisture(0.9f), 0f)
+        assertEquals(1f, CareForPlantUseCase.wateredMoisture(1f), 0f)
+        // A level out of range (a damaged save) still lands inside 0..100%.
+        assertEquals(0.35f, CareForPlantUseCase.wateredMoisture(-0.2f), 1e-4f)
+    }
+
+    @Test
+    fun `a parched plant comes from 2 to 37 percent, not straight to full`() = runBlocking {
+        repo.put(tulip(moisture = 0.02f, status = PlantStatus.THIRSTY))
+
+        assertEquals(ActionResult.SUCCESS, care.water("p1", t0, sunny))
+
+        assertEquals(0.37f, stored().moistureLevel, 1e-4f)
+        assertEquals(PlantStatus.HEALTHY, stored().status) // above the 20% line: no longer thirsty
+        // Still under the 80% line, so a second can goes on at once, and a third would top it up.
+        assertEquals(ActionResult.SUCCESS, care.water("p1", t0, sunny))
+        assertEquals(0.72f, stored().moistureLevel, 1e-4f)
+        assertEquals(ActionResult.SUCCESS, care.water("p1", t0, sunny))
+        assertEquals(1f, stored().moistureLevel, 0f)
+        assertEquals(ActionResult.ALREADY_MOIST, care.water("p1", t0, sunny))
+    }
+
+    @Test
+    fun `watering just under the 80 percent line stops at 100`() = runBlocking {
+        repo.put(tulip(moisture = 0.79f))
+
+        assertEquals(ActionResult.SUCCESS, care.water("p1", t0, sunny))
+
+        assertEquals(1f, stored().moistureLevel, 0f)
     }
 
     @Test

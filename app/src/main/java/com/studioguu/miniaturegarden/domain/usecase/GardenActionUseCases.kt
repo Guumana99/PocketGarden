@@ -77,14 +77,18 @@ class CareForPlantUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
-    /** Refills moisture to 100% for [WATER_XP]. Only allowed below [WATERING_THRESHOLD]. */
+    /**
+     * Adds [WATER_AMOUNT] of moisture, up to 100% ([wateredMoisture]), for [WATER_XP]. Only
+     * allowed below [WATERING_THRESHOLD]. One can of water does not bring parched soil all the
+     * way back: a plant left to dry right out needs a few.
+     */
     suspend fun water(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         care(
             instanceId, now, weather,
             coinCost = 0,
             xp = WATER_XP,
             refuse = { if (it.moistureLevel >= WATERING_THRESHOLD) ActionResult.ALREADY_MOIST else null },
-        ) { it.copy(moistureLevel = 1f) }
+        ) { it.copy(moistureLevel = wateredMoisture(it.moistureLevel)) }
 
     /**
      * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, advances growth by what the plant
@@ -181,6 +185,12 @@ class CareForPlantUseCase @Inject constructor(
 
         /** Watering is only possible while moisture is below this. */
         const val WATERING_THRESHOLD = 0.8f
+
+        /** How much one watering adds to the soil's moisture (35 points). */
+        const val WATER_AMOUNT = 0.35f
+
+        /** The soil's moisture after one watering from [moisture]: [WATER_AMOUNT] more, never above 100%. */
+        fun wateredMoisture(moisture: Float): Float = (moisture.coerceAtLeast(0f) + WATER_AMOUNT).coerceAtMost(1f)
     }
 }
 
