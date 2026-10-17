@@ -41,6 +41,9 @@ data class GridObject(
 
     val isPlant: Boolean get() = objectId.startsWith(PLANT_ID_PREFIX)
 
+    /** Whether it can be turned to face the other way (see [canFaceEitherWay]). */
+    val canFlip: Boolean get() = canFaceEitherWay(objectId)
+
     /** Terrain laid by the player (river). It is part of the ground: nothing can stand on it. */
     val isTerrain: Boolean get() = objectId.startsWith(TERRAIN_ID_PREFIX)
 
@@ -91,6 +94,15 @@ data class GridObject(
          * Tilled soil. It is stored like paving, in the floor layer of its cell: the plant grown
          * on it stands on top, and it and paving cannot share a cell.
          */
+        /**
+         * The buildings that can be turned to face the other way: drawn mirrored, which on the
+         * isometric grid shows the side that faced away. Their footprints are square, so turning
+         * one does not change the cells it stands on. The order is the one they are listed in.
+         */
+        val FLIPPABLE_OBJECT_IDS: List<String> = listOf("struct_cottage", "floor_greenhouse", "struct_windmill")
+
+        fun canFaceEitherWay(objectId: String): Boolean = objectId in FLIPPABLE_OBJECT_IDS
+
         const val TILLED_SOIL_OBJECT_ID = "floor_tilled"
 
         /** A bed of soil under a small glass house; see [isGreenhouse]. */

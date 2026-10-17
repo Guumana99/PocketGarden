@@ -68,10 +68,11 @@
     <string name="object_ground_flowers">野の花</string>
     <string name="object_deco_bench">ベンチ</string>
     <string name="object_deco_lantern">石どうろう</string>
-    <string name="hint_near_well">💧 井戸のそば：土が乾きにくい</string>
+    <string name="hint_near_well">💧 井戸や風車のそば：土が乾きにくい</string>
     <string name="hint_near_hut">🛖 小屋のそば：少し早く育つ</string>
     <string name="hint_well_effect">💧 まわりの作物の土が乾きにくくなります</string>
     <string name="hint_hut_effect">🌱 まわりの作物が少し早く育ちます</string>
+    <string name="hint_windmill_effect">💧 くみ上げた水で、まわり2マスの作物の土が少し乾きにくくなります</string>
     <string name="camera_button">カメラ</string>
     <string name="camera_back">✕ もどる</string>
     <string name="camera_shutter">撮影してシェア</string>
@@ -87,6 +88,12 @@
     <string name="msg_stored">🎒 かばんにしまいました</string>
     <string name="msg_not_returnable">これは持ち物に戻せません</string>
     <string name="msg_not_movable">これは移動できません</string>
+    <string name="msg_not_flippable">これは向きを変えられません</string>
+    <string name="action_flip">↔ 向きを変える</string>
+    <string name="placing_flip">↔ 向き</string>
+    <string name="placing_flip_description">置く向きを左右で切り替える（いまは%1$s）</string>
+    <string name="facing_normal">ふつう</string>
+    <string name="facing_flipped">反対</string>
     <string name="msg_busy">作業中です。終わるまでお待ちください</string>
     <string name="action_move">移動</string>
     <string name="move_banner">🚚 %1$s の移動先をタップ</string>
@@ -211,6 +218,7 @@
     <string name="flavor_path">まるい いしを　しきつめた こみち。\nあめの ひも　あしもとが ぬかるまない。</string>
     <string name="flavor_fence">きを くんだ　そぼくな さく。\nはなばたけを　ぐるりと かこもう。</string>
     <string name="flavor_well">つめたい みずが　こんこんと わく。\nのぞきこむと　じぶんの かおが ゆれる。</string>
+    <string name="flavor_windmill">かぜを うけて　くるり くるり。\nはねの まわる おとが　にわに ひびく。</string>
     <string name="flavor_hut">ちいさいけれど　ゆめの つまった こや。\nどうぐも　ひるねも　ここで。</string>
     <string name="flavor_cottage">にわの　まんなかに　たつ　あかりの いえ。\nえんとつから　けむりが　のぼると　にわが ひろがる。</string>
     <string name="effect_discovery">📖 ずかんに とうろく できるよ！</string>
@@ -321,6 +329,7 @@
 
     <!-- Symbol building and garden expansion -->
     <string name="object_struct_cottage">コテージ</string>
+    <string name="object_struct_windmill">風車</string>
     <string name="shop_only_one">庭にひとつだけ</string>
     <string name="msg_only_one_symbol">🏡 シンボル建物は庭にひとつだけです</string>
     <string name="msg_expansion_locked">まだ庭を広げられません</string>

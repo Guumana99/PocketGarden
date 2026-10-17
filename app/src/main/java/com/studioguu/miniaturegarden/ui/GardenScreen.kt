@@ -124,6 +124,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val selectedTile by viewModel.selectedTile.collectAsStateWithLifecycle()
     val selectedObject by viewModel.selectedObject.collectAsStateWithLifecycle()
     val placingSlot by viewModel.placingSlot.collectAsStateWithLifecycle()
+    val placingFlipped by viewModel.placingFlipped.collectAsStateWithLifecycle()
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val weather by viewModel.weather.collectAsStateWithLifecycle()
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
@@ -433,7 +434,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         enter = fadeIn(),
                         exit = fadeOut(),
                     ) {
-                        lastPlacing?.let { PlacingBanner(it, onCancel = viewModel::cancelPlacing) }
+                        lastPlacing?.let {
+                            PlacingBanner(it, flipped = placingFlipped, onFlip = viewModel::togglePlacingFlip, onCancel = viewModel::cancelPlacing)
+                        }
                     }
                     AnimatedVisibility(
                         visible = placing == null && !hoeActive && moving == null && target != null,
@@ -449,6 +452,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 onRevive = viewModel::reviveSelected,
                                 onMove = viewModel::startMovingSelected,
                                 onDismiss = viewModel::clearSelection,
+                                onFlip = viewModel::flipSelected,
                                 modifier = Modifier.fillMaxWidth(),
                                 surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },
                                 gardenSize = gardenMap.size,
@@ -647,14 +651,25 @@ private fun SideButton(emoji: String, label: String, onClick: () -> Unit) {
 
 /** Shown while an inventory item is waiting to be placed on a tile. */
 @Composable
-private fun PlacingBanner(slot: InventorySlot, onCancel: () -> Unit) {
-    val name = GardenItem.fromItemId(slot.itemId)?.let { itemDisplayName(it) } ?: slot.itemId
-    ToolBanner(stringResource(R.string.placing_banner, name, slot.amount), onCancel)
+private fun PlacingBanner(slot: InventorySlot, flipped: Boolean, onFlip: () -> Unit, onCancel: () -> Unit) {
+    val item = GardenItem.fromItemId(slot.itemId)
+    val name = item?.let { itemDisplayName(it) } ?: slot.itemId
+    // A building that can face either way is turned here, before it goes down.
+    val canFlip = item != null && GridObject.canFaceEitherWay(item.objectId)
+    val facing = stringResource(if (flipped) R.string.facing_flipped else R.string.facing_normal)
+    val flipDescription = stringResource(R.string.placing_flip_description, facing)
+    ToolBanner(stringResource(R.string.placing_banner, name, slot.amount), onCancel) {
+        if (canFlip) {
+            TextButton(onClick = onFlip, modifier = Modifier.semantics { contentDescription = flipDescription }) {
+                Text(stringResource(R.string.placing_flip), fontWeight = if (flipped) FontWeight.Bold else FontWeight.Normal)
+            }
+        }
+    }
 }
 
-/** Says what the next tap on a tile will do, with a way out. */
+/** Says what the next tap on a tile will do, with a way out, and anything else that goes with it ([extra]). */
 @Composable
-private fun ToolBanner(text: String, onCancel: () -> Unit) {
+private fun ToolBanner(text: String, onCancel: () -> Unit, extra: @Composable () -> Unit = {}) {
     Surface(shape = RoundedCornerShape(20.dp), tonalElevation = 3.dp, shadowElevation = 6.dp) {
         Row(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp),
@@ -665,6 +680,7 @@ private fun ToolBanner(text: String, onCancel: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.weight(1f, fill = false),
             )
+            extra()
             TextButton(onClick = onCancel) { Text(stringResource(R.string.placing_cancel)) }
         }
     }

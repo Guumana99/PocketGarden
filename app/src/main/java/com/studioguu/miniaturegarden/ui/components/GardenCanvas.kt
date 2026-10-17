@@ -77,6 +77,8 @@ import com.studioguu.miniaturegarden.ui.render.drawSeasonGround
 import com.studioguu.miniaturegarden.ui.render.drawSnowdrop
 import com.studioguu.miniaturegarden.ui.render.drawStrawberry
 import com.studioguu.miniaturegarden.ui.render.drawTomato
+import com.studioguu.miniaturegarden.ui.render.drawTurningSprite
+import com.studioguu.miniaturegarden.ui.render.WindmillSails
 import com.studioguu.miniaturegarden.ui.render.drawWatermelon
 import com.studioguu.miniaturegarden.ui.render.GustAxis
 import com.studioguu.miniaturegarden.ui.render.GustFront
@@ -492,8 +494,15 @@ private fun submitObjects(
             // Paving and tilled soil: also ground. Whatever stands on the cell is a separate
             // object and is drawn later, in the object layer, so it always appears on top.
             val paving = terrain.cobblestone
-            submit(obj, RenderLayer.BASE_TERRAIN, 1f) {
-                if (obj.isTilledSoil || obj.isGreenhouse) {
+            val soil = atlas[GridObject.TILLED_SOIL_OBJECT_ID]
+            // Back to front within the ground: a bed of soil stands a little proud of the lawn,
+            // and its front edge has to come over the bed behind it.
+            submit(obj, RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(obj.gridX, obj.gridY)) {
+                if ((obj.isTilledSoil || obj.isGreenhouse) && soil != null && atlasImage != null) {
+                    // Compost darkens the earth.
+                    val center = transform.tileCenter(obj.gridX, obj.gridY)
+                    drawSprite(atlasImage, soil, center, spriteScale, tint = if (obj.isComposted) COMPOST_TINT else null)
+                } else if (obj.isTilledSoil || obj.isGreenhouse) {
                     drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted)
                 } else if (obj.objectId == GridObject.WOOD_DECK_OBJECT_ID) {
                     drawWoodDeck(transform, obj.gridX, obj.gridY)
@@ -505,8 +514,16 @@ private fun submitObjects(
             }
             // The glass house of a greenhouse bed goes over whatever grows in it.
             if (obj.isGreenhouse) {
+                val house = atlas[GridObject.GREENHOUSE_OBJECT_ID]
+                // With a crop inside, the house is drawn see-through, so that the crop shows.
+                val growing = grid.occupantAt(obj.gridX, obj.gridY)?.isPlant == true
                 submit(obj, RenderLayer.GRID_OBJECTS, LayerPipeline.depthOf(obj.gridX, obj.gridY, 0) + 0.5f) {
-                    drawGreenhouseGlass(transform, obj.gridX, obj.gridY)
+                    if (house != null && atlasImage != null) {
+                        val center = transform.tileCenter(obj.gridX, obj.gridY)
+                        drawSprite(atlasImage, house, center, spriteScale, flipped = obj.isFlipped, alpha = if (growing) GREENHOUSE_OVER_CROP_ALPHA else 1f)
+                    } else {
+                        drawGreenhouseGlass(transform, obj.gridX, obj.gridY)
+                    }
                 }
             }
             continue
@@ -573,7 +590,7 @@ private fun submitObjects(
         if (!isGroundCover) {
             submit(obj, RenderLayer.SHADOWS, depth) {
                 if (sprite != null && atlasImage != null) {
-                    drawContactShadow(base, min(sprite.width * spriteScale * 0.62f, unit * 0.7f))
+                    drawContactShadow(base, min(sprite.drawnWidth(spriteScale) * 0.62f, unit * 0.7f))
                     drawSpriteShadow(atlasImage, sprite, base, spriteScale, light)
                 } else if (structure != null) {
                     drawStructureShadow(transform, obj, structure, light)
@@ -593,6 +610,18 @@ private fun submitObjects(
                     else -> sway * PLANT_LEAN
                 }
                 drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
+                if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {
+                    val sails = atlas[WindmillSails.SAILS_ASSET_ID]
+                    val hub = sprite.attachmentAt(base.x, base.y, spriteScale, obj.isFlipped)
+                    if (sails != null && hub != null) {
+                        // Mirrored with the mill, the sails turn the other way, as seen from its other side.
+                        val angle = WindmillSails.angleAt(ambience.windMillis, ambience.weather, obj.gridX, obj.gridY)
+                        drawTurningSprite(
+                            atlasImage, sails, Offset(hub.first, hub.second), spriteScale,
+                            if (obj.isFlipped) -angle else angle, flipped = obj.isFlipped,
+                        )
+                    }
+                }
             } else if (structure != null) {
                 drawStructure(transform, obj, structure)
             } else {
@@ -602,7 +631,7 @@ private fun submitObjects(
             // of earth on a bed. Paving is hard and shows nothing.
             if (!isGroundCover && structure == null) {
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
-                val reach = if (sprite != null) min(sprite.width * spriteScale * 0.3f, unit * 0.3f) else unit * 0.16f
+                val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
                     floor == null -> drawGrassAtFoot(base, unit, reach, sway, seed = obj.gridX * 31 + obj.gridY * 17)
                     floor.isTilledSoil || floor.isGreenhouse -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
@@ -614,6 +643,12 @@ private fun submitObjects(
         }
     }
 }
+
+/** How the earth of a composted bed is darkened (multiplied in). */
+private val COMPOST_TINT = Color(0xFFB8A48E)
+
+/** How opaque a greenhouse's picture is while a crop grows inside, so that the crop shows through. */
+private const val GREENHOUSE_OVER_CROP_ALPHA = 0.55f
 
 /** How long the unveiling of a finished building lasts. */
 private const val BURST_MILLIS = 1100
@@ -635,6 +670,7 @@ private fun siteHeight(obj: GridObject, transform: IsometricTransform): Float = 
     StructureData.HUT -> 7.2f * transform.heightStep
     StructureData.WELL -> 2.4f * transform.heightStep
     StructureData.COTTAGE -> 8.2f * transform.heightStep
+    StructureData.WINDMILL -> 10f * transform.heightStep
     null -> transform.tileWidth * 0.24f
 }
 
@@ -1339,6 +1375,7 @@ private fun DrawScope.drawStructureShadow(
     val height = when (structure) {
         StructureData.HUT -> 5.5f
         StructureData.COTTAGE -> 6f
+        StructureData.WINDMILL -> 8f
         StructureData.WELL -> 1.8f
     } * transform.heightStep
     val reach = Offset(light.dx * height, light.dy * height)
@@ -1934,7 +1971,8 @@ private fun DrawScope.drawStructure(transform: IsometricTransform, obj: GridObje
         drawCottage(transform, obj)
         return
     }
-    val isHut = structure == StructureData.HUT
+    // Without its picture, the windmill is drawn like the hut: a box with a pointed roof.
+    val isHut = structure == StructureData.HUT || structure == StructureData.WINDMILL
     val top = ground + if (isHut) 4f else 1.8f
 
     // Corners of the box, named by where they appear on screen.

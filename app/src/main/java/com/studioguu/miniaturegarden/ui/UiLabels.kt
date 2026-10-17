@@ -36,6 +36,7 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "struct_hut" -> R.string.object_struct_hut
     "struct_well" -> R.string.object_struct_well
     "struct_cottage" -> R.string.object_struct_cottage
+    "struct_windmill" -> R.string.object_struct_windmill
     "ground_grass" -> R.string.object_ground_grass
     "ground_pebble" -> R.string.object_ground_pebble
     "terrain_river" -> R.string.object_terrain_river
@@ -92,6 +93,8 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.DECO_BENCH -> "🪑"
     GardenItem.DECO_LANTERN -> "🏮"
     GardenItem.STRUCT_COTTAGE -> "🏡"
+    // There is no windmill emoji; the wind it turns in stands for it.
+    GardenItem.STRUCT_WINDMILL -> "🌬️"
     GardenItem.SEED_COSMOS -> "🏵️"
     GardenItem.SEED_SNOWDROP -> "🤍"
     GardenItem.SEED_MINT -> "🍃"
@@ -163,6 +166,7 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.NOT_WITHERED -> R.string.msg_not_withered
     ActionResult.NOT_RETURNABLE -> R.string.msg_not_returnable
     ActionResult.NOT_MOVABLE -> R.string.msg_not_movable
+    ActionResult.NOT_FLIPPABLE -> R.string.msg_not_flippable
     ActionResult.BUSY -> R.string.msg_busy
     ActionResult.ONLY_ONE_SYMBOL -> R.string.msg_only_one_symbol
     ActionResult.EXPANSION_LOCKED -> R.string.msg_expansion_locked

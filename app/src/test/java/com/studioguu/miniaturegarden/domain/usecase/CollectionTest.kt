@@ -78,7 +78,7 @@ class CollectionTest {
         assertEquals(
             listOf(
                 CollectionEntry.ROCK, CollectionEntry.FENCE, CollectionEntry.BENCH, CollectionEntry.LANTERN,
-                CollectionEntry.WELL, CollectionEntry.HUT, CollectionEntry.COTTAGE, CollectionEntry.GREENHOUSE,
+                CollectionEntry.WELL, CollectionEntry.HUT, CollectionEntry.COTTAGE, CollectionEntry.WINDMILL, CollectionEntry.GREENHOUSE,
             ),
             byCategory[CollectionCategory.STRUCTURES],
         )
@@ -186,7 +186,7 @@ class CollectionTest {
         assertEquals(0, none.revealed)
         assertEquals(0, none.ready)
         assertEquals(0, none.percent)
-        assertEquals(28, none.total)
+        assertEquals(29, none.total)
         assertEquals(PageState.LOCKED, none.stateOf(CollectionEntry.TULIP))
 
         val some = CollectionProgress(
@@ -199,7 +199,7 @@ class CollectionTest {
         )
         assertEquals(2, some.revealed)
         assertEquals(1, some.ready)
-        assertEquals(7, some.percent) // 2 of 28, rounded down; ready pages do not count yet
+        assertEquals(6, some.percent) // 2 of 29, rounded down; ready pages do not count yet
         assertEquals(PageState.REVEALED, some.stateOf(CollectionEntry.TULIP))
         assertEquals(PageState.READY, some.stateOf(CollectionEntry.WELL))
         assertEquals(PageState.LOCKED, some.stateOf(CollectionEntry.HUT))
@@ -214,11 +214,11 @@ class CollectionTest {
     fun `one hundred percent means every page filled in`() {
         val all = CollectionEntry.entries.map { CollectionRecord(it.objectId, 1, t0, revealed = true) }
         assertEquals(100, CollectionProgress(all).percent)
-        assertEquals(96, CollectionProgress(all.drop(1)).percent) // 27 of 28, rounded down
+        assertEquals(96, CollectionProgress(all.drop(1)).percent) // 28 of 29, rounded down
 
         val allReady = CollectionEntry.entries.map { CollectionRecord(it.objectId, 1, t0) }
         assertEquals(0, CollectionProgress(allReady).percent)
-        assertEquals(28, CollectionProgress(allReady).ready)
+        assertEquals(29, CollectionProgress(allReady).ready)
     }
 
     // --- Through the game actions ---

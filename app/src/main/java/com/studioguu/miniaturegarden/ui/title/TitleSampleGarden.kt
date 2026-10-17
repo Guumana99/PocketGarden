@@ -80,6 +80,8 @@ object TitleSampleGarden {
 
     private val fixed: List<GridObject> =
         listOf(cottage, at(8, 5, StructureData.HUT.objectId), at(5, 4, StructureData.WELL.objectId)) +
+            // The windmill by the water, its sails turning.
+            listOf(at(8, 8, StructureData.WINDMILL.objectId)) +
             // Fences round the back and the sides of the garden above the river.
             (4..10).map { at(it, 0, GridObject.FENCE_OBJECT_ID) } +
             (1..6).map { at(10, it, GridObject.FENCE_OBJECT_ID) } +
@@ -92,8 +94,8 @@ object TitleSampleGarden {
             // Wooden decks: one by the hut, one by the water.
             listOf(7 to 5, 7 to 6).map { (x, y) -> at(x, y, GridObject.WOOD_DECK_OBJECT_ID) } +
             listOf(5 to 8, 6 to 8, 7 to 8, 5 to 9, 6 to 9, 7 to 9).map { (x, y) -> at(x, y, GridObject.WOOD_DECK_OBJECT_ID) } +
-            listOf(bench, deckBench, at(1, 3, "deco_lantern"), at(7, 4, "deco_lantern"), at(8, 9, "deco_rock")) +
-            listOf(4 to 6, 0 to 8, 9 to 8, 10 to 9, 0 to 10, 3 to 10, 6 to 10, 9 to 10).map { (x, y) -> at(x, y, "ground_flowers") } +
+            listOf(bench, deckBench, at(1, 3, "deco_lantern"), at(7, 4, "deco_lantern"), at(10, 8, "deco_rock")) +
+            listOf(4 to 6, 0 to 8, 4 to 8, 10 to 9, 0 to 10, 3 to 10, 6 to 10, 9 to 10).map { (x, y) -> at(x, y, "ground_flowers") } +
             listOf(6 to 5, 5 to 6, 1 to 10).map { (x, y) -> at(x, y, "ground_grass") } +
             listOf(4 to 9, 8 to 10).map { (x, y) -> at(x, y, "ground_pebble") }
 

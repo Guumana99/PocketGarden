@@ -50,6 +50,9 @@ enum class ActionResult {
     /** Something that is in the ground (a plant, tilled soil) was to be moved. */
     NOT_MOVABLE,
 
+    /** Something that has only one way to face was to be turned round. */
+    NOT_FLIPPABLE,
+
     /** The thing is being built or taken apart; it has to be finished first. */
     BUSY,
 
@@ -209,7 +212,8 @@ class PlaceItemUseCase @Inject constructor(
     private val gardenMap: GardenMapSource,
     private val recordCollection: RecordCollectionUseCase,
 ) {
-    suspend operator fun invoke(slotIndex: Int, gridX: Int, gridY: Int, now: Long): ActionResult =
+    /** @param flipped which way a building faces (see [GridObject.canFlip]); ignored for anything else. */
+    suspend operator fun invoke(slotIndex: Int, gridX: Int, gridY: Int, now: Long, flipped: Boolean = false): ActionResult =
         gardenRepository.runInTransaction {
             val slot = gardenRepository.getInventory().firstOrNull { it.slotIndex == slotIndex }
             val item = slot?.takeUnless { it.isEmpty }?.let { GardenItem.fromItemId(it.itemId) }
@@ -243,6 +247,7 @@ class PlaceItemUseCase @Inject constructor(
                     instanceId = UUID.randomUUID().toString(),
                     gridX = gridX,
                     gridY = gridY,
+                    isFlipped = flipped && GridObject.canFaceEitherWay(item.objectId),
                     objectId = item.objectId,
                     growthProgress = if (compost != null) GridObject.COMPOST_GROWTH_BONUS else 0f,
                     lastUpdatedTimestamp = now,
@@ -533,4 +538,20 @@ class SkipTimeUseCase @Inject constructor(
                 ?.let { gardenRepository.saveProgress(it.copy(seasonStartedAt = it.seasonStartedAt - millis)) }
             ActionResult.SUCCESS
         }
+}
+
+/**
+ * Turns a building round to face the other way (see [GridObject.canFlip]). It stays on the same
+ * cells; only the way it is drawn changes, and that is kept with it.
+ */
+class FlipObjectUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+) {
+    suspend operator fun invoke(instanceId: String): ActionResult = gardenRepository.runInTransaction {
+        val target = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+            ?: return@runInTransaction ActionResult.NOT_FOUND
+        if (!target.canFlip) return@runInTransaction ActionResult.NOT_FLIPPABLE
+        gardenRepository.upsertGridObject(target.copy(isFlipped = !target.isFlipped))
+        ActionResult.SUCCESS
+    }
 }
