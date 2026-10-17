@@ -18,6 +18,8 @@ data class GridObject(
     /** Epoch millis at which that job began and at which it will be finished; 0 without a job. */
     val workStartedAt: Long = 0L,
     val workEndsAt: Long = 0L,
+    /** How many times this plant has been harvested; only a repeatable crop is ever above 0. */
+    val harvestCount: Int = 0,
 ) {
     /** Whether this is a work site: being built (or built and not yet unveiled), taken apart or packed up. */
     val isWorking: Boolean get() = workKind != WorkKind.NONE

@@ -167,7 +167,8 @@ class PostTest {
     @Test
     fun `the move to schema 12 adds the topic, as Room expects it`() {
         val database = source("data/local/AppDatabase.kt")
-        assertTrue(database.contains("version = 12"))
+        // The version itself has moved on since (see HarvestTypeTest); the step to 12 stays.
+        assertTrue(database.contains("MIGRATION_11_12"))
         assertTrue(database.contains("ALTER TABLE letters ADD COLUMN topic TEXT NOT NULL DEFAULT ''"))
         assertTrue(source("di/DatabaseModule.kt").contains("MIGRATION_11_12"))
         val schemas = listOf(File("schemas"), File("app/schemas")).first { it.isDirectory }

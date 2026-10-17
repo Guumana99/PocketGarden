@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.HarvestType
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.nextAcquisition
@@ -313,6 +314,14 @@ class HoeUseCase @Inject constructor(
  * Sells a fully grown plant: removes it, notes it in the encyclopedia and credits its coins and
  * XP to the (re-signed) profile.
  */
+/**
+ * Harvests a fully grown plant. What becomes of it depends on its [HarvestType]: a
+ * single-harvest crop is taken up and its tilled soil is free again; a repeatable one stays
+ * where it is, back at the start of its second stage, to ripen again. Either way the harvest
+ * pays [PlantSpecies.harvestReward] and records the plant in the encyclopedia.
+ *
+ * A withered plant cannot be harvested: it is cleared away ([RemoveObjectUseCase]) or revived.
+ */
 class HarvestPlantUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
@@ -330,14 +339,33 @@ class HarvestPlantUseCase @Inject constructor(
             if (current.growthProgress < 1f) return@runInTransaction ActionResult.NOT_READY
             val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
 
-            gardenRepository.deleteGridObject(instanceId)
             val species = PlantSpecies.forObjectId(current.objectId)
+            val reward = species.harvestReward(current.harvestCount)
+            afterHarvest(current, species, now)?.let { gardenRepository.upsertGridObject(it) }
+                ?: gardenRepository.deleteGridObject(instanceId)
             recordCollection(current.objectId, CollectionTrigger.HARVEST, now)
-            gardenRepository.saveUserProfile(
-                profile.copy(coins = profile.coins + species.harvestCoins).gainXp(species.harvestXp)
-            )
+            gardenRepository.saveUserProfile(profile.copy(coins = profile.coins + reward.coins).gainXp(reward.xp))
             ActionResult.SUCCESS
         }
+
+    companion object {
+        /**
+         * What is left of [plant] (fully grown, brought up to [now]) once it has been harvested:
+         * null for a [HarvestType.SINGLE_HARVEST] crop, which goes; for a repeatable one, the same
+         * plant back at [PlantSpecies.regrowFrom], one harvest more, its care levels and the
+         * stress on its record unchanged.
+         */
+        fun afterHarvest(plant: GridObject, species: PlantSpecies, now: Long): GridObject? =
+            if (!species.isRepeatable) {
+                null
+            } else {
+                plant.copy(
+                    growthProgress = species.regrowFrom,
+                    harvestCount = plant.harvestCount + 1,
+                    lastUpdatedTimestamp = now,
+                )
+            }
+    }
 }
 
 /**

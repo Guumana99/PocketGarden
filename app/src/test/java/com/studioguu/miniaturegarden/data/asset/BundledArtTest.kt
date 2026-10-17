@@ -183,13 +183,31 @@ class BundledArtTest {
     fun `every crop page can show its plant in full bloom from the atlas`() {
         // The crops that came with the seasons are drawn in code for now (ui/render/SeasonalArt.kt).
         val drawnInCode = setOf(
-            PlantSpecies.COSMOS, PlantSpecies.SNOWDROP, PlantSpecies.MINT, PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY,
+            PlantSpecies.COSMOS, PlantSpecies.SNOWDROP, PlantSpecies.MINT,
             PlantSpecies.WATERMELON, PlantSpecies.LAVENDER, PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
         )
         for (species in PlantSpecies.entries - drawnInCode) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })
         }
+    }
+
+    @Test
+    fun `the four crops with artwork have a sprite for every stage and for withered, standing on their soil`() {
+        for (species in listOf(PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY, PlantSpecies.PAPRIKA, PlantSpecies.DAIKON)) {
+            assertEquals(species.name, 3, species.growthStages)
+            val ids = (1..species.growthStages).map { "${species.objectId}_stage$it" } + "${species.objectId}_withered"
+            for (id in ids) {
+                val sprite = manifest.assets.firstOrNull { it.assetId == id }
+                assertNotNull("no sprite for $id", sprite)
+                // The ground point is on the soil mound, a little above the sprite's foot, near its middle.
+                assertTrue(id, sprite!!.anchorY in 0.75f..0.92f)
+                assertTrue(id, sprite.anchorX in 0.4f..0.65f)
+            }
+        }
+        // Their pictures went into the atlas; the files the art came in are not left in the app.
+        val drawable = File(main, "res/drawable")
+        assertTrue(drawable.listFiles()!!.none { it.name.startsWith("crop_") || it.name.startsWith("rop_") })
     }
 
     @Test

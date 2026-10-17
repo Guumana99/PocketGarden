@@ -56,6 +56,7 @@ fun GridObjectEntity.toDomain() = GridObject(
     workKind = WorkKind.fromName(workKind),
     workStartedAt = workStartedAt,
     workEndsAt = workEndsAt,
+    harvestCount = harvestCount,
 )
 
 fun GridObject.toEntity() = GridObjectEntity(
@@ -74,6 +75,7 @@ fun GridObject.toEntity() = GridObjectEntity(
     workKind = workKind.name,
     workStartedAt = workStartedAt,
     workEndsAt = workEndsAt,
+    harvestCount = harvestCount,
 )
 
 fun InventorySlotEntity.toDomain() = InventorySlot(

@@ -29,7 +29,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         NatureNoteEntity::class,
         LetterEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -150,6 +150,13 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE letters ADD COLUMN topic TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** v13: plants count their harvests, for the crops that bear again. Nothing has been harvested yet. */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN harvestCount INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

@@ -223,7 +223,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v12**（v11→v12 は `letters.topic`、既存の手紙は空文字）。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v13**（v12→v13 は `grid_objects.harvestCount`、既存の作物は 0＝まだ収穫していない）。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|
@@ -238,6 +238,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 | 10 | `letters`（ポストのお便り。作成 SQL は `AppDatabase.CREATE_LETTERS`、テストで `schemas/10.json` と照合）、`garden_progress.seasonStartedAt`（季節の始まり。既存は 0＝次の同期で時計を始める） |
 | 11 | `nature_notes.opened`（既存の行は既読＝1） |
 | 12 | `letters.topic`（#34、`MIGRATION_11_12`。ヒントの種類・入荷のレベル。既存の手紙は空文字） |
+| 13 | `grid_objects.harvestCount`（#39、`MIGRATION_12_13`。連続収穫の作物が何回収穫されたか。既存は 0） |
 
 - マイグレーションは `AppDatabase.MIGRATION_x_y`、登録は `di/DatabaseModule.kt`。
 - DB は SQLCipher。鍵は Android Keystore で包む。プロフィールは HMAC 署名付き（`SecurityManager`）。
@@ -379,13 +380,34 @@ FINISHED ──タップ──▶ REVEAL_RAIN ──タップ──▶ REVEAL_CO
 | ラベンダー（#31 で追加） | 通年 | Lv.3 | 40 |
 | カボチャ（#31 で追加） | 秋 | Lv.5 | 70 |
 | ポインセチア（#31 で追加） | 冬 | Lv.5 | 70 |
+| 大根（#39 で追加） | 秋・冬 | Lv.2 | 30 |
+| パプリカ（#39 で追加） | 夏 | Lv.4 | 55 |
 
 どの季節にも、最初から植えられる旬の作物がある（夏はトマト。#31 まではミントだけだった）。
 収益の規則（`ProgressionTest`）：解放レベルが高い作物ほど、1 時間あたりのコイン（収穫−種の値段）と XP が、それより低いレベルのすべての作物を上回る。
 Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（Lv.4）のあいだ、Lv.5 はバラより上に収めてある。
 また、育つのに時間がかかる作物ほど収穫のコインと XP が多い（`GardenActionUseCasesTest`）。乾く時間（`dryOutHours`）は 16 時間以上にする（半日で水切れになると、12 時間の成長を見るテストが落ちる）。
 もちもののタブでは、ラベンダーはミントと同じ「ハーブ・観葉」（`InventoryGroup.GREENERY`）、ほかは「作物」。
-アトラスの絵があるのはチューリップ・ひまわり・バラだけ。ほかの 9 種は絵が無いので、コードで描いている（`ui/render/SeasonalArt.kt` の `drawCosmos` `drawTomato` ほか、`GardenCanvas.drawPlant` で振り分け）。
+アトラスの絵があるのはチューリップ・ひまわり・バラ（4 段階＋枯れ）と、トマト・イチゴ・パプリカ・大根（#39、**3 段階**＋枯れ、`growthStages = 3`）。
+ほかの 7 種は絵が無いので、コードで描いている（`ui/render/SeasonalArt.kt` の `drawCosmos` ほか、`GardenCanvas.drawPlant` で振り分け）。
+アトラスに絵があればそちらが優先されるので、トマト・イチゴの `drawTomato` `drawStrawberry` は今は使われない（絵が欠けたときの代わりとして残してある）。
+
+#### 収穫のしかた（#39、`HarvestType`）
+
+| 種類 | 作物 | 収穫すると |
+|---|---|---|
+| `SINGLE_HARVEST`（単発） | 大根・チューリップ・ひまわり・バラほか、下の 3 種以外すべて | 作物は消え、下の耕した土が空く（従来どおり） |
+| `REPEATABLE_HARVEST`（連続） | トマト・イチゴ・パプリカ | 株は残り、成長が **2 段階目の始まり**（`PlantSpecies.regrowFrom`。3 段階なら 50%）に戻る。時間と世話でまた 3 段階目（満開）へ |
+
+- 処理は `HarvestPlantUseCase`（残すかどうかは `HarvestPlantUseCase.afterHarvest`）。残る株は水分・栄養・これまでのストレスをそのまま持ち越し、`harvestCount` が 1 増える。
+- **2 回目からの収穫は少なめ**（`PlantSpecies.harvestReward(harvestCount)`）：1 回目は `harvestCoins`/`harvestXp`、2 回目からは `regrowCoins`/`regrowXp`。
+  もう一度実るまでの時間（`regrowHours`）は育つ時間の半分。2 回目からの 1 時間あたりの稼ぎが 1 回目（種代込み）を超えないように決めてある
+  （トマト 17 コイン＋26 XP／24 時間、イチゴ 14＋22／21 時間、パプリカ 42＋59／50 時間）。種を買い直さず植え直さなくてよいことだけが得で、
+  上のレベルの作物を追い越さない（`ProgressionTest`）。
+- 収穫ボタンの金額と、浮かぶ「+コイン」も同じ値を見る。作物の詳細には「🔁 収穫しても株は残り、また実ります」の一文。
+- 満開でなくなるので、収穫した株に「満開のまま 72 時間で枯れる」時計は動かない。放っておけば水切れなどでほかの作物と同じように枯れる。
+- **枯れた作物**：絵は `<objectId>_withered`（`TileSetDefinition.assetIdFor`）。収穫・水やり・肥料はできず（`WITHERED`）、勝手には消えない。
+  **空き地に戻すのは撤去だけ**（`RemoveObjectUseCase`。下の耕した土はたい肥入りになる）。30 コインの復活（`revive`）は従来どおり残してある（株がよみがえるだけで、空き地にはならない）。
 ショップ・もちもの・図鑑のアイコンは絵文字（`UiLabels.itemEmoji`）。
 
 #### ガラスの温室（`floor_greenhouse`）

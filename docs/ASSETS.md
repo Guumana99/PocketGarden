@@ -10,7 +10,7 @@
 
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
-| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 18 枚を 1 枚に詰めたもの（2043×1686、1 タイル 512px） | `tools/asset_packer.py` |
+| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 34 枚を 1 枚に詰めたもの（1960×3956、約 9.1MB、1 タイル 512px） | `tools/asset_packer.py` |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
 | `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
@@ -18,6 +18,11 @@
 ### スプライトの内訳
 
 - 作物 3 種 × 5 枚：`plant_{tulip,sunflower,rose}_stage{1..4}.png` と `_withered.png`
+- 作物 4 種 × 4 枚（#39）：`plant_{tomato,strawberry,paprika,daikon}_stage{1..3}.png` と `_withered.png`（3 段階）
+  - 受け取ったときは `res/drawable/crop_*.png` に置かれていた。アトラスに詰めるため `tools/raw_assets/` へ移し、`plant_<作物>_…` に改名した。
+    大根は受け取ったファイル名が `crop_radish_*`（`radish`）だったので `plant_daikon_*` に、枯れの 1 枚は `rop_radish_withered.png`（先頭の c が欠けていた）だったので直した。
+  - どれも 1536×768、背景透明。トマトの絵には切り抜きの名残の白い筋（根のような線）が土の下に残っている。消してはいない。
+  - 大根の 3 段階目は葉が横に大きく広がっていて（切り抜き後 1496px＝約 2 マス分）、となりのマスに重なって見える。
 - フェンス 3 枚：`struct_fence.png`（単体の柵）、`struct_fence_post.png`（支柱）、`struct_fence_rail.png`（現在は未使用）
 
 原画は `tools/raw_assets/`。ファイル名（拡張子なし）がそのまま assetId になる。
@@ -58,6 +63,9 @@ python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-w
 - `tools/atlas_overrides.json`：スプライトごとの**接地点**（アンカー）。既定は下端中央。
   作物は土の盛り上がりが絵に含まれるので、アンカーを 0.77〜0.93 あたりに上げてある。
   新しい絵を入れたら、まずここを調整する。浮いて見える原因はたいていアンカー。
+- 作物のアンカーの目安は `python tools/estimate_crop_anchors.py tools/raw_assets tools/atlas_overrides.json <assetId>...` で出せる（#39）。
+  土の山の底辺を、横幅が縦の 2 倍の楕円とみなし、いちばん手前（いちばん下の不透明な点）から横幅の 1/4 上を接地点にする。白っぽい点（切り抜きの名残）は数えない。
+  手で合わせた既存の 15 枚とは ±0.03 前後で一致した。#39 の 16 枚はこの値をそのまま使っている（エミュレータでの見た目は未確認）。
 
 ### 新しいスプライトを入れるとき
 

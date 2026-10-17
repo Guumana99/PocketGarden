@@ -45,6 +45,8 @@ enum class CollectionEntry(
     LAVENDER(PlantSpecies.LAVENDER.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 50),
     PUMPKIN(PlantSpecies.PUMPKIN.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 90),
     POINSETTIA(PlantSpecies.POINSETTIA.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 90),
+    PAPRIKA(PlantSpecies.PAPRIKA.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 70),
+    DAIKON(PlantSpecies.DAIKON.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 40),
     GRASS("ground_grass", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     PEBBLE("ground_pebble", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     RIVER(GridObject.RIVER_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),

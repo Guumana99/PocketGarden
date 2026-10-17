@@ -716,12 +716,13 @@ class GardenViewModel @Inject constructor(
     }
 
     fun harvestSelected() = withSelectedObject { obj ->
-        val species = PlantSpecies.forObjectId(obj.objectId)
+        // A crop that bears again pays less from its second harvest on.
+        val reward = PlantSpecies.forObjectId(obj.objectId).harvestReward(obj.harvestCount)
         act(
             onSuccess = {
                 clearSelection()
                 audio.play(SoundEffect.HARVEST)
-                showEffect { GardenEffect.Harvest(it, species.harvestCoins, species.harvestXp) }
+                showEffect { GardenEffect.Harvest(it, reward.coins, reward.xp) }
             }
         ) { now, weather -> harvestPlant(obj.instanceId, now, weather) }
     }
