@@ -152,8 +152,7 @@ fun ObjectStatusDialog(
                         Text(stringResource(R.string.action_water))
                     }
                     Button(onClick = onHarvest, enabled = alive && gridObject.growthProgress >= 1f) {
-                        val reward = PlantSpecies.forObjectId(gridObject.objectId).harvestReward(gridObject.harvestCount)
-                        Text(stringResource(R.string.action_harvest, reward.coins))
+                        Text(stringResource(R.string.action_harvest))
                     }
                 }
                 if (MoveObjectUseCase.canMove(gridObject) && !gridObject.isWorking) {

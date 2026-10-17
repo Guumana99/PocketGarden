@@ -166,16 +166,11 @@ fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) ->
     }
     // Said only when the device stands in the way, never as a reproach.
     if (deviceBlocks) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                stringResource(R.string.settings_notifications_denied),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            TextButton(onClick = { context.openNotificationSettings() }) {
-                Text(stringResource(R.string.settings_notifications_open_device))
-            }
-        }
+        Text(
+            stringResource(R.string.settings_notifications_denied),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
