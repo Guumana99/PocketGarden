@@ -50,6 +50,8 @@ import kotlinx.coroutines.delay
  *
  * @param editing edit mode is on: a piece of the garden's layout can be moved and taken off
  *   here only then ([GardenLayout]); otherwise the panel says where that is done.
+ * @param guiding the first steps are under way: the panel shows the plant and its watering
+ *   only, without harvesting, clearing away or the notes underneath.
  */
 @Composable
 fun ObjectStatusDialog(
@@ -67,6 +69,7 @@ fun ObjectStatusDialog(
     playerLevel: Int = 1,
     onExpand: () -> Unit = {},
     editing: Boolean = false,
+    guiding: Boolean = false,
 ) {
     Surface(
         modifier = modifier,
@@ -114,7 +117,7 @@ fun ObjectStatusDialog(
                 gridObject.isPlant && PlantSpecies.forObjectId(gridObject.objectId).isRepeatable -> R.string.hint_repeatable
                 else -> null
             }
-            if (hint != null) {
+            if (hint != null && !guiding) {
                 Text(
                     text = stringResource(hint),
                     style = MaterialTheme.typography.bodySmall,
@@ -175,8 +178,10 @@ fun ObjectStatusDialog(
                     FilledTonalButton(onClick = onWater, enabled = alive) {
                         Text(stringResource(R.string.action_water))
                     }
-                    Button(onClick = onHarvest, enabled = alive && gridObject.growthProgress >= 1f) {
-                        Text(stringResource(R.string.action_harvest))
+                    if (!guiding) {
+                        Button(onClick = onHarvest, enabled = alive && gridObject.growthProgress >= 1f) {
+                            Text(stringResource(R.string.action_harvest))
+                        }
                     }
                 }
                 if (GardenLayout.check(LayoutAction.MOVE, gridObject, editing) == LayoutCheck.OK && !gridObject.isWorking) {
@@ -188,7 +193,7 @@ fun ObjectStatusDialog(
                 }
                 Spacer(Modifier.weight(1f))
                 // Crops and soil can be cleared any time; the layout only in edit mode.
-                if (GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
+                if (!guiding && GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
                     OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
                 }
             }

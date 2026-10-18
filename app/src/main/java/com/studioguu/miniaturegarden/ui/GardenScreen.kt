@@ -321,8 +321,14 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
-                // Edit mode: the grid, and arranging the garden's layout. Lit while it is on.
-                SideButton("✏️", stringResource(R.string.edit_mode_button), selected = editMode, onClick = viewModel::toggleEditMode)
+                // Edit mode: the grid, and arranging the garden's layout. Lit while it is on. Put
+                // away during the first steps, and handed over first after them.
+                RevealedFeature(
+                    visible = tutorialStep?.reveals(GardenFeature.EDIT_MODE),
+                    introducing = tutorialStep?.introducing == GardenFeature.EDIT_MODE,
+                ) {
+                    SideButton("✏️", stringResource(R.string.edit_mode_button), selected = editMode, onClick = viewModel::toggleEditMode)
+                }
                 RevealedFeature(
                     visible = tutorialStep?.reveals(GardenFeature.COLLECTION),
                     introducing = tutorialStep?.introducing == GardenFeature.COLLECTION,
@@ -409,6 +415,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     onFertilize = viewModel::fertilizeSelected,
                     onOpenInventory = { showInventory = true },
                     onOpenShop = { showShop = true },
+                    // During the first steps only the tool the step asks for can be tapped.
+                    allows = { tool -> tutorialStep?.allows(tool) ?: true },
                 )
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(bottom = barHeight + 8.dp),
@@ -466,6 +474,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 playerLevel = profile?.playerLevel ?: 1,
                                 onExpand = viewModel::expand,
                                 editing = editMode,
+                                // During the first steps the panel keeps to what the step is about.
+                                guiding = tutorialStep?.isGuiding == true,
                             )
                         }
                     }

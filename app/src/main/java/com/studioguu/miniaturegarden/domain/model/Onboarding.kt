@@ -22,8 +22,12 @@ enum class Season {
  *
  * The guided steps ([OPEN_CRATE] to [WATER_SEEDLING]) are followed by a closing board
  * ([FINISHED]) and then by the garden's other features being handed over one at a time
- * ([REVEAL_RAIN], [REVEAL_COLLECTION], [REVEAL_CAMERA], [REVEAL_POST]), each at the player's own tap.
- * Stored by name, so new steps can be put anywhere in the order.
+ * ([REVEAL_EDIT], [REVEAL_RAIN], [REVEAL_COLLECTION], [REVEAL_CAMERA], [REVEAL_POST]), each at
+ * the player's own tap. Stored by name, so new steps can be put anywhere in the order.
+ *
+ * During the guided steps only the tool the step needs can be picked up ([allows]): nothing
+ * while the crate waits, the hoe to till, the bag to sow, the watering can to water. So the
+ * player does one thing at a time, and tills one cell, not a field.
  */
 enum class TutorialStep {
     /** The starter crate stands in the middle of the garden, waiting to be opened. */
@@ -40,6 +44,9 @@ enum class TutorialStep {
 
     /** The first steps are over: the closing board is showing. */
     FINISHED,
+
+    /** Edit mode (and the grid) has just been handed over and is being introduced (#46). */
+    REVEAL_EDIT,
 
     /** The blessed rain has just been handed over and is being introduced. */
     REVEAL_RAIN,
@@ -62,6 +69,18 @@ enum class TutorialStep {
     /** Whether [feature] is in the player's hands at this step. */
     fun reveals(feature: GardenFeature): Boolean = this >= feature.revealedAt
 
+    /**
+     * Whether [tool] can be picked up at this step. During the guided steps only the one the
+     * step asks for; from the closing board on, all of them.
+     */
+    fun allows(tool: TutorialTool): Boolean = when (this) {
+        OPEN_CRATE -> false
+        TILL_SOIL -> tool == TutorialTool.HOE
+        PLANT_SEED -> tool == TutorialTool.BAG
+        WATER_SEEDLING -> tool == TutorialTool.WATER
+        else -> true
+    }
+
     /** The feature being introduced at this step, if any. */
     val introducing: GardenFeature? get() = GardenFeature.entries.firstOrNull { it.revealedAt == this }
 
@@ -76,11 +95,16 @@ enum class TutorialStep {
  * one thing at a time, and handed over one by one once they are done.
  */
 enum class GardenFeature(val revealedAt: TutorialStep) {
+    /** Edit mode, where the garden is laid out (and the grid shows). Handed over first (#46). */
+    EDIT_MODE(TutorialStep.REVEAL_EDIT),
     BLESSED_RAIN(TutorialStep.REVEAL_RAIN),
     COLLECTION(TutorialStep.REVEAL_COLLECTION),
     CAMERA(TutorialStep.REVEAL_CAMERA),
     POST(TutorialStep.REVEAL_POST),
 }
+
+/** The tools along the bottom of the garden, which the guided steps hand out one at a time. */
+enum class TutorialTool { HOE, WATER, FERTILIZE, BAG, SHOP }
 
 /** Where the garden as a whole stands: its season and the player's first steps. */
 data class GardenProgress(
@@ -122,9 +146,9 @@ object StarterGarden {
 object TutorialGuide {
 
     /**
-     * The crate while it waits to be opened; then the bare lawn cell nearest the middle, to be
-     * tilled; then the free tilled cell nearest the middle; then the young plant. Nothing at all
-     * once the guided steps are over.
+     * The crate while it waits to be opened; nothing while tilling (any cell of lawn will do, the
+     * player chooses); then the free tilled cell nearest the middle; then the young plant.
+     * Nothing at all once the guided steps are over.
      */
     fun hintCells(step: TutorialStep, objects: List<GridObject>, gardenMap: GardenMap = GardenMap.DEFAULT): Set<GridCell> {
         val grid = GardenGrid(gardenMap, objects)
@@ -132,10 +156,7 @@ object TutorialGuide {
             cells.minWithOrNull(compareBy({ distanceToMiddle(it, gardenMap.size) }, { it.y }, { it.x }))?.let { setOf(it) } ?: emptySet()
         return when (step) {
             TutorialStep.OPEN_CRATE -> objects.filter { it.isStarterCrate }.map { GridCell(it.gridX, it.gridY) }.toSet()
-            TutorialStep.TILL_SOIL -> nearestMiddle(
-                (0 until gardenMap.size).flatMap { y -> (0 until gardenMap.size).map { x -> GridCell(x, y) } }
-                    .filter { grid.checkPlacement(Footprint.SINGLE, it.x, it.y, PlacementKind.TERRAIN) == PlacementCheck.OK },
-            )
+            TutorialStep.TILL_SOIL -> emptySet()
             TutorialStep.PLANT_SEED -> nearestMiddle(
                 objects.filter { it.isTilledSoil && grid.occupantAt(it.gridX, it.gridY) == null }.map { GridCell(it.gridX, it.gridY) },
             )

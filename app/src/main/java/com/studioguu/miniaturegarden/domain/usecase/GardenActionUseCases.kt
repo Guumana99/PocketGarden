@@ -7,6 +7,8 @@ import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.TutorialTool
+import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.HarvestType
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
@@ -70,6 +72,9 @@ enum class ActionResult {
 
     /** The garden is as large as it gets. */
     GARDEN_AT_MAX_SIZE,
+
+    /** The first steps ask for something else just now (one cell is tilled, then the seed is sown). */
+    NOT_THIS_STEP,
 }
 
 /**
@@ -274,6 +279,10 @@ class PlaceItemUseCase @Inject constructor(
  * The hoe: turns a cell of open ground into tilled soil, which is where seeds can be planted.
  * It is a tool, not an item, so it costs nothing and is never used up. The cell must be empty
  * ground: no river, no paving, nothing standing on it, and not tilled already.
+ *
+ * During the first steps it tills one cell, wherever the player likes, and that moves them on
+ * to sowing at once; until the guided steps are over it tills nothing more
+ * ([TutorialStep.allows]).
  */
 class HoeUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -281,6 +290,8 @@ class HoeUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(gridX: Int, gridY: Int, now: Long): ActionResult =
         gardenRepository.runInTransaction {
+            val progress = gardenRepository.getProgress()
+            if (progress != null && !progress.tutorialStep.allows(TutorialTool.HOE)) return@runInTransaction ActionResult.NOT_THIS_STEP
             val grid = GardenGrid(gardenMap.current(), gardenRepository.getGridObjects())
             // Checked like terrain, which needs the whole cell to itself.
             when (grid.checkPlacement(Footprint.SINGLE, gridX, gridY, PlacementKind.TERRAIN)) {
@@ -290,6 +301,10 @@ class HoeUseCase @Inject constructor(
                 PlacementCheck.OK -> Unit
             }
             gardenRepository.upsertGridObject(tilledSoil(gridX, gridY, now))
+            // The first steps ask for one cell: with it tilled, on to sowing.
+            if (progress?.tutorialStep == TutorialStep.TILL_SOIL) {
+                gardenRepository.saveProgress(progress.copy(tutorialStep = TutorialStep.PLANT_SEED))
+            }
             ActionResult.SUCCESS
         }
 
