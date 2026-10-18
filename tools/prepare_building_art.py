@@ -318,6 +318,66 @@ def prepare_tile(name: str, halo: bool, flatten: bool = False) -> tuple[np.ndarr
     return rgba, {"anchorX": round(float(cx / w), 4), "anchorY": round(float(cy / h), 4), "isFlippedAllowed": False}
 
 
+def flat_to_tile(
+    name: str, side_depth: int, flatten: bool = False, share: float = 1.0, soften: float = 0.0,
+) -> tuple[np.ndarray, dict]:
+    """
+    Turns a flat, seen-from-above texture (#53: tile_lawn_flat.png, tile_soil_flat.png, opaque
+    rectangles with no diamond of their own) into a ground tile like the others: the middle square
+    of the texture laid onto the game's 2:1 diamond, one tile (720 px) wide, standing on a slab
+    [side_depth] px deep whose two side faces carry on the colours of the face's front edges,
+    darkened. Drawn at twice the size and scaled down, so that the edges are smooth.
+
+    [share] is how much of the texture's shorter side one tile shows: less makes its detail
+    larger. [soften] blurs the texture by that many of its pixels first. A tile is drawn about
+    seven times smaller on a phone, and fine, sharp detail (single blades of grass) then glitters
+    as grain; larger, softer detail reads as a lawn.
+    """
+    source = Image.open(SOURCE / name).convert("RGB")
+    if soften > 0:
+        from PIL import ImageFilter
+        source = source.filter(ImageFilter.GaussianBlur(soften))
+    side = int(min(source.size) * share)
+    left = (source.width - side) // 2
+    top = (source.height - side) // 2
+    texture = source.crop((left, top, left + side, top + side))
+    k = 2
+    w, h, depth = TILE * k, TILE // 2 * k, side_depth * k
+    # Output pixel (x, y) on the face <- texture pixel (tx, ty): the texture's corners go to the
+    # diamond's top, right, bottom and left corners in turn.
+    s = float(side)
+    face = texture.transform(
+        (w, h), Image.AFFINE, (s / w, s / h, -s / 2, -s / w, s / h, s / 2), resample=Image.BICUBIC,
+    )
+    face = np.array(face).astype(float)
+    yy, xx = np.mgrid[0:h + depth, 0:w]
+    u = (xx + 0.5 - w / 2) / (w / 2)
+    v = (yy + 0.5 - h / 2) / (h / 2)
+    on_face = (np.abs(u) + np.abs(v)) <= 1.0
+    out = np.zeros((h + depth, w, 4), dtype=float)
+    out[:h][on_face[:h]] = np.concatenate([face, np.full((h, w, 1), 255.0)], axis=2)[on_face[:h]]
+    # The slab: below each point of the two front edges, that edge's colour, darker the further
+    # down and darker on the left face (away from the light) than on the right.
+    edge = np.where(xx[0] < w / 2, h / 2 + xx[0] * h / w, h - (xx[0] - w / 2) * h / w)
+    for x in range(w):
+        ey = edge[x]
+        sample = face[min(h - 1, max(0, int(ey) - 2)), x]
+        shade = 0.55 if x < w / 2 else 0.72
+        for y in range(int(np.ceil(ey)), min(h + depth, int(ey + depth) + 1)):
+            if on_face[y, x] if y < h else False:
+                continue
+            t = (y - ey) / depth
+            out[y, x, :3] = sample * shade * (1.0 - 0.25 * t)
+            out[y, x, 3] = 255.0
+    rgba = np.array(Image.fromarray(out.astype(np.uint8), "RGBA").resize((w // k, (h + depth) // k), Image.LANCZOS))
+    if flatten:
+        rgba = flatten_light(rgba)
+    # The face is an exact diamond here, so its middle is known rather than looked for
+    # (top_face_of reads the corners from a band of pixels, which suits the ragged photos).
+    rh, rw = rgba.shape[:2]
+    return rgba, {"anchorX": round(TILE / 2 / rw, 4), "anchorY": round(TILE / 4 / rh, 4), "isFlippedAllowed": False}
+
+
 def prepare_building(rgba: np.ndarray, tiles: int, centred: bool = False) -> tuple[np.ndarray, dict]:
     """
     Fits a building to its footprint. By default it stands where [ground_centre_y] puts it. With
@@ -392,7 +452,9 @@ def hub_of(blades: np.ndarray) -> tuple[float, float]:
 
 def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     out: dict[str, tuple[np.ndarray, dict]] = {}
-    grass, grass_override = prepare_tile("tile_grass_default.png", halo=True, flatten=True)
+    # Since #53 the lawn and the tilled soil come from flat textures; the #40 photos
+    # (tile_grass_default.png, tile_dirt_plowed.png) are kept in source_art but no longer used.
+    grass, grass_override = flat_to_tile("tile_lawn_flat.png", side_depth=55, flatten=True, share=0.5, soften=1.2)
     # Its top face is a symmetric diamond, so the game mirrors cells at random to break the repeat.
     grass_override["isFlippedAllowed"] = True
     out["tile_grass"] = (grass, grass_override)
@@ -400,7 +462,7 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     dark = grass.copy()
     dark[:, :, :3] = (dark[:, :, :3].astype(float) * 0.9).astype(np.uint8)
     out["tile_grass_dark"] = (dark, dict(grass_override))
-    out["floor_tilled"] = prepare_tile("tile_dirt_plowed.png", halo=True)
+    out["floor_tilled"] = flat_to_tile("tile_soil_flat.png", side_depth=33)
     out["struct_cottage"] = prepare_building(load("building_cottage.png"), tiles=3, centred=True)
     out["floor_greenhouse"] = prepare_building(load("building_greenhouse.png"), tiles=1)
     out.update(prepare_windmill())

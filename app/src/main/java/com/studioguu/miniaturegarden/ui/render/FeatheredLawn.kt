@@ -37,6 +37,9 @@ class FeatheredLawn(val image: ImageBitmap, val sprite: AssetManifest, val base:
             val feathered = LawnShade.feather(pixels, width, centerX, centerY, halfWidth, halfHeight)
             val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             out.setPixels(feathered, 0, width, 0, 0, width, height)
+            // Drawn many times smaller than it is (a 512 px cell at about 70 px on a phone): with
+            // mipmaps the blades blend into a soft lawn instead of glittering as grain (#53).
+            out.setHasMipMap(true)
             val base = Color(LawnShade.meanColour(pixels, width, centerX, centerY, halfWidth, halfHeight))
             return FeatheredLawn(out.asImageBitmap(), sprite.copy(atlasX = 0, atlasY = 0), base, atlas.manifest.tileWidth)
         }
