@@ -219,6 +219,12 @@ fun combinationLabel(rule: VisitRule): Int = when (rule) {
     VisitRule.FROG_SUMMER -> R.string.combo_frog_summer
     VisitRule.SQUIRREL_AUTUMN -> R.string.combo_squirrel_autumn
     VisitRule.DRAGONFLY_AUTUMN -> R.string.combo_dragonfly_autumn
+    VisitRule.BUTTERFLY_LAVENDER -> R.string.combo_butterfly_lavender
+    VisitRule.LADYBUG_STRAWBERRY -> R.string.combo_ladybug_strawberry
+    VisitRule.BIRD_HUT -> R.string.combo_bird_hut
+    VisitRule.BIRD_WINTER_WELL -> R.string.combo_bird_winter_well
+    VisitRule.SQUIRREL_PUMPKIN -> R.string.combo_squirrel_pumpkin
+    VisitRule.FROG_WELL -> R.string.combo_frog_well
 }
 
 /** A quiet hint for a combination not found yet: what the creature seems to like. */
@@ -233,4 +239,10 @@ fun combinationHint(rule: VisitRule): Int = when (rule) {
     VisitRule.FROG_SUMMER -> R.string.hint_frog_summer
     VisitRule.SQUIRREL_AUTUMN -> R.string.hint_squirrel_autumn
     VisitRule.DRAGONFLY_AUTUMN -> R.string.hint_dragonfly_autumn
+    VisitRule.BUTTERFLY_LAVENDER -> R.string.hint_butterfly_lavender
+    VisitRule.LADYBUG_STRAWBERRY -> R.string.hint_ladybug_strawberry
+    VisitRule.BIRD_HUT -> R.string.hint_bird_hut
+    VisitRule.BIRD_WINTER_WELL -> R.string.hint_bird_winter_well
+    VisitRule.SQUIRREL_PUMPKIN -> R.string.hint_squirrel_pumpkin
+    VisitRule.FROG_WELL -> R.string.hint_frog_well
 }

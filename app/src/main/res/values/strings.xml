@@ -433,6 +433,12 @@
     <string name="combo_frog_summer">なつの かわ</string>
     <string name="combo_squirrel_autumn">あきの いわ</string>
     <string name="combo_dragonfly_autumn">あきの かわ</string>
+    <string name="combo_butterfly_lavender">ラベンダーの かおり</string>
+    <string name="combo_ladybug_strawberry">はるの いちご</string>
+    <string name="combo_bird_hut">こやの やね</string>
+    <string name="combo_bird_winter_well">ふゆの いど</string>
+    <string name="combo_squirrel_pumpkin">みのった カボチャ</string>
+    <string name="combo_frog_well">あめの ひの いど</string>
     <string name="hint_butterfly_blooms">はなが いくつも さくころ　ひらひらと やってくるようだ</string>
     <string name="hint_ladybug_tulips">チューリップの はと　くさむらの ちかくを このむようだ</string>
     <string name="hint_bird_bench">ベンチと さくの ある　おちついた にわに くるらしい</string>
@@ -442,6 +448,12 @@
     <string name="hint_frog_summer">なつの あいだ　かわべで ひとやすみ するらしい</string>
     <string name="hint_squirrel_autumn">あきに なると　いわの あたりで みかけるという</string>
     <string name="hint_dragonfly_autumn">あきの はれた ひ　かわの うえを とぶらしい</string>
+    <string name="hint_butterfly_lavender">はなが さく まえでも　あの かおりに さそわれて くるらしい</string>
+    <string name="hint_ladybug_strawberry">はるの いちごの はの うえを　さんぽ しているという</string>
+    <string name="hint_bird_hut">ちいさな こやの やねで　さえずる こえが するらしい</string>
+    <string name="hint_bird_winter_well">ふゆの あいだ　いどの みずを のみに くるようだ</string>
+    <string name="hint_squirrel_pumpkin">おおきな みが ずっしり みのると　そばで みかけるという</string>
+    <string name="hint_frog_well">かわの ない にわでも　あめの ひは いどの そばに いるらしい</string>
 
     <!-- Level-up board -->
     <string name="level_up_title">🎉 レベルが上がりました！</string>
