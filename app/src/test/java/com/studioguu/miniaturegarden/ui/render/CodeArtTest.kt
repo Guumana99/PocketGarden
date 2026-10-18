@@ -26,7 +26,7 @@ class CodeArtTest {
 
     @Test
     fun `every visitor has a sprite id of its own, which nothing else uses`() {
-        val ids = Creature.entries.map { it.assetId }
+        val ids = Creature.entries.map(TileSetDefinition::assetIdFor)
         assertEquals(Creature.entries.map { "creature_${it.id}" }, ids)
         assertEquals(ids.size, ids.toSet().size)
         assertTrue(ids.none { it in TileSetDefinition.objectIds })
@@ -65,7 +65,7 @@ class CodeArtTest {
     @Test
     fun `a crop has all its sprites or none, and one with none is drawn in its own shape`() {
         for (species in PlantSpecies.entries) {
-            val ids = (1..species.growthStages).map { "${species.objectId}_stage$it" } + "${species.objectId}_withered"
+            val ids = TileSetDefinition.spriteIdsFor(species)
             val packed = ids.filter { it in sprites }
             when {
                 packed.size == ids.size -> Unit
@@ -73,5 +73,43 @@ class CodeArtTest {
                 else -> throw AssertionError("${species.name} has only some of its sprites: ${ids - packed.toSet()} are missing")
             }
         }
+    }
+
+    // --- Sprite ids ---
+
+    @Test
+    fun `every sprite in the atlas is one the game looks up`() {
+        // A picture packed under a misspelt id would never be drawn.
+        assertEquals(emptySet<String>(), sprites - TileSetDefinition.expectedSpriteIds.toSet())
+        assertEquals(TileSetDefinition.expectedSpriteIds.size, TileSetDefinition.expectedSpriteIds.toSet().size)
+    }
+
+    @Test
+    fun `every sprite still missing is drawn in code meanwhile`() {
+        val missing = TileSetDefinition.expectedSpriteIds.filter { it !in sprites }
+        val creatureIds = Creature.entries.map(TileSetDefinition::assetIdFor).toSet()
+        for (id in missing) {
+            val species = PlantSpecies.entries.firstOrNull { id in TileSetDefinition.spriteIdsFor(it) }
+            when {
+                species != null -> assertTrue(id, species in CROPS_DRAWN_IN_CODE)
+                // Every visitor has its drawing in drawCreature, an exhaustive `when`.
+                id in creatureIds -> Unit
+                // Everything else in a cell has a placeholder shape (drawPlaceholder, drawStructure).
+                else -> assertTrue(id, id in TileSetDefinition.objectIds || id.startsWith("tile_"))
+            }
+        }
+        // The crop names follow the one rule the garden draws them by.
+        val tomato = TileSetDefinition.spriteIdsFor(PlantSpecies.TOMATO)
+        assertEquals(listOf("plant_tomato_stage1", "plant_tomato_stage2", "plant_tomato_stage3", "plant_tomato_withered"), tomato)
+    }
+
+    @Test
+    fun `the crop drawings live in CropArt, and nothing outside it draws one by name`() {
+        val render = File(main, "java/com/studioguu/miniaturegarden/ui/render")
+        val cropArt = File(render, "CropArt.kt").readText()
+        assertTrue(cropArt.contains("private fun DrawScope.drawPumpkin("))
+        val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
+        assertTrue(canvas.contains("drawCropInCode("))
+        assertFalse(Regex("\\bdraw(Cosmos|Pumpkin|Tomato|Lavender)\\(").containsMatchIn(canvas))
     }
 }

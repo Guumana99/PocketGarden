@@ -16,7 +16,9 @@ import kotlin.math.abs
  * Worked in grid units, independent of zoom: across the screen u = x - y (half tile widths),
  * down it v = x + y (half tile heights). A building is treated as a box over its footprint as
  * tall as [StructureData.heightSteps]; a cell counts as hidden when the middle of the cell lies
- * inside that box's outline and is not part of the footprint itself.
+ * inside that box's outline and is not part of the footprint itself. A windmill also hides what
+ * is under the circle its sails sweep ([WindmillSails.REACH]), which reaches past the side of
+ * its footprint that the hub is on.
  */
 object Occlusion {
 
@@ -34,6 +36,7 @@ object Occlusion {
 
         val u = (cell.x - cell.y).toFloat()
         val v = (cell.x + cell.y + 1).toFloat()
+        if (building.objectId == WindmillSails.MILL_OBJECT_ID && underSails(building, w, h, u, v)) return true
         val uBack = (gx - gy).toFloat()
         val vBack = (gx + gy).toFloat()
         val uLeft = uBack - h
@@ -45,6 +48,20 @@ object Occlusion {
         val top = vBack + abs(u - uBack) - rise
         val bottom = if (u <= uFront) vBack + h + (u - uLeft) else vBack + w + h - (u - uFront)
         return v > top && v < bottom
+    }
+
+    /**
+     * Whether the screen point (u, v) lies inside the circle the windmill's sails sweep. A tile
+     * width is 2 in u and 4 in v (a tile is half as tall as it is wide), so the circle is an
+     * ellipse here.
+     */
+    private fun underSails(mill: GridObject, w: Int, h: Int, u: Float, v: Float): Boolean {
+        val side = if (mill.isFlipped) -1f else 1f
+        val hubU = (mill.gridX - mill.gridY + (w - h) / 2f) + side * WindmillSails.HUB_RIGHT * 2f
+        val hubV = (mill.gridX + mill.gridY + (w + h) / 2f) - WindmillSails.HUB_UP * 4f
+        val du = (u - hubU) / 2f
+        val dv = (v - hubV) / 4f
+        return du * du + dv * dv < WindmillSails.REACH * WindmillSails.REACH
     }
 
     /** The instance ids of the buildings that hide [cell]. */

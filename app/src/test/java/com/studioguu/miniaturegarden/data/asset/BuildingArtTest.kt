@@ -109,6 +109,21 @@ class BuildingArtTest {
     }
 
     @Test
+    fun `where the sails turn, as the garden reckons it for what they hide, matches their pictures`() {
+        val mill = sprite(WindmillSails.MILL_OBJECT_ID)
+        val sails = sprite(WindmillSails.SAILS_ASSET_ID)
+        val tile = manifest.tileWidth.toFloat()
+        assertEquals((mill.attachX!! - mill.anchorX) * mill.drawnWidth(1f) / tile, WindmillSails.HUB_RIGHT, 0.03f)
+        assertEquals((mill.anchorY - mill.attachY!!) * mill.drawnHeight(1f) / tile, WindmillSails.HUB_UP, 0.03f)
+        assertEquals(maxOf(sails.drawnWidth(1f), sails.drawnHeight(1f)) / 2f / tile, WindmillSails.REACH, 0.05f)
+        // The windmill is as tall as the tip of a sail at the top of its turn (8 steps a tile width).
+        val tipSteps = (WindmillSails.HUB_UP + WindmillSails.REACH) * 8f
+        assertEquals(tipSteps, StructureData.WINDMILL.heightSteps, StructureData.WINDMILL.heightSteps * 0.05f)
+        // And the sails reach past the side of the 2 x 2 footprint, half of which is a tile wide.
+        assertTrue(WindmillSails.HUB_RIGHT + WindmillSails.REACH > 1f)
+    }
+
+    @Test
     fun `the atlas stays within the texture size every device can take`() {
         assertTrue(manifest.atlasWidth <= 4096)
         assertTrue(manifest.atlasHeight <= 4096)
