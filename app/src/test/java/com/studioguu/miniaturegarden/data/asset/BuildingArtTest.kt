@@ -48,9 +48,11 @@ class BuildingArtTest {
             val tile = sprite(id)
             assertTrue(id, tile.anchorX in 0.45f..0.55f)
             assertTrue(id, tile.anchorY in 0.35f..0.55f)
-            // Exactly one tile across, never mirrored (the light would come from the wrong side).
+            // Exactly one tile across. The soil is never mirrored (the light would come from the
+            // wrong side); the grass has had its light taken out (#47), and is mirrored at random
+            // so that its one picture does not repeat in step.
             assertEquals(id, manifest.tileWidth.toFloat(), tile.drawnWidth(1f), manifest.tileWidth * 0.02f)
-            assertFalse(id, tile.isFlippedAllowed)
+            assertEquals(id, id != GridObject.TILLED_SOIL_OBJECT_ID, tile.isFlippedAllowed)
             assertEquals(id, 1f, tile.drawScale, 0f)
         }
     }

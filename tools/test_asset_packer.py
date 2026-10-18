@@ -20,6 +20,15 @@ def make_png(path: Path, canvas: tuple[int, int], box: tuple[int, int, int, int]
     image.save(path)
 
 
+def make_crop(path: Path, stem_x: int = 50):
+    """A plant on a clump of earth: a green stem and leaves on a dark brown ball."""
+    image = Image.new("RGBA", (100, 200), (0, 0, 0, 0))
+    image.paste((40, 140, 50, 255), (stem_x - 3, 30, stem_x + 3, 150))   # stem
+    image.paste((60, 160, 60, 255), (20, 30, 80, 60))                    # leaves
+    image.paste((70, 50, 40, 255), (15, 140, 85, 195))                   # the clump of earth
+    image.save(path)
+
+
 class AssetPackerTest(unittest.TestCase):
 
     def setUp(self):
@@ -31,6 +40,27 @@ class AssetPackerTest(unittest.TestCase):
 
     def tearDown(self):
         self._tmp.cleanup()
+
+    def test_crop_pictures_lose_their_clump_of_earth_and_stand_on_their_stem(self):
+        make_crop(self.src / "plant_test_stage1.png", stem_x=60)
+        make_png(self.src / "rock.png", (40, 40), (5, 5, 35, 35), color=(70, 50, 40, 255))
+        manifest = asset_packer.run(self.src, self.out, strip_crop_soil=True)
+        by_id = {asset["assetId"]: asset for asset in manifest["assets"]}
+        plant = by_id["plant_test_stage1"]
+        # The clump (55 px tall, 70 px wide) is gone: what is left is the stem and leaves.
+        self.assertLessEqual(plant["height"], 125)
+        self.assertLessEqual(plant["width"], 62)
+        # It stands on the base of its stem, at the bottom of what is left.
+        self.assertEqual(1.0, plant["anchorY"])
+        stem_from_left = (60 - 20) / plant["width"]
+        self.assertAlmostEqual(stem_from_left, plant["anchorX"], delta=0.06)
+        # Anything that is not a crop keeps its colours, even earth-brown ones.
+        self.assertEqual(30, by_id["rock"]["width"])
+
+    def test_without_the_option_crop_pictures_are_left_alone(self):
+        make_crop(self.src / "plant_test_stage1.png")
+        manifest = asset_packer.run(self.src, self.out)
+        self.assertEqual(165, manifest["assets"][0]["height"])
 
     def test_crop_trims_transparent_margins(self):
         image = Image.new("RGBA", (100, 80), (0, 0, 0, 0))

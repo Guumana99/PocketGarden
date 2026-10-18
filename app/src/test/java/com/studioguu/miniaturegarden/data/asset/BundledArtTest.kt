@@ -193,16 +193,18 @@ class BundledArtTest {
     }
 
     @Test
-    fun `the four crops with artwork have a sprite for every stage and for withered, standing on their soil`() {
+    fun `the four crops with artwork have a sprite for every stage and for withered, standing on their stem`() {
         for (species in listOf(PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY, PlantSpecies.PAPRIKA, PlantSpecies.DAIKON)) {
             assertEquals(species.name, 3, species.growthStages)
             val ids = (1..species.growthStages).map { "${species.objectId}_stage$it" } + "${species.objectId}_withered"
             for (id in ids) {
                 val sprite = manifest.assets.firstOrNull { it.assetId == id }
                 assertNotNull("no sprite for $id", sprite)
-                // The ground point is on the soil mound, a little above the sprite's foot, near its middle.
-                assertTrue(id, sprite!!.anchorY in 0.75f..0.92f)
-                assertTrue(id, sprite.anchorX in 0.4f..0.65f)
+                // The clump of earth under the plant is taken out by the packer (#47): it stands on
+                // the base of its stem, near its middle, at the sprite's foot (or a little above it,
+                // where a withered leaf droops lower than the stem).
+                assertTrue(id, sprite!!.anchorY in 0.85f..1f)
+                assertTrue(id, sprite.anchorX in 0.3f..0.7f)
             }
         }
         // Their pictures went into the atlas; the files the art came in are not left in the app.

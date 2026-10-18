@@ -87,6 +87,7 @@ import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.effects.RainOverlay
+import com.studioguu.miniaturegarden.ui.effects.RainStyle
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
 import com.studioguu.miniaturegarden.ui.hud.LevelUpDialog
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
@@ -262,7 +263,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxSize(),
             )
             // Inside the recorded box, so a shared picture shows the rain too.
-            if (weather == WeatherType.RAINY || blessedRainFalling) RainOverlay(Modifier.fillMaxSize())
+            if (weather == WeatherType.RAINY || blessedRainFalling) {
+                RainOverlay(Modifier.fillMaxSize(), style = if (blessedRainFalling) RainStyle.BLESSED else RainStyle.RAIN)
+            }
         }
 
         if (cameraMode) {
