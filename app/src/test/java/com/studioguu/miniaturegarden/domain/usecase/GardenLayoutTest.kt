@@ -48,14 +48,16 @@ class GardenLayoutTest {
     }
 
     @Test
-    fun `crops and tilled soil stay where they are, but can be cleared away at any time`() {
-        for (inGround in listOf(crop, soil)) {
+    fun `crops and tilled soil stay where they are, and are cleared away in edit mode only`() {
+        for (inGround in listOf(crop, soil, crop.copy(status = com.studioguu.miniaturegarden.domain.model.PlantStatus.WITHERED))) {
             assertFalse(GardenLayout.isLayoutPiece(inGround))
             for (editing in listOf(false, true)) {
                 assertEquals(LayoutCheck.IN_THE_GROUND, GardenLayout.check(LayoutAction.MOVE, inGround, editing))
                 assertEquals(LayoutCheck.IN_THE_GROUND, GardenLayout.check(LayoutAction.STORE, inGround, editing))
-                assertEquals(LayoutCheck.OK, GardenLayout.check(LayoutAction.DISCARD, inGround, editing))
             }
+            // Since #49 nothing in the garden is cleared away outside edit mode.
+            assertEquals(LayoutCheck.NEEDS_EDIT_MODE, GardenLayout.check(LayoutAction.DISCARD, inGround, editing = false))
+            assertEquals(LayoutCheck.OK, GardenLayout.check(LayoutAction.DISCARD, inGround, editing = true))
         }
         assertFalse(MoveObjectUseCase.canMove(crop))
     }

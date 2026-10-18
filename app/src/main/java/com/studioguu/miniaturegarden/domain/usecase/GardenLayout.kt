@@ -20,7 +20,7 @@ enum class LayoutAction {
 enum class LayoutCheck {
     OK,
 
-    /** It is a piece of the garden's layout, and those are rearranged in edit mode only. */
+    /** It is done in edit mode only: arranging the layout, and (since #49) clearing anything away. */
     NEEDS_EDIT_MODE,
 
     /** It is in the ground (a crop, tilled soil): it stays where it was sown or dug. */
@@ -40,6 +40,10 @@ enum class LayoutCheck {
  * buildings. The layout is arranged in edit mode, where the grid shows: only there can such a
  * piece be put down from the bag, moved, put back into the bag or thrown away. Outside it the
  * garden is just looked after, and a stray tap cannot pull a fence apart.
+ *
+ * Clearing away is edit mode's for everything (#49): a crop, withered or not, and a bed of
+ * tilled soil are cleared there too, so that nothing in the garden goes at a stray tap. What is in
+ * the ground still never moves and never goes back into the bag.
  *
  * Pure rules; the screen keeps whether edit mode is on and asks here.
  */
@@ -61,7 +65,11 @@ object GardenLayout {
     /** Whether [action] may be done to [obj], with edit mode on ([editing]) or off. */
     fun check(action: LayoutAction, obj: GridObject, editing: Boolean): LayoutCheck = when {
         obj.isStarterCrate -> LayoutCheck.FIXED
-        !isLayoutPiece(obj) -> if (action == LayoutAction.DISCARD) LayoutCheck.OK else LayoutCheck.IN_THE_GROUND
+        !isLayoutPiece(obj) -> when {
+            action != LayoutAction.DISCARD -> LayoutCheck.IN_THE_GROUND
+            editing -> LayoutCheck.OK
+            else -> LayoutCheck.NEEDS_EDIT_MODE
+        }
         action == LayoutAction.MOVE && !isMovable(obj) -> LayoutCheck.FIXED
         action == LayoutAction.STORE && StoreObjectUseCase.itemFor(obj) == null -> LayoutCheck.FIXED
         !editing -> LayoutCheck.NEEDS_EDIT_MODE

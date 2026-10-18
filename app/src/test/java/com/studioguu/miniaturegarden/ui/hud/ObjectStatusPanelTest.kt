@@ -53,11 +53,20 @@ class ObjectStatusPanelTest {
     }
 
     @Test
-    fun `a crop never moves, but can be cleared outside edit mode`() {
+    fun `outside edit mode a crop can be neither moved nor cleared away`() {
         show(PlantSpecies.TULIP.objectId, editing = false)
         compose.onNodeWithText(text(R.string.action_move)).assertDoesNotExist()
-        compose.onNodeWithText(text(R.string.action_remove)).assertExists()
+        compose.onNodeWithText(text(R.string.action_remove)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.hint_edit_to_arrange)).assertDoesNotExist()
+        // A growing crop is not nagged about clearing it away.
+        compose.onNodeWithText(text(R.string.hint_edit_to_clear)).assertDoesNotExist()
+    }
+
+    @Test
+    fun `an empty bed outside edit mode says where it is cleared away`() {
+        show(GridObject.TILLED_SOIL_OBJECT_ID, editing = false)
+        compose.onNodeWithText(text(R.string.action_remove)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.hint_edit_to_clear)).assertExists()
     }
 
     @Test

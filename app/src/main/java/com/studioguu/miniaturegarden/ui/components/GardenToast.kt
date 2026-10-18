@@ -59,9 +59,10 @@ class GardenToastState {
     }
 
     companion object {
-        const val BASE_MILLIS = 1_600L
+        /** Long enough to be read at a glance, short messages included (#49: 1.6 s was too quick). */
+        const val BASE_MILLIS = 2_400L
         const val MILLIS_PER_CHARACTER = 55L
-        const val MAX_MILLIS = 4_000L
+        const val MAX_MILLIS = 5_000L
     }
 }
 
