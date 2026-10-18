@@ -44,6 +44,9 @@ import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
+import com.studioguu.miniaturegarden.domain.usecase.GardenLayout
+import com.studioguu.miniaturegarden.domain.usecase.LayoutAction
+import com.studioguu.miniaturegarden.domain.usecase.LayoutCheck
 import com.studioguu.miniaturegarden.domain.usecase.AdvanceSeasonUseCase
 import com.studioguu.miniaturegarden.domain.usecase.PostLettersUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ReadLettersUseCase
@@ -310,6 +313,42 @@ class GardenViewModel @Inject constructor(
         combine(gardenRepository.observeInventory(), _placingSlotIndex) { slots, index ->
             slots.firstOrNull { it.slotIndex == index && !it.isEmpty }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val _editMode = MutableStateFlow(false)
+
+    /**
+     * True in edit mode: the grid shows, and the garden's layout (everything but what is in the
+     * ground) can be put down from the bag, moved, put back or thrown away. See [GardenLayout].
+     */
+    val editMode: StateFlow<Boolean> = _editMode.asStateFlow()
+
+    /**
+     * Turns edit mode on or off. Leaving it puts down whatever layout piece was in hand or on the
+     * move; a seed in hand, the hoe and the selection stay as they are.
+     */
+    fun toggleEditMode() {
+        val on = !_editMode.value
+        _editMode.value = on
+        if (!on) {
+            _movingId.value = null
+            if (placingItem()?.let(GardenLayout::placingNeedsEditMode) == true) _placingSlotIndex.value = null
+        }
+    }
+
+    /** The item in the slot being placed from, if any. */
+    private fun placingItem(): GardenItem? =
+        _placingSlotIndex.value?.let { index -> inventorySlots.value.firstOrNull { it.slotIndex == index && !it.isEmpty } }
+            ?.let { GardenItem.fromItemId(it.itemId) }
+
+    /** Tells the player why [check] stopped them, and whether it did. */
+    private fun refused(check: LayoutCheck): Boolean {
+        when (check) {
+            LayoutCheck.OK -> return false
+            LayoutCheck.NEEDS_EDIT_MODE -> _messages.trySend(R.string.msg_needs_edit_mode)
+            LayoutCheck.IN_THE_GROUND, LayoutCheck.FIXED -> _messages.trySend(R.string.msg_not_movable)
+        }
+        return true
+    }
 
     private val _hoeActive = MutableStateFlow(false)
 
@@ -610,6 +649,13 @@ class GardenViewModel @Inject constructor(
             _selectedTile.value = tile.takeIf { it != current && !sameThing }
         } else if (tile != null) {
             val item = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }
+            // A piece of the layout goes down in edit mode only (taking it out of the bag turned
+            // edit mode on; this is in case it has been turned off since).
+            if (item != null && GardenLayout.placingNeedsEditMode(item) && !_editMode.value) {
+                _placingSlotIndex.value = null
+                _messages.trySend(R.string.msg_needs_edit_mode)
+                return
+            }
             val placeXp = item?.placeXp ?: 0
             // A building larger than one cell is fitted round the tapped cell, inside the garden.
             val footprint = item?.let { Footprint.forObjectId(it.objectId) } ?: Footprint.SINGLE
@@ -645,7 +691,7 @@ class GardenViewModel @Inject constructor(
     /** Enters move mode for the selected object: the next tap on a tile moves it there. */
     fun startMovingSelected() = withSelectedObject { obj ->
         when {
-            !MoveObjectUseCase.canMove(obj) -> _messages.trySend(R.string.msg_not_movable)
+            refused(GardenLayout.check(LayoutAction.MOVE, obj, _editMode.value)) -> Unit
             obj.isWorking -> _messages.trySend(R.string.msg_busy)
             else -> {
                 _hoeActive.value = false
@@ -662,6 +708,7 @@ class GardenViewModel @Inject constructor(
 
     /** Puts down whatever is in hand or selected, ready for a photograph of the garden alone. */
     fun enterCameraMode() {
+        _editMode.value = false
         _selectedTile.value = null
         _placingSlotIndex.value = null
         _movingId.value = null
@@ -669,6 +716,10 @@ class GardenViewModel @Inject constructor(
     }
 
     fun startPlacing(slotIndex: Int) {
+        // Laying out the garden happens in edit mode: taking a piece of it out of the bag goes
+        // there, grid and all, rather than refusing. Seeds are sown in either.
+        val item = inventorySlots.value.firstOrNull { it.slotIndex == slotIndex && !it.isEmpty }?.let { GardenItem.fromItemId(it.itemId) }
+        if (item != null && GardenLayout.placingNeedsEditMode(item)) _editMode.value = true
         // Each thing taken out of the bag starts facing the usual way.
         _placingFlipped.value = false
         _hoeActive.value = false
@@ -753,6 +804,7 @@ class GardenViewModel @Inject constructor(
     }
 
     fun removeSelected() = withSelectedObject { obj ->
+        if (refused(GardenLayout.check(LayoutAction.DISCARD, obj, _editMode.value))) return@withSelectedObject
         // A withered plant standing on tilled soil is dug in as compost; say so.
         val composts = RemoveObjectUseCase.leavesCompost(obj) &&
             GardenGrid(gardenMap.value, gridObjects.value).isTilled(obj.gridX, obj.gridY)
@@ -772,6 +824,7 @@ class GardenViewModel @Inject constructor(
 
     /** Takes the selected object off the garden and puts it back into the inventory. */
     fun storeSelected() = withSelectedObject { obj ->
+        if (refused(GardenLayout.check(LayoutAction.STORE, obj, _editMode.value))) return@withSelectedObject
         val takesTime = takesTimeToRemove(obj)
         act(
             onSuccess = {

@@ -82,6 +82,27 @@ di/       Hilt の束ね
 - 画面側は `GardenViewModel.gardenMap`（`StateFlow`）。`GardenCanvas` は地図の大きさで描き、広がったら全体が入る倍率に引き直す。
 - 自動では広がらない。縮める手段は無い。
 
+## 編集モード（#42）
+
+- 状態は `GardenViewModel.editMode`（アプリを閉じると OFF に戻る。保存しない）。右の列の ✏️（`SideButton`、ON の間は明るい木の色）で切り替える。
+  何も持たず何も選んでいないときは、ツールバーの上に「編集モード：…　おわる」の札（`ToolBanner`）。チュートリアルの札より優先。
+- **グリッド線は編集モードのときだけ**（`GardenCanvas(showGrid = editMode && !cameraMode)`）。カメラモードに入ると編集モードは OFF。
+- 規則は `domain/usecase/GardenLayout.kt`（純関数）。
+
+| 物 | 移動 | 持ち物に戻す | 破棄 |
+|---|---|---|---|
+| 作物・耕した土（地面のもの） | 不可（`IN_THE_GROUND`） | 不可 | いつでも |
+| 芝生・小石・野の花・石畳・ウッドデッキ・フェンス・川・岩・ベンチ・石どうろう・建物（模様替えの物） | 編集モードのみ | 編集モードのみ | 編集モードのみ |
+| ガラスの温室 | 不可（`FIXED`。土の床なので） | 編集モードのみ（作物が育っている間は `IN_USE`） | 編集モードのみ |
+| スターターの木箱 | 不可 | 不可 | 不可 |
+
+- 持ち物から置く：種（`ItemCategory.SEED`）以外は編集モードが要る（`placingNeedsEditMode`）。選ぶと自動で編集モードに入る。
+  編集モードを抜けると、手に持っていた模様替えの物と移動中の物は手放す（種・クワ・選択はそのまま）。
+- 確認する場所は 2 つ：画面（`ObjectStatusDialog(editing)` が「移動」「撤去」を出すかどうか、出さないときは「編集モードにすると…」の一文）と、
+  `GardenViewModel` の `startMovingSelected` `storeSelected` `removeSelected`（`refused` で「庭の模様替えは編集モードで行えます」）。
+  ユースケース（`MoveObjectUseCase` `StartRemovalUseCase` など）は編集モードを知らない。物の種類の規則（作物は動かない等）だけを持つ。`MoveObjectUseCase.canMove` は `GardenLayout.isMovable`。
+- 建築中の建物の取りやめ（撤去）も模様替えなので編集モードのみ。「向きを変える」と「完成のお披露目」はふだんの画面でもできる。
+
 ## 建物の裏のマス
 
 - **タップは地面で判定する**（`TilePicker`）。屋根や壁を押しても、その点の真下の地面のマス、つまり**建物の裏のマス**が選ばれる。
@@ -235,7 +256,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 - 時間切れの処理は `CompleteWorkUseCase`。ViewModel の `watchWork()` が次の期限まで待って同期する（ポーリングなし）。
 - **完成は自動ではない**。`READY` で止まり、タップで `UnveilBuildingUseCase`。
 - 時刻改ざんを検出した同期では、作業は最初からやり直しになる（`SyncGardenUseCase`）。
-- 移動は `MoveObjectUseCase`（即時）。作物・耕した土・作業中の物は動かせない。
+- 移動は `MoveObjectUseCase`（即時）。作物・耕した土・作業中の物は動かせない。#42 から編集モードのときだけ（「編集モード（#42）」）。
 - 即時の取り外しは `StoreObjectUseCase` / `RemoveObjectUseCase`、時間のかかる入口が `StartRemovalUseCase`。
 
 ## DB

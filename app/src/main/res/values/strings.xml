@@ -97,6 +97,11 @@
     <string name="msg_busy">作業中です。終わるまでお待ちください</string>
     <string name="action_move">移動</string>
     <string name="move_banner">🚚 %1$s の移動先をタップ</string>
+    <string name="edit_mode_button">編集モード</string>
+    <string name="edit_banner">✏️ 編集モード：タップで動かす・しまう</string>
+    <string name="edit_done">おわる</string>
+    <string name="msg_needs_edit_mode">✏️ 庭の模様替えは編集モードで行えます</string>
+    <string name="hint_edit_to_arrange">✏️ 編集モードにすると、動かしたり持ち物に戻したりできます</string>
     <string name="work_building">🔨 建築中</string>
     <string name="work_demolishing">🧹 解体中</string>
     <string name="work_packing">📦 片付け中</string>

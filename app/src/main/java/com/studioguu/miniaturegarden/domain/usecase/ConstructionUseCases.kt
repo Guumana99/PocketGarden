@@ -167,7 +167,10 @@ class MoveObjectUseCase @Inject constructor(
         }
 
     companion object {
-        /** Whether [gridObject] is the kind of thing that can be moved at all. */
-        fun canMove(gridObject: GridObject): Boolean = StoreObjectUseCase.itemFor(gridObject) != null && !gridObject.isGreenhouse
+        /**
+         * Whether [gridObject] is the kind of thing that can be moved at all; see [GardenLayout]
+         * (which also keeps moving to edit mode, on the screen's side).
+         */
+        fun canMove(gridObject: GridObject): Boolean = GardenLayout.isMovable(gridObject)
     }
 }
