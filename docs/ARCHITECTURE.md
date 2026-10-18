@@ -337,11 +337,14 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 すべて `ui/components/GardenCanvas.kt` の Canvas 1 枚。
 
 - `IsometricTransform`: タイル 128×64dp、高さ 1 段 16dp。`worldToScreen(x, y, z)`。
-- `GardenCamera`: ピンチとドラッグ。初期は全体が入る倍率（`FIT_MARGIN = 0.86`、木枠の分を空けている）。
+- `GardenCamera`: ピンチとドラッグ。ピンチアウトの限界は全体が入る倍率（`FIT_MARGIN = 0.86`、木枠の分を空けている）。
+  既定の倍率 `GardenCamera.starting` は**画面だけで決まる**（#51）：`max(START_SCALE = 0.375, 13×13 が入る倍率)`。庭の大きさに左右されないので、新しい庭も広がった直後の庭も同じ倍率・中央で開く。
 - `LayerPipeline`: 描画命令を層（地面 → グリッド → 影 → 地表物 → 物 → 上のエフェクト → HUD）と奥行きで並べる。
 - 物の描画は `submitObjects()`。図鑑の絵 `ObjectPreview` も同じ関数を使う（絵がずれない）。
 - スプライトは `assets/atlas/atlas.png` + `assets_manifest.json`。無い物はプログラム描画。
 - 地面の絵（川・石畳）は `res/drawable-nodpi/` から `R.drawable` で読む。
+- **川の岸**（#51）：絵は真上から見た平らなもの。`drawRiverTile` が絵と同じ空間で、奥の岸（北・西、`RiverAutotile.shadedSides`）の内側の水に影、手前の岸（南・東、`litSides`）に細い光を `SRC_ATOP` で重ねる（絵の上だけ。芝には出ない）。水は芝より一段低く見える。
+- **庭の木枠の内縁**（`drawFrameLip`）：地面の層の最後（`Float.MAX_VALUE`）に描く。奥の 2 枚の板の影と、木と土の境の線が、川・石畳・畑の上にかかり、地面が枠の下に収まって見える。
 
 ### 川（`RiverAutotile`）
 
@@ -555,7 +558,10 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
 - **芝生**：`tile_grass` を全マスに 1 色で並べる（#47 で市松をやめた。`tile_grass_dark` は使わない）。季節の重ね（花びら・雪など）は絵の上にも描く。
   タイルには少し厚み（側面）があり、x→y の順に描くので手前のタイルが奥の側面を隠す。
   - 絵の明るさの傾き（奥が明るく手前が暗い）は加工で取り除いてある（`prepare_building_art.py` の `flatten_light`）。上面の奥の 2 辺は端をぼかしてある。
-  - 各マスを 1.04 倍で描いて隣と重ねる（`LawnShade.CELL_OVERLAP`）。半分ほどのマスを左右反転（`LawnShade.mirrored`、マス座標のハッシュ）して、同じ模様が並ばないようにする。
+  - #51 から：絵の**上面のひし形だけ**を切り出し、縁に向けてぼかした絵（`LawnShade.feather`、`FEATHER_START = 0.74` から滑らかに 0 へ。`FeatheredLawn` がアトラスから一度だけ作る）を
+    **1.32 倍**（`FEATHER_OVERLAP`）で描く。自分のマスの中はほぼ不透明、ぼかしは隣のマスに重なるので、縁の暗い線も側面も見えずマスの区切りが消える。
+    下に絵の平均色（`LawnShade.meanColour`）を庭の形で敷き、芝生は庭の形で切り抜く。川（`TileType.RIVER`）のマスより先に描く。絵が読めないときは従来どおり。
+  - （従来）各マスを 1.04 倍で描いて隣と重ねる（`LawnShade.CELL_OVERLAP`）。半分ほどのマスを左右反転（`LawnShade.mirrored`、マス座標のハッシュ）して、同じ模様が並ばないようにする。
   - その上に、マスをまたぐ大きく淡い明暗の斑（`LawnShade.patches`、1〜2 マス幅）を庭の形で切り抜いて重ねる。
 - **耕した土**：コード描画の「つながった畑」（上の「耕した土」）。地面の層の中で**マスの奥から手前の順**（`1f + depthOf(x, y)`）に描く。
   たい肥入りは葉やわらの粒を足す。
@@ -581,7 +587,9 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
 - 下部ツールバーは固定。選択パネルと各モードのバナーはその上に**重ねて**フェードで切り替える。
 - **庭の倍率と位置は保存する**（#28）：`AppSettings.gardenView`（`GardenView`：scale と pan。DataStore の `garden_view_*`）。
   `GardenCanvas` はプレイヤーが動かした（または庭が広がった）あと 0.6 秒止まったら `onViewChanged` で返し、`GardenViewModel.saveView` が書く。
-  開くときは `savedView` が読めた時点で 1 回だけ `GardenCamera.restored` で戻す（画面に合う範囲に収め直す）。最初の「全体が収まる」倍率は保存しない。
+  開くときは `savedView` が読めた時点で 1 回だけ `GardenCamera.restored` で戻す（画面に合う範囲に収め直す）。最初の既定の倍率は保存しない。
+  - 「はじめる」（`TitleViewModel.startOver`、保存がなくても通す）で `gardenView = null` にする。庭が広がったときは `GardenCamera.starting` に戻す（#51）。
+  - デバッグビルドは `GardenCanvas(onZoomChanged)` で倍率を受け取り、🛠 の下に `DebugZoomReadout`（`×0.38` 形式、`zoomText`）。開発者メニューにも標準倍率と並べて出す。
 - **もちもの**（`InventoryBottomSheet`）は中身を `GardenViewModel.inventorySlots`（常に購読）から受け取り、`skipPartiallyExpanded` で最初から全高で開く。
   以前は開いてから中身を読み込んでいたため、せり上がる途中でシートが伸びてカクついていた。シートが出ている間は庭の風と川を止める（`GardenCanvas(paused)`）。
 - **もちものの並び替え**（#29、`domain/model/InventorySort.kt`）：純関数 `InventoryOrder.arrange(slots, sort, filter, season)`。

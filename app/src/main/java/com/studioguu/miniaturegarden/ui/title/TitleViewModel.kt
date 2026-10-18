@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
+import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ class TitleViewModel @Inject constructor(
     private val gardenRepository: GardenRepository,
     assetRepository: AssetRepository,
     private val audio: AudioManager,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     private val _hasSavedGarden = MutableStateFlow<Boolean?>(null)
@@ -59,13 +61,16 @@ class TitleViewModel @Inject constructor(
 
     /**
      * Throws the saved garden away, then calls [onDone]: the garden screen sets up a new one
-     * as it opens. Taps while this is under way are ignored.
+     * as it opens. The view kept from the last garden (its zoom and pan) goes with it, so a new
+     * garden always opens at the starting zoom ([com.studioguu.miniaturegarden.ui.render.GardenCamera.starting]).
+     * Taps while this is under way are ignored.
      */
     fun startOver(onDone: () -> Unit) {
         if (busy) return
         busy = true
         viewModelScope.launch {
             gardenRepository.deleteSavedGarden()
+            settingsRepository.update { it.copy(gardenView = null) }
             _hasSavedGarden.value = false
             onDone()
         }
