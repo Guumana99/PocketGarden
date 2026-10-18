@@ -147,6 +147,8 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  *   view (the title's sample garden).
  * @param editing something is being placed or moved, or the hoe is in hand: taps are read on
  *   the ground only, since a cell is being looked for.
+ * @param growableId the symbol building the garden can grow from now, if any: a bubble over it
+ *   says so, and tapping the bubble picks it.
  */
 @Composable
 fun GardenCanvas(
@@ -169,6 +171,7 @@ fun GardenCanvas(
     initialZoom: Float = 1f,
     season: Season = Season.SPRING,
     editing: Boolean = false,
+    growableId: String? = null,
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -225,6 +228,7 @@ fun GardenCanvas(
     val currentGrid by rememberUpdatedState(grid)
     val currentObjects by rememberUpdatedState(gridObjects)
     val currentEditing by rememberUpdatedState(editing)
+    val currentGrowableId by rememberUpdatedState(growableId)
     // The wind's clock. It is read while drawing only, so a new value redraws the garden without
     // recomposing anything. A breeze is slow: a modest frame rate is plenty and saves battery.
     // Held still while something covers the garden, so that a sheet sliding up over it has the
@@ -306,6 +310,7 @@ fun GardenCanvas(
                     // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
                     val tile = TapTargets.resolve(
                         position, transform, currentGrid, currentObjects, currentEditing, minReach = BUBBLE_MIN_REACH.toPx(),
+                        growableId = currentGrowableId,
                     )
                     currentOnTileTapped(tile)
                 }
@@ -349,6 +354,12 @@ fun GardenCanvas(
         val pops = if (bursts.isEmpty()) emptyMap() else bursts.associate { it.gridObject.instanceId to it.progress.value }
         val fades = if (fadeAlpha >= 1f) emptyMap() else fadingIds.associateWith { fadeAlpha }
         submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience, pops = pops, fades = fades)
+        // The garden can grow: a bubble over the building it is grown from.
+        gridObjects.firstOrNull { it.instanceId == growableId }?.let { building ->
+            pipeline.submit(RenderLayer.TOP_EFFECTS) {
+                drawGrowBubble(TapTargets.growBubbleTip(building, transform), transform.tileWidth, ambience.windMillis ?: 0L)
+            }
+        }
         for (ghost in ghosts) {
             submitObjects(
                 pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
@@ -796,7 +807,30 @@ private fun DrawScope.drawWorkSite(transform: IsometricTransform, obj: GridObjec
  *
  * @param tip where the bubble's tail points, just above the site.
  */
-private fun DrawScope.drawReadyBubble(tip: Offset, unit: Float, clock: Long) {
+/**
+ * The "the garden can grow" bubble over the symbol building: the same round speech bubble as the
+ * "✨ ！" one, edged in leaf green, with arrows pointing out to its corners.
+ */
+private fun DrawScope.drawGrowBubble(tip: Offset, unit: Float, clock: Long) {
+    val (centre, radius) = drawSpeechBubble(tip, unit, clock, GROW_EDGE)
+    val reach = radius * 0.5f
+    val head = radius * 0.2f
+    val stroke = radius * 0.13f
+    for ((dx, dy) in listOf(1f to -1f, -1f to 1f, 1f to 1f, -1f to -1f)) {
+        val end = centre + Offset(dx * reach, dy * reach * 0.8f)
+        drawLine(GROW_EDGE, centre, end, stroke, StrokeCap.Round)
+        drawLine(GROW_EDGE, end, end - Offset(dx * head, 0f), stroke, StrokeCap.Round)
+        drawLine(GROW_EDGE, end, end - Offset(0f, dy * head), stroke, StrokeCap.Round)
+    }
+}
+
+private val GROW_EDGE = Color(0xFF6E9E3A)
+
+/**
+ * A round speech bubble bobbing over [tip], its tail pointing down at it, edged in [edge].
+ * @return its middle and its radius, for what is drawn inside it.
+ */
+private fun DrawScope.drawSpeechBubble(tip: Offset, unit: Float, clock: Long, edge: Color): Pair<Offset, Float> {
     val bob = sin(clock / 260.0).toFloat() * unit * 0.035f
     val radius = unit * TapTargets.READY_BUBBLE_RADIUS
     val centre = tip + Offset(0f, -radius * TapTargets.READY_BUBBLE_LIFT + bob)
@@ -806,19 +840,24 @@ private fun DrawScope.drawReadyBubble(tip: Offset, unit: Float, clock: Long) {
         lineTo(centre.x + radius * 0.35f, centre.y + radius * 0.8f)
         close()
     }
-    val edge = unit * 0.022f
-    drawPath(tail, BUBBLE_EDGE)
-    drawCircle(BUBBLE_EDGE, radius + edge, centre)
+    val width = unit * 0.022f
+    drawPath(tail, edge)
+    drawCircle(edge, radius + width, centre)
     drawCircle(BUBBLE, radius, centre)
     drawPath(
         Path().apply {
             moveTo(centre.x - radius * 0.22f, centre.y + radius * 0.75f)
-            lineTo(tip.x, tip.y + bob * 0.4f - edge * 2f)
+            lineTo(tip.x, tip.y + bob * 0.4f - width * 2f)
             lineTo(centre.x + radius * 0.22f, centre.y + radius * 0.75f)
             close()
         },
         BUBBLE,
     )
+    return centre to radius
+}
+
+private fun DrawScope.drawReadyBubble(tip: Offset, unit: Float, clock: Long) {
+    val (centre, radius) = drawSpeechBubble(tip, unit, clock, BUBBLE_EDGE)
     // The sparkle twinkles; the exclamation mark is a bar and a dot.
     val twinkle = 0.8f + 0.2f * sin(clock / 140.0).toFloat()
     drawSparkle(centre + Offset(-radius * 0.34f, -radius * 0.05f), radius * 0.48f * twinkle, BUBBLE_EDGE)

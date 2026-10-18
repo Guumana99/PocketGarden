@@ -42,6 +42,7 @@
 | ショップ・価格・解放・建物効果 | `ShopAndEffectsTest` `ProgressionTest` |
 | 図鑑 | `CollectionTest` |
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
+| 庭の拡張の導線（吹き出し・お便り・広げる） | `ExpansionGuideTest`（＋拡張の規則 `SymbolBuildingTest`、手紙 `PostTest`） |
 | ショップ（3 軒の店・棚・カード・購入） | `ShopShelvesTest` `ShopStageContentTest`（Robolectric）（＋購入の規則 `ShopAndEffectsTest` `SymbolBuildingTest`） |
 | 編集モード・模様替えの規則・パネルのボタン | `GardenLayoutTest` `ObjectStatusPanelTest`（Robolectric）（＋グリッド表示 `CameraModeTest`） |
 | シンボル建物・庭の拡張 | `SymbolBuildingTest`（＋数を見る `ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`） |
@@ -120,6 +121,8 @@
 - 動画解析の道具（ffmpeg、OpenCV）は入っていない。
 - 生き物の確認：スターターガーデンに柵は無くなった（#28）。「ことり」の条件（ベンチと柵 3 本）は自分で柵を置いてそろえる。
   来るかどうかは 5 分ごとの抽選（50%）なので、長いと 10 分以上待つ。来たかどうかは図鑑の「いきもの」タブで確かめるのが確実（トーストは数秒で消える）。
+- 画面の操作は座標より文字で探す方が確実：`uiautomator dump` で text / content-desc の bounds を取り、その中心をタップ。
+  Git Bash では dump も `MSYS_NO_PATHCONV=1` を付ける（`/sdcard` が書き換えられる）。レベルアップの札は開発者メニューの上に出るので、「OK」→「+500 コイン・Lv+1」を繰り返す。
 - 通知の確認：柵（建築 20 秒）を置いてホームに戻り、30 秒ほど待って
   `adb -s emulator-5554 shell dumpsys notification --noredact | grep -A3 miniaturegarden`。通知欄は `cmd statusbar expand-notifications`。
   Git Bash では `MSYS_NO_PATHCONV=1` を付けないと `/sdcard/...` などのパスが書き換えられる。

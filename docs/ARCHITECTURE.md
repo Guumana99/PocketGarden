@@ -104,7 +104,14 @@ di/       Hilt の束ね
 - 規則側は地図を `GardenMapSource` から受け取る（`PlaceItemUseCase` `HoeUseCase` `MoveObjectUseCase`）。
   本番は `StoredGardenMap`（保存された広さの芝生）、テストは `GardenMap` そのもの（`GardenMap` は自分自身を返す `GardenMapSource`）。
 - 画面側は `GardenViewModel.gardenMap`（`StateFlow`）。`GardenCanvas` は地図の大きさで描き、広がったら全体が入る倍率に引き直す。
-- 自動では広がらない。縮める手段は無い。
+- 自動では広がらない。縮める手段は無い。レベルが上がるだけでも広がらない（Lv.8 は 13×13 の条件の 1 つ）。
+- **導線（#45）**：広げられる状態（`check == READY`）になったことを 3 か所で伝える。
+  - コテージの上に**緑の吹き出し**（外向きの矢印）。`GardenExpansion.growableFrom` が返す建物に、`GardenCanvas(growableId)` で描く。
+    押すとコテージが選ばれる（`TapTargets.bubbleCentre(growable = true)`）→ パネルの「庭を広げる（N×N）」。カメラモードでは出さない。
+  - **お便り** `LetterKind.GARDEN_CAN_GROW`（id `grow:11` / `grow:13`、サイズごとに 1 通。`PostOffice.gardenCanGrow`、`PostLettersUseCase.gardenCanGrowIfDue`）。
+    送るのはお披露目の直後・レベルアップ時・30 秒ごとの同期。送った瞬間に一度だけトースト「庭を広げられるようになりました…」。
+  - 広げる前から：ショップのコテージのカードに「完成すると、庭を一回り広げられます」、建築中・お披露目待ちのコテージのパネルに「完成してお披露目すると、ここから庭を広げられます」。
+  - 11×11 にしたあと Lv.8 未満なら、パネルに「Lv.8 で 13×13 に広げられます」（以前から）。
 
 ## 編集モード（#42）
 

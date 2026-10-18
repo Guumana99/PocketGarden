@@ -32,6 +32,9 @@ data class ExpansionStage(val size: Int, val needsSymbol: Boolean, val playerLev
  *     13x13   a finished symbol building and Lv.8
  *
  * Growing is the player's choice, made from the symbol building's panel: it never happens by itself.
+ * So that the player knows when it can, the garden points it out (#45): a bubble over the symbol
+ * building while it can grow ([growableFrom]), and a letter, once for each size
+ * ([PostOffice.gardenCanGrow]).
  */
 object GardenExpansion {
     val STAGES: List<ExpansionStage> = listOf(
@@ -56,6 +59,18 @@ object GardenExpansion {
             else -> ExpansionCheck.READY
         }
     }
+
+    /**
+     * The symbol building to point at while the garden can grow now: it is where the garden is
+     * grown from. Null while it cannot grow (no finished symbol building, the level is too low,
+     * or it is as large as it gets).
+     */
+    fun growableFrom(currentSize: Int, objects: List<GridObject>, playerLevel: Int): GridObject? =
+        if (check(currentSize, objects, playerLevel) == ExpansionCheck.READY) {
+            objects.firstOrNull { it.isSymbol && !it.isWorking }
+        } else {
+            null
+        }
 
     /** [obj] where it ends up once the garden has grown by one stage. */
     fun shifted(obj: GridObject): GridObject = obj.copy(gridX = obj.gridX + RING, gridY = obj.gridY + RING)

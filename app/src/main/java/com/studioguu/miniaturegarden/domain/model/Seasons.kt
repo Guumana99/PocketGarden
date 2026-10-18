@@ -55,7 +55,10 @@ enum class LetterKind {
     TIP,
 
     /** New things in the shop after a level-up: [Letter.topic] is `from-to` ([Letter.stockLevels]). */
-    NEW_STOCK;
+    NEW_STOCK,
+
+    /** The garden can grow now: [Letter.topic] is the size it can grow to ([Letter.growSize]). */
+    GARDEN_CAN_GROW;
 
     companion object {
         fun fromName(name: String): LetterKind? = entries.firstOrNull { it.name == name }
@@ -83,6 +86,9 @@ data class Letter(
     val tip: LetterTip? get() = if (kind == LetterKind.TIP) LetterTip.fromName(topic) else null
 
     /** For a [LetterKind.NEW_STOCK]: the level before and after. */
+    /** For a [LetterKind.GARDEN_CAN_GROW]: the size the garden can grow to. */
+    val growSize: Int? get() = if (kind == LetterKind.GARDEN_CAN_GROW) topic.toIntOrNull() else null
+
     val stockLevels: IntRange? get() = if (kind != LetterKind.NEW_STOCK) {
         null
     } else {
@@ -99,6 +105,10 @@ data class Letter(
         /** A piece of advice, sent in [season]. Each one comes once. */
         fun tip(tip: LetterTip, season: Season, at: Long) =
             Letter("tip:${tip.name}", LetterKind.TIP, season, at, topic = tip.name)
+
+        /** The garden can grow to [size] x [size]. Sent once for each size. */
+        fun gardenCanGrow(size: Int, season: Season, at: Long) =
+            Letter("grow:$size", LetterKind.GARDEN_CAN_GROW, season, at, topic = size.toString())
 
         /** What the shop put out when the level went from [fromLevel] to [toLevel]. */
         fun newStock(fromLevel: Int, toLevel: Int, season: Season, at: Long) =

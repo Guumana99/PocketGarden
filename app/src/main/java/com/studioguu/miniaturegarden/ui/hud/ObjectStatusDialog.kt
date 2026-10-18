@@ -156,6 +156,13 @@ fun ObjectStatusDialog(
             // The symbol building is where the garden is made larger from.
             if (gridObject.isSymbol && !gridObject.isWorking) {
                 ExpansionRow(gardenSize, playerLevel, gridObject, onExpand)
+            } else if (gridObject.isSymbol) {
+                // Still going up, or waiting to be unveiled: say what it will be for.
+                Text(
+                    text = stringResource(R.string.expand_after_unveil),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

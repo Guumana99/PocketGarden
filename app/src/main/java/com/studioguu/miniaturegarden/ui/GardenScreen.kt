@@ -142,6 +142,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
     val editMode by viewModel.editMode.collectAsStateWithLifecycle()
+    val growableBuilding by viewModel.growableBuilding.collectAsStateWithLifecycle()
     val gardenMap by viewModel.gardenMap.collectAsStateWithLifecycle()
     val notificationInviteDue by viewModel.notificationInviteDue.collectAsStateWithLifecycle()
     val visitors by viewModel.visitors.collectAsStateWithLifecycle()
@@ -229,6 +230,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 onTileTapped = { tile -> if (!cameraMode) viewModel.onTileTapped(tile) },
                 // While a cell is being looked for, taps read the ground only.
                 editing = placingSlot != null || hoeActive || movingObject != null,
+                // While the garden can grow, a bubble over the cottage says so (not in a photograph).
+                growableId = if (cameraMode) null else growableBuilding?.instanceId,
                 atlas = atlas,
                 terrain = terrain,
                 gardenMap = gardenMap,
