@@ -81,11 +81,11 @@
     <string name="remove_text_returnable">持ち物に戻すと、後でまた置けます。破棄すると元に戻せません。</string>
     <string name="remove_text_plant">育てている作物は持ち物に戻せません。破棄すると元に戻せません。</string>
     <string name="remove_text_withered">枯れた作物を破棄すると、たい肥になって土に残ります。</string>
-    <string name="remove_text_soil">耕した土を草地に戻します。</string>
+    <string name="remove_text_soil">耕した土を芝生に戻します。</string>
     <string name="remove_store">🎒 持ち物に戻す</string>
     <string name="remove_discard">破棄する</string>
-    <string name="remove_soil">草地に戻す</string>
-    <string name="msg_stored">🎒 かばんにしまいました</string>
+    <string name="remove_soil">芝生に戻す</string>
+    <string name="msg_stored">🎒 持ち物に戻しました</string>
     <string name="msg_not_returnable">これは持ち物に戻せません</string>
     <string name="msg_not_movable">これは移動できません</string>
     <string name="msg_not_flippable">これは向きを変えられません</string>
@@ -103,7 +103,7 @@
     <string name="hint_edit_to_arrange">✏️ 編集モードにすると、動かしたり持ち物に戻したりできます</string>
     <string name="work_building">🔨 建築中</string>
     <string name="work_demolishing">🧹 解体中</string>
-    <string name="work_packing">📦 片付け中</string>
+    <string name="work_packing">📦 片づけ中</string>
     <string name="work_remaining">あと %1$s</string>
     <string name="work_started_demolition">🧹 解体スタート</string>
     <string name="work_started_building">🔨 建築スタート</string>
@@ -159,17 +159,17 @@
     <string name="shop_tab_structures">構造物</string>
     <string name="shop_tab_decorations">装飾</string>
     <string name="shop_bought">%1$s を買いました</string>
-    <string name="shop_locked">🔒 Lv.%1$d で開放</string>
+    <string name="shop_locked">🔒 Lv.%1$d で解放</string>
     <string name="shop_locked_pages">🔒 図鑑で解放</string>
 
     <!-- Action results -->
     <string name="msg_not_found">対象が見つかりません</string>
-    <string name="msg_not_a_plant">植物ではありません</string>
+    <string name="msg_not_a_plant">作物ではありません</string>
     <string name="msg_withered">枯れてしまっています</string>
     <string name="msg_not_ready">まだ収穫できません</string>
     <string name="msg_already_fed">まだ栄養は足りています（栄養50%未満で肥料をあげられます）</string>
     <string name="msg_edit_mode_tools">✏️ 編集モード中は、並べ替えと片づけだけができます</string>
-    <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やり可能）</string>
+    <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やりできます）</string>
     <string name="msg_tile_occupied">他の物があるため置けません</string>
     <string name="msg_needs_tilled_soil">種や苗は、クワで耕した土にだけ植えられます</string>
     <string name="msg_tile_not_buildable">川の上には置けません</string>
@@ -177,15 +177,15 @@
     <string name="msg_slot_empty">アイテムがありません</string>
     <string name="msg_not_enough_coins">コインが足りません</string>
     <string name="msg_inventory_full">持ち物がいっぱいです</string>
-    <string name="msg_item_locked">まだ開放されていません</string>
-    <string name="msg_select_plant">先に植物をタップして選んでください</string>
+    <string name="msg_item_locked">まだ解放されていません</string>
+    <string name="msg_select_plant">先に作物をタップして選んでください</string>
 
     <!-- Floating effects -->
     <string name="effect_harvest">+%1$d 🪙　+%2$d XP</string>
     <string name="effect_xp">+%1$d XP</string>
 
-    <!-- Garden encyclopedia. Its pages read as calm, ordinary Japanese with kanji; only the short labels (tabs, title) stay in kana. -->
-    <string name="collection_title">ガーデンずかん</string>
+    <!-- Garden encyclopedia. Its pages read as calm, ordinary Japanese with kanji; only the short tab labels stay in kana. The book is always written 図鑑, never ずかん. -->
+    <string name="collection_title">ガーデン図鑑</string>
     <string name="collection_progress">集めた数　%1$d / %2$d　（%3$d%%）</string>
     <string name="collection_ready_count">登録待ちのページ　%1$d</string>
     <string name="collection_tab_crops">さくもつ</string>
@@ -228,7 +228,7 @@
     <string name="flavor_well">冷たい水が、こんこんと湧く。\nのぞき込むと、自分の顔が揺れる。</string>
     <string name="flavor_windmill">風を受けて、くるり、くるり。\n羽根の回る音が、庭に響く。</string>
     <string name="flavor_hut">小さいけれど、夢の詰まった小屋。\n道具の手入れも、昼寝も、ここで。</string>
-    <string name="flavor_cottage">庭の真ん中に建つ、灯りのともる家。\n煙突から煙がのぼると、庭が広がる。</string>
+    <string name="flavor_cottage">庭の真ん中に建つ、灯りのともる家。\n完成すると、ここから庭を一回り広げられる。</string>
     <string name="effect_discovery">📖 図鑑に登録できます！</string>
 
     <!-- Sharing -->
@@ -242,8 +242,8 @@
     <string name="reward_rain_button">☔ 慈雨を降らせる</string>
     <string name="reward_rain_confirm" formatted="false">慈雨（じう）を降らせますか？\n（すべての作物の成長時間を50%短縮します）</string>
     <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
-    <string name="reward_bonus_button">💰 臨時ボーナスを受け取る +%1$dG（本日あと %2$d/%3$d回）</string>
-    <string name="reward_bonus_short">💰 臨時ボーナス +%1$dG</string>
+    <string name="reward_bonus_button">💰 臨時ボーナスを受け取る +%1$d 🪙（本日あと %2$d/%3$d回）</string>
+    <string name="reward_bonus_short">💰 臨時ボーナス +%1$d 🪙</string>
     <string name="reward_bonus_confirm">臨時ボーナスを受け取りますか？\n（%1$dコインを獲得します）</string>
     <string name="reward_bonus_confirm_ok">💰 受け取る</string>
     <string name="shop_short_by">あと %1$d コイン足りません。</string>
@@ -251,7 +251,7 @@
     <string name="msg_reward_unavailable">ただいま準備中です。少し待ってからお試しください</string>
     <string name="msg_reward_limit">本日の回数上限に達しました</string>
     <string name="msg_blessed_rain_done">☔ 慈雨が降りました。作物の成長時間が半分になりました</string>
-    <string name="msg_bonus_done">💰 臨時ボーナス +%1$dG を受け取りました</string>
+    <string name="msg_bonus_done">💰 臨時ボーナス +%1$d 🪙 を受け取りました</string>
     <string name="msg_no_growing_plants">育てている途中の作物がありません</string>
 
     <!-- Settings -->
@@ -355,7 +355,7 @@
 
     <!-- Seasons, the post and the greenhouse -->
     <string name="msg_out_of_season">🌱 今は育てるのに適さない季節です。旬が来るまで、持ち物に取っておきましょう</string>
-    <string name="msg_in_use">中で育っている作物を、先に収穫するか片付けてください</string>
+    <string name="msg_in_use">中で育っている作物を、先に収穫するか片づけてください</string>
     <string name="msg_season_arrived">%1$s %2$sがやってきました。ポストにお便りが届いています</string>
     <string name="shop_season_caption">季節が変わると入れ替わります</string>
     <string name="post_title">ポスト</string>
@@ -375,7 +375,7 @@
     <string name="letter_tip_rain_title">☔ 雨の日のこと</string>
     <string name="letter_tip_rain_body">雨の日は、空が代わりに庭じゅうに水をまいてくれます。のんびり雨音を楽しんでくださいね。</string>
     <string name="letter_tip_compost_title">🍂 たい肥のこと</string>
-    <string name="letter_tip_compost_body">枯れてしまった作物を片付けると、その土はたい肥入りのふかふかの土になります。次にまいた種は、少し育ったところから始まりますよ。</string>
+    <string name="letter_tip_compost_body">枯れてしまった作物を片づけると、その土はたい肥入りのふかふかの土になります。次にまいた種は、少し育ったところから始まりますよ。</string>
     <string name="letter_tip_store_title">📦 模様替えのこと</string>
     <string name="letter_tip_store_body">置いた家具や建物は、「持ち物に戻す」でしまって、好きな場所に置き直せます。気分に合わせて、庭の模様替えをしてみませんか。</string>
     <string name="letter_tip_creatures_title">🐦 小さなお客さまのこと</string>

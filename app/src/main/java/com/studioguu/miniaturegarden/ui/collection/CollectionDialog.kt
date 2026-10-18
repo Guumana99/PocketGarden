@@ -95,7 +95,8 @@ internal val ReadyMark = Color(0xFFD8442F)
 internal val BookFont = FontFamily.Serif
 internal val SPREAD_HEIGHT = 330.dp
 private const val REVEAL_MILLIS = 900
-private const val NOTICE_MILLIS = 2600L
+/** How long the book's notice ("登録しました！ +N 🪙") stays: as long as the garden's toasts at least (#52). */
+internal const val NOTICE_MILLIS = 3_400L
 
 /**
  * The garden encyclopedia, laid out as an open book with a chapter per category: one spread per

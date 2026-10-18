@@ -39,19 +39,23 @@ sealed interface GardenEffect {
     data class WorkDone(override val id: Long, val objectId: String, val kind: WorkKind) : GardenEffect
 }
 
-private const val DURATION_MILLIS = 1600
+private const val DURATION_MILLIS = 2_600
 private val RISE = 96.dp
 
 /**
  * How long an effect is on screen, and for what share of that it is fully visible before it
- * fades. The quick sums of a harvest float up and go; news of a building (finished, taken down,
- * packed away) stays a good while, so that it can be read (#49).
+ * fades. The sums of a harvest float up and go after about two seconds of being readable; news of
+ * a building (finished, taken down, packed away) or of a new page for the book stays a good
+ * while, so that it can be read (#49, #52).
  */
 data class EffectTiming(val durationMillis: Int, val visibleShare: Float, val riseShare: Float)
 
 fun effectTiming(effect: GardenEffect): EffectTiming = when (effect) {
     is GardenEffect.WorkDone -> EffectTiming(durationMillis = 3_600, visibleShare = 0.8f, riseShare = 0.35f)
-    else -> EffectTiming(durationMillis = DURATION_MILLIS, visibleShare = 0.6f, riseShare = 1f)
+    // A new page for the book is news too: it stays nearly as long as a building's (#52).
+    is GardenEffect.Discovery -> EffectTiming(durationMillis = 3_200, visibleShare = 0.78f, riseShare = 0.45f)
+    // The sums of a harvest: readable for about two seconds before they fade (#52: one was too quick).
+    else -> EffectTiming(durationMillis = DURATION_MILLIS, visibleShare = 0.72f, riseShare = 0.8f)
 }
 
 /**
