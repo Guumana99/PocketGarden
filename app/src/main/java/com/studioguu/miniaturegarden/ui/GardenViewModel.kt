@@ -602,7 +602,12 @@ class GardenViewModel @Inject constructor(
                 }
             }
         } else if (slotIndex == null) {
-            _selectedTile.value = tile.takeIf { it != _selectedTile.value }
+            // Tapping what is already selected puts it down again, whichever of its cells (or
+            // its roof, see TapTargets) the tap landed on.
+            val objects = gridObjects.value
+            val current = _selectedTile.value
+            val sameThing = objects.objectAt(tile)?.let { it.instanceId == objects.objectAt(current)?.instanceId } == true
+            _selectedTile.value = tile.takeIf { it != current && !sameThing }
         } else if (tile != null) {
             val item = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }
             val placeXp = item?.placeXp ?: 0

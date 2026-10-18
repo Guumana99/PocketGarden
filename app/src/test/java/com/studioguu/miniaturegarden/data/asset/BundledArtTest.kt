@@ -233,7 +233,7 @@ class BundledArtTest {
         assertTrue(strings.contains("<string name=\"collection_tab_crops\">さくもつ</string>"))
         assertTrue(strings.contains("<string name=\"collection_tab_terrain\">ちけい</string>"))
         assertTrue(strings.contains("<string name=\"collection_tab_structures\">たてもの</string>"))
-        assertTrue(strings.contains("✨ とうろく"))
+        assertTrue(strings.contains("✨ 登録する"))
     }
 
     @Test

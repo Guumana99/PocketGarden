@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import javax.inject.Inject
 
@@ -43,5 +44,12 @@ class StoredGardenMap @Inject constructor(
 
 /** The symbol building, wherever it is: standing in the garden (finished or not) or in the bag. */
 internal suspend fun GardenRepository.ownsSymbolBuilding(): Boolean =
-    getGridObjects().any { it.isSymbol } ||
-        getInventory().any { slot -> !slot.isEmpty && GardenItem.fromItemId(slot.itemId)?.isSymbol == true }
+    ownsSymbolBuilding(getGridObjects(), getInventory())
+
+/**
+ * Whether the player already has the symbol building: standing in [objects] (finished or under
+ * wraps) or held in [inventory]. The shop shows it as owned rather than for sale while this holds.
+ */
+fun ownsSymbolBuilding(objects: List<GridObject>, inventory: List<InventorySlot>): Boolean =
+    objects.any { it.isSymbol } ||
+        inventory.any { slot -> !slot.isEmpty && GardenItem.fromItemId(slot.itemId)?.isSymbol == true }

@@ -270,7 +270,14 @@ def prepare_tile(name: str, halo: bool) -> tuple[np.ndarray, dict]:
     return rgba, {"anchorX": round(float(cx / w), 4), "anchorY": round(float(cy / h), 4), "isFlippedAllowed": False}
 
 
-def prepare_building(rgba: np.ndarray, tiles: int) -> tuple[np.ndarray, dict]:
+def prepare_building(rgba: np.ndarray, tiles: int, centred: bool = False) -> tuple[np.ndarray, dict]:
+    """
+    Fits a building to its footprint. By default it stands where [ground_centre_y] puts it. With
+    [centred] its base is centred on the footprint instead: the base's left and right corners
+    stand on the footprint's, and its front falls a little short of the footprint's front corner.
+    Nothing then spills past the footprint (a wide, flat base made the cottage overhang its lot,
+    and the garden's frame when it stood at the edge).
+    """
     rgba = crop(keep_main_part(rgba))
     _, _, width = base_of(rgba)
     wanted = tiles * TILE
@@ -280,8 +287,8 @@ def prepare_building(rgba: np.ndarray, tiles: int) -> tuple[np.ndarray, dict]:
     else:
         # Enlarging would only make the atlas bigger without adding detail: drawn larger instead.
         scale = wanted / width
-    cx, _, _ = base_of(rgba)
-    cy = ground_centre_y(rgba)
+    cx, side_y, _ = base_of(rgba)
+    cy = side_y if centred else ground_centre_y(rgba)
     h, w = rgba.shape[:2]
     override = {"anchorX": round(float(cx / w), 4), "anchorY": round(float(cy / h), 4)}
     if scale != 1.0:
@@ -344,7 +351,7 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     dark[:, :, :3] = (dark[:, :, :3].astype(float) * 0.9).astype(np.uint8)
     out["tile_grass_dark"] = (dark, dict(grass_override))
     out["floor_tilled"] = prepare_tile("tile_dirt_plowed.png", halo=True)
-    out["struct_cottage"] = prepare_building(load("building_cottage.png"), tiles=3)
+    out["struct_cottage"] = prepare_building(load("building_cottage.png"), tiles=3, centred=True)
     out["floor_greenhouse"] = prepare_building(load("building_greenhouse.png"), tiles=1)
     out.update(prepare_windmill())
     return out

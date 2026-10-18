@@ -20,6 +20,21 @@ class PolishTest {
     private fun string(name: String): String =
         Regex("<string name=\"$name\"[^>]*>(.*?)</string>", RegexOption.DOT_MATCHES_ALL).find(strings)!!.groupValues[1]
 
+    // --- The encyclopedia's wording ---
+
+    @Test
+    fun `the encyclopedia's descriptions read as ordinary Japanese with kanji, not spaced-out kana`() {
+        val names = Regex("<string name=\"((?:flavor|creature_flavor|hint|combo)_[a-z_]+)\"").findAll(strings).map { it.groupValues[1] }.toList()
+            .filter { !it.endsWith("_effect") }
+        assertTrue(names.size > 50)
+        val spacedKana = Regex("[ぁ-ゖ] [ぁ-ゖァ-ヺ]")
+        for (name in names + listOf("collection_hint_harvest", "collection_hint_placement", "nature_none_yet", "collection_ready_hint")) {
+            val text = string(name)
+            assertFalse("$name is still spaced-out kana: $text", spacedKana.containsMatchIn(text))
+            assertTrue("$name has no kanji: $text", text.any { it in '一'..'鿿' } || name.startsWith("combo_"))
+        }
+    }
+
     // --- Toasts ---
 
     @Test

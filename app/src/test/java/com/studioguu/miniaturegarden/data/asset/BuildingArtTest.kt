@@ -73,9 +73,10 @@ class BuildingArtTest {
 
     @Test
     fun `the atlas stands each building where the art tool measured its base`() {
-        // tools/prepare_building_art.py fits the anchor to the base's three ground corners (the
-        // pictures are flatter than 2:1, so it splits the miss between the sides and the front);
-        // the atlas must carry what it wrote, or the building floats behind its footprint.
+        // tools/prepare_building_art.py fits the anchor to the base's ground corners (the pictures
+        // are flatter than 2:1). The greenhouse and the windmill split the miss between the sides
+        // and the front; the cottage stands its base's side corners on its footprint's, centred
+        // on its 3x3 lot without spilling past it. The atlas must carry what it wrote.
         val overrides = File(tools, "atlas_overrides.json").readText()
         for (id in listOf("struct_cottage", "floor_greenhouse", "struct_windmill")) {
             val written = Regex("\"$id\": \\{[^}]*\"anchorY\": ([0-9.]+)").find(overrides)?.groupValues?.get(1)?.toFloat()

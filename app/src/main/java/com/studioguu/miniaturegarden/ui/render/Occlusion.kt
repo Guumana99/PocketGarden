@@ -36,17 +36,34 @@ object Occlusion {
 
         val u = (cell.x - cell.y).toFloat()
         val v = (cell.x + cell.y + 1).toFloat()
+        return covers(building, u, v, structure.heightSteps)
+    }
+
+    /**
+     * Whether the screen point (u, v) lies inside [building]'s outline on screen: the box over
+     * its footprint [heightSteps] tall, plus the circle a windmill's sails sweep. [margin] widens
+     * the outline on every side, in half tile heights. Used for hiding and for taps
+     * ([TapTargets]); a building that is not a structure covers nothing.
+     */
+    fun covers(building: GridObject, u: Float, v: Float, heightSteps: Float, margin: Float = 0f): Boolean {
+        val structure = StructureData.fromObjectId(building.objectId) ?: return false
+        val w = structure.footprint.width
+        val h = structure.footprint.height
+        val gx = building.gridX
+        val gy = building.gridY
         if (building.objectId == WindmillSails.MILL_OBJECT_ID && underSails(building, w, h, u, v)) return true
         val uBack = (gx - gy).toFloat()
         val vBack = (gx + gy).toFloat()
         val uLeft = uBack - h
         val uRight = uBack + w
         val uFront = uBack + w - h
-        if (u <= uLeft || u >= uRight) return false
+        if (u <= uLeft - margin || u >= uRight + margin) return false
 
-        val rise = structure.heightSteps / STEPS_PER_HALF_TILE
-        val top = vBack + abs(u - uBack) - rise
-        val bottom = if (u <= uFront) vBack + h + (u - uLeft) else vBack + w + h - (u - uFront)
+        val rise = heightSteps / STEPS_PER_HALF_TILE
+        // Past the side corners the outline goes straight up and down.
+        val edgeU = u.coerceIn(uLeft, uRight)
+        val top = vBack + abs(edgeU - uBack) - rise - margin
+        val bottom = (if (edgeU <= uFront) vBack + h + (edgeU - uLeft) else vBack + w + h - (edgeU - uFront)) + margin
         return v > top && v < bottom
     }
 

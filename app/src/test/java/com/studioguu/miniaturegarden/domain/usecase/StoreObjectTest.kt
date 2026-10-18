@@ -203,7 +203,7 @@ class StoreObjectTest {
     @Test
     fun `the button that fills in a page names no number of coins`() {
         val label = string("collection_reveal_button")
-        assertTrue(label.contains("とうろく"))
+        assertTrue(label.contains("登録"))
         assertFalse(label.contains("%"))
         assertFalse(label.contains("🪙"))
         assertFalse(label.any { it.isDigit() })

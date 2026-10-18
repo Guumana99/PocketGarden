@@ -61,6 +61,7 @@ fun ShopDialog(
     val playerStats by viewModel.playerStats.collectAsStateWithLifecycle()
     val bonusRemaining by viewModel.bonusRemaining.collectAsStateWithLifecycle()
     val adReady by viewModel.adReady.collectAsStateWithLifecycle()
+    val ownsSymbol by viewModel.ownsSymbol.collectAsStateWithLifecycle()
     var category by rememberSaveable { mutableStateOf(ItemCategory.SEED) }
     var confirmBonus by rememberSaveable { mutableStateOf(false) }
     /** Price of the item the player could not afford, while that dialog is open. */
@@ -100,6 +101,7 @@ fun ShopDialog(
                         ShopRow(
                             item = item,
                             locked = !item.isUnlockedFor(playerStats),
+                            owned = item.isSymbol && ownsSymbol,
                             affordable = coins >= item.price,
                             onBuy = { if (coins >= item.price) viewModel.buy(item) else shortFor = item.price },
                         )
@@ -179,7 +181,7 @@ fun ShopDialog(
 }
 
 @Composable
-private fun ShopRow(item: GardenItem, locked: Boolean, affordable: Boolean, onBuy: () -> Unit) {
+private fun ShopRow(item: GardenItem, locked: Boolean, owned: Boolean, affordable: Boolean, onBuy: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -206,6 +208,14 @@ private fun ShopRow(item: GardenItem, locked: Boolean, affordable: Boolean, onBu
                     is UnlockCondition.CollectionPages -> stringResource(R.string.shop_locked_pages, condition.pages)
                     else -> stringResource(R.string.shop_locked, item.unlockLevel)
                 },
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else if (owned) {
+            // One of a kind and already the player's: listed, so it does not vanish from the
+            // shelf, but there is nothing to buy.
+            Text(
+                text = stringResource(R.string.shop_owned),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

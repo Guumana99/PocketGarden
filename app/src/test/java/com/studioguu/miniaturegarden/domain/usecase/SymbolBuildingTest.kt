@@ -80,6 +80,28 @@ class SymbolBuildingTest {
     }
 
     @Test
+    fun `the shop shows the cottage as owned while it is in the bag or in the garden`() {
+        val emptyBag = listOf(InventorySlot(0))
+        assertFalse(ownsSymbolBuilding(emptyList(), emptyBag))
+        assertTrue(ownsSymbolBuilding(emptyList(), listOf(InventorySlot(0, GardenItem.STRUCT_COTTAGE.itemId, 1))))
+        assertTrue(ownsSymbolBuilding(listOf(cottage(2, 2, WorkKind.BUILDING)), emptyBag))
+        assertTrue(ownsSymbolBuilding(listOf(cottage(2, 2)), emptyBag))
+        // Other buildings are not one of a kind.
+        val hut = GridObject(instanceId = "hut", gridX = 0, gridY = 0, objectId = StructureData.HUT.objectId, lastUpdatedTimestamp = t0)
+        assertFalse(ownsSymbolBuilding(listOf(hut), listOf(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))))
+    }
+
+    @Test
+    fun `an owned cottage stays on the shelf, marked as owned instead of for sale`() {
+        val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
+        val shop = java.io.File(main, "java/com/studioguu/miniaturegarden/ui/shop/ShopDialog.kt").readText()
+        assertTrue(shop.contains("owned = item.isSymbol && ownsSymbol"))
+        assertTrue(shop.contains("R.string.shop_owned"))
+        val strings = java.io.File(main, "res/values/strings.xml").readText()
+        assertTrue(strings.contains("<string name=\"shop_owned\">"))
+    }
+
+    @Test
     fun `once it is gone another can be bought`() = runBlocking {
         repo.put(cottage(2, 2))
         repo.deleteGridObject("cottage")
