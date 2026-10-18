@@ -50,6 +50,11 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        // Compose UI tests run under Robolectric and need the app's strings and themes.
+        unitTests.isIncludeAndroidResources = true
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -113,4 +118,9 @@ dependencies {
 
     // Test
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    // The empty activity the Compose test rule shows its content in; debug builds only.
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

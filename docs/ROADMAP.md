@@ -182,8 +182,10 @@
 ### 整備
 
 - [ ] 設定に「風の演出」「アニメーションを減らす」の切替（負荷・電池・酔い対策）
-- [ ] Compose の UI テスト、またはスクリーンショットテストの導入
-- [ ] 不安定な `SettingsRepositoryTest` の修正
+- [ ] Compose の UI テスト、またはスクリーンショットテストの導入。
+  UI テストは導入済み（Robolectric 4.14.1 ＋ `ui-test-junit4`、JVM で動く。`SettingsContentTest` `CozyComponentsTest`）。画面は既定の 320×470dp。スクリーンショットテストは未導入
+- [ ] 不安定な `SettingsRepositoryTest` の修正。
+  2026-10-18 時点で、全件実行では `observers are told about each change` が毎回失敗する（main でも同じ。単独で回すと成功）。収集側が値を取りこぼす競合
 - [ ] リリース準備（本番の広告 ID、署名、バージョン、ストア素材、プライバシーポリシーの見直し）
 - [ ] クラウドへのバックアップ（現在は端末内のみ、`allowBackup=false`）
 - [ ] 通知の種類ごとの ON/OFF、通知から庭へ直接入る

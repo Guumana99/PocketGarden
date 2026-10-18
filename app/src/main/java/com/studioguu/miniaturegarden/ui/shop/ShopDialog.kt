@@ -8,12 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -23,7 +19,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -37,14 +32,18 @@ import com.studioguu.miniaturegarden.domain.model.UnlockCondition
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.ui.actionResultMessage
+import com.studioguu.miniaturegarden.ui.components.CarvedButton
+import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
 import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.WoodPanel
+import com.studioguu.miniaturegarden.ui.components.WoodTabs
 import com.studioguu.miniaturegarden.ui.components.findActivity
-import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.itemEmoji
 import com.studioguu.miniaturegarden.ui.seasonEmoji
 import com.studioguu.miniaturegarden.ui.seasonLabel
+import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 /**
  * Buy seeds, structures and decorations with coins; purchases go straight into the inventory.
@@ -71,26 +70,23 @@ fun ShopDialog(
     // Start every visit without the previous visit's message.
     DisposableEffect(Unit) { onDispose { viewModel.clearFeedback() } }
 
-    AlertDialog(
-        modifier = Modifier.popIn(),
+    ParchmentDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.shop_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.shop_coins, coins), style = MaterialTheme.typography.titleSmall)
-                TabRow(selectedTabIndex = category.ordinal, containerColor = Color.Transparent) {
-                    for (tab in ItemCategory.entries) {
-                        Tab(
-                            selected = tab == category,
-                            onClick = { category = tab },
-                            text = { Text(stringResource(categoryLabel(tab)), maxLines = 1) },
-                        )
-                    }
-                }
-                // A fixed minimum keeps the dialog from jumping when a shelf has fewer items.
+        title = stringResource(R.string.shop_title),
+        buttons = { CarvedButton(text = stringResource(R.string.action_close), onClick = onDismiss) },
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.shop_coins, coins), style = MaterialTheme.typography.titleSmall, color = GardenColors.Ink)
+            WoodTabs(
+                labels = ItemCategory.entries.map { stringResource(categoryLabel(it)) },
+                selectedIndex = category.ordinal,
+                onSelect = { category = ItemCategory.entries[it] },
+            )
+            // The shelf: one wooden board. A fixed minimum keeps the dialog from jumping when a
+            // shelf has fewer items; a long one scrolls inside rather than pushing the buttons off screen.
+            WoodPanel(modifier = Modifier.heightIn(min = SHELF_MIN_HEIGHT, max = SHELF_MAX_HEIGHT)) {
                 Column(
-                    // A long shelf scrolls inside the dialog rather than pushing its buttons off screen.
-                    modifier = Modifier.heightIn(min = SHELF_MIN_HEIGHT, max = SHELF_MAX_HEIGHT).verticalScroll(rememberScrollState()),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     if (category == ItemCategory.SEED) {
@@ -109,59 +105,52 @@ fun ShopDialog(
                         )
                     }
                 }
-                val purchase = feedback
-                val noticeText = notice
-                if (noticeText != null) {
-                    Text(
-                        text = noticeText.text(),
-                        color = if (noticeText.good) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                } else if (purchase != null) {
-                    val failure = actionResultMessage(purchase.result)
-                    Text(
-                        text = if (failure == null) {
-                            stringResource(R.string.shop_bought, itemDisplayName(purchase.item))
-                        } else {
-                            stringResource(failure)
-                        },
-                        color = if (purchase.result == ActionResult.SUCCESS) {
-                            MaterialTheme.colorScheme.secondary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                // Greyed out when today's bonuses are used up or none is ready to be shown.
-                WoodButton(
-                    text = stringResource(
-                        R.string.reward_bonus_button,
-                        RewardType.COIN_BONUS_AMOUNT,
-                        bonusRemaining,
-                        RewardType.COIN_BONUS.dailyLimit,
-                    ),
-                    onClick = { confirmBonus = true },
-                    enabled = bonusAvailable,
-                    modifier = Modifier.fillMaxWidth(),
+            }
+            val purchase = feedback
+            val noticeText = notice
+            if (noticeText != null) {
+                Text(
+                    text = noticeText.text(),
+                    color = if (noticeText.good) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else if (purchase != null) {
+                val failure = actionResultMessage(purchase.result)
+                Text(
+                    text = if (failure == null) {
+                        stringResource(R.string.shop_bought, itemDisplayName(purchase.item))
+                    } else {
+                        stringResource(failure)
+                    },
+                    color = if (purchase.result == ActionResult.SUCCESS) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
                 )
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
-        },
-    )
+            // Greyed out when today's bonuses are used up or none is ready to be shown.
+            WoodButton(
+                text = stringResource(
+                    R.string.reward_bonus_button,
+                    RewardType.COIN_BONUS_AMOUNT,
+                    bonusRemaining,
+                    RewardType.COIN_BONUS.dailyLimit,
+                ),
+                onClick = { confirmBonus = true },
+                enabled = bonusAvailable,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
 
     shortFor?.let { price ->
-        AlertDialog(
-            modifier = Modifier.popIn(),
+        ParchmentDialog(
             onDismissRequest = { shortFor = null },
-            title = { Text(stringResource(R.string.msg_not_enough_coins)) },
-            text = { Text(stringResource(R.string.shop_short_by, price - coins)) },
-            dismissButton = {
-                TextButton(onClick = { shortFor = null }) { Text(stringResource(R.string.action_close)) }
-            },
-            confirmButton = {
+            title = stringResource(R.string.msg_not_enough_coins),
+            buttons = {
+                CarvedButton(text = stringResource(R.string.action_close), onClick = { shortFor = null })
                 WoodButton(
                     text = stringResource(R.string.reward_bonus_short, RewardType.COIN_BONUS_AMOUNT),
                     onClick = {
@@ -171,7 +160,9 @@ fun ShopDialog(
                     enabled = bonusAvailable,
                 )
             },
-        )
+        ) {
+            Text(stringResource(R.string.shop_short_by, price - coins), color = GardenColors.Ink)
+        }
     }
 
     if (confirmBonus) {
