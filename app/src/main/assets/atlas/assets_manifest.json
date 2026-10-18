@@ -17,8 +17,8 @@
     },
     {
       "assetId": "floor_tilled",
-      "anchorX": 0.4993,
-      "anchorY": 0.4517,
+      "anchorX": 0.5,
+      "anchorY": 0.458,
       "width": 512,
       "height": 279,
       "isFlippedAllowed": false,
@@ -402,9 +402,9 @@
     },
     {
       "assetId": "tile_grass",
-      "anchorX": 0.4993,
-      "anchorY": 0.4325,
-      "width": 513,
+      "anchorX": 0.5,
+      "anchorY": 0.4337,
+      "width": 512,
       "height": 295,
       "isFlippedAllowed": true,
       "atlasX": 2701,
@@ -412,12 +412,12 @@
     },
     {
       "assetId": "tile_grass_dark",
-      "anchorX": 0.4993,
-      "anchorY": 0.4325,
-      "width": 513,
+      "anchorX": 0.5,
+      "anchorY": 0.4337,
+      "width": 512,
       "height": 295,
       "isFlippedAllowed": true,
-      "atlasX": 3216,
+      "atlasX": 3215,
       "atlasY": 1364
     }
   ]
