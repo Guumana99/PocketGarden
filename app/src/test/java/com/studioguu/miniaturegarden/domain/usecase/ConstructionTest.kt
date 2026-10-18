@@ -43,20 +43,41 @@ class ConstructionTest {
 
     private fun only() = repo.objects.values.single()
 
+    /** The building and taking-down times the tests run on, read from the item master. */
+    private val wellBuild = GardenItem.STRUCT_WELL.buildSeconds * second
+    private val hutBuild = GardenItem.STRUCT_HUT.buildSeconds * second
+    private val wellDown = GardenItem.STRUCT_WELL.demolishSeconds * second
+    private val hutDown = GardenItem.STRUCT_HUT.demolishSeconds * second
+
     // --- What takes time ---
 
     @Test
-    fun `buildings take time to put up and half as long to take down, the rest is instant`() {
-        assertEquals(300, GardenItem.STRUCT_HUT.buildSeconds)
-        assertEquals(120, GardenItem.STRUCT_WELL.buildSeconds)
+    fun `buildings take time to put up and a short while to take down, the rest is instant`() {
         assertEquals(20, GardenItem.STRUCT_FENCE.buildSeconds)
+        assertEquals(30 * 60, GardenItem.STRUCT_WELL.buildSeconds)
+        assertEquals(45 * 60, GardenItem.STRUCT_WINDMILL.buildSeconds)
+        assertEquals(60 * 60, GardenItem.STRUCT_HUT.buildSeconds)
+        assertEquals(2 * 60 * 60, GardenItem.STRUCT_COTTAGE.buildSeconds)
         for (item in GardenItem.entries) {
-            assertEquals(item.name, item.buildSeconds / 2, item.demolishSeconds)
+            // Half the building time, but taking down is a chore: five minutes at most.
+            assertEquals(item.name, minOf(item.buildSeconds / 2, 5 * 60), item.demolishSeconds)
             if (item.category != ItemCategory.STRUCTURE) assertEquals(item.name, 0, item.buildSeconds)
         }
-        // The bigger the building, the longer it takes.
-        assertTrue(GardenItem.STRUCT_FENCE.buildSeconds < GardenItem.STRUCT_WELL.buildSeconds)
-        assertTrue(GardenItem.STRUCT_WELL.buildSeconds < GardenItem.STRUCT_HUT.buildSeconds)
+        assertEquals(10, GardenItem.STRUCT_FENCE.demolishSeconds)
+        assertEquals(5 * 60, GardenItem.STRUCT_COTTAGE.demolishSeconds)
+        // The bigger (and later, and dearer) the building, the longer it takes.
+        val buildings = listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE)
+        assertEquals(buildings, buildings.sortedBy { it.buildSeconds })
+        assertEquals(buildings, buildings.sortedBy { it.price })
+    }
+
+    @Test
+    fun `no building keeps the player waiting longer than an afternoon, or as long as a crop`() {
+        val shortestCrop = com.studioguu.miniaturegarden.domain.model.PlantSpecies.entries.minOf { it.growthHours } * 3_600_000L
+        for (item in GardenItem.entries.filter { it.buildSeconds > 0 }) {
+            assertTrue(item.name, item.buildSeconds <= 3 * 60 * 60)
+            assertTrue(item.name, item.buildSeconds * 1000L < shortestCrop)
+        }
     }
 
     // --- Building ---
@@ -71,7 +92,7 @@ class ConstructionTest {
         assertEquals(WorkKind.BUILDING, site.workKind)
         assertTrue(site.isWorking)
         assertEquals(t0, site.workStartedAt)
-        assertEquals(t0 + 120 * second, site.workEndsAt)
+        assertEquals(t0 + GardenItem.STRUCT_WELL.buildSeconds * second, site.workEndsAt)
         // It takes up its place already.
         assertEquals(ActionResult.TILE_OCCUPIED, HoeUseCase(repo, GardenMap.DEFAULT)(2, 3, t0))
     }
@@ -116,10 +137,11 @@ class ConstructionTest {
         place(0, 3, 3, t0)
 
         assertTrue(complete(t0).isEmpty())
-        assertTrue(complete(t0 + 299 * second).isEmpty())
+        val hutTime = GardenItem.STRUCT_HUT.buildSeconds
+        assertTrue(complete(t0 + (hutTime - 1) * second).isEmpty())
         assertEquals(WorkKind.BUILDING, only().workKind)
 
-        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.READY)), complete(t0 + 300 * second))
+        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.READY)), complete(t0 + hutTime * second))
 
         // It does not turn into the finished building by itself.
         val site = only()
@@ -128,7 +150,7 @@ class ConstructionTest {
         assertEquals(1f, site.workProgress(t0), 0f)        // whatever the clock says now
         assertEquals(0L, site.workRemainingMillis(t0))
         // And however long it is left, or however often the garden is synced, it stays that way.
-        assertTrue(complete(t0 + 301 * second).isEmpty())
+        assertTrue(complete(t0 + (hutTime + 1) * second).isEmpty())
         assertTrue(complete(t0 + 30L * 24 * 3_600 * second).isEmpty())
         assertEquals(WorkKind.READY, only().workKind)
     }
@@ -143,7 +165,7 @@ class ConstructionTest {
         assertEquals(ActionResult.BUSY, unveil(id))
         assertEquals(WorkKind.BUILDING, only().workKind)
 
-        complete(t0 + 300 * second)
+        complete(t0 + hutBuild)
         assertEquals(ActionResult.SUCCESS, unveil(id))
 
         val hut = only()
@@ -174,15 +196,15 @@ class ConstructionTest {
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 2))
         place(0, 2, 2, t0)
         place(0, 6, 6, t0)
-        complete(t0 + 120 * second)
+        complete(t0 + wellBuild)
         val (wrappedA, wrappedB) = repo.objects.values.toList()
         assertEquals(WorkKind.READY, wrappedA.workKind)
 
         assertEquals(ActionResult.BUSY, move(wrappedA.instanceId, 0, 0))
 
-        assertEquals(ActionResult.SUCCESS, startRemoval(wrappedA.instanceId, toBag = true, t0 + 200 * second))
+        assertEquals(ActionResult.SUCCESS, startRemoval(wrappedA.instanceId, toBag = true, t0 + wellBuild + 80 * second))
         assertEquals(1, repo.slots.getValue(0).amount)
-        assertEquals(ActionResult.SUCCESS, startRemoval(wrappedB.instanceId, toBag = false, t0 + 200 * second))
+        assertEquals(ActionResult.SUCCESS, startRemoval(wrappedB.instanceId, toBag = false, t0 + wellBuild + 80 * second))
         assertTrue(repo.objects.isEmpty())
     }
 
@@ -197,7 +219,7 @@ class ConstructionTest {
         assertEquals(1, complete(t0 + 20 * second).size)   // the first fence
         assertEquals(1, complete(t0 + 30 * second).size)   // the second
         assertEquals(1, repo.objects.values.count { it.workKind == WorkKind.BUILDING })
-        assertEquals(listOf(FinishedWork("struct_well", WorkKind.READY)), complete(t0 + 120 * second))
+        assertEquals(listOf(FinishedWork("struct_well", WorkKind.READY)), complete(t0 + wellBuild))
         assertTrue(repo.objects.values.all { it.workKind == WorkKind.READY })
     }
 
@@ -229,17 +251,17 @@ class ConstructionTest {
     // --- Taking down ---
 
     @Test
-    fun `discarding a finished building starts a demolition that takes half the building time`() = runBlocking {
+    fun `discarding a finished building starts a demolition that takes its taking-down time`() = runBlocking {
         repo.put(obj("hut", "struct_hut", 2, 2))
 
         assertEquals(ActionResult.SUCCESS, startRemoval("hut", toBag = false, t0))
 
         val site = only()
         assertEquals(WorkKind.DEMOLISHING, site.workKind)
-        assertEquals(t0 + 150 * second, site.workEndsAt)
+        assertEquals(t0 + hutDown, site.workEndsAt)
 
-        assertTrue(complete(t0 + 149 * second).isEmpty())
-        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.DEMOLISHING)), complete(t0 + 150 * second))
+        assertTrue(complete(t0 + hutDown - second).isEmpty())
+        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.DEMOLISHING)), complete(t0 + hutDown))
         assertTrue(repo.objects.isEmpty())
         assertTrue(repo.slots.values.all { it.isEmpty }) // thrown away, not put back
     }
@@ -254,7 +276,7 @@ class ConstructionTest {
         assertTrue(repo.slots.values.all { it.isEmpty }) // not yet
         assertEquals(110L, repo.profile?.currentXp)
 
-        assertEquals(listOf(FinishedWork("struct_well", WorkKind.PACKING)), complete(t0 + 60 * second))
+        assertEquals(listOf(FinishedWork("struct_well", WorkKind.PACKING)), complete(t0 + wellDown))
 
         assertTrue(repo.objects.isEmpty())
         assertEquals(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 1), repo.slots.getValue(0).contents())
@@ -301,7 +323,7 @@ class ConstructionTest {
         assertEquals(ActionResult.BUSY, startRemoval("hut", toBag = false, t0 + second))
         assertEquals(ActionResult.BUSY, startRemoval("hut", toBag = true, t0 + second))
 
-        assertEquals(t0 + 150 * second, only().workEndsAt) // the clock was not reset
+        assertEquals(t0 + hutDown, only().workEndsAt) // the clock was not reset
     }
 
     @Test
@@ -327,7 +349,7 @@ class ConstructionTest {
         // Meanwhile the one free slot is taken.
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 5))
 
-        assertTrue(complete(t0 + 60 * second).isEmpty())
+        assertTrue(complete(t0 + wellDown).isEmpty())
 
         val well = repo.objects.getValue("well")
         assertFalse(well.isWorking)
@@ -350,9 +372,9 @@ class ConstructionTest {
         val site = only()
         assertEquals(WorkKind.BUILDING, site.workKind)
         assertEquals(later, site.workStartedAt)
-        assertEquals(later + 300 * second, site.workEndsAt) // the whole building time again
+        assertEquals(later + hutBuild, site.workEndsAt) // the whole building time again
         assertTrue(complete(later).isEmpty())
-        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.READY)), complete(later + 300 * second))
+        assertEquals(listOf(FinishedWork("struct_hut", WorkKind.READY)), complete(later + hutBuild))
     }
 
     @Test
@@ -364,7 +386,7 @@ class ConstructionTest {
         assertTrue(sync(t0 + 50 * second, WeatherType.SUNNY).isTrusted)
 
         assertEquals(t0, only().workStartedAt)
-        assertEquals(t0 + 120 * second, only().workEndsAt)
+        assertEquals(t0 + wellBuild, only().workEndsAt)
     }
 
     // --- Moving ---

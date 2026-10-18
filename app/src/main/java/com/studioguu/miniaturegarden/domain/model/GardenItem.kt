@@ -38,10 +38,10 @@ enum class ItemCategory {
  *                  paprika      Lv.4            55   140 coins + 118 XP after 100 h (summer only);
  *                                                    bears again: 42 coins + 59 XP every 50 h after that
  *     structures   fence        from start      15   joins its neighbours; 20 s to build
- *                  well         Lv.3            80   30 XP; soil round it dries half as fast
- *                  windmill     Lv.4           120   45 XP; 2x2, its sails turn; soil within two cells dries a little slower
- *                  hut          Lv.5           150   60 XP; plants round it grow 10 % faster
- *                  cottage      Lv.6           300   100 XP; symbol building (one per garden, 3x3); lets the garden grow
+ *                  well         Lv.3            80   30 XP; soil round it dries half as fast; 30 min to build
+ *                  windmill     Lv.4           120   45 XP; 2x2, its sails turn; soil within two cells dries a little slower; 45 min
+ *                  hut          Lv.5           150   60 XP; plants round it grow 10 % faster; 1 h
+ *                  cottage      Lv.6           300   100 XP; symbol building (one per garden, 3x3); lets the garden grow; 2 h
  *                  greenhouse   Lv.18          300   40 XP; one cell of soil under glass, sown in any season
  *     decorations  grass        from start      10   ground cover
  *                  pebble       from start      10   ground cover
@@ -70,6 +70,13 @@ enum class ItemCategory {
  * - The well and the hut are the only purchases that pay for themselves, through the plants
  *   round them; they are the dearest and come last.
  *
+ * How long the buildings take (#43): long enough to be something to come back to, the way a
+ * crop is, and short enough to be ready within one sitting's day. A fence goes up while you watch
+ * (it is laid a piece at a time); the well takes half an hour, the windmill three quarters, the hut
+ * an hour, and the cottage, which opens up the garden, two hours: about a tea break to an
+ * afternoon, against a crop's two days and more. Taking a building down is a chore rather than
+ * something to look forward to (PHILOSOPHY 4): half its building time, never more than five minutes.
+ *
  * @property itemId value stored in an inventory slot.
  * @property price shop price in coins.
  * @property objectId the grid object created when the item is placed on a tile. For seeds this
@@ -80,6 +87,13 @@ enum class ItemCategory {
  * @property buildSeconds how long it takes to build once placed; 0 for things that are simply
  *   put down. Until then it stands on the garden as a work site.
  */
+/** A minute and an hour, in seconds: for [GardenItem.buildSeconds]. */
+private const val MINUTE = 60
+private const val HOUR = 60 * MINUTE
+
+/** The longest any building takes to come down: a chore, not something to wait for. */
+const val MAX_DEMOLISH_SECONDS = 5 * MINUTE
+
 enum class GardenItem(
     val itemId: String,
     val price: Int,
@@ -104,11 +118,11 @@ enum class GardenItem(
     ),
     STRUCT_HUT(
         "struct_hut", price = 150, objectId = StructureData.HUT.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(5), placeXp = 60, buildSeconds = 300,
+        unlock = UnlockCondition.PlayerLevel(5), placeXp = 60, buildSeconds = HOUR,
     ),
     STRUCT_WELL(
         "struct_well", price = 80, objectId = StructureData.WELL.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(3), placeXp = 30, buildSeconds = 120,
+        unlock = UnlockCondition.PlayerLevel(3), placeXp = 30, buildSeconds = 30 * MINUTE,
     ),
     GROUND_GRASS("ground_grass", price = 10, objectId = "ground_grass", category = ItemCategory.DECORATION),
     GROUND_PEBBLE("ground_pebble", price = 10, objectId = "ground_pebble", category = ItemCategory.DECORATION),
@@ -151,13 +165,13 @@ enum class GardenItem(
     /** The symbol building: a cottage. One per garden; with it standing, the garden can grow. */
     STRUCT_COTTAGE(
         "struct_cottage", price = 300, objectId = StructureData.COTTAGE.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(6), placeXp = 100, buildSeconds = 600,
+        unlock = UnlockCondition.PlayerLevel(6), placeXp = 100, buildSeconds = 2 * HOUR,
     ),
 
     /** A windmill with turning sails, between the well and the hut. */
     STRUCT_WINDMILL(
         "struct_windmill", price = 120, objectId = StructureData.WINDMILL.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(4), placeXp = 45, buildSeconds = 240,
+        unlock = UnlockCondition.PlayerLevel(4), placeXp = 45, buildSeconds = 45 * MINUTE,
     ),
 
     /** Autumn's flower. */
@@ -225,8 +239,8 @@ enum class GardenItem(
 
     fun isUnlockedFor(stats: PlayerStats): Boolean = unlock.isMetBy(stats)
 
-    /** Taking it apart again takes half as long as building it did. */
-    val demolishSeconds: Int get() = buildSeconds / 2
+    /** Taking it apart again takes half as long as building it did, and never more than [MAX_DEMOLISH_SECONDS]. */
+    val demolishSeconds: Int get() = minOf(buildSeconds / 2, MAX_DEMOLISH_SECONDS)
 
     /** The player level that opens this item in the shop; 1 when it is never locked. */
     val unlockLevel: Int get() = (unlock as? UnlockCondition.PlayerLevel)?.level ?: 1
