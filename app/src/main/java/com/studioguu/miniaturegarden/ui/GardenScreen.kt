@@ -482,14 +482,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                             )
                         }
                     }
-                    // In edit mode with nothing in hand or selected, a banner says so, and ends it.
-                    AnimatedVisibility(
-                        visible = editMode && placing == null && !hoeActive && moving == null && target == null,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                    ) {
-                        ToolBanner(stringResource(R.string.edit_banner), onCancel = viewModel::toggleEditMode, cancelLabel = stringResource(R.string.edit_done))
-                    }
+                    // Edit mode has no banner of its own (#49): the lit pencil and the grid say it is
+                    // on, and the pencil ends it.
                     // The first steps say what to do next, only while nothing else is showing here.
                     val hint = tutorialHint(tutorialStep)
                     var lastHint by remember { mutableStateOf(hint) }
@@ -711,7 +705,7 @@ private fun PlacingBanner(slot: InventorySlot, flipped: Boolean, onFlip: () -> U
 
 /** Says what the next tap on a tile will do, with a way out, and anything else that goes with it ([extra]). */
 @Composable
-private fun ToolBanner(text: String, onCancel: () -> Unit, cancelLabel: String? = null, extra: @Composable () -> Unit = {}) {
+private fun ToolBanner(text: String, onCancel: () -> Unit, extra: @Composable () -> Unit = {}) {
     Surface(shape = RoundedCornerShape(20.dp), tonalElevation = 3.dp, shadowElevation = 6.dp) {
         Row(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp),
@@ -723,7 +717,7 @@ private fun ToolBanner(text: String, onCancel: () -> Unit, cancelLabel: String? 
                 modifier = Modifier.weight(1f, fill = false),
             )
             extra()
-            TextButton(onClick = onCancel) { Text(cancelLabel ?: stringResource(R.string.placing_cancel)) }
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.placing_cancel)) }
         }
     }
 }

@@ -79,6 +79,31 @@ class PolishTest {
     }
 
     @Test
+    fun `even a short message stays up long enough to be read, and a building's news longest`() {
+        // #49: 1.6 s was too quick to read.
+        assertTrue(toastMillis("🔨 建築スタート") >= 2_800L)
+        assertTrue(toastMillis(string("msg_work_ready")) in 3_000L..4_500L)
+        val built = com.studioguu.miniaturegarden.ui.effects.effectTiming(
+            com.studioguu.miniaturegarden.ui.effects.GardenEffect.WorkDone(1, "struct_hut", com.studioguu.miniaturegarden.domain.model.WorkKind.BUILDING),
+        )
+        val harvest = com.studioguu.miniaturegarden.ui.effects.effectTiming(com.studioguu.miniaturegarden.ui.effects.GardenEffect.Xp(2, 5))
+        // "🎉 … が完成！" is fully readable for close to three seconds, and drifts up only a little.
+        assertTrue(built.durationMillis * built.visibleShare >= 2_800f)
+        assertTrue(built.durationMillis in 3_000..4_000)
+        assertTrue(built.riseShare < harvest.riseShare)
+        assertTrue(harvest.durationMillis < built.durationMillis)
+    }
+
+    @Test
+    fun `edit mode has no banner of its own - the pencil turns it off`() {
+        val screen = source("ui/GardenScreen.kt")
+        assertFalse(screen.contains("R.string.edit_banner"))
+        assertFalse(strings.contains("name=\"edit_done\""))
+        assertFalse(strings.contains("name=\"edit_banner\""))
+        assertTrue(screen.contains("onClick = viewModel::toggleEditMode"))
+    }
+
+    @Test
     fun `messages are shown by the garden's own toast, not the system's snackbar`() {
         val screen = source("ui/GardenScreen.kt")
         assertTrue(screen.contains("GardenToastHost("))

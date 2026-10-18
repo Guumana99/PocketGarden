@@ -43,6 +43,18 @@ private const val DURATION_MILLIS = 1600
 private val RISE = 96.dp
 
 /**
+ * How long an effect is on screen, and for what share of that it is fully visible before it
+ * fades. The quick sums of a harvest float up and go; news of a building (finished, taken down,
+ * packed away) stays a good while, so that it can be read (#49).
+ */
+data class EffectTiming(val durationMillis: Int, val visibleShare: Float, val riseShare: Float)
+
+fun effectTiming(effect: GardenEffect): EffectTiming = when (effect) {
+    is GardenEffect.WorkDone -> EffectTiming(durationMillis = 3_600, visibleShare = 0.8f, riseShare = 0.35f)
+    else -> EffectTiming(durationMillis = DURATION_MILLIS, visibleShare = 0.6f, riseShare = 1f)
+}
+
+/**
  * One action can set off several effects at once (harvest, first discovery). Each kind
  * starts one step higher than the last so they stack instead of overlap.
  */
@@ -75,8 +87,9 @@ fun FloatingEffectsHost(
 private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit) {
     val progress = remember { Animatable(0f) }
     val currentOnFinished by rememberUpdatedState(onFinished)
+    val timing = effectTiming(effect)
     LaunchedEffect(Unit) {
-        progress.animateTo(1f, tween(DURATION_MILLIS, easing = LinearOutSlowInEasing))
+        progress.animateTo(1f, tween(timing.durationMillis, easing = LinearOutSlowInEasing))
         currentOnFinished(effect.id)
     }
 
@@ -105,9 +118,10 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
         modifier = Modifier
             .graphicsLayer {
                 val t = progress.value
-                translationY = -(RISE.toPx() * t) - lift.toPx()
-                // Fully visible for the first 60%, then fade.
-                alpha = 1f - ((t - 0.6f) / 0.4f).coerceIn(0f, 1f)
+                translationY = -(RISE.toPx() * timing.riseShare * t) - lift.toPx()
+                // Fully visible for the first part, then fade.
+                val visible = timing.visibleShare
+                alpha = 1f - ((t - visible) / (1f - visible)).coerceIn(0f, 1f)
                 // The big ones pop in from slightly small.
                 val pop = if (isBig) 0.8f + 0.2f * (t / 0.2f).coerceAtMost(1f) else 1f
                 scaleX = pop

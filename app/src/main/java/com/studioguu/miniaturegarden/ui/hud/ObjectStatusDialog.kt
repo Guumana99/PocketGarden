@@ -154,6 +154,13 @@ fun ObjectStatusDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            } else if (!editing && !guiding && (gridObject.isTilledSoil || (gridObject.isPlant && gridObject.status == PlantStatus.WITHERED))) {
+                // What there is to clear away (a withered crop, an empty bed) is cleared in edit mode.
+                Text(
+                    text = stringResource(R.string.hint_edit_to_clear),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             // The symbol building is where the garden is made larger from.
@@ -192,7 +199,7 @@ fun ObjectStatusDialog(
                     FilledTonalButton(onClick = onFlip) { Text(stringResource(R.string.action_flip)) }
                 }
                 Spacer(Modifier.weight(1f))
-                // Crops and soil can be cleared any time; the layout only in edit mode.
+                // Anything is cleared away in edit mode only (#49).
                 if (!guiding && GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
                     OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
                 }
