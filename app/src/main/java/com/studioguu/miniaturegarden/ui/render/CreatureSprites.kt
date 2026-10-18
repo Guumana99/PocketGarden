@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.Creature
 import kotlin.math.abs
 import kotlin.math.max
@@ -22,9 +23,6 @@ import kotlin.math.sin
 // Whoever draws a visitor calls [drawVisitor], which takes the picture from the atlas as soon as
 // the atlas has one, so artwork can be packed in later without touching any drawing code.
 
-/** The id of the visitor's picture in the sprite atlas, like `creature_bird`. */
-val Creature.assetId: String get() = "creature_$id"
-
 /** How high a visitor that flies keeps above its spot, in tile widths; 0 for those on the ground. */
 val Creature.hoverHeight: Float
     get() = when (this) {
@@ -35,7 +33,7 @@ val Creature.hoverHeight: Float
 
 /**
  * Draws [creature] at [base], a point on the ground: from its picture in [atlas] when the atlas
- * has one ([assetId]), and in code ([drawCreature]) until then. A picture stands with its anchor
+ * has one ([TileSetDefinition.assetIdFor]), and in code ([drawCreature]) until then. A picture stands with its anchor
  * (its feet) on [base]; a flier's is held [hoverHeight] above it and bobs a little, its shadow
  * left on the ground unless [shadow] is false.
  */
@@ -48,7 +46,7 @@ fun DrawScope.drawVisitor(
     atlasImage: ImageBitmap?,
     shadow: Boolean = true,
 ) {
-    val sprite = atlas[creature.assetId]
+    val sprite = atlas[TileSetDefinition.assetIdFor(creature)]
     if (sprite == null || atlasImage == null) {
         drawCreature(creature, base, unit, clock)
         return

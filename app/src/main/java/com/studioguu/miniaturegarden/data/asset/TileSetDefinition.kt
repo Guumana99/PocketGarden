@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.data.asset
 
+import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -28,7 +29,12 @@ enum class GroundCover(val objectId: String) {
     FLOWERS("ground_flowers"),
 }
 
-/** Maps what is on the grid to the sprites that draw it. Plants themselves are [PlantSpecies]. */
+/**
+ * Maps what the garden shows to the sprites that draw it: every sprite id the game looks up is
+ * named here, so artwork is added by packing a picture under the id given here (ASSETS.md) and
+ * nothing else. Whatever has no sprite yet is drawn in code instead. Plants themselves are
+ * [PlantSpecies].
+ */
 object TileSetDefinition {
 
     /** Every object id that can be stored in a grid cell. */
@@ -50,10 +56,37 @@ object TileSetDefinition {
      */
     fun assetIdFor(gridObject: GridObject): String {
         if (!gridObject.isPlant) return gridObject.objectId
-        if (gridObject.status == PlantStatus.WITHERED) return "${gridObject.objectId}_withered"
+        if (gridObject.status == PlantStatus.WITHERED) return witheredId(gridObject.objectId)
         val stages = PlantSpecies.forObjectId(gridObject.objectId).growthStages
-        return "${gridObject.objectId}_stage${growthStage(gridObject.growthProgress, stages)}"
+        return stageId(gridObject.objectId, growthStage(gridObject.growthProgress, stages))
     }
+
+    private fun stageId(objectId: String, stage: Int) = "${objectId}_stage$stage"
+
+    private fun witheredId(objectId: String) = "${objectId}_withered"
+
+    /** Every sprite a crop is drawn with: `<objectId>_stage1` to `_stage<N>`, then `<objectId>_withered`. */
+    fun spriteIdsFor(species: PlantSpecies): List<String> =
+        (1..species.growthStages).map { stageId(species.objectId, it) } + witheredId(species.objectId)
+
+    /** The sprite of a visitor: `creature_<id>`, standing with its anchor at its feet. */
+    fun assetIdFor(creature: Creature): String = "creature_${creature.id}"
+
+    /** The windmill's sails: a sprite of their own, hung on the mill's hub and turned. */
+    const val WINDMILL_SAILS = "struct_windmill_blades"
+
+    /**
+     * Every sprite id the garden may look up: the ground tiles, each crop's stages, every other
+     * thing that stands in a cell, the windmill's sails and the visitors, whether the atlas has
+     * it yet or not. Against the atlas it gives the artwork still missing; anything in the atlas
+     * that is not here would never be drawn.
+     */
+    val expectedSpriteIds: List<String> =
+        GroundTile.entries.map { it.assetId } +
+            PlantSpecies.entries.flatMap(::spriteIdsFor) +
+            (objectIds - PlantSpecies.entries.map { it.objectId }.toSet()) +
+            WINDMILL_SAILS +
+            Creature.entries.map(::assetIdFor)
 
     /** 1-based stage; the last stage is reserved for a fully grown plant (progress 1.0). */
     fun growthStage(growthProgress: Float, stages: Int): Int {

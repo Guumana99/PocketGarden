@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.ui.render
 
+import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 
 /**
@@ -9,10 +10,21 @@ import com.studioguu.miniaturegarden.domain.model.WeatherType
  */
 object WindmillSails {
     /** Asset id of the sails, drawn over the mill on its hub ([com.studioguu.miniaturegarden.data.asset.AssetManifest.attachX]). */
-    const val SAILS_ASSET_ID = "struct_windmill_blades"
+    const val SAILS_ASSET_ID = TileSetDefinition.WINDMILL_SAILS
 
     /** The mill the sails belong to. */
     const val MILL_OBJECT_ID = "struct_windmill"
+
+    /**
+     * Where the sails turn, in tile widths from the ground under the middle of the mill's
+     * footprint: the hub is [HUB_RIGHT] to the right (to the left on a mill turned round) and
+     * [HUB_UP] up, and the tips of the sails sweep a circle [REACH] round it. Measured off the
+     * pictures in the atlas (BuildingArtTest keeps them in step); [Occlusion] uses them, since
+     * the sails reach past the side of the footprint and hide what is behind them there.
+     */
+    const val HUB_RIGHT = 0.67f
+    const val HUB_UP = 1.57f
+    const val REACH = 1.0f
 
     /** One full turn takes this long in a fair breeze. */
     const val TURN_MILLIS = 9_000L

@@ -40,7 +40,8 @@
 絵が無く、仮の絵を描いている作物と生き物の assetId:
 
 - 作物（コスモス・スノードロップ・ミント・スイカ・ラベンダー・カボチャ・ポインセチア）：`<objectId>_stage1`〜`_stage<N>` と `<objectId>_withered`
-  （N は `PlantSpecies.growthStages`、既定 4）。**全部そろえて入れる**こと。一部だけだと `CodeArtTest` が落ちる。仮の絵は `ui/render/SeasonalArt.kt` の `drawCropInCode`
+  （N は `PlantSpecies.growthStages`、既定 4）。**全部そろえて入れる**こと。一部だけだと `CodeArtTest` が落ちる。仮の絵は `ui/render/CropArt.kt`（絵が入ったら、その作物の `CROP_DRAWINGS` の行と描画関数を消してよい）
+- 名前の決まりは `TileSetDefinition`（`spriteIdsFor` `assetIdFor` `expectedSpriteIds`）。アトラスに入れた名前が一覧に無いと `CodeArtTest` が落ちる
 - 生き物：`creature_<id>`（`creature_butterfly` `creature_ladybug` `creature_bird` `creature_squirrel` `creature_frog` `creature_dragonfly`）。接地点は足元。
   飛ぶものも足元を接地点にする（浮かせる高さはコードの `hoverHeight`）。仮の絵は `ui/render/CreatureSprites.kt`
 

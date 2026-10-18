@@ -123,6 +123,29 @@ class OcclusionTest {
     }
 
     @Test
+    fun `the windmill's sails hide what is behind them past the side of its footprint`() {
+        // The mill on (5..6, 5..6); its hub is up and to the right, and the sails reach past the
+        // footprint's right corner, over cells the box over the footprint does not cover.
+        val mill = at("mill", 5, 5, StructureData.WINDMILL.objectId)
+        val underTheSails = listOf(GridCell(4, 1), GridCell(3, 0))
+        for (cell in underTheSails) assertTrue("$cell", Occlusion.hides(mill, cell))
+        // A plain box over the same footprint would not have hidden them.
+        val box = at("box", 5, 5, StructureData.HUT.objectId)
+        for (cell in underTheSails) assertFalse("$cell", Occlusion.hides(box, cell))
+        // Turned round, the sails are on the other side.
+        val turned = mill.copy(isFlipped = true)
+        for (cell in underTheSails) assertFalse("$cell", Occlusion.hides(turned, cell))
+        assertTrue(Occlusion.hides(turned, GridCell(1, 4)))
+        assertTrue(Occlusion.hides(turned, GridCell(0, 3)))
+        assertFalse(Occlusion.hides(mill, GridCell(1, 4)))
+        // Nothing in front of the mill, and none of its own cells.
+        assertFalse(Occlusion.hides(mill, GridCell(7, 7)))
+        assertFalse(Occlusion.hides(mill, GridCell(6, 6)))
+        // So picking a cell under the sails fades the mill.
+        assertEquals(setOf("mill"), Occlusion.fadedBuildings(listOf(mill), selected = GridCell(4, 1), editing = false))
+    }
+
+    @Test
     fun `the far corner of a 13x13 garden is hidden only by what stands in front of it`() {
         val windmill = at("windmill", 1, 1, StructureData.WINDMILL.objectId)
         assertTrue(Occlusion.hides(windmill, GridCell(0, 0)))
