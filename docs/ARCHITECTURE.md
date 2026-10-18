@@ -57,7 +57,7 @@ di/       Hilt の束ね
 
 ## シンボル建物
 
-庭の顔になる特別な建物。今はコテージ（`struct_cottage`、3×3、Lv.6、300 コイン、建築 10 分）だけ。
+庭の顔になる特別な建物。今はコテージ（`struct_cottage`、3×3、Lv.6、300 コイン、建築 2 時間）だけ。
 
 - **庭にひとつだけ**。数えるのは「庭に立っている（工事中も含む）」と「持ち物に入っている」の両方。
   - 買う：`PurchaseItemUseCase` が、どちらかにあれば `ONLY_ONE_SYMBOL` で断る。
@@ -252,7 +252,9 @@ NONE ──破棄──▶ DEMOLISHING ──時間──▶ 消える
 NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入る
 ```
 
-- 建築秒数は `GardenItem.buildSeconds`（フェンス 20、井戸 120、小屋 300）。解体は半分。
+- 建築秒数は `GardenItem.buildSeconds`（#43 から：フェンス 20 秒、井戸 30 分、風車 45 分、小屋 1 時間、コテージ 2 時間。それまでは 20 秒〜10 分）。
+  解体・片づけは半分、ただし最長 5 分（`MAX_DEMOLISH_SECONDS`）。考え方は `GardenItem.kt` の KDoc。
+- 残り時間の表示（`durationText`）は 1 時間未満なら「分・秒」、1 時間からは「時間・分」（秒は切り上げて短く見せない。`SpokenDuration`）。
 - 時間切れの処理は `CompleteWorkUseCase`。ViewModel の `watchWork()` が次の期限まで待って同期する（ポーリングなし）。
 - **完成は自動ではない**。`READY` で止まり、タップで `UnveilBuildingUseCase`。
 - 時刻改ざんを検出した同期では、作業は最初からやり直しになる（`SyncGardenUseCase`）。
@@ -494,7 +496,7 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
   - 置くとき：配置中の札に「↔ 向き」ボタン（`GardenViewModel.togglePlacingFlip` → `PlaceItemUseCase(flipped = …)`）。持ち物から取り出すたびに「ふつう」に戻る。向きを変えられない物では無視。
   - 置いたあと：建物の詳細に「↔ 向きを変える」（`FlipObjectUseCase`。工事中でもできる）。ほかの物は `NOT_FLIPPABLE`。
   - 描画：`drawSwayingSprite(flipped = obj.isFlipped)`。地面のタイルは光の向きが逆になるので反転させない（マニフェストの `isFlippedAllowed = false`）。
-- **風車**（`StructureData.WINDMILL`、2×2、Lv.4・120 コイン・設置 45 XP・建築 4 分）：本体 `struct_windmill` の上に、羽根 `struct_windmill_blades` を
+- **風車**（`StructureData.WINDMILL`、2×2、Lv.4・120 コイン・設置 45 XP・建築 45 分）：本体 `struct_windmill` の上に、羽根 `struct_windmill_blades` を
   本体の取り付け点（`attachX/attachY` → `AssetManifest.attachmentAt`）を軸にして回して描く（`drawTurningSprite`）。
   - 角度は `WindmillSails.angleAt(風の時計, 天気, x, y)`：晴れで 9 秒に 1 回転、くもり 1.25 倍、雨 1.6 倍。マスで少しずらして、並べても揃って回らない。
     風の時計（`windMillis`）を使うので、シートが出ていて庭が止まっている間は羽根も止まり、図鑑の絵（時計なし）では止まっている。

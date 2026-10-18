@@ -248,15 +248,32 @@ private fun WorkRow(gridObject: GridObject) {
     }
 }
 
-/** A length of time in words: "45秒", "2分", "2分30秒". */
+/** A length of time in words: "45秒", "2分", "2分30秒", "1時間", "1時間45分". */
 @Composable
 fun durationText(seconds: Int): String {
-    val minutes = seconds / 60
-    val rest = seconds % 60
+    val spoken = SpokenDuration.of(seconds)
     return when {
-        minutes == 0 -> stringResource(R.string.duration_seconds, rest)
-        rest == 0 -> stringResource(R.string.duration_minutes, minutes)
-        else -> stringResource(R.string.duration_minutes_seconds, minutes, rest)
+        spoken.hours > 0 && spoken.minutes == 0 -> stringResource(R.string.duration_hours, spoken.hours)
+        spoken.hours > 0 -> stringResource(R.string.duration_hours_minutes, spoken.hours, spoken.minutes)
+        spoken.minutes == 0 -> stringResource(R.string.duration_seconds, spoken.seconds)
+        spoken.seconds == 0 -> stringResource(R.string.duration_minutes, spoken.minutes)
+        else -> stringResource(R.string.duration_minutes_seconds, spoken.minutes, spoken.seconds)
+    }
+}
+
+/**
+ * How a length of time is said. Under an hour, in minutes and seconds. From an hour on, in hours
+ * and minutes, with the seconds rounded up into the next minute, so that a wait never reads
+ * shorter than it is ("1時間" stays until the last hour has truly begun).
+ */
+data class SpokenDuration(val hours: Int, val minutes: Int, val seconds: Int) {
+    companion object {
+        fun of(totalSeconds: Int): SpokenDuration {
+            val total = totalSeconds.coerceAtLeast(0)
+            if (total < 3_600) return SpokenDuration(0, total / 60, total % 60)
+            val minutesUp = (total + 59) / 60
+            return SpokenDuration(minutesUp / 60, minutesUp % 60, 0)
+        }
     }
 }
 
