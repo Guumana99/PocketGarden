@@ -57,6 +57,8 @@ from pathlib import Path
 
 from PIL import Image
 
+import crop_soil
+
 MANIFEST_VERSION = 1
 MANIFEST_NAME = "assets_manifest.json"
 ATLAS_NAME = "atlas.png"
@@ -114,16 +116,28 @@ def scale_image(image: Image.Image, scale: float) -> Image.Image:
     return image.convert("RGBa").resize(size, Image.LANCZOS).convert("RGBA")
 
 
-def load_sprites(input_dir: Path, alpha_threshold: int = 0, scale: float = 1.0) -> list[Sprite]:
-    """Load, crop and (when scale != 1) resample every PNG in input_dir."""
+def load_sprites(
+    input_dir: Path, alpha_threshold: int = 0, scale: float = 1.0, strip_crop_soil: bool = False,
+) -> list[Sprite]:
+    """Load, crop and (when scale != 1) resample every PNG in input_dir.
+
+    With strip_crop_soil, a crop picture (plant_*) first has the clump of earth under it taken
+    out (see crop_soil.py), and stands on the base of its stem rather than the default anchor.
+    """
     sprites = []
     for path in sorted(input_dir.glob("*.png")):
+        crop = strip_crop_soil and crop_soil.is_crop(path.stem)
         with Image.open(path) as source:
+            if crop:
+                source = crop_soil.strip_soil_ball(source, withered="withered" in path.stem)
             cropped = crop_to_alpha(source, alpha_threshold)
         if cropped is None:
             print(f"warning: {path.name} is fully transparent, skipped", file=sys.stderr)
             continue
-        sprites.append(Sprite(asset_id=path.stem, image=scale_image(cropped, scale)))
+        sprite = Sprite(asset_id=path.stem, image=scale_image(cropped, scale))
+        if crop:
+            sprite.anchor_x, sprite.anchor_y = crop_soil.stem_base(sprite.image)
+        sprites.append(sprite)
     return sprites
 
 
@@ -234,6 +248,7 @@ def run(
     padding: int = 2,
     alpha_threshold: int = 0,
     overrides_path: Path | None = None,
+    strip_crop_soil: bool = False,
 ) -> dict:
     """Run the whole pipeline and return the manifest that was written.
 
@@ -243,7 +258,7 @@ def run(
     if tile_width <= 0 or (source_tile_width is not None and source_tile_width <= 0):
         raise ValueError("tile widths must be positive")
     scale = 1.0 if source_tile_width is None else tile_width / source_tile_width
-    sprites = load_sprites(input_dir, alpha_threshold, scale)
+    sprites = load_sprites(input_dir, alpha_threshold, scale, strip_crop_soil)
     if not sprites:
         raise ValueError(f"no usable .png files in {input_dir}")
     if overrides_path is not None:
@@ -271,6 +286,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--padding", type=int, default=2, help="transparent pixels around each sprite (default: 2)")
     parser.add_argument("--alpha-threshold", type=int, default=0,
                         help="pixels with alpha at or below this (0-255) count as empty when cropping (default: 0)")
+    parser.add_argument("--strip-crop-soil", action="store_true",
+                        help="take the clump of earth out from under crop pictures (plant_*), see crop_soil.py")
     parser.add_argument("--overrides", type=Path, default=None,
                         help="JSON file with per-asset anchorX / anchorY / isFlippedAllowed")
     args = parser.parse_args(argv)
@@ -285,6 +302,7 @@ def main(argv: list[str] | None = None) -> int:
             padding=args.padding,
             alpha_threshold=args.alpha_threshold,
             overrides_path=args.overrides,
+            strip_crop_soil=args.strip_crop_soil,
         )
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)

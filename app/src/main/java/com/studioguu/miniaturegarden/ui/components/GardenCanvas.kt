@@ -84,6 +84,9 @@ import com.studioguu.miniaturegarden.ui.render.SoilTexture
 import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TapTargets
+import androidx.compose.ui.graphics.drawscope.clipPath
+import com.studioguu.miniaturegarden.ui.render.LawnShade
+import com.studioguu.miniaturegarden.ui.render.SoilJoins
 import com.studioguu.miniaturegarden.ui.render.plantScale
 import com.studioguu.miniaturegarden.ui.render.Wind
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
@@ -321,9 +324,9 @@ fun GardenCanvas(
         val ambience = Ambience(Daylight.at(hourOfDay, weather), weather, windMillis, season = season)
 
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, gardenMap, framed = true, ambience) { tile, center ->
+            drawTerrain(transform, gardenMap, framed = true, ambience) { tile, center, flip ->
                 val sprite = atlas[tile.assetId]
-                if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
+                if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale * groundOverlap(tile), flipped = flip)
                 sprite != null
             }
         }
@@ -522,11 +525,15 @@ private fun submitObjects(
             // Back to front within the ground: a bed of soil stands a little proud of the lawn,
             // and its front edge has to come over the bed behind it.
             submit(obj, RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(obj.gridX, obj.gridY)) {
-                if ((obj.isTilledSoil || obj.isGreenhouse) && soil != null && atlasImage != null) {
+                if (obj.isTilledSoil) {
+                    // Beds side by side are one field: each knows which of its sides carry on (#47).
+                    val joins = SoilJoins.at(obj.gridX, obj.gridY) { bx, by -> grid.floorAt(bx, by)?.isTilledSoil == true }
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, joins = joins)
+                } else if (obj.isGreenhouse && soil != null && atlasImage != null) {
                     // Compost darkens the earth.
                     val center = transform.tileCenter(obj.gridX, obj.gridY)
                     drawSprite(atlasImage, soil, center, spriteScale, tint = if (obj.isComposted) COMPOST_TINT else null)
-                } else if (obj.isTilledSoil || obj.isGreenhouse) {
+                } else if (obj.isGreenhouse) {
                     drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted)
                 } else if (obj.objectId == GridObject.WOOD_DECK_OBJECT_ID) {
                     drawWoodDeck(transform, obj.gridX, obj.gridY)
@@ -1224,9 +1231,9 @@ fun ObjectPreview(
         )
         val spriteScale = tileWidth / atlas.manifest.tileWidth
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, map, framed = false, Ambience.CALM) { tile, center ->
+            drawTerrain(transform, map, framed = false, Ambience.CALM) { tile, center, flip ->
                 val sprite = atlas[tile.assetId]
-                if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale)
+                if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale * groundOverlap(tile), flipped = flip)
                 sprite != null
             }
         }
@@ -1273,7 +1280,7 @@ private fun DrawScope.drawTerrain(
     gardenMap: GardenMap,
     framed: Boolean,
     ambience: Ambience,
-    drawTileSprite: DrawScope.(tile: GroundTile, center: Offset) -> Boolean,
+    drawTileSprite: DrawScope.(tile: GroundTile, center: Offset, flip: Boolean) -> Boolean,
 ) {
     val gridSize = gardenMap.size
     val max = gridSize.toFloat()
@@ -1293,7 +1300,8 @@ private fun DrawScope.drawTerrain(
     for (x in 0 until gridSize) for (y in 0 until gridSize) {
         val type = gardenMap.tileAt(x, y) ?: TileType.GRASS
         val tile = TileSetDefinition.groundTileFor(type, x, y)
-        if (!drawTileSprite(tile, transform.tileCenter(x, y))) {
+        // Cells of grass are mirrored at random, so that the one picture does not repeat in step.
+        if (!drawTileSprite(tile, transform.tileCenter(x, y), LawnShade.mirrored(x, y))) {
             when (tile) {
                 GroundTile.WATER -> drawWaterTile(transform, x, y, phase = 0)
                 GroundTile.GRASS -> drawGroundTile(transform, x, y, GRASS_LIGHT, ambience.sway(x + 0.5f, y + 0.5f))
@@ -1303,6 +1311,7 @@ private fun DrawScope.drawTerrain(
         // The season, over the lawn: petals, a deeper green, fallen leaves or snow.
         if (tile != GroundTile.WATER) drawSeasonGround(transform, x, y, ambience.season)
     }
+    drawLawnShade(transform, gridSize)
     if (framed) {
         // The frame's inner edge, drawn over the outermost tiles so the ground reads as set into it.
         val a = transform.worldToScreen(0f, 0f)
@@ -1316,6 +1325,46 @@ private fun DrawScope.drawTerrain(
         drawLine(FRAME_LINE.copy(alpha = 0.3f), d, c, width, StrokeCap.Round)
     }
 }
+
+/** Grass cells are drawn a little larger than their diamonds, so that neighbours overlap at the seam. */
+private fun groundOverlap(tile: GroundTile): Float = if (tile == GroundTile.WATER) 1f else LawnShade.CELL_OVERLAP
+
+/**
+ * Broad, faint light and shade over the whole lawn, crossing the cells' edges ([LawnShade]), so
+ * that the lawn reads as one meadow rather than as tiles. Kept inside the garden.
+ */
+private fun DrawScope.drawLawnShade(transform: IsometricTransform, gridSize: Int) {
+    val n = gridSize.toFloat()
+    val lawn = Path().apply {
+        val a = transform.worldToScreen(0f, 0f)
+        val b = transform.worldToScreen(n, 0f)
+        val c = transform.worldToScreen(n, n)
+        val d = transform.worldToScreen(0f, n)
+        moveTo(a.x, a.y); lineTo(b.x, b.y); lineTo(c.x, c.y); lineTo(d.x, d.y); close()
+    }
+    clipPath(lawn) {
+        for (patch in LawnShade.patches(gridSize)) {
+            val at = transform.worldToScreen(patch.x, patch.y)
+            val radius = transform.tileWidth * 0.5f * patch.radius
+            val colour = if (patch.light) LAWN_LIGHT else LAWN_SHADE
+            // Flattened into the ground's 2:1 slant.
+            scale(scaleX = 1f, scaleY = 0.5f, pivot = at) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        listOf(colour.copy(alpha = patch.strength), colour.copy(alpha = 0f)),
+                        center = at,
+                        radius = radius,
+                    ),
+                    radius = radius,
+                    center = at,
+                )
+            }
+        }
+    }
+}
+
+private val LAWN_LIGHT = Color(0xFFF4F1C8)
+private val LAWN_SHADE = Color(0xFF1F4A1C)
 
 /**
  * One tile of open ground: grass in the given shade, with a worn patch or two of earth and a few
@@ -1537,18 +1586,32 @@ private const val FURROWS = 4
  * little in from the tile's edge so that a strip of grass still shows between two beds.
  * A [composted] bed is flecked with green and straw.
  */
-private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: Int, composted: Boolean) {
+/**
+ * A bed of tilled soil on cell ([x], [y]). Its sides that [joins] carry on into the next bed run
+ * straight along the cell's edge, with no rim, no spilled earth and no gap in the furrows, so that
+ * beds side by side are drawn as one field (#47). Its open sides keep a ragged, dark rim with earth
+ * spilled over onto the grass, and along the front (east and south) a low face of earth, the bed
+ * standing a little proud of the lawn.
+ *
+ * The damp patches are placed over the ground as a whole ([SoilTexture.patches]); a bed draws
+ * those of the cells round it too, clipped to itself, so a patch carries across the joins.
+ */
+private fun DrawScope.drawTilledSoil(
+    transform: IsometricTransform,
+    x: Int,
+    y: Int,
+    composted: Boolean,
+    joins: SoilJoins = SoilJoins.NONE,
+) {
     val unit = transform.tileWidth
     val inset = SoilTexture.INSET
-    val x0 = x + inset
-    val y0 = y + inset
-    val x1 = x + 1 - inset
-    val y1 = y + 1 - inset
-    val damp = SoilTexture.dampness(x, y)
+    val x0 = x + if (joins.west) 0f else inset
+    val y0 = y + if (joins.north) 0f else inset
+    val x1 = x + 1 - if (joins.east) 0f else inset
+    val y1 = y + 1 - if (joins.south) 0f else inset
 
-    // Loose earth that has spilled over the edge onto the grass: soft, flat smudges that thin
-    // out away from the bed, so that the green and the brown run into each other.
-    for (speck in SoilTexture.drift(x, y)) {
+    // Loose earth spilled over the open edges onto the grass: soft, flat smudges that thin out.
+    for (speck in SoilTexture.drift(x, y, joins)) {
         val at = transform.worldToScreen(speck.x, speck.y)
         val radius = unit * speck.size
         scale(scaleX = 1f, scaleY = 0.5f, pivot = at) {
@@ -1564,43 +1627,78 @@ private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: I
         }
     }
 
-    // The bed itself, with an edge that wanders: dark at the rim, where the turf was cut ...
-    val ring = SoilTexture.outline(x, y).map { (wx, wy) -> transform.worldToScreen(wx, wy) }
+    val ringWorld = SoilTexture.outline(x, y, joins)
+    val ring = ringWorld.map { (wx, wy) -> transform.worldToScreen(wx, wy) }
     val bed = Path().apply {
         ring.forEachIndexed { i, point -> if (i == 0) moveTo(point.x, point.y) else lineTo(point.x, point.y) }
         close()
     }
-    drawPath(bed, DIRT_EDGE)
-    // ... and inside it the earth in three shades laid one in the other, damp and dark in the
-    // middle of the bed and drier towards its edge, so that it has depth instead of one flat brown.
-    val centre = transform.worldToScreen(x + 0.5f, y + 0.5f)
-    val body = lerp(DIRT_DRY, DIRT_DARK, 0.45f + 0.4f * damp)
-    for ((shrink, colour) in listOf(0.93f to lerp(DIRT_DRY, body, 0.45f), 0.8f to body, 0.5f to lerp(body, DIRT_DEEP, 0.55f))) {
-        val layer = Path().apply {
-            ring.forEachIndexed { i, point ->
-                val p = centre + (point - centre) * shrink
-                if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
-            }
+    val pointsPerSide = ring.size / 4
+    fun sidePoints(side: Int): List<Offset> = (0..pointsPerSide).map { ring[(side * pointsPerSide + it) % ring.size] }
+
+    // The low face of earth along the open front sides (east and south): the bed stands proud.
+    val lip = Offset(0f, unit * 0.03f)
+    for (side in listOf(1, 2)) {
+        if (joins.joined(side)) continue
+        val edge = sidePoints(side)
+        val face = Path().apply {
+            edge.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
+            edge.asReversed().forEach { p -> lineTo(p.x + lip.x, p.y + lip.y) }
             close()
         }
-        drawPath(layer, colour)
+        drawPath(face, if (side == 1) DIRT_DEEP else DIRT_EDGE)
     }
 
-    // Furrows: a lit ridge with its shadow just behind it. Each stops a little short of the edge,
-    // at its own length, as a hoe leaves them.
-    val stroke = unit * 0.022f
-    for (i in 0 until FURROWS) {
-        val fy = y0 + (y1 - y0) * (i + 0.5f) / FURROWS
-        val short = 0.07f + 0.04f * (((x * 7 + y * 13 + i * 5) % 4) / 3f)
-        val from = transform.worldToScreen(x0 + short, fy)
-        val to = transform.worldToScreen(x1 - 0.11f + short * 0.5f, fy)
-        val behind = Offset(0f, -stroke)
-        drawLine(DIRT_DEEP, from + behind, to + behind, stroke, StrokeCap.Round)
-        drawLine(DIRT_RIDGE, from, to, stroke, StrokeCap.Round)
-        drawLine(DIRT_DRY.copy(alpha = 0.55f), from + Offset(0f, stroke * 0.3f), to + Offset(0f, stroke * 0.3f), stroke * 0.35f, StrokeCap.Round)
+    // The earth: one colour shading smoothly over the field, ...
+    val damp = SoilTexture.fieldDampness(x + 0.5f, y + 0.5f)
+    val body = lerp(DIRT_DRY, DIRT_DARK, 0.5f + 0.35f * damp)
+    drawPath(bed, body)
+    // ... with soft damp and dry patches laid over the whole field, clipped to this bed.
+    clipPath(bed) {
+        for (dx in -1..1) for (dy in -1..1) {
+            for (patch in SoilTexture.patches(x + dx, y + dy)) {
+                val at = transform.worldToScreen(patch.x, patch.y)
+                val radius = unit * 0.5f * patch.radius
+                val colour = if (patch.damp) DIRT_DEEP else DIRT_DRY
+                scale(scaleX = 1f, scaleY = 0.5f, pivot = at) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(colour.copy(alpha = if (patch.damp) 0.32f else 0.22f), colour.copy(alpha = 0f)),
+                            center = at,
+                            radius = radius,
+                        ),
+                        radius = radius,
+                        center = at,
+                    )
+                }
+            }
+        }
+
+        // Furrows in rows that are the same in every bed, so that a field's furrows run on from
+        // bed to bed. A row stops a little short of an open edge, as a hoe leaves it.
+        val stroke = unit * 0.022f
+        for (row in SoilTexture.furrowRows(FURROWS)) {
+            val fy = y + row
+            if (fy <= y0 + 0.02f || fy >= y1 - 0.02f) continue
+            val from = transform.worldToScreen(if (joins.west) x.toFloat() else x0 + 0.07f, fy)
+            val to = transform.worldToScreen(if (joins.east) x + 1f else x1 - 0.07f, fy)
+            val behind = Offset(0f, -stroke)
+            drawLine(DIRT_DEEP, from + behind, to + behind, stroke, if (joins.west && joins.east) StrokeCap.Butt else StrokeCap.Round)
+            drawLine(DIRT_RIDGE, from, to, stroke, if (joins.west && joins.east) StrokeCap.Butt else StrokeCap.Round)
+            drawLine(DIRT_DRY.copy(alpha = 0.55f), from + Offset(0f, stroke * 0.3f), to + Offset(0f, stroke * 0.3f), stroke * 0.35f, StrokeCap.Butt)
+        }
     }
-    // Grains: crumbs of dry earth and small dark hollows scattered over the surface.
-    for (grain in SoilTexture.grains(x, y)) {
+
+    // The rim where the turf was cut, along the open sides only.
+    val rim = unit * 0.026f
+    for (side in 0 until 4) {
+        if (joins.joined(side)) continue
+        val edge = sidePoints(side)
+        for (i in 0 until edge.size - 1) drawLine(DIRT_EDGE, edge[i], edge[i + 1], rim, StrokeCap.Round)
+    }
+
+    // Grains: crumbs of dry earth and small dark hollows, out to the joined edges as well.
+    for (grain in SoilTexture.grains(x, y, joins)) {
         val at = transform.worldToScreen(grain.x, grain.y)
         val colour = when {
             grain.shade < 0.4f -> DIRT_DRY
@@ -1610,17 +1708,24 @@ private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: I
         drawOval(colour.copy(alpha = 0.85f), at - Offset(unit * grain.size, unit * grain.size * 0.6f), Size(unit * grain.size * 2f, unit * grain.size * 1.2f))
     }
 
-    // The edge of a bed is not ruled with a pen: clods lie on it and the grass grows over it.
-    var edge = x * 19349663 xor y * 83492791
+    // The open edges are not ruled with a pen: clods lie on them and the grass grows over them.
+    var edgeSeed = x * 19349663 xor y * 83492791
     fun nextEdge(): Float {
-        edge = edge * 1103515245 + 12345
-        return ((edge ushr 16) and 0x7FFF) / 32767f
+        edgeSeed = edgeSeed * 1103515245 + 12345
+        return ((edgeSeed ushr 16) and 0x7FFF) / 32767f
     }
     repeat(12) { i ->
-        // A point somewhere along one of the four sides, a little to either side of the line.
         val along = 0.08f + nextEdge() * 0.84f
         val off = (nextEdge() - 0.5f) * 0.08f
-        val (wx, wy) = when (i % 4) {
+        val side = when (i % 4) {
+            0 -> 0
+            1 -> 1
+            2 -> 2
+            else -> 3
+        }
+        val extra = nextEdge()
+        if (joins.joined(side)) return@repeat
+        val (wx, wy) = when (side) {
             0 -> (x0 + along * (x1 - x0)) to (y0 + off)
             1 -> (x1 + off) to (y0 + along * (y1 - y0))
             2 -> (x0 + along * (x1 - x0)) to (y1 + off)
@@ -1628,11 +1733,11 @@ private fun DrawScope.drawTilledSoil(transform: IsometricTransform, x: Int, y: I
         }
         val at = transform.worldToScreen(wx, wy)
         if (i < 6) {
-            val radius = unit * (0.014f + nextEdge() * 0.014f)
+            val radius = unit * (0.014f + extra * 0.014f)
             drawCircle(DIRT_DEEP, radius, at + Offset(0f, radius * 0.35f))
             drawCircle(if (i % 2 == 0) DIRT_DARK else DIRT_RIDGE, radius, at)
         } else {
-            val blade = unit * (0.035f + nextEdge() * 0.02f)
+            val blade = unit * (0.035f + extra * 0.02f)
             drawLine(GRASS_TUFT, at, at + Offset(-blade * 0.4f, -blade), unit * 0.012f, StrokeCap.Round)
             drawLine(GRASS_BLADE_LIGHT, at, at + Offset(blade * 0.45f, -blade * 0.8f), unit * 0.012f, StrokeCap.Round)
         }

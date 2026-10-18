@@ -44,10 +44,15 @@ object TileSetDefinition {
             GridObject.RIVER_OBJECT_ID + GridObject.COBBLESTONE_OBJECT_ID + GridObject.WOOD_DECK_OBJECT_ID + GridObject.TILLED_SOIL_OBJECT_ID + GridObject.GREENHOUSE_OBJECT_ID +
             FencePart.entries.map { it.objectId } + GridObject.STARTER_CRATE_OBJECT_ID
 
-    /** Ground sprite for a cell: water for the river, a two-tone checkerboard for the lawn. */
+    /**
+     * Ground sprite for a cell: water for the river, grass for the lawn. The lawn used to be a
+     * two-tone checkerboard; since #47 it is one shade, laid as one meadow (the grid lines show
+     * the cells in edit mode), and [GroundTile.GRASS_DARK] is not used.
+     */
+    @Suppress("UNUSED_PARAMETER")
     fun groundTileFor(type: TileType, gridX: Int, gridY: Int): GroundTile = when (type) {
         TileType.RIVER -> GroundTile.WATER
-        TileType.GRASS -> if ((gridX + gridY) % 2 == 0) GroundTile.GRASS else GroundTile.GRASS_DARK
+        TileType.GRASS -> GroundTile.GRASS
     }
 
     /**

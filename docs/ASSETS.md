@@ -19,7 +19,7 @@
 
 - 作物 3 種 × 5 枚：`plant_{tulip,sunflower,rose}_stage{1..4}.png` と `_withered.png`
 - 地面と建物（#40、`tools/prepare_building_art.py` で加工）：
-  - `tile_grass`・`tile_grass_dark`（芝生。市松の 2 色。暗い方は同じ絵を 0.9 倍の明るさにしたもの）、`floor_tilled`（耕した土）
+  - `tile_grass`・`tile_grass_dark`（芝生。#47 から明るさの傾きを取り除き、1 色で並べる。`tile_grass_dark` は残っているが使っていない）、`floor_tilled`（耕した土。#47 から畑はコード描画になり、ガラスの温室の床でだけ使う）
   - `struct_cottage`（コテージ）、`floor_greenhouse`（ガラスの温室）、`struct_windmill`（風車の本体）、`struct_windmill_blades`（風車の羽根）
 - 作物 4 種 × 4 枚（#39）：`plant_{tomato,strawberry,paprika,daikon}_stage{1..3}.png` と `_withered.png`（3 段階）
   - 受け取ったときは `res/drawable/crop_*.png` に置かれていた。アトラスに詰めるため `tools/raw_assets/` へ移し、`plant_<作物>_…` に改名した。
@@ -72,7 +72,7 @@ python tools/build_terrain_assets.py
 
 ```bash
 # スプライトをアトラスに詰め直す（この引数の組み合わせを変えないこと）
-python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --max-width 4096
+python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --max-width 4096 --strip-crop-soil
 ```
 
 - 原画は **1 タイル 720px** の縮尺で描かれている。アトラスは 512px に縮めて軽くしている。
@@ -96,9 +96,11 @@ python tools/prepare_building_art.py --preview <確認用フォルダ>
 - `--preview` は各スプライトを派手な縞の上に置き、接地点（赤）と取り付け点（青）を打った絵を出す。透過の抜け残りはこれで見る。
 - `--alpha-threshold 8`：ごく薄い縁を余白として切り落とす。
 - `tools/atlas_overrides.json`：スプライトごとの**接地点**（アンカー）。既定は下端中央。
-  作物は土の盛り上がりが絵に含まれるので、アンカーを 0.77〜0.93 あたりに上げてある。
-  新しい絵を入れたら、まずここを調整する。浮いて見える原因はたいていアンカー。
-- 作物のアンカーの目安は `python tools/estimate_crop_anchors.py tools/raw_assets tools/atlas_overrides.json <assetId>...` で出せる（#39）。
+  作物（`plant_*`）は #47 から、`--strip-crop-soil` で**絵の下の土の山を取り除き**、アンカーを茎の根元（絵のいちばん下）に自動で置く。
+  `atlas_overrides.json` には作物の項目を書かない（書くと自動のアンカーを上書きしてしまう）。取り除き方は `tools/crop_soil.py` の説明。
+  確かめるときは `python tools/crop_soil.py tools/raw_assets preview.png plant_tulip_stage4 ...` で前後を並べた画像が出る。
+  枯れた株は株自体が土色なので、暗い所だけを土の山とみなす（薄い砂色の山は横幅で判断）。枯れたバラ・ひまわりは茎のいちばん下が少し削れる。
+- 作物のアンカーの目安は `python tools/estimate_crop_anchors.py ...` で出せた（#39。土の山を取り除いた #47 からは使わない）。
   土の山の底辺を、横幅が縦の 2 倍の楕円とみなし、いちばん手前（いちばん下の不透明な点）から横幅の 1/4 上を接地点にする。白っぽい点（切り抜きの名残）は数えない。
   手で合わせた既存の 15 枚とは ±0.03 前後で一致した。#39 の 16 枚はこの値をそのまま使っている（エミュレータでの見た目は未確認）。
 

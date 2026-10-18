@@ -169,10 +169,10 @@ class AssetPipelineTest {
     }
 
     @Test
-    fun `lawn alternates between the two grass tiles`() {
-        assertEquals(GroundTile.GRASS, TileSetDefinition.groundTileFor(TileType.GRASS, 0, 0))
-        assertEquals(GroundTile.GRASS_DARK, TileSetDefinition.groundTileFor(TileType.GRASS, 1, 0))
-        assertEquals(GroundTile.GRASS, TileSetDefinition.groundTileFor(TileType.GRASS, 1, 1))
+    fun `the lawn is one shade of grass, no longer a checkerboard`() {
+        for (x in 0 until 4) for (y in 0 until 4) {
+            assertEquals(GroundTile.GRASS, TileSetDefinition.groundTileFor(TileType.GRASS, x, y))
+        }
         assertEquals(GroundTile.WATER, TileSetDefinition.groundTileFor(TileType.RIVER, 0, 0))
         assertEquals(GroundTile.WATER, TileSetDefinition.groundTileFor(TileType.RIVER, 1, 0))
         // Structures draw with a sprite named after their object id.

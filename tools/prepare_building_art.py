@@ -255,7 +255,53 @@ def load(name: str) -> np.ndarray:
     return np.array(Image.open(SOURCE / name).convert("RGBA"))
 
 
-def prepare_tile(name: str, halo: bool) -> tuple[np.ndarray, dict]:
+def flatten_light(rgba: np.ndarray, sigma_share: float = 0.035) -> np.ndarray:
+    """
+    Evens out the lighting baked into a ground tile's top face (#47).
+
+    The lawn photo is lit from one side: bright at its back corner, dark at its front. Laid cell
+    by cell, that slope repeats in every cell and the lawn reads as a chequer of separate tiles.
+    Here the slow change of brightness across the top face is divided out (the face's own blur,
+    taken over the face only, against its mean), so that only the blades of grass are left and
+    neighbouring cells meet without a step. The slab's side faces, below the top face, are kept.
+    """
+    from PIL import ImageFilter
+    out = rgba.copy()
+    h, w = rgba.shape[:2]
+    cx, cy, width, height = top_face_of(rgba)
+    yy, xx = np.mgrid[0:h, 0:w]
+    face = (np.abs(xx - cx) / (width / 2) + np.abs(yy - cy) / (height / 2)) <= 1.0
+    face &= rgba[:, :, 3] > ALPHA_MIN
+    rgb = rgba[:, :, :3].astype(float)
+    lum = rgb.mean(axis=2)
+    radius = max(2, int(width * sigma_share))
+
+    def blur(values: np.ndarray) -> np.ndarray:
+        image = Image.fromarray(np.clip(values, 0, 255).astype(np.uint8))
+        return np.array(image.filter(ImageFilter.GaussianBlur(radius))).astype(float)
+
+    # Normalised blur, colour by colour: what the face is like round each point, from the face's
+    # own pixels only, so that the light rim along its edges is evened out as well.
+    weight = blur(face * 255.0) / 255.0
+    for channel in range(3):
+        values = rgb[:, :, channel]
+        local = blur(np.where(face, values, 0)) / np.maximum(weight, 1e-3)
+        gain = np.where(face, values[face].mean() / np.maximum(local, 1.0), 1.0)
+        out[:, :, channel] = np.clip(values * gain, 0, 255).astype(np.uint8)
+    del lum
+    # The two back edges of the face fade out, so that where the cell behind shows through
+    # them (the game draws each cell a little larger than its diamond) there is no line.
+    u = (xx - cx) / (width / 2)
+    v = (yy - cy) / (height / 2)
+    back = np.maximum(-u - v, u - v)  # 1 on the back edges, falling towards the front
+    feather = 0.03
+    ramp = np.clip((1.0 - back) / feather, 0.0, 1.0)
+    on_face = face & (v < 0)
+    out[:, :, 3] = np.where(on_face, (out[:, :, 3] * ramp).astype(np.uint8), out[:, :, 3])
+    return out
+
+
+def prepare_tile(name: str, halo: bool, flatten: bool = False) -> tuple[np.ndarray, dict]:
     rgba = load(name)
     if halo:
         rgba = strip_halo(rgba, depth=6)
@@ -265,6 +311,8 @@ def prepare_tile(name: str, halo: bool) -> tuple[np.ndarray, dict]:
     sx = TILE / width
     sy = (TILE / 2) / height
     rgba = crop(resize(rgba, sx, sy))
+    if flatten:
+        rgba = flatten_light(rgba)
     cx, cy, _, _ = top_face_of(rgba)
     h, w = rgba.shape[:2]
     return rgba, {"anchorX": round(float(cx / w), 4), "anchorY": round(float(cy / h), 4), "isFlippedAllowed": False}
@@ -344,7 +392,9 @@ def hub_of(blades: np.ndarray) -> tuple[float, float]:
 
 def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     out: dict[str, tuple[np.ndarray, dict]] = {}
-    grass, grass_override = prepare_tile("tile_grass_default.png", halo=True)
+    grass, grass_override = prepare_tile("tile_grass_default.png", halo=True, flatten=True)
+    # Its top face is a symmetric diamond, so the game mirrors cells at random to break the repeat.
+    grass_override["isFlippedAllowed"] = True
     out["tile_grass"] = (grass, grass_override)
     # The lawn is a checkerboard of two shades; the second is the same grass a little darker.
     dark = grass.copy()
