@@ -167,6 +167,8 @@
     <string name="msg_not_a_plant">植物ではありません</string>
     <string name="msg_withered">枯れてしまっています</string>
     <string name="msg_not_ready">まだ収穫できません</string>
+    <string name="msg_already_fed">まだ栄養は足りています（栄養50%未満で肥料をあげられます）</string>
+    <string name="msg_edit_mode_tools">✏️ 編集モード中は、並べ替えと片づけだけができます</string>
     <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やり可能）</string>
     <string name="msg_tile_occupied">他の物があるため置けません</string>
     <string name="msg_needs_tilled_soil">種や苗は、クワで耕した土にだけ植えられます</string>

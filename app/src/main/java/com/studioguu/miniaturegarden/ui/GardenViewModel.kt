@@ -319,28 +319,33 @@ class GardenViewModel @Inject constructor(
     private val _editMode = MutableStateFlow(false)
 
     /**
-     * True in edit mode: the grid shows, and the garden's layout (everything but what is in the
-     * ground) can be put down from the bag, moved, put back or thrown away. See [GardenLayout].
+     * True in edit mode: the grid shows, and the garden is rearranged: things are moved, put back
+     * or cleared away. Nothing is grown, tended or newly put down there (#50): the hoe, watering,
+     * feeding, harvesting and the bag are put away. See [GardenLayout].
      */
     val editMode: StateFlow<Boolean> = _editMode.asStateFlow()
 
     /**
-     * Turns edit mode on or off. Leaving it puts down whatever layout piece was in hand or on the
-     * move; a seed in hand, the hoe and the selection stay as they are.
+     * Turns edit mode on or off. Going in puts down the hoe and whatever was in hand from the bag
+     * (those are the everyday garden's); coming out puts down what was on the move. The selection
+     * stays as it is.
      */
     fun toggleEditMode() {
         val on = !_editMode.value
         _editMode.value = on
-        if (!on) {
+        if (on) {
+            _hoeActive.value = false
+            _placingSlotIndex.value = null
+        } else {
             _movingId.value = null
-            if (placingItem()?.let(GardenLayout::placingNeedsEditMode) == true) _placingSlotIndex.value = null
         }
     }
 
-    /** The item in the slot being placed from, if any. */
-    private fun placingItem(): GardenItem? =
-        _placingSlotIndex.value?.let { index -> inventorySlots.value.firstOrNull { it.slotIndex == index && !it.isEmpty } }
-            ?.let { GardenItem.fromItemId(it.itemId) }
+    /** Says that edit mode keeps to rearranging, and whether it is on (so the caller stops). */
+    private fun lockedByEditMode(): Boolean {
+        if (_editMode.value) _messages.trySend(R.string.msg_edit_mode_tools)
+        return _editMode.value
+    }
 
     /** Tells the player why [check] stopped them, and whether it did. */
     private fun refused(check: LayoutCheck): Boolean {
@@ -595,7 +600,8 @@ class GardenViewModel @Inject constructor(
             }
             arrived?.let(::announceSeason)
             if (finished.isNotEmpty()) {
-                audio.play(if (finished.any { it.kind == WorkKind.READY }) SoundEffect.COIN else SoundEffect.PLANT)
+                // A building done is good news, not a purchase: the celebration's sound (#50).
+                audio.play(if (finished.any { it.kind == WorkKind.READY }) SoundEffect.LEVEL_UP else SoundEffect.PLANT)
                 // A finished building is not announced yet, only pointed out: it is the player's
                 // tap that unveils it. What has been taken apart is done and is announced.
                 if (finished.any { it.kind == WorkKind.READY }) _messages.trySend(R.string.msg_work_ready)
@@ -655,8 +661,11 @@ class GardenViewModel @Inject constructor(
                     _selectedTile.value = null
                     audio.play(SoundEffect.LEVEL_UP)
                     showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
+                    // Its experience comes now, not when the site went up (#50).
+                    val xp = StoreObjectUseCase.itemFor(site)?.placeXp ?: 0
+                    if (xp > 0) showEffect { GardenEffect.Xp(it, xp) }
                 }
-            ) { now, _ -> unveilBuilding(site.instanceId).also { if (it == ActionResult.SUCCESS) announceGrowthIfDue(now) } }
+            ) { now, _ -> unveilBuilding(site.instanceId, now).also { if (it == ActionResult.SUCCESS) announceGrowthIfDue(now) } }
         } else if (_hoeActive.value) {
             if (tile != null) {
                 act(
@@ -679,14 +688,14 @@ class GardenViewModel @Inject constructor(
             _selectedTile.value = tile.takeIf { it != current && !sameThing }
         } else if (tile != null) {
             val item = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }
-            // A piece of the layout goes down in edit mode only (taking it out of the bag turned
-            // edit mode on; this is in case it has been turned off since).
-            if (item != null && GardenLayout.placingNeedsEditMode(item) && !_editMode.value) {
+            // Nothing new is put down in edit mode (#50); in case it was turned on since.
+            if (_editMode.value) {
                 _placingSlotIndex.value = null
-                _messages.trySend(R.string.msg_needs_edit_mode)
+                _messages.trySend(R.string.msg_edit_mode_tools)
                 return
             }
-            val placeXp = item?.placeXp ?: 0
+            // A building earns its experience when it is unveiled, not now (#50).
+            val placeXp = if ((item?.buildSeconds ?: 0) > 0) 0 else item?.placeXp ?: 0
             // A building larger than one cell is fitted round the tapped cell, inside the garden.
             val footprint = item?.let { Footprint.forObjectId(it.objectId) } ?: Footprint.SINGLE
             val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
@@ -710,8 +719,8 @@ class GardenViewModel @Inject constructor(
     /** Picks the hoe up, or puts it down again. Picking it up ends any placing and selection. */
     fun toggleHoe() {
         val active = !_hoeActive.value
-        // Under the first steps the hoe is only handed out for the tilling step.
-        if (active && !allows(TutorialTool.HOE)) return
+        // Under the first steps the hoe is only handed out for the tilling step, and never in edit mode.
+        if (active && (lockedByEditMode() || !allows(TutorialTool.HOE))) return
         if (active) {
             _selectedTile.value = null
             _placingSlotIndex.value = null
@@ -747,14 +756,30 @@ class GardenViewModel @Inject constructor(
         _hoeActive.value = false
     }
 
-    /** Whether [tool] can be picked up at the current first step ([TutorialStep.allows]). */
-    fun allows(tool: TutorialTool): Boolean = tutorialStep.value?.allows(tool) ?: true
+    /**
+     * Whether [tool] can be picked up now: at the current first step ([TutorialStep.allows]), and
+     * outside edit mode unless it is the shop ([GardenLayout.toolAllowedInEditMode]).
+     */
+    fun allows(tool: TutorialTool): Boolean =
+        (tutorialStep.value?.allows(tool) ?: true) && (!_editMode.value || GardenLayout.toolAllowedInEditMode(tool))
+
+    /**
+     * The bag's button: opens the bag, or with something already in hand from it, puts that down
+     * again (a tool is put down by tapping its button again, #50).
+     *
+     * @return true if the bag is to be opened.
+     */
+    fun onBagTapped(): Boolean {
+        if (_placingSlotIndex.value != null) {
+            cancelPlacing()
+            return false
+        }
+        return !lockedByEditMode()
+    }
 
     fun startPlacing(slotIndex: Int) {
-        // Laying out the garden happens in edit mode: taking a piece of it out of the bag goes
-        // there, grid and all, rather than refusing. Seeds are sown in either.
-        val item = inventorySlots.value.firstOrNull { it.slotIndex == slotIndex && !it.isEmpty }?.let { GardenItem.fromItemId(it.itemId) }
-        if (item != null && GardenLayout.placingNeedsEditMode(item)) _editMode.value = true
+        // Things are put down in the everyday garden, not in edit mode (#50).
+        if (lockedByEditMode()) return
         // Each thing taken out of the bag starts facing the usual way.
         _placingFlipped.value = false
         _hoeActive.value = false
@@ -772,6 +797,7 @@ class GardenViewModel @Inject constructor(
     }
 
     fun waterSelected() = withSelectedObject { obj ->
+        if (lockedByEditMode()) return@withSelectedObject
         act(
             onSuccess = {
                 audio.play(SoundEffect.WATER)
@@ -819,6 +845,7 @@ class GardenViewModel @Inject constructor(
     }
 
     fun fertilizeSelected() = withSelectedObject { obj ->
+        if (lockedByEditMode()) return@withSelectedObject
         act(
             onSuccess = {
                 audio.play(SoundEffect.FERTILIZE)
@@ -828,6 +855,7 @@ class GardenViewModel @Inject constructor(
     }
 
     fun harvestSelected() = withSelectedObject { obj ->
+        if (lockedByEditMode()) return@withSelectedObject
         // A crop that bears again pays less from its second harvest on.
         val reward = PlantSpecies.forObjectId(obj.objectId).harvestReward(obj.harvestCount)
         act(
@@ -878,6 +906,7 @@ class GardenViewModel @Inject constructor(
 
     /** Pays to bring the selected withered plant back. */
     fun reviveSelected() = withSelectedObject { obj ->
+        if (lockedByEditMode()) return@withSelectedObject
         act(
             onSuccess = {
                 audio.play(SoundEffect.WATER)

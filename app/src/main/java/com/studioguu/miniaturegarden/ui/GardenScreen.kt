@@ -67,6 +67,8 @@ import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.TutorialTool
+import com.studioguu.miniaturegarden.domain.usecase.GardenLayout
 import com.studioguu.miniaturegarden.domain.model.InventoryFilter
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.NotificationAccess
@@ -412,14 +414,20 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 QuickActionBar(
                     modifier = Modifier.onSizeChanged { barHeightPx = it.height },
                     hoeActive = hoeActive,
+                    // Lit while something from the bag is in hand; tapping it again puts that down.
+                    bagActive = placing != null,
                     onToggleHoe = viewModel::toggleHoe,
                     canCare = placing == null && !hoeActive && target?.isPlant == true && target.status != PlantStatus.WITHERED,
                     onWater = viewModel::waterSelected,
                     onFertilize = viewModel::fertilizeSelected,
-                    onOpenInventory = { showInventory = true },
+                    onOpenInventory = { if (viewModel.onBagTapped()) showInventory = true },
                     onOpenShop = { showShop = true },
-                    // During the first steps only the tool the step asks for can be tapped.
-                    allows = { tool -> tutorialStep?.allows(tool) ?: true },
+                    // During the first steps only the tool the step asks for can be tapped; in edit
+                    // mode only the shop (#50). A tool in hand can always be put down again.
+                    allows = { tool ->
+                        (tutorialStep?.allows(tool) ?: true) && (!editMode || GardenLayout.toolAllowedInEditMode(tool)) ||
+                            (tool == TutorialTool.HOE && hoeActive) || (tool == TutorialTool.BAG && placing != null)
+                    },
                 )
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(bottom = barHeight + 8.dp),
@@ -445,7 +453,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         enter = fadeIn(),
                         exit = fadeOut(),
                     ) {
-                        ToolBanner(stringResource(R.string.hoe_banner), onCancel = viewModel::toggleHoe)
+                        // No "stop" here: the hoe's own button puts it down again (#50).
+                        ToolBanner(stringResource(R.string.hoe_banner))
                     }
                     AnimatedVisibility(
                         visible = placing != null,
@@ -453,7 +462,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         exit = fadeOut(),
                     ) {
                         lastPlacing?.let {
-                            PlacingBanner(it, flipped = placingFlipped, onFlip = viewModel::togglePlacingFlip, onCancel = viewModel::cancelPlacing)
+                            PlacingBanner(it, flipped = placingFlipped, onFlip = viewModel::togglePlacingFlip)
                         }
                     }
                     AnimatedVisibility(
@@ -687,14 +696,15 @@ private fun SideButton(emoji: String, label: String, selected: Boolean = false, 
 
 /** Shown while an inventory item is waiting to be placed on a tile. */
 @Composable
-private fun PlacingBanner(slot: InventorySlot, flipped: Boolean, onFlip: () -> Unit, onCancel: () -> Unit) {
+private fun PlacingBanner(slot: InventorySlot, flipped: Boolean, onFlip: () -> Unit) {
     val item = GardenItem.fromItemId(slot.itemId)
     val name = item?.let { itemDisplayName(it) } ?: slot.itemId
     // A building that can face either way is turned here, before it goes down.
     val canFlip = item != null && GridObject.canFaceEitherWay(item.objectId)
     val facing = stringResource(if (flipped) R.string.facing_flipped else R.string.facing_normal)
     val flipDescription = stringResource(R.string.placing_flip_description, facing)
-    ToolBanner(stringResource(R.string.placing_banner, name, slot.amount), onCancel) {
+    // No "stop" here: the bag's button puts the thing in hand down again (#50).
+    ToolBanner(stringResource(R.string.placing_banner, name, slot.amount)) {
         if (canFlip) {
             TextButton(onClick = onFlip, modifier = Modifier.semantics { contentDescription = flipDescription }) {
                 Text(stringResource(R.string.placing_flip), fontWeight = if (flipped) FontWeight.Bold else FontWeight.Normal)
@@ -703,9 +713,13 @@ private fun PlacingBanner(slot: InventorySlot, flipped: Boolean, onFlip: () -> U
     }
 }
 
-/** Says what the next tap on a tile will do, with a way out, and anything else that goes with it ([extra]). */
+/**
+ * Says what the next tap on a tile will do, and anything else that goes with it ([extra]). A tool
+ * in hand is put down with its own button in the tool bar, so only moving (which has none) gets
+ * a way out here ([onCancel]).
+ */
 @Composable
-private fun ToolBanner(text: String, onCancel: () -> Unit, extra: @Composable () -> Unit = {}) {
+private fun ToolBanner(text: String, onCancel: (() -> Unit)? = null, extra: @Composable () -> Unit = {}) {
     Surface(shape = RoundedCornerShape(20.dp), tonalElevation = 3.dp, shadowElevation = 6.dp) {
         Row(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp),
@@ -717,7 +731,7 @@ private fun ToolBanner(text: String, onCancel: () -> Unit, extra: @Composable ()
                 modifier = Modifier.weight(1f, fill = false),
             )
             extra()
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.placing_cancel)) }
+            if (onCancel != null) TextButton(onClick = onCancel) { Text(stringResource(R.string.placing_cancel)) }
         }
     }
 }

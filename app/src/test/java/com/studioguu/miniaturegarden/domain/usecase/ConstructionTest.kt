@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -36,7 +37,8 @@ class ConstructionTest {
     private val startRemoval = StartRemovalUseCase(repo, store, remove)
     private val complete = CompleteWorkUseCase(repo, store, remove)
     private val move = MoveObjectUseCase(repo, GardenMap.DEFAULT)
-    private val unveil = UnveilBuildingUseCase(repo)
+    private val unveilBuilding = UnveilBuildingUseCase(repo, RecordCollectionUseCase(repo))
+    private suspend fun unveil(id: String, now: Long = t0) = unveilBuilding(id, now)
 
     private fun obj(id: String, objectId: String, x: Int = 0, y: Int = 0) =
         GridObject(instanceId = id, gridX = x, gridY = y, objectId = objectId, lastUpdatedTimestamp = t0)
@@ -78,6 +80,53 @@ class ConstructionTest {
             assertTrue(item.name, item.buildSeconds <= 3 * 60 * 60)
             assertTrue(item.name, item.buildSeconds * 1000L < shortestCrop)
         }
+    }
+
+    // --- Building: what it earns, and when (#50) ---
+
+    @Test
+    fun `a building earns its experience and its page when it is unveiled, not when its site goes up`() = runBlocking {
+        repo.profile = UserProfile(coins = 0, currentXp = 0, playerLevel = 1)
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
+        place(0, 3, 3, t0)
+        assertEquals(0L, repo.profile?.currentXp)
+        assertTrue(GardenItem.STRUCT_HUT.objectId !in repo.collection)
+
+        complete(t0 + hutBuild)
+        assertEquals(0L, repo.profile?.currentXp) // finished, but not unveiled yet
+        assertEquals(ActionResult.SUCCESS, unveil(only().instanceId, t0 + hutBuild + second))
+        assertEquals(GardenItem.STRUCT_HUT.placeXp.toLong(), repo.profile?.currentXp)
+        assertTrue(GardenItem.STRUCT_HUT.objectId in repo.collection)
+    }
+
+    @Test
+    fun `something put down at once still earns and is recorded at once`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1))
+        place(0, 1, 1, t0)
+        assertTrue(GardenItem.DECO_ROCK.objectId in repo.collection)
+    }
+
+    @Test
+    fun `calling off a building that never earned anything takes nothing back`() = runBlocking {
+        repo.profile = UserProfile(coins = 0, currentXp = 40, playerLevel = 1)
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 1))
+        place(0, 2, 2, t0)
+        assertEquals(ActionResult.SUCCESS, startRemoval(only().instanceId, toBag = true, t0 + second))
+        assertEquals(40L, repo.profile?.currentXp)
+    }
+
+    @Test
+    fun `a site cannot be turned round, a finished building can`() = runBlocking {
+        val flip = FlipObjectUseCase(repo)
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_COTTAGE.itemId, 1))
+        repo.profile = UserProfile(coins = 0, currentXp = LevelTable.xpForLevel(6), playerLevel = 6)
+        place(0, 3, 3, t0)
+        val site = only()
+        assertEquals(ActionResult.BUSY, flip(site.instanceId))
+        complete(t0 + GardenItem.STRUCT_COTTAGE.buildSeconds * second)
+        unveil(site.instanceId, t0 + GardenItem.STRUCT_COTTAGE.buildSeconds * second)
+        assertEquals(ActionResult.SUCCESS, flip(site.instanceId))
+        assertTrue(only().isFlipped)
     }
 
     // --- Building ---

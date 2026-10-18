@@ -222,7 +222,7 @@ class OnboardingTest {
         val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
         fun source(path: String) = java.io.File(main, "java/com/studioguu/miniaturegarden/$path").readText()
         val screen = source("ui/GardenScreen.kt")
-        assertTrue(screen.contains("allows = { tool -> tutorialStep?.allows(tool) ?: true }"))
+        assertTrue(screen.contains("(tutorialStep?.allows(tool) ?: true) && (!editMode || GardenLayout.toolAllowedInEditMode(tool))"))
         assertTrue(screen.contains("visible = tutorialStep?.reveals(GardenFeature.EDIT_MODE)"))
         val bar = source("ui/hud/QuickActionBar.kt")
         for (tool in TutorialTool.entries) assertTrue(tool.name, bar.contains("allows(TutorialTool.${tool.name})"))

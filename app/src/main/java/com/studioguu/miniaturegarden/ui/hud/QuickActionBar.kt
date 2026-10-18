@@ -34,7 +34,9 @@ import com.studioguu.miniaturegarden.ui.theme.GardenColors
  * put down: its button is lit while it is ([hoeActive]).
  *
  * @param allows which tools can be picked up now: during the first steps only the one the step
- *   asks for; the others are greyed out and cannot be tapped.
+ *   asks for, in edit mode only the shop; the others are greyed out and cannot be tapped.
+ * @param bagActive something from the bag is in hand: the bag's button is lit, and tapping it
+ *   puts that down again, as the hoe's does for the hoe (#50).
  */
 @Composable
 fun QuickActionBar(
@@ -47,6 +49,7 @@ fun QuickActionBar(
     onOpenShop: () -> Unit,
     modifier: Modifier = Modifier,
     allows: (TutorialTool) -> Boolean = { true },
+    bagActive: Boolean = false,
 ) {
     Surface(
         modifier = modifier,
@@ -64,7 +67,7 @@ fun QuickActionBar(
                 "🧪", stringResource(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST), onFertilize,
                 enabled = canCare && allows(TutorialTool.FERTILIZE),
             )
-            ActionButton("🎒", stringResource(R.string.action_inventory), onOpenInventory, enabled = allows(TutorialTool.BAG))
+            ActionButton("🎒", stringResource(R.string.action_inventory), onOpenInventory, enabled = allows(TutorialTool.BAG), selected = bagActive)
             ActionButton("🛒", stringResource(R.string.action_shop), onOpenShop, enabled = allows(TutorialTool.SHOP))
         }
     }

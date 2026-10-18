@@ -176,7 +176,10 @@ fun ObjectStatusDialog(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (gridObject.isPlant && gridObject.status == PlantStatus.WITHERED) {
+                // Edit mode keeps to rearranging (#50): no watering, harvesting or reviving there.
+                if (editing) {
+                    Unit
+                } else if (gridObject.isPlant && gridObject.status == PlantStatus.WITHERED) {
                     Button(onClick = onRevive) {
                         Text(stringResource(R.string.action_revive, CareForPlantUseCase.REVIVE_COST))
                     }
@@ -194,8 +197,8 @@ fun ObjectStatusDialog(
                 if (GardenLayout.check(LayoutAction.MOVE, gridObject, editing) == LayoutCheck.OK && !gridObject.isWorking) {
                     FilledTonalButton(onClick = onMove) { Text(stringResource(R.string.action_move)) }
                 }
-                // A building can be turned round where it stands, even while it is going up.
-                if (gridObject.canFlip) {
+                // A building is turned round where it stands, once it stands: a work site has no front (#50).
+                if (gridObject.canFlip && !gridObject.isWorking) {
                     FilledTonalButton(onClick = onFlip) { Text(stringResource(R.string.action_flip)) }
                 }
                 Spacer(Modifier.weight(1f))

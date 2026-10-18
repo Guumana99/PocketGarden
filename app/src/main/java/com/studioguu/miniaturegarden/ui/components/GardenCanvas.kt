@@ -479,13 +479,21 @@ private fun submitObjects(
         val alpha = fades[obj.instanceId]
         val draw: DrawScope.() -> Unit =
             if (alpha != null && layer == RenderLayer.GRID_OBJECTS) ({ drawFaded(alpha, plainDraw) }) else plainDraw
-        if (vanish == null && obj.isWorking) {
+        if (obj.isWorking) {
             // A work site: sheeting and scaffolding, and nothing of what is inside. Its shadow
-            // and anything else the finished thing would draw are left out with it.
+            // and anything else the finished thing would draw are left out with it. Taken away
+            // (put back in the bag, called off), it is the site that fades, never the finished
+            // building (#50: that showed for a moment).
             if (layer == RenderLayer.GRID_OBJECTS) {
                 val progress = obj.workProgress(ambience.epochMillis)
                 val site: DrawScope.() -> Unit = { drawWorkSite(transform, obj, progress, ambience.windMillis ?: 0L) }
-                pipeline.submit(layer, depth) { if (alpha != null) drawFaded(alpha, site) else site() }
+                if (vanish != null) {
+                    val footprint = obj.footprint
+                    val pivot = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
+                    pipeline.submit(layer, depth) { drawVanishing(pivot, vanish, transform.tileHeight, site) }
+                } else {
+                    pipeline.submit(layer, depth) { if (alpha != null) drawFaded(alpha, site) else site() }
+                }
             }
         } else if (vanish == null && pop != null && layer == RenderLayer.GRID_OBJECTS) {
             // Just unveiled: it pops up out of the ground, a little too big, and settles.

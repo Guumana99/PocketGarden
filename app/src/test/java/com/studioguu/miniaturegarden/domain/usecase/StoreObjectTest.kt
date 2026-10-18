@@ -120,12 +120,21 @@ class StoreObjectTest {
 
     // --- No experience to be had from picking things up and putting them down ---
 
+
+    /** Finishes and unveils the building just placed: when it earns, since #50. */
+    private suspend fun finishAndUnveil(objectId: String, at: Long = t0) {
+        val site = repo.objects.values.first { it.objectId == objectId && it.isWorking }
+        repo.put(site.copy(workKind = com.studioguu.miniaturegarden.domain.model.WorkKind.READY))
+        UnveilBuildingUseCase(repo, RecordCollectionUseCase(repo))(site.instanceId, at)
+    }
+
     @Test
     fun `the experience for building something is taken back when it is put away`() = runBlocking {
         repo.profile = UserProfile(coins = 0, currentXp = 80)
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 1))
 
         place(0, 2, 2, t0)
+        finishAndUnveil(GardenItem.STRUCT_WELL.objectId) // it earns when it is unveiled (#50)
         assertEquals(110L, repo.profile?.currentXp)
         assertEquals(2, repo.profile?.playerLevel)
 
@@ -133,8 +142,11 @@ class StoreObjectTest {
         assertEquals(80L, repo.profile?.currentXp)
         assertEquals(2, repo.profile?.playerLevel) // a level, once reached, is kept
 
-        // Round and round changes nothing.
+        // Round and round changes nothing, whether it is unveiled each time or called off.
         repeat(3) {
+            place(0, 2, 2, t0)
+            finishAndUnveil(GardenItem.STRUCT_WELL.objectId)
+            store(repo.objects.values.single().instanceId)
             place(0, 2, 2, t0)
             store(repo.objects.values.single().instanceId)
         }

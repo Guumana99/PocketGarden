@@ -1,6 +1,8 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
@@ -117,14 +119,25 @@ class CompleteWorkUseCase @Inject constructor(
  */
 class UnveilBuildingUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
+    private val recordCollection: RecordCollectionUseCase,
 ) {
-    /** @return [ActionResult.BUSY] if it is still being built, [ActionResult.NOT_FOUND] if there is nothing to unveil. */
-    suspend operator fun invoke(instanceId: String): ActionResult = gardenRepository.runInTransaction {
+    /**
+     * Unveiling is when a building counts (#50): it earns its [GardenItem.placeXp] and, the first
+     * time, readies its page of the encyclopedia, both of which used to come when its site went up.
+     *
+     * @return [ActionResult.BUSY] if it is still being built, [ActionResult.NOT_FOUND] if there is nothing to unveil.
+     */
+    suspend operator fun invoke(instanceId: String, now: Long): ActionResult = gardenRepository.runInTransaction {
         val target = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
             ?: return@runInTransaction ActionResult.NOT_FOUND
         when (target.workKind) {
             WorkKind.READY -> {
                 gardenRepository.upsertGridObject(target.withoutWork())
+                val item = StoreObjectUseCase.itemFor(target)
+                recordCollection(StoreObjectUseCase.itemFor(target)?.objectId ?: target.objectId, CollectionTrigger.PLACEMENT, now)
+                if (item != null && item.placeXp > 0) {
+                    gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
+                }
                 ActionResult.SUCCESS
             }
             WorkKind.NONE -> ActionResult.NOT_FOUND
