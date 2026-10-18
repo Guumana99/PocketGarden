@@ -71,8 +71,12 @@ di/       Hilt の束ね
 - 店の行き来は上の 3 枚の看板。部屋（壁・腰板・床）はコードで描き、店ごとに色が違う（`ShopRoom`）。
 - 棚の中身は純関数 `ShopShelves.stock(stage, season, stats, coins, ownsSymbol)` → `ShelfItem(item, ShelfTag)`。
   `ShelfTag` は `FOR_SALE` / `SHORT_OF_COINS` / `LOCKED` / `OWNED`（持っているコテージ）。`ShopShelves.shelves` で 1 段 3 つに並べる。
-- 棚の物を押すと手に取り（棚には薄い跡が残る）、下から**カード**がせり上がる：絵・名前・図鑑の説明文（`CollectionDialog.flavorText`）・
-  旬（作物）や効果（井戸・小屋・風車）・「棚に戻す」と「N で買う」（または解放条件／所持済み）。買った結果はカードの中に出る。
+- 棚の物を押すと手に取り（棚には薄い跡が残る）、下から**カード**がせり上がる：絵・名前・**所持数**・図鑑の説明文（`CollectionDialog.flavorText`）・
+  効果（井戸・小屋・風車、コテージは庭が広がること）・図鑑で開く物はその条件（「図鑑にNページ登録すると…」）・「棚に戻す」と「N で買う」（または解放条件／所持済み）。
+  #48 で作物の旬の行はやめた（棚には旬の物しか並ばないため）。
+- 買った結果などの一言は、**高さを固定した 1 行の枠**（`MessageLine`、24dp、1 行で省略）に出す。出ても消えてもカードやボタンの位置は動かない。
+- **所持数（#48）**：持ち物にある数（全スロットの合計、`ShopShelves.heldIn`）を、棚の値札の下と、カードの名前の下に「所持数: N個」で出す。庭に置いてある数は数えない。
+- 図鑑で開く 2 つ（ウッドデッキ＝2 ページ、石灯籠＝4 ページ）の棚の札は「🔒 図鑑で解放」。ページ数はカードに書く。
 - 戻るキー：カードが出ていれば棚に戻す、出ていなければ庭へ。
 - 状態は `ShopViewModel`：`stage`（いる店）・`inspecting`（手に取った物）・`shelves`（派生）。`goTo` `inspect` `putBack` `leave`（入口の店・手ぶらに戻す）。
   画面は `ShopStageScreen`（view model をつなぐ）と、状態だけで描く `ShopStageContent`（Robolectric のテスト `ShopStageContentTest`）。

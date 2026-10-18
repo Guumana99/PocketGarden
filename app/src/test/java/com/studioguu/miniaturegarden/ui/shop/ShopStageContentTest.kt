@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -41,13 +43,14 @@ class ShopStageContentTest {
     private class Visit {
         var stage by mutableStateOf(ShopStage.ENTRANCE)
         var inHand by mutableStateOf<GardenItem?>(null)
+        var message by mutableStateOf<ShopMessage?>(null)
         val bought = mutableListOf<GardenItem>()
         var left = false
     }
 
-    private fun open(visit: Visit, coins: Long = 500, ownsSymbol: Boolean = false) {
+    private fun open(visit: Visit, coins: Long = 500, ownsSymbol: Boolean = false, held: Map<GardenItem, Int> = emptyMap()) {
         compose.setContent {
-            val stock = ShopShelves.stock(visit.stage, Season.SPRING, stats, coins, ownsSymbol)
+            val stock = ShopShelves.stock(visit.stage, Season.SPRING, stats, coins, ownsSymbol, held)
             GardenTheme {
                 ShopStageContent(
                     stage = visit.stage,
@@ -55,7 +58,7 @@ class ShopStageContentTest {
                     coins = coins,
                     season = Season.SPRING,
                     inHand = visit.inHand?.let { item -> stock.firstOrNull { it.item == item } },
-                    message = null,
+                    message = visit.message,
                     bonusLabel = "bonus",
                     bonusEnabled = false,
                     onGoTo = { visit.stage = it; visit.inHand = null },
@@ -116,6 +119,30 @@ class ShopStageContentTest {
         compose.onNodeWithTag(ITEM_CARD_TAG).assertExists()
         compose.onNodeWithText(text(R.string.shop_buy, GardenItem.STRUCT_COTTAGE.price)).assertDoesNotExist()
         assertTrue(visit.bought.isEmpty())
+    }
+
+    @Test
+    fun `how many are in the bag shows on the shelf and on the card`() {
+        val visit = Visit()
+        open(visit, held = mapOf(GardenItem.SEED_TULIP to 3))
+        compose.onNodeWithTag(heldTag(GardenItem.SEED_TULIP), useUnmergedTree = true).performScrollTo().assertTextEquals(text(R.string.shop_held, 3))
+        compose.onNodeWithTag(heldTag(GardenItem.SEED_MINT), useUnmergedTree = true).performScrollTo().assertTextEquals(text(R.string.shop_held, 0))
+        compose.onNodeWithTag(shelfTag(GardenItem.SEED_TULIP)).performScrollTo().performClick()
+        compose.onNodeWithTag(CARD_HELD_TAG, useUnmergedTree = true).assertTextEquals(text(R.string.shop_held, 3))
+    }
+
+    @Test
+    fun `a word said at the counter does not move the card or its buttons`() {
+        val visit = Visit().apply { inHand = GardenItem.SEED_TULIP }
+        open(visit)
+        val buy = text(R.string.shop_buy, GardenItem.SEED_TULIP.price)
+        val cardBefore = compose.onNodeWithTag(ITEM_CARD_TAG).getBoundsInRoot()
+        val buyBefore = compose.onNodeWithText(buy).getBoundsInRoot()
+        visit.message = ShopMessage(text(R.string.shop_bought, "チューリップの種"), good = true)
+        compose.waitForIdle()
+        compose.onNodeWithText(text(R.string.shop_bought, "チューリップの種")).assertExists()
+        assertEquals(cardBefore, compose.onNodeWithTag(ITEM_CARD_TAG).getBoundsInRoot())
+        assertEquals(buyBefore, compose.onNodeWithText(buy).getBoundsInRoot())
     }
 
     @Test

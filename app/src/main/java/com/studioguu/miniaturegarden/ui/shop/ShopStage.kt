@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.ui.shop
 
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
 import com.studioguu.miniaturegarden.domain.model.Season
@@ -44,8 +45,8 @@ enum class ShelfTag {
     OWNED,
 }
 
-/** One thing standing on a shelf. */
-data class ShelfItem(val item: GardenItem, val tag: ShelfTag)
+/** One thing standing on a shelf, and how many of it the player has in the bag ([held]). */
+data class ShelfItem(val item: GardenItem, val tag: ShelfTag, val held: Int = 0)
 
 /**
  * What stands on a shop's shelves, and how it is set out: a pure function of the shop, the
@@ -56,8 +57,18 @@ object ShopShelves {
     /** Things side by side on one shelf: few enough that each is a good finger's width. */
     const val PER_SHELF = 3
 
-    /** Everything on show in [stage], in shelf order, each tagged for the player. */
-    fun stock(stage: ShopStage, season: Season, stats: PlayerStats, coins: Long, ownsSymbol: Boolean): List<ShelfItem> =
+    /**
+     * Everything on show in [stage], in shelf order, each tagged for the player and with how many
+     * of it they have in the bag ([held], see [heldIn]).
+     */
+    fun stock(
+        stage: ShopStage,
+        season: Season,
+        stats: PlayerStats,
+        coins: Long,
+        ownsSymbol: Boolean,
+        held: Map<GardenItem, Int> = emptyMap(),
+    ): List<ShelfItem> =
         GardenItem.shelf(stage.category, season).map { item ->
             val tag = when {
                 !item.isUnlockedFor(stats) -> ShelfTag.LOCKED
@@ -65,8 +76,15 @@ object ShopShelves {
                 coins < item.price -> ShelfTag.SHORT_OF_COINS
                 else -> ShelfTag.FOR_SALE
             }
-            ShelfItem(item, tag)
+            ShelfItem(item, tag, held[item] ?: 0)
         }
+
+    /** How many of each item are in the bag, over all its slots. */
+    fun heldIn(slots: List<InventorySlot>): Map<GardenItem, Int> =
+        slots.filter { !it.isEmpty }
+            .mapNotNull { slot -> GardenItem.fromItemId(slot.itemId)?.let { it to slot.amount } }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, amounts) -> amounts.sum() }
 
     /** [stock] laid out shelf by shelf, top to bottom. */
     fun shelves(stock: List<ShelfItem>): List<List<ShelfItem>> = stock.chunked(PER_SHELF)

@@ -90,11 +90,15 @@ class ShopViewModel @Inject constructor(
         combine(gardenRepository.observeGridObjects(), gardenRepository.observeInventory(), ::ownsSymbolBuilding)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** How many of each item the player has in the bag, shown on the shelves and the card. */
+    private val held = gardenRepository.observeInventory().map(ShopShelves::heldIn)
+
     /** What stands on the current shop's shelves, shelf by shelf ([ShopShelves]). */
     val shelves: StateFlow<List<List<ShelfItem>>> =
         combine(_stage, season, playerStats, coins, ownsSymbol) { stage, season, stats, coins, owns ->
-            ShopShelves.shelves(ShopShelves.stock(stage, season, stats, coins, owns))
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+            { held: Map<GardenItem, Int> -> ShopShelves.shelves(ShopShelves.stock(stage, season, stats, coins, owns, held)) }
+        }.combine(held) { build, counts -> build(counts) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Walks to another shop down the lane. Whatever was in hand there is put back on its shelf. */
     fun goTo(stage: ShopStage) {
