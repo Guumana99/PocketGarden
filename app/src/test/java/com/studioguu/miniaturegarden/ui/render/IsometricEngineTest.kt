@@ -232,13 +232,67 @@ class IsometricEngineTest {
     }
 
     @Test
-    fun `how big a tile is when the 13x13 garden is first shown on a phone`() {
-        // Recorded for the ROADMAP: the whole garden fits, so each tile is small; pinching in
-        // (up to MAX_SCALE) brings it to finger size.
-        val t = GardenCamera.fitting(phone, largest).toTransform(largest, phone)
-        assertEquals(411f / (13 * 128f) * GardenCamera.FIT_MARGIN * 128f, t.tileWidth, 1e-3f)
-        assertTrue(t.tileWidth in 27f..28f)
-        assertTrue(t.tileHeight in 13.5f..14f)
+    fun `the 13x13 garden first shows with finger-sized tiles on a phone, centred`() {
+        val start = GardenCamera.starting(phone, largest)
+        val t = start.toTransform(largest, phone)
+        assertEquals(GardenCamera.START_SCALE, start.scale, 0f)
+        assertEquals(48f, t.tileWidth, 1e-3f)
+        assertEquals(24f, t.tileHeight, 1e-3f)
+        assertOffset(Offset.Zero, start.pan)
+        // The middle of the garden is in the middle of the screen.
+        assertOffset(phone.center, t.worldToScreen(6.5f, 6.5f))
+        // Fitting the whole garden would have made a tile only about 27 dp across.
+        assertTrue(GardenCamera.fitting(phone, largest).toTransform(largest, phone).tileWidth in 27f..28f)
+    }
+
+    @Test
+    fun `from the starting view a pinch still goes out to the whole garden and in to the closest`() {
+        val start = GardenCamera.starting(phone, largest)
+        val fit = GardenCamera.fitting(phone, largest)
+        assertEquals(fit.minScale, start.minScale, 0f)
+        val out = start.transformedBy(phone.center, Offset.Zero, 0.001f, phone, largest)
+        assertEquals(fit.scale, out.scale, 1e-6f)
+        val all = out.toTransform(largest, phone)
+        for ((x, y) in listOf(0f to 0f, 13f to 0f, 13f to 13f, 0f to 13f)) {
+            val p = all.worldToScreen(x, y)
+            assertTrue("corner ($x, $y) at $p", p.x in 0f..phone.width && p.y in 0f..phone.height)
+        }
+        assertEquals(GardenCamera.MAX_SCALE, start.transformedBy(phone.center, Offset.Zero, 100f, phone, largest).scale, 0f)
+    }
+
+    @Test
+    fun `in the starting view every tile on screen is picked where it is drawn, and a drag reaches the corners`() {
+        val start = GardenCamera.starting(phone, largest)
+        val t = start.toTransform(largest, phone)
+        var onScreen = 0
+        for (x in 0 until 13) for (y in 0 until 13) {
+            val p = t.tileCenter(x, y)
+            if (p.x !in 0f..phone.width || p.y !in 0f..phone.height) continue
+            onScreen++
+            assertEquals(TileCoord(x, y), TilePicker.pick(p, t, gridSize = 13))
+        }
+        assertTrue("only $onScreen tiles on screen", onScreen >= 60)
+        // Dragged as far as it goes, each corner of the garden comes on screen and is picked.
+        for (drag in listOf(Offset(0f, 1e5f), Offset(-1e5f, 0f), Offset(0f, -1e5f), Offset(1e5f, 0f))) {
+            val moved = start.transformedBy(phone.center, drag, 1f, phone, largest).toTransform(largest, phone)
+            val corner = when {
+                drag.y > 0f -> TileCoord(0, 0)
+                drag.x < 0f -> TileCoord(12, 0)
+                drag.y < 0f -> TileCoord(12, 12)
+                else -> TileCoord(0, 12)
+            }
+            val p = moved.tileCenter(corner.x, corner.y)
+            assertTrue("$corner at $p", p.x in 0f..phone.width && p.y in 0f..phone.height)
+            assertEquals(corner, TilePicker.pick(p, moved, gridSize = 13))
+        }
+    }
+
+    @Test
+    fun `a screen that already shows everything with larger tiles starts with all of it`() {
+        val tablet = Size(1280f, 800f)
+        assertEquals(GardenCamera.fitting(tablet, metrics), GardenCamera.starting(tablet, metrics))
+        // The starting 9 x 9 garden on a phone starts at finger size too.
+        assertEquals(GardenCamera.START_SCALE, GardenCamera.starting(phone, metrics).scale, 0f)
     }
 
     private val Size.center: Offset get() = Offset(width / 2f, height / 2f)
