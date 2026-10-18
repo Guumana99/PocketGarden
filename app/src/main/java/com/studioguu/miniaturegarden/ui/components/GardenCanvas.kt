@@ -68,19 +68,11 @@ import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.render.Daylight
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
-import com.studioguu.miniaturegarden.ui.render.drawCosmos
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
-import com.studioguu.miniaturegarden.ui.render.drawLavender
-import com.studioguu.miniaturegarden.ui.render.drawMint
-import com.studioguu.miniaturegarden.ui.render.drawPoinsettia
-import com.studioguu.miniaturegarden.ui.render.drawPumpkin
+import com.studioguu.miniaturegarden.ui.render.drawCropInCode
 import com.studioguu.miniaturegarden.ui.render.drawSeasonGround
-import com.studioguu.miniaturegarden.ui.render.drawSnowdrop
-import com.studioguu.miniaturegarden.ui.render.drawStrawberry
-import com.studioguu.miniaturegarden.ui.render.drawTomato
 import com.studioguu.miniaturegarden.ui.render.drawTurningSprite
 import com.studioguu.miniaturegarden.ui.render.WindmillSails
-import com.studioguu.miniaturegarden.ui.render.drawWatermelon
 import com.studioguu.miniaturegarden.ui.render.GustAxis
 import com.studioguu.miniaturegarden.ui.render.GustFront
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
@@ -93,7 +85,7 @@ import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import com.studioguu.miniaturegarden.ui.render.TilePicker
 import com.studioguu.miniaturegarden.ui.render.Wind
-import com.studioguu.miniaturegarden.ui.render.drawCreature
+import com.studioguu.miniaturegarden.ui.render.drawVisitor
 import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
 import com.studioguu.miniaturegarden.ui.render.drawFenceArms
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
@@ -350,7 +342,7 @@ fun GardenCanvas(
             if (opacity <= 0f) continue
             pipeline.submit(RenderLayer.GRID_OBJECTS, depth = LayerPipeline.depthOf(visit.cell.x, visit.cell.y, 0) + 0.6f) {
                 val base = visitorBase(transform, visit)
-                val draw: DrawScope.() -> Unit = { drawCreature(visit.creature, base, transform.tileWidth, windMillis) }
+                val draw: DrawScope.() -> Unit = { drawVisitor(visit.creature, base, transform.tileWidth, windMillis, atlas, atlasImage) }
                 if (opacity < 1f) drawFaded(opacity, draw) else draw()
             }
         }
@@ -1945,19 +1937,9 @@ private fun DrawScope.drawGroundCover(obj: GridObject, base: Offset, unit: Float
 
 private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {
     val withered = obj.status == PlantStatus.WITHERED
-    // The crops that came with the seasons have no artwork yet: each is drawn in its own shape.
-    when (PlantSpecies.fromObjectId(obj.objectId)) {
-        PlantSpecies.COSMOS -> return drawCosmos(base, unit, obj.growthProgress, withered)
-        PlantSpecies.SNOWDROP -> return drawSnowdrop(base, unit, obj.growthProgress, withered)
-        PlantSpecies.MINT -> return drawMint(base, unit, obj.growthProgress, withered)
-        PlantSpecies.TOMATO -> return drawTomato(base, unit, obj.growthProgress, withered)
-        PlantSpecies.STRAWBERRY -> return drawStrawberry(base, unit, obj.growthProgress, withered)
-        PlantSpecies.WATERMELON -> return drawWatermelon(base, unit, obj.growthProgress, withered)
-        PlantSpecies.LAVENDER -> return drawLavender(base, unit, obj.growthProgress, withered)
-        PlantSpecies.PUMPKIN -> return drawPumpkin(base, unit, obj.growthProgress, withered)
-        PlantSpecies.POINSETTIA -> return drawPoinsettia(base, unit, obj.growthProgress, withered)
-        else -> Unit
-    }
+    // The crops with no sprites yet: each is drawn in its own shape, or else as a plain flower.
+    val species = PlantSpecies.fromObjectId(obj.objectId)
+    if (species != null && drawCropInCode(species, base, unit, obj.growthProgress, withered)) return
     val scale = plantScale(obj)
     val top = base - Offset(0f, unit * 0.55f * scale)
     val stemColor = if (withered) WITHERED_BROWN else STEM_GREEN
@@ -2028,6 +2010,15 @@ private val WELL_WATER = Color(0xFF3F8FC4)
 private const val STRUCTURE_INSET = 0.12f
 
 /**
+ * How much of a code-drawn building's height is wall, the rest being the hut's roof; and how
+ * high the well's rim stands, as a part of its height. Taken from [StructureData.heightSteps],
+ * the height that decides what a building hides ([Occlusion]), so the stand-in is never taller
+ * or shorter than what the garden makes see-through behind it.
+ */
+internal const val HUT_WALL_SHARE = 4f / 7f
+internal const val WELL_RIM_SHARE = 0.75f
+
+/**
  * Placeholder for a structure without a sprite: a box standing on its whole footprint, with a
  * pitched roof for the hut and an open, water-filled top for the well. Heights are in height
  * steps, like [GridObject.heightLevel].
@@ -2044,7 +2035,7 @@ private fun DrawScope.drawStructure(transform: IsometricTransform, obj: GridObje
     }
     // Without its picture, the windmill is drawn like the hut: a box with a pointed roof.
     val isHut = structure == StructureData.HUT || structure == StructureData.WINDMILL
-    val top = ground + if (isHut) 4f else 1.8f
+    val top = ground + structure.heightSteps * if (isHut) HUT_WALL_SHARE else WELL_RIM_SHARE
 
     // Corners of the box, named by where they appear on screen.
     val leftLow = transform.worldToScreen(x0, y1, ground)
@@ -2059,7 +2050,7 @@ private fun DrawScope.drawStructure(transform: IsometricTransform, obj: GridObje
     drawPath(quad(frontLow, rightLow, right, front), if (isHut) HUT_WALL_RIGHT else WELL_WALL_RIGHT)
 
     if (isHut) {
-        val apex = transform.worldToScreen((x0 + x1) / 2f, (y0 + y1) / 2f, top + 3f)
+        val apex = transform.worldToScreen((x0 + x1) / 2f, (y0 + y1) / 2f, ground + structure.heightSteps)
         // Back slopes first, then the two facing the viewer.
         drawPath(triangle(back, left, apex), HUT_ROOF_DARK)
         drawPath(triangle(back, right, apex), HUT_ROOF_DARK)

@@ -163,7 +163,7 @@ fun CollectionDialog(
                 )
                 val notes = natureNotes
                 if (natureOpen && notes != null) {
-                    NatureNotesChapter(notes, onOpenNote = viewModel::openNote, onDismiss = onDismiss)
+                    NatureNotesChapter(notes, atlas, onOpenNote = viewModel::openNote, onDismiss = onDismiss)
                 } else if (natureOpen) {
                     Spacer(Modifier.height(SPREAD_HEIGHT))
                 } else key(category) {

@@ -85,4 +85,48 @@ class OcclusionTest {
         assertEquals(emptySet<String>(), Occlusion.fadedBuildings(objects, selected = GridCell(8, 8), editing = false))
         assertEquals(emptySet<String>(), Occlusion.fadedBuildings(objects, selected = null, editing = false))
     }
+
+    // --- The garden at its largest, 13 x 13 ---
+
+    @Test
+    fun `what a building hides moves with it, wherever it stands in a 13x13 garden`() {
+        for (structure in StructureData.entries) {
+            val here = at("b", 2, 2, structure.objectId)
+            for (dx in 0..(13 - 2 - structure.footprint.width)) for (dy in 0..(13 - 2 - structure.footprint.height)) {
+                val there = at("b", 2 + dx, 2 + dy, structure.objectId)
+                for (x in 0 until 13 - dx) for (y in 0 until 13 - dy) {
+                    assertEquals(
+                        "${structure.name} moved by ($dx, $dy), cell ($x, $y)",
+                        Occlusion.hides(here, GridCell(x, y)),
+                        Occlusion.hides(there, GridCell(x + dx, y + dy)),
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `on the front edge of a 13x13 garden a building hides the cells behind it and nothing in front`() {
+        // The cottage in the very front corner: (10..12, 10..12).
+        val cottage = at("cottage", 10, 10, StructureData.COTTAGE.objectId)
+        assertTrue(Occlusion.hides(cottage, GridCell(9, 9)))
+        assertTrue(Occlusion.hides(cottage, GridCell(7, 7)))
+        for (x in 0 until 13) for (y in 0 until 13) {
+            val cell = GridCell(x, y)
+            if (cell in cottage.occupiedCells()) assertFalse(Occlusion.hides(cottage, cell))
+            // Nothing in front of its front corner is behind it.
+            if (x + y > 24) assertFalse(Occlusion.hides(cottage, cell))
+        }
+        val objects = listOf(cottage, at("windmill", 0, 11, StructureData.WINDMILL.objectId), at("tulip", 9, 9, "plant_tulip"))
+        assertEquals(setOf("cottage"), Occlusion.fadedBuildings(objects, selected = GridCell(9, 9), editing = false))
+        assertEquals(setOf("cottage", "windmill"), Occlusion.fadedBuildings(objects, selected = null, editing = true))
+    }
+
+    @Test
+    fun `the far corner of a 13x13 garden is hidden only by what stands in front of it`() {
+        val windmill = at("windmill", 1, 1, StructureData.WINDMILL.objectId)
+        assertTrue(Occlusion.hides(windmill, GridCell(0, 0)))
+        val farAway = at("windmill", 11, 11, StructureData.WINDMILL.objectId)
+        assertFalse(Occlusion.hides(farAway, GridCell(0, 0)))
+    }
 }
