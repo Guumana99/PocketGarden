@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.studioguu.miniaturegarden.R
+import androidx.compose.ui.platform.testTag
+import com.studioguu.miniaturegarden.ui.components.CarvedButton
 import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.StarterGarden
@@ -98,20 +100,31 @@ fun StarterCrateDialog(onReceive: () -> Unit, onDismiss: () -> Unit) {
                         )
                     }
                 }
+                // Two framed buttons side by side, the same size: "later" carved, "receive" in wood.
                 Row(
-                    modifier = Modifier.padding(top = 10.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.crate_later), color = GardenColors.Cream)
-                    }
-                    WoodButton(text = stringResource(R.string.crate_receive), onClick = onReceive)
+                    CarvedButton(
+                        text = stringResource(R.string.crate_later),
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).testTag(CRATE_LATER_TAG),
+                    )
+                    WoodButton(
+                        text = stringResource(R.string.crate_receive),
+                        onClick = onReceive,
+                        modifier = Modifier.weight(1f).testTag(CRATE_RECEIVE_TAG),
+                    )
                 }
             }
         }
     }
 }
+
+/** Test tags of the crate's two buttons. */
+const val CRATE_LATER_TAG = "crate_later"
+const val CRATE_RECEIVE_TAG = "crate_receive"
 
 /** What the current first step asks for; null when there is nothing to say. */
 @StringRes
@@ -126,6 +139,7 @@ fun tutorialHint(step: TutorialStep?): Int? = when (step) {
 /** The name and the few words that introduce [feature] as it is handed over. */
 @Composable
 private fun featureIntroduction(feature: GardenFeature): Pair<String, String> = when (feature) {
+    GardenFeature.EDIT_MODE -> stringResource(R.string.reveal_edit_name) to stringResource(R.string.reveal_edit_text)
     GardenFeature.BLESSED_RAIN -> stringResource(R.string.reveal_rain_name) to stringResource(R.string.reveal_rain_text)
     GardenFeature.COLLECTION -> stringResource(R.string.reveal_collection_name) to stringResource(R.string.reveal_collection_text)
     GardenFeature.CAMERA -> stringResource(R.string.reveal_camera_name) to stringResource(R.string.reveal_camera_text)

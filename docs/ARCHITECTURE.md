@@ -391,13 +391,21 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 ### チュートリアル（`TutorialStep`）
 
 ```
-OPEN_CRATE ──木箱を開ける──▶ TILL_SOIL ──耕した土がある──▶ PLANT_SEED ──作物が庭にある──▶ WATER_SEEDLING ──水やり──▶ FINISHED
-FINISHED ──タップ──▶ REVEAL_RAIN ──タップ──▶ REVEAL_COLLECTION ──タップ──▶ REVEAL_CAMERA ──タップ──▶ DONE
+OPEN_CRATE ──木箱を開ける──▶ TILL_SOIL ──1 か所耕す──▶ PLANT_SEED ──作物が庭にある──▶ WATER_SEEDLING ──水やり──▶ FINISHED
+FINISHED ──タップ──▶ REVEAL_EDIT ──タップ──▶ REVEAL_RAIN ──タップ──▶ REVEAL_COLLECTION ──タップ──▶ REVEAL_CAMERA ──タップ──▶ REVEAL_POST ──タップ──▶ DONE
 ```
 
 - 段階は名前で保存する（`garden_progress.tutorialStep`）ので、段階を足しても DB の版は上げない。知らない名前は `DONE`。
-- `OPEN_CRATE`〜`WATER_SEEDLING` が導き（`TutorialStep.isGuiding`）：札とまたたく星が出る。
-- **機能の段階解放**（`GardenFeature`）：「慈雨」「図鑑」「カメラ」は導きの間と `FINISHED` では画面に出さない。
+- `OPEN_CRATE`〜`WATER_SEEDLING` が導き（`TutorialStep.isGuiding`）：札とまたたく星が出る（#46 から耕す段階は星なし。どこを耕してもよい）。
+- **導きの間の道具の制限（#46）**：`TutorialStep.allows(TutorialTool)`。木箱の段階は何も、耕す段階はクワだけ、種まきは持ち物だけ、水やりは水やりだけ。
+  ツールバー（`QuickActionBar(allows)`）のほかのボタンは灰色で押せない。`FINISHED` 以降は全部使える。
+  - クワは `HoeUseCase` も守る：導きの間で `allows(HOE)` でなければ `NOT_THIS_STEP`。`TILL_SOIL` で 1 か所耕すと、同じトランザクションで `PLANT_SEED` へ進む。
+    画面側もクワを自動で置く（2 か所目は耕せない）。
+  - 種まき・水やりの段階のパネルは、作物の状態と「水やり」だけ（収穫・撤去・下の注意書きを出さない。`ObjectStatusDialog(guiding)`）。
+  - 木箱を開けるときは編集モードを切る（格子線は出ない）。種を受け取った音はコインではなく軽いタップ音（`SoundEffect.TAP`）。
+  - 木箱のダイアログの「後で」「受け取る」は同じ幅の枠つきボタン（`CarvedButton` と `WoodButton`）。
+- 編集モード（✏️）も段階解放の 1 つ（`GardenFeature.EDIT_MODE`、最初に渡す）。それまで ✏️ は出さない。
+- **機能の段階解放**（`GardenFeature`）：「編集モード」「慈雨」「図鑑」「カメラ」「ポスト」は導きの間と `FINISHED` では画面に出さない。
   `TutorialStep.reveals(feature)` が true になった順に、ボタンがぽんと現れる（`GardenScreen` の `RevealedFeature`）。
   紹介中（`TutorialStep.introducing`）のボタンには金色の光る枠（`revealGlow`）と「NEW」札、画面の中央に木の札（`FeatureRevealCard`、名前・ひとこと・場所・「わかった」）。
   札はダイアログにせず庭に重ねるので、光るボタンが同時に見える。「わかった」で `FollowTutorialUseCase.acknowledge` が次へ進める（今の段階と違う札のタップは無視）。

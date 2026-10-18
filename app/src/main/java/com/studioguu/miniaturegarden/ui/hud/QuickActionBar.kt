@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
@@ -31,6 +32,9 @@ import com.studioguu.miniaturegarden.ui.theme.GardenColors
  * Floating tool bar. Water and fertilizer act on the currently selected plant and are disabled
  * while none is selected ([canCare] false). The hoe is a tool that stays in hand until it is
  * put down: its button is lit while it is ([hoeActive]).
+ *
+ * @param allows which tools can be picked up now: during the first steps only the one the step
+ *   asks for; the others are greyed out and cannot be tapped.
  */
 @Composable
 fun QuickActionBar(
@@ -42,6 +46,7 @@ fun QuickActionBar(
     onOpenInventory: () -> Unit,
     onOpenShop: () -> Unit,
     modifier: Modifier = Modifier,
+    allows: (TutorialTool) -> Boolean = { true },
 ) {
     Surface(
         modifier = modifier,
@@ -53,11 +58,14 @@ fun QuickActionBar(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            ActionButton("⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive)
-            ActionButton("💧", stringResource(R.string.action_water), onWater, enabled = canCare)
-            ActionButton("🧪", stringResource(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST), onFertilize, enabled = canCare)
-            ActionButton("🎒", stringResource(R.string.action_inventory), onOpenInventory)
-            ActionButton("🛒", stringResource(R.string.action_shop), onOpenShop)
+            ActionButton("⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive, enabled = allows(TutorialTool.HOE))
+            ActionButton("💧", stringResource(R.string.action_water), onWater, enabled = canCare && allows(TutorialTool.WATER))
+            ActionButton(
+                "🧪", stringResource(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST), onFertilize,
+                enabled = canCare && allows(TutorialTool.FERTILIZE),
+            )
+            ActionButton("🎒", stringResource(R.string.action_inventory), onOpenInventory, enabled = allows(TutorialTool.BAG))
+            ActionButton("🛒", stringResource(R.string.action_shop), onOpenShop, enabled = allows(TutorialTool.SHOP))
         }
     }
 }

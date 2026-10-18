@@ -20,6 +20,7 @@ import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
@@ -641,7 +642,9 @@ class GardenViewModel @Inject constructor(
                 ) { _, _ -> moveObject(movingId, origin.x, origin.y) }
             }
         } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.isStarterCrate == true) {
-            // The starter crate is not selected like other things: a tap opens it.
+            // The starter crate is not selected like other things: a tap opens it, in the
+            // everyday garden (no edit mode, no grid).
+            _editMode.value = false
             _selectedTile.value = null
             _openingCrateId.value = gridObjects.value.objectAt(tile)?.instanceId
         } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.workKind == WorkKind.READY) {
@@ -656,7 +659,14 @@ class GardenViewModel @Inject constructor(
             ) { now, _ -> unveilBuilding(site.instanceId).also { if (it == ActionResult.SUCCESS) announceGrowthIfDue(now) } }
         } else if (_hoeActive.value) {
             if (tile != null) {
-                act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ ->
+                act(
+                    onSuccess = {
+                        audio.play(SoundEffect.PLANT)
+                        // Under the first steps one cell is enough: the hoe is put down, and
+                        // sowing is next.
+                        if (tutorialStep.value?.isGuiding == true) _hoeActive.value = false
+                    }
+                ) { now, _ ->
                     hoe(tile.x, tile.y, now).also { if (it == ActionResult.SUCCESS) followTutorial() }
                 }
             }
@@ -700,6 +710,8 @@ class GardenViewModel @Inject constructor(
     /** Picks the hoe up, or puts it down again. Picking it up ends any placing and selection. */
     fun toggleHoe() {
         val active = !_hoeActive.value
+        // Under the first steps the hoe is only handed out for the tilling step.
+        if (active && !allows(TutorialTool.HOE)) return
         if (active) {
             _selectedTile.value = null
             _placingSlotIndex.value = null
@@ -734,6 +746,9 @@ class GardenViewModel @Inject constructor(
         _movingId.value = null
         _hoeActive.value = false
     }
+
+    /** Whether [tool] can be picked up at the current first step ([TutorialStep.allows]). */
+    fun allows(tool: TutorialTool): Boolean = tutorialStep.value?.allows(tool) ?: true
 
     fun startPlacing(slotIndex: Int) {
         // Laying out the garden happens in edit mode: taking a piece of it out of the bag goes
@@ -777,7 +792,8 @@ class GardenViewModel @Inject constructor(
         act(
             onSuccess = {
                 _openingCrateId.value = null
-                audio.play(SoundEffect.COIN)
+                // A seed is received, not bought: a soft tap rather than the till's coins.
+                audio.play(SoundEffect.TAP)
             }
         ) { _, _ ->
             openStarterCrate(crateId).also { if (it == ActionResult.SUCCESS) followTutorial() }

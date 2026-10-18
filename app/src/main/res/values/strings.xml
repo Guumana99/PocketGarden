@@ -315,23 +315,26 @@
     <string name="crate_receive">受け取る</string>
     <string name="crate_later">後で</string>
     <string name="tutorial_hint_open_crate">真ん中の木箱が光っています。タップして開けてみましょう</string>
-    <string name="tutorial_hint_till">「クワ」を選んで、光る地面を耕しましょう</string>
-    <string name="tutorial_hint_plant_seed">「持ち物」の種を、耕した土にまきましょう</string>
-    <string name="tutorial_hint_water">まいた種をタップして、水やりをしましょう</string>
+    <string name="tutorial_hint_till">「クワ」を選んで、好きな地面を1か所耕しましょう</string>
+    <string name="tutorial_hint_plant_seed">持ち物にある種を選び、耕した土にまきましょう</string>
+    <string name="tutorial_hint_water">種をタップして水をあげましょう</string>
     <!-- The closing board. Lines are broken by hand so that no phrase is split. -->
-    <string name="tutorial_done_title">🌷 準備ができました</string>
-    <string name="tutorial_done_text">ここから先は、あなただけの庭づくり。\n花を並べても、柵で囲っても、\n小道を作っても。\n好きなものを、好きな場所へ。\n少しずつ、思い描いた景色に\n育てていきましょう。</string>
+    <string name="tutorial_done_title">🎉 チュートリアルクリア！</string>
+    <string name="tutorial_done_text">ここから先は、あなただけの庭づくり。\n好きなものを、好きな場所へ。</string>
     <string name="tutorial_done_ok">庭づくりを始める</string>
     <!-- Features handed over one by one after the first steps. -->
     <string name="reveal_title">新しい機能が使えるようになりました</string>
     <string name="reveal_badge">NEW</string>
     <string name="reveal_ok">OK</string>
+    <string name="reveal_edit_name">✏️ 編集モード</string>
+    <string name="reveal_edit_text">芝生や柵、建物などを\n動かしたり持ち物に戻したりできます。\n編集中は庭に格子線が出ます。</string>
+    <string name="msg_not_this_step">🌱 今は案内の手順を進めましょう</string>
     <string name="reveal_rain_name">☔ 慈雨（じう）</string>
-    <string name="reveal_rain_text">慈雨を降らせると、\n育てている作物の成長時間が半分に。\n上のボタンから使えます。</string>
+    <string name="reveal_rain_text">慈雨を降らせると、\n育てている作物の成長時間が半分になります。</string>
     <string name="reveal_collection_name">📖 図鑑</string>
-    <string name="reveal_collection_text">育てた作物や置いたものが、\n図鑑に少しずつ記されていきます。\n右の本のボタンから開けます。</string>
+    <string name="reveal_collection_text">育てた作物や置いたものが、\n図鑑に少しずつ記されていきます。</string>
     <string name="reveal_camera_name">📷 カメラ</string>
-    <string name="reveal_camera_text">お気に入りの庭を写真に撮って、\n誰かに見せることができます。\n右のカメラのボタンから使えます。</string>
+    <string name="reveal_camera_text">お気に入りの庭を写真に撮って、\n誰かに見せることができます。</string>
 
     <!-- Symbol building and garden expansion -->
     <string name="object_struct_cottage">コテージ</string>
@@ -390,9 +393,7 @@
     <string name="letter_scene_autumn">風が涼しくなって、葉っぱが色づき始めました。</string>
     <string name="letter_scene_winter">庭がうっすらと雪化粧をしました。</string>
     <string name="reveal_post_name">📮 ポスト</string>
-    <string name="reveal_post_text">季節の便りなど、
-庭へのお便りが届きます。
-右のポストのボタンから読めます。</string>
+    <string name="reveal_post_text">あなたのお庭に届いたお便りが読めます。</string>
     <string name="expand_button">庭を広げる（%1$d×%1$d）</string>
     <string name="expand_needs_level">Lv.%1$d で %2$d×%2$d に広げられます</string>
     <string name="expand_max">庭が最大の広さになりました</string>

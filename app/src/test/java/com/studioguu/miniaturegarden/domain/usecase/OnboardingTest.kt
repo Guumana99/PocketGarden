@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenFeature
+import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -140,10 +141,12 @@ class OnboardingTest {
         openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID)
         assertEquals(TutorialStep.TILL_SOIL, follow())
 
-        // The bare lawn where the crate stood sparkles: that is where to till.
-        val patch = TutorialGuide.hintCells(TutorialStep.TILL_SOIL, repo.objects.values.toList()).single()
-        assertEquals(StarterGarden.CRATE, patch)
+        // Any cell of lawn will do: nothing sparkles, the player chooses (#46). One off to the side.
+        assertTrue(TutorialGuide.hintCells(TutorialStep.TILL_SOIL, repo.objects.values.toList()).isEmpty())
+        val patch = GridCell(1, 6)
         assertEquals(ActionResult.SUCCESS, hoe(patch.x, patch.y, t0))
+        // One cell is enough: sowing is next at once, without waiting for the garden to be looked at.
+        assertEquals(TutorialStep.PLANT_SEED, step)
         assertEquals(TutorialStep.PLANT_SEED, follow())
 
         val bed = TutorialGuide.hintCells(TutorialStep.PLANT_SEED, repo.objects.values.toList()).single()
@@ -183,6 +186,71 @@ class OnboardingTest {
         assertEquals(TutorialStep.PLANT_SEED, follow())
     }
 
+    // --- One thing at a time (#46) ---
+
+    @Test
+    fun `during the first steps only the tool the step asks for can be picked up`() {
+        fun allowed(step: TutorialStep) = TutorialTool.entries.filter { step.allows(it) }.toSet()
+        assertEquals(emptySet<TutorialTool>(), allowed(TutorialStep.OPEN_CRATE))
+        assertEquals(setOf(TutorialTool.HOE), allowed(TutorialStep.TILL_SOIL))
+        assertEquals(setOf(TutorialTool.BAG), allowed(TutorialStep.PLANT_SEED))
+        assertEquals(setOf(TutorialTool.WATER), allowed(TutorialStep.WATER_SEEDLING))
+        // From the closing board on, and in a garden from before the first steps, everything.
+        for (free in listOf(TutorialStep.FINISHED, TutorialStep.REVEAL_EDIT, TutorialStep.REVEAL_POST, TutorialStep.DONE)) {
+            assertEquals(TutorialTool.entries.toSet(), allowed(free))
+        }
+    }
+
+    @Test
+    fun `the first steps till one cell, and not a second until they are over`() = runBlocking {
+        // Not before the crate is opened.
+        assertEquals(ActionResult.NOT_THIS_STEP, hoe(2, 2, t0))
+        openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID)
+        follow()
+        assertEquals(ActionResult.SUCCESS, hoe(7, 1, t0))
+        assertEquals(ActionResult.NOT_THIS_STEP, hoe(2, 2, t0))
+        assertEquals(1, repo.objects.values.count { it.isTilledSoil })
+        // Once the first steps are over, the hoe is free again.
+        repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.FINISHED)
+        assertEquals(ActionResult.SUCCESS, hoe(2, 2, t0))
+        repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.DONE)
+        assertEquals(ActionResult.SUCCESS, hoe(3, 2, t0))
+    }
+
+    @Test
+    fun `the screen locks the tool bar and keeps edit mode put away until it is handed over`() {
+        val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
+        fun source(path: String) = java.io.File(main, "java/com/studioguu/miniaturegarden/$path").readText()
+        val screen = source("ui/GardenScreen.kt")
+        assertTrue(screen.contains("allows = { tool -> tutorialStep?.allows(tool) ?: true }"))
+        assertTrue(screen.contains("visible = tutorialStep?.reveals(GardenFeature.EDIT_MODE)"))
+        val bar = source("ui/hud/QuickActionBar.kt")
+        for (tool in TutorialTool.entries) assertTrue(tool.name, bar.contains("allows(TutorialTool.${tool.name})"))
+        // The crate's seed is received with a soft tap, not the till's coins.
+        val model = source("ui/GardenViewModel.kt")
+        val openCrate = model.substringAfter("fun openCrate()").substringBefore("fun closeCrate()")
+        assertTrue(openCrate.contains("SoundEffect.TAP"))
+        assertFalse(openCrate.contains("SoundEffect.COIN"))
+        // Opening the crate is the everyday garden: no edit mode, so no grid.
+        assertTrue(model.substringBefore("_openingCrateId.value = gridObjects.value.objectAt(tile)").takeLast(400).contains("_editMode.value = false"))
+    }
+
+    @Test
+    fun `the words of the first steps are short, and say nothing of where buttons are`() {
+        val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
+        val strings = java.io.File(main, "res/values/strings.xml").readText()
+        fun string(name: String) = Regex("<string name=\"$name\">(.*?)</string>", RegexOption.DOT_MATCHES_ALL).find(strings)!!.groupValues[1]
+        assertTrue(string("tutorial_hint_plant_seed").startsWith("持ち物にある種を選び、耕した土に"))
+        assertEquals("種をタップして水をあげましょう", string("tutorial_hint_water"))
+        assertTrue(string("tutorial_done_title").contains("チュートリアルクリア"))
+        assertFalse(string("tutorial_done_title").contains("準備"))
+        assertEquals("あなたのお庭に届いたお便りが読めます。", string("reveal_post_text"))
+        for (name in listOf("reveal_edit_text", "reveal_rain_text", "reveal_collection_text", "reveal_camera_text", "reveal_post_text")) {
+            assertFalse(name, string(name).contains("ボタンから"))
+        }
+        assertFalse(string("tutorial_hint_till").contains("光る"))
+    }
+
     // --- Handing over the rest, one by one ---
 
     @Test
@@ -213,7 +281,11 @@ class OnboardingTest {
             }
             seen = now
         }
-        assertEquals(listOf(GardenFeature.BLESSED_RAIN, GardenFeature.COLLECTION, GardenFeature.CAMERA, GardenFeature.POST), handedOver)
+        // Edit mode (where the grid shows) first, then the rest as before.
+        assertEquals(
+            listOf(GardenFeature.EDIT_MODE, GardenFeature.BLESSED_RAIN, GardenFeature.COLLECTION, GardenFeature.CAMERA, GardenFeature.POST),
+            handedOver,
+        )
         assertEquals(TutorialStep.DONE, step)
     }
 
