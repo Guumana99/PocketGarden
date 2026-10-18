@@ -42,6 +42,7 @@
 | ショップ・価格・解放・建物効果 | `ShopAndEffectsTest` `ProgressionTest` |
 | 図鑑 | `CollectionTest` |
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
+| 編集モード・模様替えの規則・パネルのボタン | `GardenLayoutTest` `ObjectStatusPanelTest`（Robolectric）（＋グリッド表示 `CameraModeTest`） |
 | シンボル建物・庭の拡張 | `SymbolBuildingTest`（＋数を見る `ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`） |
 | 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` `TapTargetsTest`（吹き出し・建物のタップ） |
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |

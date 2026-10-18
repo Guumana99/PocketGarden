@@ -97,7 +97,7 @@ class CameraModeTest {
 
     @Test
     fun `in camera mode the garden has no grid, no selection and no aura, and taps do nothing`() {
-        assertTrue(screen.contains("showGrid = !cameraMode"))
+        assertTrue(screen.contains("showGrid = editMode && !cameraMode"))
         assertTrue(screen.contains("selectedTile = if (cameraMode) null else selectedTile"))
         assertTrue(screen.contains("auraCells = if (cameraMode) emptySet() else aura"))
         assertTrue(screen.contains("if (!cameraMode) viewModel.onTileTapped(tile)"))

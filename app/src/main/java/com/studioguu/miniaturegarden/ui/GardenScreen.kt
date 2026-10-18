@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -110,6 +111,7 @@ import com.studioguu.miniaturegarden.ui.share.CameraOverlay
 import com.studioguu.miniaturegarden.ui.share.cropToFrame
 import com.studioguu.miniaturegarden.ui.share.shareGardenImage
 import com.studioguu.miniaturegarden.ui.shop.ShopDialog
+import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -133,6 +135,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val blessedRainFalling by viewModel.blessedRainFalling.collectAsStateWithLifecycle()
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
+    val editMode by viewModel.editMode.collectAsStateWithLifecycle()
     val gardenMap by viewModel.gardenMap.collectAsStateWithLifecycle()
     val notificationInviteDue by viewModel.notificationInviteDue.collectAsStateWithLifecycle()
     val visitors by viewModel.visitors.collectAsStateWithLifecycle()
@@ -224,7 +227,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 terrain = terrain,
                 gardenMap = gardenMap,
                 weather = weather,
-                showGrid = !cameraMode,
+                // The grid lines show in edit mode only; the rest of the time the garden is just looked at.
+                showGrid = editMode && !cameraMode,
                 auraCells = if (cameraMode) emptySet() else aura,
                 hintCells = if (cameraMode) emptySet() else hintCells,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
@@ -308,6 +312,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
+                // Edit mode: the grid, and arranging the garden's layout. Lit while it is on.
+                SideButton("✏️", stringResource(R.string.edit_mode_button), selected = editMode, onClick = viewModel::toggleEditMode)
                 RevealedFeature(
                     visible = tutorialStep?.reveals(GardenFeature.COLLECTION),
                     introducing = tutorialStep?.introducing == GardenFeature.COLLECTION,
@@ -450,15 +456,24 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 gardenSize = gardenMap.size,
                                 playerLevel = profile?.playerLevel ?: 1,
                                 onExpand = viewModel::expand,
+                                editing = editMode,
                             )
                         }
+                    }
+                    // In edit mode with nothing in hand or selected, a banner says so, and ends it.
+                    AnimatedVisibility(
+                        visible = editMode && placing == null && !hoeActive && moving == null && target == null,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        ToolBanner(stringResource(R.string.edit_banner), onCancel = viewModel::toggleEditMode, cancelLabel = stringResource(R.string.edit_done))
                     }
                     // The first steps say what to do next, only while nothing else is showing here.
                     val hint = tutorialHint(tutorialStep)
                     var lastHint by remember { mutableStateOf(hint) }
                     if (hint != null) lastHint = hint
                     AnimatedVisibility(
-                        visible = hint != null && placing == null && !hoeActive && moving == null && target == null,
+                        visible = hint != null && !editMode && placing == null && !hoeActive && moving == null && target == null,
                         enter = fadeIn(),
                         exit = fadeOut(),
                     ) {
@@ -632,12 +647,18 @@ private fun CountBadge(count: Int, modifier: Modifier = Modifier) {
 
 /** One of the small round buttons down the right-hand edge. */
 @Composable
-private fun SideButton(emoji: String, label: String, onClick: () -> Unit) {
+private fun SideButton(emoji: String, label: String, selected: Boolean = false, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     TextButton(
         onClick = withTick(onClick),
         interactionSource = interactionSource,
-        modifier = Modifier.pressScale(interactionSource).semantics { contentDescription = label },
+        modifier = Modifier
+            .pressScale(interactionSource)
+            .background(if (selected) GardenColors.WoodLight else Color.Transparent, RoundedCornerShape(16.dp))
+            .semantics {
+                contentDescription = label
+                this.selected = selected
+            },
     ) { Text(emoji, fontSize = 22.sp) }
 }
 
@@ -661,7 +682,7 @@ private fun PlacingBanner(slot: InventorySlot, flipped: Boolean, onFlip: () -> U
 
 /** Says what the next tap on a tile will do, with a way out, and anything else that goes with it ([extra]). */
 @Composable
-private fun ToolBanner(text: String, onCancel: () -> Unit, extra: @Composable () -> Unit = {}) {
+private fun ToolBanner(text: String, onCancel: () -> Unit, cancelLabel: String? = null, extra: @Composable () -> Unit = {}) {
     Surface(shape = RoundedCornerShape(20.dp), tonalElevation = 3.dp, shadowElevation = 6.dp) {
         Row(
             modifier = Modifier.padding(start = 16.dp, end = 4.dp),
@@ -673,7 +694,7 @@ private fun ToolBanner(text: String, onCancel: () -> Unit, extra: @Composable ()
                 modifier = Modifier.weight(1f, fill = false),
             )
             extra()
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.placing_cancel)) }
+            TextButton(onClick = onCancel) { Text(cancelLabel ?: stringResource(R.string.placing_cancel)) }
         }
     }
 }

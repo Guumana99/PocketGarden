@@ -32,7 +32,9 @@ import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.WorkKind
-import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
+import com.studioguu.miniaturegarden.domain.usecase.GardenLayout
+import com.studioguu.miniaturegarden.domain.usecase.LayoutAction
+import com.studioguu.miniaturegarden.domain.usecase.LayoutCheck
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.objectDisplayName
@@ -45,6 +47,9 @@ import kotlinx.coroutines.delay
  *
  * Shown as a floating panel rather than a modal dialog, so the garden and the quick action
  * bar stay usable while it is open.
+ *
+ * @param editing edit mode is on: a piece of the garden's layout can be moved and taken off
+ *   here only then ([GardenLayout]); otherwise the panel says where that is done.
  */
 @Composable
 fun ObjectStatusDialog(
@@ -61,6 +66,7 @@ fun ObjectStatusDialog(
     gardenSize: Int = GridObject.GRID_SIZE,
     playerLevel: Int = 1,
     onExpand: () -> Unit = {},
+    editing: Boolean = false,
 ) {
     Surface(
         modifier = modifier,
@@ -136,6 +142,17 @@ fun ObjectStatusDialog(
                 )
             }
 
+            // Outside edit mode a piece of the layout stays put; say where it can be rearranged.
+            val arrangeable = GardenLayout.check(LayoutAction.MOVE, gridObject, editing = true) == LayoutCheck.OK ||
+                GardenLayout.check(LayoutAction.STORE, gridObject, editing = true) == LayoutCheck.OK
+            if (!editing && GardenLayout.isLayoutPiece(gridObject) && arrangeable) {
+                Text(
+                    text = stringResource(R.string.hint_edit_to_arrange),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             // The symbol building is where the garden is made larger from.
             if (gridObject.isSymbol && !gridObject.isWorking) {
                 ExpansionRow(gardenSize, playerLevel, gridObject, onExpand)
@@ -155,7 +172,7 @@ fun ObjectStatusDialog(
                         Text(stringResource(R.string.action_harvest))
                     }
                 }
-                if (MoveObjectUseCase.canMove(gridObject) && !gridObject.isWorking) {
+                if (GardenLayout.check(LayoutAction.MOVE, gridObject, editing) == LayoutCheck.OK && !gridObject.isWorking) {
                     FilledTonalButton(onClick = onMove) { Text(stringResource(R.string.action_move)) }
                 }
                 // A building can be turned round where it stands, even while it is going up.
@@ -163,7 +180,10 @@ fun ObjectStatusDialog(
                     FilledTonalButton(onClick = onFlip) { Text(stringResource(R.string.action_flip)) }
                 }
                 Spacer(Modifier.weight(1f))
-                OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
+                // Crops and soil can be cleared any time; the layout only in edit mode.
+                if (GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
+                    OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
+                }
             }
         }
     }
