@@ -22,6 +22,7 @@ import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.PurchaseItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
+import com.studioguu.miniaturegarden.domain.usecase.ownsSymbolBuilding
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -72,6 +73,14 @@ class ShopViewModel @Inject constructor(
             // Some items are opened by the encyclopedia rather than by level.
             (profile?.stats ?: NEW_PLAYER).copy(collectionPages = CollectionProgress(pages).revealed)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NEW_PLAYER)
+
+    /**
+     * Whether the symbol building is already the player's, in the garden or in the bag: then it is
+     * shown on the shelf as owned instead of for sale, since a garden has one at most.
+     */
+    val ownsSymbol: StateFlow<Boolean> =
+        combine(gardenRepository.observeGridObjects(), gardenRepository.observeInventory(), ::ownsSymbolBuilding)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     private val _feedback = MutableStateFlow<PurchaseFeedback?>(null)
     val feedback: StateFlow<PurchaseFeedback?> = _feedback.asStateFlow()

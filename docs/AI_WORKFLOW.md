@@ -43,7 +43,7 @@
 | 図鑑 | `CollectionTest` |
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
 | シンボル建物・庭の拡張 | `SymbolBuildingTest`（＋数を見る `ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`） |
-| 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` |
+| 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` `TapTargetsTest`（吹き出し・建物のタップ） |
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | 生き物の来訪・組み合わせ表 | `CreatureVisitTest` |
 | 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |

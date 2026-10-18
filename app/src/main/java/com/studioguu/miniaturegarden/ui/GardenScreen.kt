@@ -218,6 +218,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 // do nothing, though it can still be dragged and pinched into place.
                 selectedTile = if (cameraMode) null else selectedTile,
                 onTileTapped = { tile -> if (!cameraMode) viewModel.onTileTapped(tile) },
+                // While a cell is being looked for, taps read the ground only.
+                editing = placingSlot != null || hoeActive || movingObject != null,
                 atlas = atlas,
                 terrain = terrain,
                 gardenMap = gardenMap,

@@ -83,7 +83,8 @@ import com.studioguu.miniaturegarden.ui.render.RiverAutotile
 import com.studioguu.miniaturegarden.ui.render.SoilTexture
 import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
-import com.studioguu.miniaturegarden.ui.render.TilePicker
+import com.studioguu.miniaturegarden.ui.render.TapTargets
+import com.studioguu.miniaturegarden.ui.render.plantScale
 import com.studioguu.miniaturegarden.ui.render.Wind
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
 import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
@@ -109,6 +110,9 @@ private val TILE_WIDTH = 128.dp
 private val TILE_HEIGHT = 64.dp
 private val HEIGHT_STEP = 16.dp
 
+/** The least reach round a bubble for a tap, about half a fingertip, however far the garden is zoomed out. */
+private val BUBBLE_MIN_REACH = 22.dp
+
 /** Stores a camera as [scale, pan.x, pan.y]; an empty list stands for "not set yet". */
 private val CameraSaver = Saver<GardenCamera?, List<Float>>(
     save = { camera -> camera?.let { listOf(it.scale, it.pan.x, it.pan.y) } ?: emptyList() },
@@ -130,7 +134,9 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param visitors creatures staying in the garden; each fades in and out on its own clock.
  * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
  *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
- * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
+ * @param onTileTapped receives the tapped tile, or null for a tap outside the grid. A tap on a
+ *   bubble, or on a building's walls over bare ground, stands for that thing's tile instead
+ *   ([TapTargets]).
  * @param savedView the view to open with, once known; until then the garden shows at its starting
  *   zoom ([GardenCamera.starting]), tiles about finger-sized.
  * @param onViewChanged told the view a moment after the player has zoomed or panned, to be kept.
@@ -139,6 +145,8 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param initialZoom 1 for the garden itself, which starts at [GardenCamera.starting]; anything
  *   else shows it that much closer than "all of it on screen", for a garden meant to fill the
  *   view (the title's sample garden).
+ * @param editing something is being placed or moved, or the hoe is in hand: taps are read on
+ *   the ground only, since a cell is being looked for.
  */
 @Composable
 fun GardenCanvas(
@@ -160,6 +168,7 @@ fun GardenCanvas(
     paused: Boolean = false,
     initialZoom: Float = 1f,
     season: Season = Season.SPRING,
+    editing: Boolean = false,
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -213,6 +222,9 @@ fun GardenCanvas(
     val waterTick by rememberWaterTick(running = !paused && gridObjects.any { it.isTerrain })
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
+    val currentGrid by rememberUpdatedState(grid)
+    val currentObjects by rememberUpdatedState(gridObjects)
+    val currentEditing by rememberUpdatedState(editing)
     // The wind's clock. It is read while drawing only, so a new value redraws the garden without
     // recomposing anything. A breeze is slow: a modest frame rate is plenty and saves battery.
     // Held still while something covers the garden, so that a sheet sliding up over it has the
@@ -291,7 +303,11 @@ fun GardenCanvas(
             .pointerInput(metrics) {
                 detectTapGestures { position ->
                     val transform = camera?.toTransform(metrics, size.toSize()) ?: return@detectTapGestures
-                    currentOnTileTapped(TilePicker.pick(position, transform, metrics.gridSize))
+                    // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
+                    val tile = TapTargets.resolve(
+                        position, transform, currentGrid, currentObjects, currentEditing, minReach = BUBBLE_MIN_REACH.toPx(),
+                    )
+                    currentOnTileTapped(tile)
                 }
             }
     ) {
@@ -662,15 +678,6 @@ private val PROGRESS_TAKE_DOWN = Color(0xFFFFB74D)
 private val DUST = Color(0xFFE8D9B5)
 private val SPARKLE = Color(0xFFFFF3B0)
 
-/** How tall the thing being worked on is, on screen: what the scaffolding has to reach. */
-private fun siteHeight(obj: GridObject, transform: IsometricTransform): Float = when (StructureData.fromObjectId(obj.objectId)) {
-    StructureData.HUT -> 7.2f * transform.heightStep
-    StructureData.WELL -> 2.4f * transform.heightStep
-    StructureData.COTTAGE -> 8.2f * transform.heightStep
-    StructureData.WINDMILL -> 10f * transform.heightStep
-    null -> transform.tileWidth * 0.24f
-}
-
 /** The corners of a work site on the ground and how tall it is; shared by the site and its burst. */
 private class SiteBox(transform: IsometricTransform, obj: GridObject) {
     private val footprint = obj.footprint
@@ -680,7 +687,7 @@ private class SiteBox(transform: IsometricTransform, obj: GridObject) {
     private val y0 = obj.gridY + inset
     private val x1 = obj.gridX + footprint.width - inset
     private val y1 = obj.gridY + footprint.height - inset
-    val height = siteHeight(obj, transform)
+    val height = TapTargets.workSiteHeight(obj, transform)
     val up = Offset(0f, -height)
     val back = transform.worldToScreen(x0, y0)
     val right = transform.worldToScreen(x1, y0)
@@ -791,8 +798,8 @@ private fun DrawScope.drawWorkSite(transform: IsometricTransform, obj: GridObjec
  */
 private fun DrawScope.drawReadyBubble(tip: Offset, unit: Float, clock: Long) {
     val bob = sin(clock / 260.0).toFloat() * unit * 0.035f
-    val radius = unit * 0.2f
-    val centre = tip + Offset(0f, -radius * 1.35f + bob)
+    val radius = unit * TapTargets.READY_BUBBLE_RADIUS
+    val centre = tip + Offset(0f, -radius * TapTargets.READY_BUBBLE_LIFT + bob)
     val tail = Path().apply {
         moveTo(centre.x - radius * 0.35f, centre.y + radius * 0.8f)
         lineTo(tip.x, tip.y + bob * 0.4f)
@@ -1747,8 +1754,6 @@ private val BLOOM_COLORS = listOf(
     Color(0xFFE57373), Color(0xFFF06292), Color(0xFFFFB74D), Color(0xFFFFF176), Color(0xFFBA68C8),
 )
 
-/** Seedlings start at 35% of full size so a freshly planted tile is not empty. */
-private fun plantScale(obj: GridObject): Float = 0.35f + 0.65f * obj.growthProgress.coerceIn(0f, 1f)
 
 private val DECK_BOARD = Color(0xFFC79A63)
 private val DECK_BOARD_ALT = Color(0xFFBB8C55)
@@ -1972,7 +1977,7 @@ private fun DrawScope.drawDecoration(base: Offset, unit: Float) {
 }
 
 private fun DrawScope.drawStatusBubble(obj: GridObject, base: Offset, unit: Float) {
-    val center = base - Offset(0f, unit * (0.55f * plantScale(obj) + 0.3f))
+    val center = TapTargets.statusBubbleCentre(base, obj, unit)
     val radius = unit * 0.085f
     val icon = if (obj.status == PlantStatus.THIRSTY) Color(0xFF42A5F5) else Color(0xFFFFA726)
     drawCircle(Color.White, radius, center)
