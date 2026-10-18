@@ -220,6 +220,7 @@ private fun letterTitle(letter: Letter): String {
         LetterKind.SEASON_COMING -> stringResource(R.string.letter_coming_title, seasonEmoji(letter.season), name)
         LetterKind.TIP -> letter.tip?.let { stringResource(tipText(it).first) } ?: stringResource(R.string.letter_tip_footer)
         LetterKind.NEW_STOCK -> stringResource(R.string.letter_stock_title)
+        LetterKind.GARDEN_CAN_GROW -> stringResource(R.string.letter_grow_title)
     }
 }
 
@@ -238,6 +239,7 @@ private fun letterBody(letter: Letter): String {
             stringResource(R.string.letter_tip_footer),
         ).joinToString("\n\n")
         LetterKind.NEW_STOCK -> stockBody(letter)
+        LetterKind.GARDEN_CAN_GROW -> stringResource(R.string.letter_grow_body, letter.growSize ?: 0)
     }
 }
 

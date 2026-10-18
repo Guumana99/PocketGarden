@@ -396,6 +396,13 @@
     <string name="expand_button">庭を広げる（%1$d×%1$d）</string>
     <string name="expand_needs_level">Lv.%1$d で %2$d×%2$d に広げられます</string>
     <string name="expand_max">庭が最大の広さになりました</string>
+    <string name="expand_after_unveil">🏡 完成してお披露目すると、ここから庭を広げられます</string>
+    <string name="msg_garden_can_grow">🏡 庭を広げられるようになりました。コテージの上の吹き出しをタップしてみましょう</string>
+    <string name="letter_grow_title">🏡 庭を広げられるようになりました</string>
+    <string name="letter_grow_body">庭をもう一回り、%1$d×%1$dマスまで広げられるようになりました。
+コテージをタップして「庭を広げる」を押してください。広げるかどうかは、お好きなときに決めて大丈夫です。
+広がった外周は芝生になり、庭のものは今の並びのまま真ん中に残ります。</string>
+    <string name="shop_card_symbol">🏡 完成すると、庭を一回り広げられます</string>
 
     <!-- Notifications -->
     <string name="notification_channel_name">お庭のようす</string>

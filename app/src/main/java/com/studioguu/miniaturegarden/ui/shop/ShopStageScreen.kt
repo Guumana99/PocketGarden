@@ -539,6 +539,8 @@ private fun ItemFacts(item: GardenItem) {
                 }
             )
         }
+        // What the symbol building is for: growing the garden.
+        if (item.isSymbol) add(stringResource(R.string.shop_card_symbol))
         when (StructureEffect.forObjectId(item.objectId)) {
             StructureEffect.WELL -> add(stringResource(R.string.hint_well_effect))
             StructureEffect.HUT -> add(stringResource(R.string.hint_hut_effect))

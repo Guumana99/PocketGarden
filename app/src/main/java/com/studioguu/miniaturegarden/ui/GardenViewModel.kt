@@ -18,6 +18,7 @@ import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenView
@@ -555,6 +556,23 @@ class GardenViewModel @Inject constructor(
         audio.stopBgm()
     }
 
+    /**
+     * The symbol building to point at while the garden can grow now ([GardenExpansion.growableFrom]):
+     * a bubble over it says so, and tapping the bubble selects it, whose panel has the button.
+     */
+    val growableBuilding: StateFlow<GridObject?> =
+        combine(gridObjects, gardenMap, profile) { objects, map, profile ->
+            GardenExpansion.growableFrom(map.size, objects, profile?.playerLevel ?: 1)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Posts the letter saying the garden can grow, the first time it can grow to a size, and says
+     * so once on screen as well; after that the bubble over the symbol building keeps pointing.
+     */
+    private suspend fun announceGrowthIfDue(now: Long) {
+        if (postLetters.gardenCanGrowIfDue(now) != null) _messages.trySend(R.string.msg_garden_can_grow)
+    }
+
     /** Advances every plant to the current time. Called on resume and on a timer while visible. */
     fun sync() {
         viewModelScope.launch {
@@ -571,6 +589,8 @@ class GardenViewModel @Inject constructor(
                     .also { arrived = advanceSeason(now) }
                     // Now and then, a word of advice.
                     .also { postLetters.tipIfDue(now) }
+                    // And word when the garden can grow (in case it was missed when it became so).
+                    .also { announceGrowthIfDue(now) }
             }
             arrived?.let(::announceSeason)
             if (finished.isNotEmpty()) {
@@ -633,7 +653,7 @@ class GardenViewModel @Inject constructor(
                     audio.play(SoundEffect.LEVEL_UP)
                     showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
                 }
-            ) { _, _ -> unveilBuilding(site.instanceId) }
+            ) { now, _ -> unveilBuilding(site.instanceId).also { if (it == ActionResult.SUCCESS) announceGrowthIfDue(now) } }
         } else if (_hoeActive.value) {
             if (tile != null) {
                 act(onSuccess = { audio.play(SoundEffect.PLANT) }) { now, _ ->
@@ -897,6 +917,8 @@ class GardenViewModel @Inject constructor(
                         _levelUp.update { LevelUpNotice.after(it, previous, level) }
                         // The shop's news also comes by post, to be read again later.
                         postLetters.newStock(previous, level, System.currentTimeMillis())
+                        // The level for the garden's next size may have come with it.
+                        actionMutex.withLock { announceGrowthIfDue(System.currentTimeMillis()) }
                     }
                 }
                 lastLevel = level

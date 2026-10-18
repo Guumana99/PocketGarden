@@ -52,6 +52,25 @@ object PostOffice {
     }
 
     /**
+     * The letter saying the garden can grow, when it can now and has not been told so for that
+     * size before ([GardenExpansion.check]); null otherwise. It comes when the symbol building is
+     * unveiled (to 11x11) and when the level for the next size is reached (13x13).
+     */
+    fun gardenCanGrow(
+        gardenSize: Int,
+        objects: List<GridObject>,
+        playerLevel: Int,
+        letters: List<Letter>,
+        season: Season,
+        now: Long,
+    ): Letter? {
+        if (GardenExpansion.check(gardenSize, objects, playerLevel) != ExpansionCheck.READY) return null
+        val size = GardenExpansion.nextStage(gardenSize)?.size ?: return null
+        val letter = Letter.gardenCanGrow(size, season, now)
+        return letter.takeIf { letters.none { it.letterId == letter.letterId } }
+    }
+
+    /**
      * The letter about what a level-up from [fromLevel] to [toLevel] put in the shop, or null
      * when it put nothing there.
      */
