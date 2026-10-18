@@ -3,19 +3,61 @@ package com.studioguu.miniaturegarden.ui.render
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
+import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.domain.model.Creature
 import kotlin.math.abs
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 
 // Stand-in pictures of the visitors, drawn in code until their artwork comes (see ROADMAP).
 // Every one is small and moves gently: they are there to be noticed, not to be watched.
+// Whoever draws a visitor calls [drawVisitor], which takes the picture from the atlas as soon as
+// the atlas has one, so artwork can be packed in later without touching any drawing code.
+
+/** The id of the visitor's picture in the sprite atlas, like `creature_bird`. */
+val Creature.assetId: String get() = "creature_$id"
+
+/** How high a visitor that flies keeps above its spot, in tile widths; 0 for those on the ground. */
+val Creature.hoverHeight: Float
+    get() = when (this) {
+        Creature.BUTTERFLY -> 0.42f
+        Creature.DRAGONFLY -> 0.38f
+        else -> 0f
+    }
+
+/**
+ * Draws [creature] at [base], a point on the ground: from its picture in [atlas] when the atlas
+ * has one ([assetId]), and in code ([drawCreature]) until then. A picture stands with its anchor
+ * (its feet) on [base]; a flier's is held [hoverHeight] above it and bobs a little, its shadow
+ * left on the ground unless [shadow] is false.
+ */
+fun DrawScope.drawVisitor(
+    creature: Creature,
+    base: Offset,
+    unit: Float,
+    clock: Long,
+    atlas: SpriteAtlas,
+    atlasImage: ImageBitmap?,
+    shadow: Boolean = true,
+) {
+    val sprite = atlas[creature.assetId]
+    if (sprite == null || atlasImage == null) {
+        drawCreature(creature, base, unit, clock)
+        return
+    }
+    val scale = unit / atlas.manifest.tileWidth
+    if (shadow) drawCreatureShadow(base, unit, min(sprite.drawnWidth(scale) / unit * 0.7f, 0.16f))
+    val bob = if (creature.flies()) wave(clock, 1700.0) * unit * 0.04f else 0f
+    drawSprite(atlasImage, sprite, base - Offset(0f, creature.hoverHeight * unit + bob), scale)
+}
 
 /**
  * Draws [creature] standing (or hovering) at [base], a point on the ground, at a size fitting a
@@ -34,7 +76,7 @@ fun DrawScope.drawCreature(creature: Creature, base: Offset, unit: Float, clock:
 }
 
 /** Whether [creature] keeps to the air: it casts no shadow at its feet. */
-fun Creature.flies(): Boolean = this == Creature.BUTTERFLY || this == Creature.DRAGONFLY
+fun Creature.flies(): Boolean = hoverHeight > 0f
 
 /** A small soft shadow under a creature on the ground. */
 fun DrawScope.drawCreatureShadow(base: Offset, unit: Float, width: Float) {
@@ -55,7 +97,7 @@ private fun DrawScope.drawButterfly(base: Offset, unit: Float, clock: Long) {
         x = sin(clock / 1700.0).toFloat() * unit * 0.09f,
         y = sin(clock / 850.0).toFloat() * unit * 0.04f,
     )
-    val centre = base + Offset(0f, -unit * 0.42f) + drift
+    val centre = base + Offset(0f, -unit * Creature.BUTTERFLY.hoverHeight) + drift
     // The wings fold up and open again: drawn narrower as they close.
     val open = 0.25f + 0.75f * abs(sin(clock / 160.0).toFloat())
     val upper = Size(unit * 0.11f * open, unit * 0.09f)
@@ -188,7 +230,7 @@ private fun DrawScope.drawDragonfly(base: Offset, unit: Float, clock: Long) {
     fun spot(n: Long) = Offset(sin(n * 1.7).toFloat() * unit * 0.08f, sin(n * 2.3).toFloat() * unit * 0.03f)
     val dart = ((within - 0.8f) / 0.2f).coerceIn(0f, 1f)
     val drift = spot(beat) + (spot(beat + 1) - spot(beat)) * dart
-    val centre = base + Offset(0f, -unit * 0.38f) + drift
+    val centre = base + Offset(0f, -unit * Creature.DRAGONFLY.hoverHeight) + drift
     val shimmer = 0.6f + 0.4f * abs(sin(clock / 60.0).toFloat())
     // Two pairs of long wings, spread flat.
     for (side in floatArrayOf(-1f, 1f)) {

@@ -8,11 +8,43 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.Season
 
 // Drawn stand-ins for what has no artwork yet: the seasons on the ground, the crops added
 // with the seasons and after them, and the glass greenhouse. Everything is placed from the cell alone, so it
 // looks the same every time and does not shimmer as the camera moves.
+
+/** How each crop with no sprites yet is drawn here: at a growth of 0 to 1, standing on a point, a tile wide. */
+private val CROP_DRAWINGS: Map<PlantSpecies, DrawScope.(base: Offset, unit: Float, growth: Float, withered: Boolean) -> Unit> = mapOf(
+    PlantSpecies.COSMOS to { base, unit, growth, withered -> drawCosmos(base, unit, growth, withered) },
+    PlantSpecies.SNOWDROP to { base, unit, growth, withered -> drawSnowdrop(base, unit, growth, withered) },
+    PlantSpecies.MINT to { base, unit, growth, withered -> drawMint(base, unit, growth, withered) },
+    PlantSpecies.TOMATO to { base, unit, growth, withered -> drawTomato(base, unit, growth, withered) },
+    PlantSpecies.STRAWBERRY to { base, unit, growth, withered -> drawStrawberry(base, unit, growth, withered) },
+    PlantSpecies.WATERMELON to { base, unit, growth, withered -> drawWatermelon(base, unit, growth, withered) },
+    PlantSpecies.LAVENDER to { base, unit, growth, withered -> drawLavender(base, unit, growth, withered) },
+    PlantSpecies.PUMPKIN to { base, unit, growth, withered -> drawPumpkin(base, unit, growth, withered) },
+    PlantSpecies.POINSETTIA to { base, unit, growth, withered -> drawPoinsettia(base, unit, growth, withered) },
+)
+
+/** The crops drawn in their own shape here. */
+val CROPS_DRAWN_IN_CODE: Set<PlantSpecies> get() = CROP_DRAWINGS.keys
+
+/**
+ * Draws [species] in its own shape at [growth] (0 to 1), standing on [base], and returns true;
+ * false for a crop with no drawing of its own here, which the garden draws as a plain flower.
+ *
+ * Only the fallback: the garden first looks for the crop's sprites in the atlas
+ * (`<objectId>_stage<N>` and `<objectId>_withered`, see TileSetDefinition.assetIdFor) and comes
+ * here only when they are missing. Artwork for a crop is added by packing those sprites; this
+ * drawing then stays as the stand-in for when the atlas cannot be read.
+ */
+fun DrawScope.drawCropInCode(species: PlantSpecies, base: Offset, unit: Float, growth: Float, withered: Boolean): Boolean {
+    val draw = CROP_DRAWINGS[species] ?: return false
+    draw(base, unit, growth, withered)
+    return true
+}
 
 /**
  * What a season lays over the lawn of one cell, after the grass itself is drawn.

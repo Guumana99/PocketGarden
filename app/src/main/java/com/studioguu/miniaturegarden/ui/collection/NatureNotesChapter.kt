@@ -36,6 +36,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -44,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.VisitRule
@@ -52,8 +54,8 @@ import com.studioguu.miniaturegarden.ui.combinationLabel
 import com.studioguu.miniaturegarden.ui.creatureFlavor
 import com.studioguu.miniaturegarden.ui.creatureName
 import com.studioguu.miniaturegarden.ui.render.STILL_CLOCK
-import com.studioguu.miniaturegarden.ui.render.drawCreature
 import com.studioguu.miniaturegarden.ui.render.drawCreatureShadow
+import com.studioguu.miniaturegarden.ui.render.drawVisitor
 import com.studioguu.miniaturegarden.ui.render.flies
 import java.time.Instant
 import java.time.ZoneId
@@ -71,7 +73,7 @@ import kotlinx.coroutines.launch
  * for as long as the book is open, so it does not vanish under the player's eyes.
  */
 @Composable
-internal fun NatureNotesChapter(notes: NatureNotes, onOpenNote: (Creature) -> Unit, onDismiss: () -> Unit) {
+internal fun NatureNotesChapter(notes: NatureNotes, atlas: SpriteAtlas, onOpenNote: (Creature) -> Unit, onDismiss: () -> Unit) {
     val creatures = Creature.entries
     val newOnes = remember { creatures.filter(notes::isNew).toSet() }
     // Page 0 is the contents; creature i is on page i + 1. Open at the first creature newly met,
@@ -88,12 +90,12 @@ internal fun NatureNotesChapter(notes: NatureNotes, onOpenNote: (Creature) -> Un
 
     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().height(SPREAD_HEIGHT)) { page ->
         if (page == 0) {
-            ContentsPage(notes, newOnes) { creature ->
+            ContentsPage(notes, newOnes, atlas) { creature ->
                 scope.launch { pagerState.animateScrollToPage(creatures.indexOf(creature) + 1) }
             }
         } else {
             val creature = creatures[page - 1]
-            NaturePage(creature, notes, isNew = creature in newOnes)
+            NaturePage(creature, notes, isNew = creature in newOnes, atlas = atlas)
         }
     }
 
@@ -123,7 +125,7 @@ internal fun NatureNotesChapter(notes: NatureNotes, onOpenNote: (Creature) -> Un
 
 /** Every creature at a glance, three to a row; a tap turns to its page. */
 @Composable
-private fun ContentsPage(notes: NatureNotes, newOnes: Set<Creature>, onPick: (Creature) -> Unit) {
+private fun ContentsPage(notes: NatureNotes, newOnes: Set<Creature>, atlas: SpriteAtlas, onPick: (Creature) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -144,7 +146,7 @@ private fun ContentsPage(notes: NatureNotes, newOnes: Set<Creature>, onPick: (Cr
         }
         Creature.entries.chunked(CONTENTS_COLUMNS).forEach { row ->
             Row(modifier = Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { creature -> ContentsCell(creature, notes.hasMet(creature), creature in newOnes, Modifier.weight(1f), onPick) }
+                row.forEach { creature -> ContentsCell(creature, notes.hasMet(creature), creature in newOnes, atlas, Modifier.weight(1f), onPick) }
                 repeat(CONTENTS_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
@@ -152,7 +154,7 @@ private fun ContentsPage(notes: NatureNotes, newOnes: Set<Creature>, onPick: (Cr
 }
 
 @Composable
-private fun ContentsCell(creature: Creature, met: Boolean, isNew: Boolean, modifier: Modifier, onPick: (Creature) -> Unit) {
+private fun ContentsCell(creature: Creature, met: Boolean, isNew: Boolean, atlas: SpriteAtlas, modifier: Modifier, onPick: (Creature) -> Unit) {
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -163,7 +165,7 @@ private fun ContentsCell(creature: Creature, met: Boolean, isNew: Boolean, modif
             .padding(4.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f).fillMaxWidth()) { CreaturePicture(creature, silhouette = !met) }
+            Box(Modifier.weight(1f).fillMaxWidth()) { CreaturePicture(creature, atlas, silhouette = !met) }
             Text(
                 text = if (met) stringResource(creatureName(creature)) else stringResource(R.string.nature_unknown),
                 color = if (met) Ink else InkFaded,
@@ -193,7 +195,7 @@ private fun NewMark(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun NaturePage(creature: Creature, notes: NatureNotes, isNew: Boolean) {
+private fun NaturePage(creature: Creature, notes: NatureNotes, isNew: Boolean, atlas: SpriteAtlas) {
     val met = notes.hasMet(creature)
     val rules = VisitRule.forCreature(creature)
     Row(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp))) {
@@ -214,7 +216,7 @@ private fun NaturePage(creature: Creature, notes: NatureNotes, isNew: Boolean) {
                     .clip(RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                CreaturePicture(creature, silhouette = !met)
+                CreaturePicture(creature, atlas, silhouette = !met)
                 if (isNew) NewMark(Modifier.align(Alignment.TopEnd).padding(6.dp))
             }
         }
@@ -269,9 +271,10 @@ private fun NaturePage(creature: Creature, notes: NatureNotes, isNew: Boolean) {
  * is only a faint shadow of its shape, with no lawn under it.
  */
 @Composable
-private fun CreaturePicture(creature: Creature, silhouette: Boolean = false) {
+private fun CreaturePicture(creature: Creature, atlas: SpriteAtlas, silhouette: Boolean = false) {
     // The shadow is the picture with its colours replaced: drawn on a layer of its own, then filled.
     val layer = if (silhouette) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier
+    val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
     Canvas(Modifier.fillMaxSize().then(layer)) {
         val unit = size.minDimension * 2.2f
         val ground = Offset(size.width / 2f, size.height * 0.72f)
@@ -280,9 +283,9 @@ private fun CreaturePicture(creature: Creature, silhouette: Boolean = false) {
             // It hovers well above its spot in the garden; here it is brought down into the frame,
             // with its shadow on the lawn below it.
             drawCreatureShadow(ground, unit, 0.12f)
-            drawCreature(creature, ground + Offset(0f, unit * 0.25f), unit, STILL_CLOCK)
+            drawVisitor(creature, ground + Offset(0f, unit * 0.25f), unit, STILL_CLOCK, atlas, atlasImage, shadow = false)
         } else {
-            drawCreature(creature, ground, unit, STILL_CLOCK)
+            drawVisitor(creature, ground, unit, STILL_CLOCK, atlas, atlasImage)
         }
         if (silhouette) drawRect(SHADOW, blendMode = BlendMode.SrcIn)
     }
