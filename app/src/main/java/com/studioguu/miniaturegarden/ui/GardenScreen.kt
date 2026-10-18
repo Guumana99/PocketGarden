@@ -6,6 +6,9 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -110,10 +113,13 @@ import com.studioguu.miniaturegarden.ui.share.CameraFrame
 import com.studioguu.miniaturegarden.ui.share.CameraOverlay
 import com.studioguu.miniaturegarden.ui.share.cropToFrame
 import com.studioguu.miniaturegarden.ui.share.shareGardenImage
-import com.studioguu.miniaturegarden.ui.shop.ShopDialog
+import com.studioguu.miniaturegarden.ui.shop.ShopStageScreen
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** How long the walk between the garden and the shop takes. */
+private const val SHOP_SWITCH_MILLIS = 320
 
 /** How often plants are advanced while the garden is on screen. */
 private const val SYNC_INTERVAL_MILLIS = 30_000L
@@ -235,7 +241,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 visitors = visitors,
                 savedView = savedView,
                 onViewChanged = viewModel::saveView,
-                paused = showInventory,
+                paused = showInventory || showShop,
                 season = season,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
                 // the hoe), or when the selected cell is behind one of them.
@@ -496,6 +502,16 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 }
             }
         }
+
+        // The shops are a stage of their own: walking in, the garden gives way to the shop's room
+        // (it keeps growing behind, held still). Walking out comes back to the garden as it was.
+        AnimatedVisibility(
+            visible = showShop,
+            enter = fadeIn(tween(SHOP_SWITCH_MILLIS)) + slideInHorizontally(tween(SHOP_SWITCH_MILLIS)) { it / 8 },
+            exit = fadeOut(tween(SHOP_SWITCH_MILLIS)) + slideOutHorizontally(tween(SHOP_SWITCH_MILLIS)) { it / 8 },
+        ) {
+            ShopStageScreen(onLeave = { showShop = false })
+        }
     }
 
     if (showInventory) {
@@ -585,9 +601,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     if (showPost) {
         PostDialog(letters = letters, onRead = viewModel::markLetterRead, onDismiss = { showPost = false })
-    }
-    if (showShop) {
-        ShopDialog(onDismiss = { showShop = false })
     }
 }
 

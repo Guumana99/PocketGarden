@@ -338,6 +338,13 @@
     <string name="object_struct_windmill">風車</string>
     <string name="shop_only_one">庭に一つだけ</string>
     <string name="shop_owned">✔ 所持済み</string>
+    <string name="shop_stage_seeds">種と苗の店</string>
+    <string name="shop_stage_workshop">大工の工房</string>
+    <string name="shop_stage_sundries">庭の雑貨店</string>
+    <string name="shop_leave">← 庭へ戻る</string>
+    <string name="shop_put_back">棚に戻す</string>
+    <string name="shop_card_seasons">旬：%1$s</string>
+    <string name="shop_card_all_seasons">🌿 季節を問わず育ちます</string>
     <string name="msg_only_one_symbol">🏡 シンボル建物は庭に一つだけです</string>
     <string name="msg_expansion_locked">まだ庭を広げられません</string>
     <string name="msg_garden_at_max_size">庭はこれ以上広げられません</string>

@@ -1,0 +1,76 @@
+package com.studioguu.miniaturegarden.ui.shop
+
+import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.ItemCategory
+import com.studioguu.miniaturegarden.domain.model.PlayerStats
+import com.studioguu.miniaturegarden.domain.model.Season
+
+/**
+ * The shops down the lane from the garden. Each sells one shelf of the item master
+ * ([GardenItem.shelf]) and has a look of its own; the player walks between them on the
+ * signboards at the top of the shop.
+ *
+ * The seed shop is where the lane starts: the garden's shop button opens it.
+ */
+enum class ShopStage(val category: ItemCategory) {
+    /** Seeds and seedlings, what is in season. */
+    SEEDS(ItemCategory.SEED),
+
+    /** The carpenter's workshop: fences, the well, the windmill, the hut, the cottage, the greenhouse. */
+    WORKSHOP(ItemCategory.STRUCTURE),
+
+    /** The garden sundries: lawn, pebbles, paving, the river, benches and lanterns. */
+    SUNDRIES(ItemCategory.DECORATION),
+    ;
+
+    companion object {
+        /** Where the garden's shop button leads. */
+        val ENTRANCE = SEEDS
+    }
+}
+
+/** How a thing on the shelf stands for the player right now. */
+enum class ShelfTag {
+    /** On sale, and the player has the coins. */
+    FOR_SALE,
+
+    /** On sale, but the player is short of coins; tapping "buy" says so and offers the bonus. */
+    SHORT_OF_COINS,
+
+    /** Not opened yet (level or encyclopedia pages); on show so the player sees what is coming. */
+    LOCKED,
+
+    /** One of a kind, and already the player's (the symbol building): on show, not for sale. */
+    OWNED,
+}
+
+/** One thing standing on a shelf. */
+data class ShelfItem(val item: GardenItem, val tag: ShelfTag)
+
+/**
+ * What stands on a shop's shelves, and how it is set out: a pure function of the shop, the
+ * season, the player and their coins, so the stage can be drawn from it and tested without it.
+ */
+object ShopShelves {
+
+    /** Things side by side on one shelf: few enough that each is a good finger's width. */
+    const val PER_SHELF = 3
+
+    /** Everything on show in [stage], in shelf order, each tagged for the player. */
+    fun stock(stage: ShopStage, season: Season, stats: PlayerStats, coins: Long, ownsSymbol: Boolean): List<ShelfItem> =
+        GardenItem.shelf(stage.category, season).map { item ->
+            val tag = when {
+                !item.isUnlockedFor(stats) -> ShelfTag.LOCKED
+                item.isSymbol && ownsSymbol -> ShelfTag.OWNED
+                coins < item.price -> ShelfTag.SHORT_OF_COINS
+                else -> ShelfTag.FOR_SALE
+            }
+            ShelfItem(item, tag)
+        }
+
+    /** [stock] laid out shelf by shelf, top to bottom. */
+    fun shelves(stock: List<ShelfItem>): List<List<ShelfItem>> = stock.chunked(PER_SHELF)
+
+    /** The shop that sells [item]. */
+    fun stageOf(item: GardenItem): ShopStage = ShopStage.entries.first { it.category == item.category }
+}

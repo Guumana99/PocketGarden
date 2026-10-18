@@ -592,7 +592,7 @@ private fun categoryLabel(category: CollectionCategory): Int = when (category) {
 }
 
 @StringRes
-private fun flavorText(entry: CollectionEntry): Int = when (entry) {
+internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.TULIP -> R.string.flavor_tulip
     CollectionEntry.SUNFLOWER -> R.string.flavor_sunflower
     CollectionEntry.ROSE -> R.string.flavor_rose
