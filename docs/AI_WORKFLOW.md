@@ -55,6 +55,7 @@
 | 画像・アトラス・`tools/` | `BundledArtTest` `AssetPipelineTest` |
 | 文言・レイアウト・トースト | `PolishTest`（＋文言を見る `StoreObjectTest` `BundledArtTest`） |
 | 設定・音・BGM の曲の選び方と切り替え・改ざん検出 | `SettingsRepositoryTest` `AudioManagerTest` `TimeTamperDetectionTest` |
+| 設定画面・メニューの部品（Compose UI テスト、Robolectric） | `SettingsContentTest` `CozyComponentsTest` |
 | タイトル・スターターガーデン・チュートリアル・機能の段階解放・季節 | `OnboardingTest` |
 | 庭の倍率の保存 | `SettingsRepositoryTest` `IsometricEngineTest` |
 | もちものの並び替え・タブ・入手の記録（DB v9） | `InventorySortTest`（＋設定の保存 `SettingsRepositoryTest`） |

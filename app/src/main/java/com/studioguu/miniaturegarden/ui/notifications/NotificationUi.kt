@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +43,7 @@ import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.NotificationAccess
 import com.studioguu.miniaturegarden.domain.model.TurnOnStep
 import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.WoodToggle
 import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
@@ -143,12 +143,12 @@ fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) ->
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Switch(
+        WoodToggle(
             checked = access == NotificationAccess.ON,
             onCheckedChange = { on ->
                 if (!on) {
                     onEnabledChange(false)
-                    return@Switch
+                    return@WoodToggle
                 }
                 follow(NotificationAccess.whenTurnedOn(Build.VERSION.SDK_INT, context.hasNotificationPermission(), context.deviceAllowsNotifications()))
             },

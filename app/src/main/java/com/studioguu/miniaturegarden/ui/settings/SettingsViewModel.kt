@@ -21,7 +21,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val audio: AudioManager,
     private val notifications: NotificationScheduler,
-) : ViewModel() {
+) : ViewModel(), SettingsActions {
 
     // Kept here rather than read straight from the repository so that a slider follows the
     // finger at once instead of waiting for each value to be written and read back.
@@ -36,22 +36,22 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { _settings.value = settingsRepository.settings.first() }
     }
 
-    fun setBgmVolume(volume: Float) = change { it.copy(bgmVolume = volume) }
+    override fun setBgmVolume(volume: Float) = change { it.copy(bgmVolume = volume) }
 
-    fun setBgmEnabled(enabled: Boolean) = change { it.copy(bgmEnabled = enabled) }
+    override fun setBgmEnabled(enabled: Boolean) = change { it.copy(bgmEnabled = enabled) }
 
-    fun setSoundEffectVolume(volume: Float) = change { it.copy(soundEffectVolume = volume) }
+    override fun setSoundEffectVolume(volume: Float) = change { it.copy(soundEffectVolume = volume) }
 
-    fun setSoundEffectsEnabled(enabled: Boolean) = change { it.copy(soundEffectsEnabled = enabled) }
+    override fun setSoundEffectsEnabled(enabled: Boolean) = change { it.copy(soundEffectsEnabled = enabled) }
 
     /** Turning them off takes back everything already planned, at once. */
-    fun setNotificationsEnabled(enabled: Boolean) {
+    override fun setNotificationsEnabled(enabled: Boolean) {
         change { it.copy(notificationsEnabled = enabled) }
         if (!enabled) notifications.cancelAll()
     }
 
     /** Lets the player hear the effect volume they just chose. */
-    fun previewSoundEffect() = audio.play(SoundEffect.COIN)
+    override fun previewSoundEffect() = audio.play(SoundEffect.COIN)
 
     private fun change(transform: (AppSettings) -> AppSettings) {
         val updated = transform(_settings.value ?: return).normalized()

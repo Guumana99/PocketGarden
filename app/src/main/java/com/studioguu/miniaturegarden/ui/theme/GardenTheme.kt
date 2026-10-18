@@ -20,6 +20,16 @@ object GardenColors {
     val InkSoft = Color(0xFF6D4C41)
     val Leaf = Color(0xFF5E8C3A)
     val Gold = Color(0xFFFFD54F)
+
+    /** The pale, worn parchment of dialogs and the panels inside them. */
+    val ParchmentPale = Color(0xFFF4EEDC)
+
+    /** A switch that is on, a slider's filled part: a muted olive, like a dyed leather strap. */
+    val Olive = Color(0xFF6F8A3A)
+    val OliveDark = Color(0xFF4F6427)
+
+    /** The grain drawn across a plank, a shade darker than [WoodLight]. */
+    val WoodGrain = Color(0xFFC79E6B)
 }
 
 private val GardenColorScheme = lightColorScheme(
