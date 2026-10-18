@@ -53,6 +53,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -229,7 +230,7 @@ fun ShopStageContent(
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
                     if (shown == ShopStage.SEEDS) {
-                        ChalkNote(stringResource(R.string.shop_season_caption, seasonEmoji(season), stringResource(seasonLabel(season))))
+                        ChalkNote(stringResource(R.string.shop_season_caption))
                     }
                     // Shelves belong to the shop on show; while one fades out, the other's are not drawn twice.
                     if (shown == stage) {
@@ -382,7 +383,7 @@ private fun Shelf(things: List<ShelfItem>, inHand: GardenItem?, onInspect: (Gard
                 .background(Brush.verticalGradient(listOf(GardenColors.WoodLight, GardenColors.Wood)), RoundedCornerShape(3.dp)),
         )
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.Bottom,
         ) {
@@ -431,7 +432,7 @@ private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem
     }
 }
 
-/** The paper tag in front of a thing on the shelf. */
+/** The paper tag in front of a thing on the shelf: its price (or why it is not for sale), and how many are in the bag. */
 @Composable
 private fun PriceTag(thing: ShelfItem) {
     val text = when (thing.tag) {
@@ -447,11 +448,19 @@ private fun PriceTag(thing: ShelfItem) {
     ) {
         Text(text, style = MaterialTheme.typography.labelSmall, color = GardenColors.InkSoft, modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
     }
+    Text(
+        text = stringResource(R.string.shop_held, thing.held),
+        style = MaterialTheme.typography.labelSmall,
+        color = GardenColors.InkSoft,
+        maxLines = 1,
+        modifier = Modifier.padding(top = 1.dp).testTag(heldTag(thing.item)),
+    )
 }
 
 @Composable
-private fun lockedText(item: GardenItem): String = when (val condition = item.unlock) {
-    is UnlockCondition.CollectionPages -> stringResource(R.string.shop_locked_pages, condition.pages)
+private fun lockedText(item: GardenItem): String = when (item.unlock) {
+    // Short enough for the shelf's tag; the card says how many pages (shop_card_pages).
+    is UnlockCondition.CollectionPages -> stringResource(R.string.shop_locked_pages)
     else -> stringResource(R.string.shop_locked, item.unlockLevel)
 }
 
@@ -459,19 +468,38 @@ private fun lockedText(item: GardenItem): String = when (val condition = item.un
 @Composable
 private fun Counter(message: ShopMessage?, bonusLabel: String, bonusEnabled: Boolean, onBonus: () -> Unit, modifier: Modifier) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (message != null) MessageLine(message)
+        MessageLine(message)
         WoodButton(text = bonusLabel, onClick = onBonus, enabled = bonusEnabled, modifier = Modifier.fillMaxWidth())
     }
 }
 
+/**
+ * What was said at the counter, in a line whose room is always kept, said or not: a message
+ * coming or going never moves the card or the buttons round it.
+ */
 @Composable
-private fun MessageLine(message: ShopMessage) {
-    Text(
-        text = message.text,
-        color = if (message.good) GardenColors.Leaf else MaterialTheme.colorScheme.error,
-        style = MaterialTheme.typography.bodyMedium,
-    )
+private fun MessageLine(message: ShopMessage?) {
+    Box(modifier = Modifier.fillMaxWidth().height(MESSAGE_LINE_HEIGHT).testTag(MESSAGE_LINE_TAG), contentAlignment = Alignment.CenterStart) {
+        if (message != null) {
+            Text(
+                text = message.text,
+                color = if (message.good) GardenColors.Leaf else MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }
+
+/** The height kept for the line of what was said, one line of body text. */
+private val MESSAGE_LINE_HEIGHT = 24.dp
+
+/** Test tag of the line of what was said. */
+const val MESSAGE_LINE_TAG = "shop_message_line"
+
+/** Test tag of how many of a thing are in the bag, on the shelf. */
+fun heldTag(item: GardenItem): String = "held_${item.itemId}"
 
 /**
  * The card of the thing taken off the shelf: what it is, in the encyclopedia's words, when it
@@ -494,6 +522,12 @@ private fun ItemCard(thing: ShelfItem, message: ShopMessage?, onBuy: (GardenItem
                 ) { Text(itemEmoji(item), fontSize = 32.sp) }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(itemDisplayName(item), style = MaterialTheme.typography.titleMedium, color = GardenColors.Ink)
+                    Text(
+                        text = stringResource(R.string.shop_held, thing.held),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GardenColors.InkSoft,
+                        modifier = Modifier.testTag(CARD_HELD_TAG),
+                    )
                     if (item.isSymbol) {
                         Text(stringResource(R.string.shop_only_one), style = MaterialTheme.typography.labelSmall, color = GardenColors.Leaf)
                     }
@@ -503,7 +537,7 @@ private fun ItemCard(thing: ShelfItem, message: ShopMessage?, onBuy: (GardenItem
                 Text(stringResource(flavorText(entry)), style = MaterialTheme.typography.bodyMedium, color = GardenColors.InkSoft)
             }
             ItemFacts(item)
-            if (message != null) MessageLine(message)
+            MessageLine(message)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CarvedButton(text = stringResource(R.string.shop_put_back), onClick = onPutBack)
                 Spacer(Modifier.weight(1f))
@@ -522,23 +556,15 @@ private fun ItemCard(thing: ShelfItem, message: ShopMessage?, onBuy: (GardenItem
     }
 }
 
-/** A line or two of what matters when choosing: a seed's seasons, a building's effect. */
+/**
+ * A line or two of what matters when choosing: what a building does, and how a thing that opens
+ * with the encyclopedia is opened. (A seed's season is not repeated here: the shelf only holds
+ * what is in season, #48.)
+ */
 @Composable
 private fun ItemFacts(item: GardenItem) {
-    val seasonNames = Season.entries.filter { it in item.seasons }.map { seasonEmoji(it) + stringResource(seasonLabel(it)) }
     val facts = buildList {
-        if (item.category == ItemCategory.SEED) {
-            add(
-                if (item.isAllSeasons) {
-                    stringResource(R.string.shop_card_all_seasons)
-                } else {
-                    stringResource(
-                        R.string.shop_card_seasons,
-                        seasonNames.joinToString("・"),
-                    )
-                }
-            )
-        }
+        (item.unlock as? UnlockCondition.CollectionPages)?.let { add(stringResource(R.string.shop_card_pages, it.pages)) }
         // What the symbol building is for: growing the garden.
         if (item.isSymbol) add(stringResource(R.string.shop_card_symbol))
         when (StructureEffect.forObjectId(item.objectId)) {
@@ -556,6 +582,9 @@ fun shelfTag(item: GardenItem): String = "shelf_${item.itemId}"
 
 /** Test tag of the card of the thing in hand. */
 const val ITEM_CARD_TAG = "shop_item_card"
+
+/** Test tag of how many of the thing in hand are in the bag, on its card. */
+const val CARD_HELD_TAG = "shop_card_held"
 
 private val ITEM_WIDTH = 96.dp
 private const val LOCKED_ALPHA = 0.45f

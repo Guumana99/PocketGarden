@@ -65,6 +65,42 @@ class ShopShelvesTest {
     }
 
     @Test
+    fun `the shelves know how many of each thing are in the bag, over all its slots`() {
+        val slots = listOf(
+            com.studioguu.miniaturegarden.domain.model.InventorySlot(0, GardenItem.SEED_TULIP.itemId, 5),
+            com.studioguu.miniaturegarden.domain.model.InventorySlot(1, GardenItem.STRUCT_FENCE.itemId, 2),
+            com.studioguu.miniaturegarden.domain.model.InventorySlot(2, GardenItem.SEED_TULIP.itemId, 3),
+            com.studioguu.miniaturegarden.domain.model.InventorySlot(3),
+        )
+        val held = ShopShelves.heldIn(slots)
+        assertEquals(mapOf(GardenItem.SEED_TULIP to 8, GardenItem.STRUCT_FENCE to 2), held)
+        val stock = ShopShelves.stock(ShopStage.SEEDS, Season.SPRING, veteran, 100, false, held)
+        assertEquals(8, stock.first { it.item == GardenItem.SEED_TULIP }.held)
+        assertEquals(0, stock.first { it.item == GardenItem.SEED_MINT }.held)
+    }
+
+    @Test
+    fun `the things opened by encyclopedia pages are the deck and the lantern, and they are meant to be there`() {
+        // Their tags read "図鑑で解放", and their cards how many pages: what opens them, not stray data.
+        val byPages = GardenItem.entries.filter { it.unlock is com.studioguu.miniaturegarden.domain.model.UnlockCondition.CollectionPages }
+        assertEquals(setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), byPages.toSet())
+        val newcomer = ShopShelves.stock(ShopStage.SUNDRIES, Season.SPRING, newcomer, 10_000, false)
+        assertTrue(byPages.all { item -> newcomer.first { it.item == item }.tag == ShelfTag.LOCKED })
+    }
+
+    @Test
+    fun `the shop's words are short - no season named on the shelf note, and the river is a cosy kit`() {
+        val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
+        val strings = java.io.File(main, "res/values/strings.xml").readText()
+        fun string(name: String) = Regex("<string name=\"$name\">(.*?)</string>").find(strings)?.groupValues?.get(1)
+        assertEquals("季節が変わると入れ替わります", string("shop_season_caption"))
+        assertEquals(null, string("shop_card_seasons"))
+        assertEquals("せせらぎの木枠", string("item_tile_river"))
+        assertTrue(string("shop_locked_pages")!!.contains("図鑑"))
+        assertTrue(string("shop_held")!!.startsWith("所持数"))
+    }
+
+    @Test
     fun `things are set out a few to a shelf, in the master's order`() {
         val stock = ShopShelves.stock(ShopStage.SUNDRIES, Season.SPRING, veteran, 10_000, false)
         val shelves = ShopShelves.shelves(stock)

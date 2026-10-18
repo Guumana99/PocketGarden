@@ -61,7 +61,7 @@
     <string name="object_struct_well">井戸</string>
     <string name="object_ground_grass">芝生</string>
     <string name="object_ground_pebble">小石</string>
-    <string name="object_terrain_river">川</string>
+    <string name="object_terrain_river">せせらぎ</string>
     <string name="object_floor_cobblestone">石畳</string>
     <string name="object_floor_tilled">耕した土</string>
     <string name="object_floor_wood">ウッドデッキ</string>
@@ -134,7 +134,7 @@
     <string name="item_seed_poinsettia">ポインセチアの苗</string>
     <string name="item_seed_paprika">パプリカの苗</string>
     <string name="item_seed_daikon">大根の種</string>
-    <string name="item_tile_river">川タイル</string>
+    <string name="item_tile_river">せせらぎの木枠</string>
 
     <!-- Inventory -->
     <string name="inventory_title">持ち物</string>
@@ -161,7 +161,7 @@
     <string name="shop_tab_decorations">装飾</string>
     <string name="shop_bought">%1$s を買いました</string>
     <string name="shop_locked">🔒 Lv.%1$d で開放</string>
-    <string name="shop_locked_pages">🔒 ずかん %1$dページ</string>
+    <string name="shop_locked_pages">🔒 図鑑で解放</string>
 
     <!-- Action results -->
     <string name="msg_not_found">対象が見つかりません</string>
@@ -346,8 +346,6 @@
     <string name="shop_stage_sundries">庭の雑貨店</string>
     <string name="shop_leave">← 庭へ戻る</string>
     <string name="shop_put_back">棚に戻す</string>
-    <string name="shop_card_seasons">旬：%1$s</string>
-    <string name="shop_card_all_seasons">🌿 季節を問わず育ちます</string>
     <string name="msg_only_one_symbol">🏡 シンボル建物は庭に一つだけです</string>
     <string name="msg_expansion_locked">まだ庭を広げられません</string>
     <string name="msg_garden_at_max_size">庭はこれ以上広げられません</string>
@@ -357,7 +355,7 @@
     <string name="msg_out_of_season">🌱 今は育てるのに適さない季節です。旬が来るまで、持ち物に取っておきましょう</string>
     <string name="msg_in_use">中で育っている作物を、先に収穫するか片付けてください</string>
     <string name="msg_season_arrived">%1$s %2$sがやってきました。ポストにお便りが届いています</string>
-    <string name="shop_season_caption">%1$s 今は%2$sの種が並んでいます。季節が変わると入れ替わります</string>
+    <string name="shop_season_caption">季節が変わると入れ替わります</string>
     <string name="post_title">ポスト</string>
     <string name="post_empty">まだお便りはありません</string>
     <string name="post_new">NEW</string>
@@ -403,6 +401,8 @@
     <string name="letter_grow_body">庭をもう一回り、%1$d×%1$dマスまで広げられるようになりました。
 コテージをタップして「庭を広げる」を押してください。広げるかどうかは、お好きなときに決めて大丈夫です。
 広がった外周は芝生になり、庭のものは今の並びのまま真ん中に残ります。</string>
+    <string name="shop_held">所持数: %1$d個</string>
+    <string name="shop_card_pages">📖 図鑑に%1$dページ登録すると、買えるようになります</string>
     <string name="shop_card_symbol">🏡 完成すると、庭を一回り広げられます</string>
 
     <!-- Notifications -->
