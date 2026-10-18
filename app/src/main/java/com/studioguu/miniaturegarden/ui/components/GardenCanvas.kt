@@ -131,12 +131,14 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
  *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid.
- * @param savedView the view to open with, once known; the garden is fitted to the screen until then.
+ * @param savedView the view to open with, once known; until then the garden shows at its starting
+ *   zoom ([GardenCamera.starting]), tiles about finger-sized.
  * @param onViewChanged told the view a moment after the player has zoomed or panned, to be kept.
  * @param paused holds the wind and the river still, while something covers the garden.
  * @param season decides how the lawn looks: petals, deep green, fallen leaves or snow.
- * @param initialZoom how much closer than "all of it on screen" the garden first shows; above 1
- *   lets its corners run off the sides, for a garden meant to fill the view.
+ * @param initialZoom 1 for the garden itself, which starts at [GardenCamera.starting]; anything
+ *   else shows it that much closer than "all of it on screen", for a garden meant to fill the
+ *   view (the title's sample garden).
  */
 @Composable
 fun GardenCanvas(
@@ -277,7 +279,7 @@ fun GardenCanvas(
                 // lets it zoom; that is worked out afresh.
                 camera = camera?.let { GardenCamera.restored(it.scale, it.pan, size.toSize(), metrics) }
                     ?: GardenCamera.fitting(size.toSize(), metrics).let { fit ->
-                        if (initialZoom == 1f) fit else GardenCamera.restored(fit.scale * initialZoom, Offset.Zero, size.toSize(), metrics)
+                        if (initialZoom == 1f) GardenCamera.starting(size.toSize(), metrics) else GardenCamera.restored(fit.scale * initialZoom, Offset.Zero, size.toSize(), metrics)
                     }
             }
             .pointerInput(metrics) {

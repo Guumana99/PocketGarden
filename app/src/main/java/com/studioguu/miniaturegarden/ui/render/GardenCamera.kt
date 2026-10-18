@@ -77,6 +77,14 @@ data class GardenCamera(
         const val MAX_SCALE = 2.5f
 
         /**
+         * The zoom the garden is first shown at: a tile is 128 dp across at 1x, so this makes it
+         * 48 dp, about what a fingertip covers. On a phone the whole of a large garden would
+         * otherwise start with tiles too small to hit (a 13 x 13 garden fitted to a 411 dp
+         * screen has tiles 27 dp across).
+         */
+        const val START_SCALE = 48f / 128f
+
+        /**
          * Starts zoomed out so that every tile is on screen, and lets the player zoom back out
          * that far later.
          */
@@ -86,6 +94,17 @@ data class GardenCamera(
             val fit = minOf(viewport.width / bounds.width, viewport.height / bounds.height) * FIT_MARGIN
             val scale = fit.coerceAtMost(1f)
             return GardenCamera(scale = scale, minScale = minOf(MIN_SCALE, scale))
+        }
+
+        /**
+         * The garden's first view: centred, close enough for a tile to be finger-sized
+         * ([START_SCALE]), or as [fitting] when that already shows everything with larger tiles.
+         * Pinching out still goes as far as [fitting], to the whole garden.
+         */
+        fun starting(viewport: Size, metrics: IsometricMetrics): GardenCamera {
+            val fit = fitting(viewport, metrics)
+            if (fit.scale >= START_SCALE) return fit
+            return fit.copy(scale = START_SCALE).clamped(metrics)
         }
 
         /**
