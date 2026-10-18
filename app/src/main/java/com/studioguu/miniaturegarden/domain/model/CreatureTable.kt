@@ -18,6 +18,12 @@ package com.studioguu.miniaturegarden.domain.model
  *     FROG_SUMMER         frog       3 river tiles, in summer                       beside the river
  *     SQUIRREL_AUTUMN     squirrel   a rock, in autumn                              beside the rock
  *     DRAGONFLY_AUTUMN    dragonfly  2 river tiles, in autumn, not raining          over the river
+ *     BUTTERFLY_LAVENDER  butterfly  2 lavenders (any size), not raining            over a lavender
+ *     LADYBUG_STRAWBERRY  ladybug    2 strawberries (any size), in spring           on a strawberry
+ *     BIRD_HUT            bird       a finished hut                                 on its roof
+ *     BIRD_WINTER_WELL    bird       a well, in winter                              beside the well
+ *     SQUIRREL_PUMPKIN    squirrel   a pumpkin in full bloom                        beside the pumpkin
+ *     FROG_WELL           frog       a well, on a rainy day                         beside the well
  *
  * Only finished things count: a work site is no place to sit.
  *
@@ -107,6 +113,56 @@ enum class VisitRule(
         anchor = Anchor(setOf(GridObject.RIVER_OBJECT_ID)),
         placement = VisitPlacement.ON_ANCHOR,
         chance = 0.5f,
+    ),
+
+    // Added together: the lavender, strawberry and pumpkin, the hut and the well draw visitors
+    // too, a garden without a river can have a frog, and winter has a visitor of its own.
+    // The lavender draws butterflies by its scent, before it flowers: in full bloom two of them
+    // would already make BUTTERFLY_BLOOMS, which is tried first, and this would seldom be found.
+    BUTTERFLY_LAVENDER(
+        Creature.BUTTERFLY,
+        conditions = listOf(
+            VisitCondition.Crops(atLeast = 2, species = PlantSpecies.LAVENDER),
+            VisitCondition.WeatherNot(WeatherType.RAINY),
+        ),
+        anchor = Anchor(setOf(PlantSpecies.LAVENDER.objectId)),
+        placement = VisitPlacement.ON_ANCHOR,
+        chance = 0.5f,
+    ),
+    LADYBUG_STRAWBERRY(
+        Creature.LADYBUG,
+        conditions = listOf(VisitCondition.Crops(atLeast = 2, species = PlantSpecies.STRAWBERRY), VisitCondition.SeasonIs(setOf(Season.SPRING))),
+        anchor = Anchor(setOf(PlantSpecies.STRAWBERRY.objectId)),
+        placement = VisitPlacement.ON_ANCHOR,
+        chance = 0.4f,
+    ),
+    BIRD_HUT(
+        Creature.BIRD,
+        conditions = listOf(VisitCondition.Things(setOf(StructureData.HUT.objectId))),
+        anchor = Anchor(setOf(StructureData.HUT.objectId)),
+        placement = VisitPlacement.ON_ANCHOR,
+        chance = 0.4f,
+    ),
+    BIRD_WINTER_WELL(
+        Creature.BIRD,
+        conditions = listOf(VisitCondition.SeasonIs(setOf(Season.WINTER)), VisitCondition.Things(setOf(StructureData.WELL.objectId))),
+        anchor = Anchor(setOf(StructureData.WELL.objectId)),
+        placement = VisitPlacement.BESIDE_ANCHOR,
+        chance = 0.4f,
+    ),
+    SQUIRREL_PUMPKIN(
+        Creature.SQUIRREL,
+        conditions = listOf(VisitCondition.Crops(atLeast = 1, species = PlantSpecies.PUMPKIN, minGrowth = 1f)),
+        anchor = Anchor(setOf(PlantSpecies.PUMPKIN.objectId), minGrowth = 1f),
+        placement = VisitPlacement.BESIDE_ANCHOR,
+        chance = 0.4f,
+    ),
+    FROG_WELL(
+        Creature.FROG,
+        conditions = listOf(VisitCondition.Things(setOf(StructureData.WELL.objectId)), VisitCondition.WeatherIs(WeatherType.RAINY)),
+        anchor = Anchor(setOf(StructureData.WELL.objectId)),
+        placement = VisitPlacement.BESIDE_ANCHOR,
+        chance = 0.4f,
     );
 
     /** Whether the garden as it is would draw this creature. */

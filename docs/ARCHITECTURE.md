@@ -109,11 +109,18 @@ di/       Hilt の束ね
 | `FROG_SUMMER`（#32） | かえる | 川タイル 3 枚以上、夏 | 川のとなりの空いた芝生 | 40% |
 | `SQUIRREL_AUTUMN`（#32） | りす | 岩、秋 | 岩のとなりの空いた芝生 | 40% |
 | `DRAGONFLY_AUTUMN`（#32） | とんぼ | 川タイル 2 枚以上、秋、雨でない | 川の上を飛ぶ | 50% |
+| `BUTTERFLY_LAVENDER` | ちょうちょ | ラベンダー 2 つ以上（大きさ問わず。満開なら `BUTTERFLY_BLOOMS` が先に当たるため）、雨でない | ラベンダーの上を舞う | 50% |
+| `LADYBUG_STRAWBERRY` | てんとうむし | イチゴ 2 つ以上（大きさ問わず）、春 | イチゴの足もと | 40% |
+| `BIRD_HUT` | ことり | 完成した小屋 | 屋根の上 | 40% |
+| `BIRD_WINTER_WELL` | ことり | 井戸、冬 | 井戸のとなりの空いた芝生 | 40% |
+| `SQUIRREL_PUMPKIN` | りす | 満開（実った）カボチャ | カボチャのとなりの空いた芝生 | 40% |
+| `FROG_WELL` | かえる | 井戸、雨の日（川が無くてよい） | 井戸のとなりの空いた芝生 | 40% |
 
 - 条件の部品は `VisitCondition`：`Crops`（数・種類・成長度）、`Things`（物の id と数）、`WeatherIs` / `WeatherNot`、`SeasonIs`（#32、庭の季節）。
   `GardenSnapshot` は季節も持つ（省略すると春）。
 - **新しい行は表の最後に足す**。抽選の乱数は行の順番（`ordinal`）から作るので、途中に入れると既存の組み合わせの来る時刻が変わる（`NatureNotesEngineTest` が先頭 6 行の順を見ている）。
-  `Creature` も同じく最後に足す（とんぼは 6 番目）。
+  `Creature` も同じく最後に足す（とんぼは 6 番目）。`CreatureVisitTest` は先頭 9 行と、ラベンダー以降の 6 行が最後にあることを見ている。
+  うわさ（`hint_<行名>`）と組み合わせ名（`combo_<行名>`）には数字を書かない（PHILOSOPHY 12「数や割合で追い立てない」。`CreatureVisitTest` が確認）。
   工事中の物と枯れた作物は数えない（`GardenSnapshot.settled`）。
 - 置き方は `VisitPlacement`：`ON_ANCHOR`（物の上）か `BESIDE_ANCHOR`（となりの空いた芝生。無ければ来ない）。
 
