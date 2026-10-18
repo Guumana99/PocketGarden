@@ -95,7 +95,7 @@ class ShopShelvesTest {
         fun string(name: String) = Regex("<string name=\"$name\">(.*?)</string>").find(strings)?.groupValues?.get(1)
         assertEquals("季節が変わると入れ替わります", string("shop_season_caption"))
         assertEquals(null, string("shop_card_seasons"))
-        assertEquals("せせらぎの木枠", string("item_tile_river"))
+        assertEquals("小川のかけら", string("item_tile_river"))
         assertTrue(string("shop_locked_pages")!!.contains("図鑑"))
         assertTrue(string("shop_held")!!.startsWith("所持数"))
     }

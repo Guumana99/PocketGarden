@@ -79,6 +79,7 @@ import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
+import com.studioguu.miniaturegarden.ui.render.FeatheredLawn
 import com.studioguu.miniaturegarden.ui.render.RiverAutotile
 import com.studioguu.miniaturegarden.ui.render.SoilTexture
 import com.studioguu.miniaturegarden.ui.render.SunLight
@@ -152,6 +153,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  *   the ground only, since a cell is being looked for.
  * @param growableId the symbol building the garden can grow from now, if any: a bubble over it
  *   says so, and tapping the bubble picks it.
+ * @param onZoomChanged told the zoom at every change, as it happens (the debug read-out).
  */
 @Composable
 fun GardenCanvas(
@@ -175,6 +177,7 @@ fun GardenCanvas(
     season: Season = Season.SPRING,
     editing: Boolean = false,
     growableId: String? = null,
+    onZoomChanged: ((Float) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -186,7 +189,8 @@ fun GardenCanvas(
     // Null until the first layout pass tells us how far to zoom out to fit the grid. Saved, so a
     // rotation or a return from the background comes back to the same view.
     var camera by rememberSaveable(stateSaver = CameraSaver) { mutableStateOf<GardenCamera?>(null) }
-    // When the garden grows, the view zooms out to show all of it again.
+    // When the garden grows (7 x 7 to 9 x 9, and on), the view goes back to the starting zoom,
+    // centred, rather than keeping whatever zoom it had before: the same as a new garden.
     var viewport by remember { mutableStateOf(Size.Zero) }
     var fittedGridSize by rememberSaveable { mutableStateOf(metrics.gridSize) }
     // Whether the view has been changed here (by the fingers, or by the garden growing), which
@@ -194,7 +198,7 @@ fun GardenCanvas(
     var viewMoved by remember { mutableStateOf(false) }
     LaunchedEffect(metrics, viewport) {
         if (fittedGridSize != metrics.gridSize && viewport != Size.Zero) {
-            camera = GardenCamera.fitting(viewport, metrics)
+            camera = GardenCamera.starting(viewport, metrics)
             fittedGridSize = metrics.gridSize
             viewMoved = true
         }
@@ -218,12 +222,17 @@ fun GardenCanvas(
         delay(VIEW_SAVE_DELAY_MILLIS)
         report(GardenView(settled.scale, settled.pan.x, settled.pan.y))
     }
+    val currentOnZoomChanged by rememberUpdatedState(onZoomChanged)
+    LaunchedEffect(camera?.scale) {
+        camera?.let { currentOnZoomChanged?.invoke(it.scale) }
+    }
     // Buildings fade to see-through and back; the last set faded is kept while fading back.
     val fade by animateFloatAsState(if (fadedObjectIds.isEmpty()) 0f else 1f, tween(FADE_MILLIS), label = "fade")
     var fadingIds by remember { mutableStateOf(emptySet<String>()) }
     if (fadedObjectIds.isNotEmpty()) fadingIds = fadedObjectIds
     val fadeAlpha = 1f - (1f - FADED_ALPHA) * fade
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
+    val lawn = remember(atlas) { FeatheredLawn.from(atlas, GroundTile.GRASS.assetId) }
     val pipeline = remember { LayerPipeline() }
     val waterTick by rememberWaterTick(running = !paused && gridObjects.any { it.isTerrain })
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
@@ -324,12 +333,14 @@ fun GardenCanvas(
         val ambience = Ambience(Daylight.at(hourOfDay, weather), weather, windMillis, season = season)
 
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, gardenMap, framed = true, ambience) { tile, center, flip ->
+            drawTerrain(transform, gardenMap, framed = true, ambience, lawn) { tile, center, flip ->
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale * groundOverlap(tile), flipped = flip)
                 sprite != null
             }
         }
+        // Last of the ground, over the stream and the beds at the garden's edge too.
+        pipeline.submit(RenderLayer.BASE_TERRAIN, Float.MAX_VALUE) { drawFrameLip(transform, gardenMap.size.toFloat()) }
         if (showGrid) {
             pipeline.submit(RenderLayer.GRID_OVERLAY) { drawIsometricGrid(transform, metrics.gridSize) }
         }
@@ -1220,6 +1231,7 @@ fun ObjectPreview(
     val map = remember(scene) { GardenMap.allGrass(scene.gridSize) }
     val grid = remember(scene) { GardenGrid(map, scene.objects) }
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
+    val lawn = remember(atlas) { FeatheredLawn.from(atlas, GroundTile.GRASS.assetId) }
     val pipeline = remember { LayerPipeline() }
     val waterTick by rememberWaterTick(running = scene.objects.any { it.isTerrain })
 
@@ -1239,7 +1251,7 @@ fun ObjectPreview(
         )
         val spriteScale = tileWidth / atlas.manifest.tileWidth
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, map, framed = false, Ambience.CALM) { tile, center, flip ->
+            drawTerrain(transform, map, framed = false, Ambience.CALM, lawn) { tile, center, flip ->
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale * groundOverlap(tile), flipped = flip)
                 sprite != null
@@ -1288,6 +1300,7 @@ private fun DrawScope.drawTerrain(
     gardenMap: GardenMap,
     framed: Boolean,
     ambience: Ambience,
+    lawn: FeatheredLawn?,
     drawTileSprite: DrawScope.(tile: GroundTile, center: Offset, flip: Boolean) -> Boolean,
 ) {
     val gridSize = gardenMap.size
@@ -1304,12 +1317,37 @@ private fun DrawScope.drawTerrain(
         drawPath(quad(bottom, right, right + thickness, bottom + thickness), SOIL_RIGHT)
     }
 
+    // The lawn, feathered (#47, LawnShade.feather): one colour under all of it, then each cell
+    // of grass drawn larger than itself and fading into its neighbours, so that no line runs
+    // between two cells. Kept inside the garden, and laid before any water, which it must not
+    // spill over.
+    val lawnPath = lawn?.let {
+        Path().apply {
+            val a = transform.worldToScreen(0f, 0f)
+            val b = transform.worldToScreen(max, 0f)
+            val c = transform.worldToScreen(max, max)
+            val d = transform.worldToScreen(0f, max)
+            moveTo(a.x, a.y); lineTo(b.x, b.y); lineTo(c.x, c.y); lineTo(d.x, d.y); close()
+        }
+    }
+    if (lawn != null && lawnPath != null) {
+        drawPath(lawnPath, lawn.base)
+        val spriteScale = transform.tileWidth / lawn.tileWidth * LawnShade.FEATHER_OVERLAP
+        clipPath(lawnPath) {
+            for (x in 0 until gridSize) for (y in 0 until gridSize) {
+                val type = gardenMap.tileAt(x, y) ?: TileType.GRASS
+                if (TileSetDefinition.groundTileFor(type, x, y) != GroundTile.GRASS) continue
+                drawSprite(lawn.image, lawn.sprite, transform.tileCenter(x, y), spriteScale, flipped = LawnShade.mirrored(x, y))
+            }
+        }
+    }
     // x-then-y order draws every tile before the two neighbours in front of it.
     for (x in 0 until gridSize) for (y in 0 until gridSize) {
         val type = gardenMap.tileAt(x, y) ?: TileType.GRASS
         val tile = TileSetDefinition.groundTileFor(type, x, y)
+        val laid = lawn != null && tile == GroundTile.GRASS
         // Cells of grass are mirrored at random, so that the one picture does not repeat in step.
-        if (!drawTileSprite(tile, transform.tileCenter(x, y), LawnShade.mirrored(x, y))) {
+        if (!laid && !drawTileSprite(tile, transform.tileCenter(x, y), LawnShade.mirrored(x, y))) {
             when (tile) {
                 GroundTile.WATER -> drawWaterTile(transform, x, y, phase = 0)
                 GroundTile.GRASS -> drawGroundTile(transform, x, y, GRASS_LIGHT, ambience.sway(x + 0.5f, y + 0.5f))
@@ -1320,19 +1358,42 @@ private fun DrawScope.drawTerrain(
         if (tile != GroundTile.WATER) drawSeasonGround(transform, x, y, ambience.season)
     }
     drawLawnShade(transform, gridSize)
-    if (framed) {
-        // The frame's inner edge, drawn over the outermost tiles so the ground reads as set into it.
-        val a = transform.worldToScreen(0f, 0f)
-        val b = transform.worldToScreen(max, 0f)
-        val c = transform.worldToScreen(max, max)
-        val d = transform.worldToScreen(0f, max)
-        val width = transform.tileWidth * 0.022f
-        drawLine(FRAME_LINE.copy(alpha = 0.55f), a, b, width, StrokeCap.Round)
-        drawLine(FRAME_LINE.copy(alpha = 0.55f), a, d, width, StrokeCap.Round)
-        drawLine(FRAME_LINE.copy(alpha = 0.3f), b, c, width, StrokeCap.Round)
-        drawLine(FRAME_LINE.copy(alpha = 0.3f), d, c, width, StrokeCap.Round)
-    }
 }
+
+/**
+ * Where the garden box's rim meets the ground inside it. Drawn after everything that lies on the
+ * ground (the lawn, the stream, paving, beds), so that all of it is tucked in under the rim
+ * rather than laid over it: the two far boards cast a little shade onto the ground, and a dark
+ * line runs where wood meets earth.
+ */
+private fun DrawScope.drawFrameLip(transform: IsometricTransform, max: Float) {
+    val a = transform.worldToScreen(0f, 0f)
+    val b = transform.worldToScreen(max, 0f)
+    val c = transform.worldToScreen(max, max)
+    val d = transform.worldToScreen(0f, max)
+    // Shade under the far boards, which stand between the light and the ground below them.
+    val reach = FRAME_LIP_SHADE
+    for ((from, to, inward) in listOf(Triple(a, b, transform.worldToScreen(0f, reach) - a), Triple(a, d, transform.worldToScreen(reach, 0f) - a))) {
+        // The fade runs square to the board on screen, so it is even all along it.
+        val along = to - from
+        val length = along.getDistance().coerceAtLeast(1e-3f)
+        var normal = Offset(-along.y / length, along.x / length)
+        if (normal.x * inward.x + normal.y * inward.y < 0f) normal = -normal
+        val depth = normal.x * inward.x + normal.y * inward.y
+        drawPath(
+            quad(from, to, to + inward, from + inward),
+            Brush.linearGradient(listOf(FRAME_LINE.copy(alpha = 0.26f), FRAME_LINE.copy(alpha = 0f)), start = from, end = from + normal * depth),
+        )
+    }
+    val width = transform.tileWidth * 0.022f
+    drawLine(FRAME_LINE.copy(alpha = 0.6f), a, b, width, StrokeCap.Round)
+    drawLine(FRAME_LINE.copy(alpha = 0.6f), a, d, width, StrokeCap.Round)
+    drawLine(FRAME_LINE.copy(alpha = 0.32f), b, c, width, StrokeCap.Round)
+    drawLine(FRAME_LINE.copy(alpha = 0.32f), d, c, width, StrokeCap.Round)
+}
+
+/** How far the far boards' shade reaches over the ground, in tiles. */
+private const val FRAME_LIP_SHADE = 0.22f
 
 /** Grass cells are drawn a little larger than their diamonds, so that neighbours overlap at the seam. */
 private fun groundOverlap(tile: GroundTile): Float = if (tile == GroundTile.WATER) 1f else LawnShade.CELL_OVERLAP

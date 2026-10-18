@@ -1,10 +1,15 @@
 package com.studioguu.miniaturegarden.ui.render
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Shader
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -61,6 +66,25 @@ object RiverAutotile {
     fun frameCount(atlasWidth: Int, atlasHeight: Int): Int =
         if (atlasWidth <= 0) 1 else (atlasHeight / atlasWidth).coerceAtLeast(1)
 
+    // --- Banks: the stream lies a little below the lawn ---
+    //
+    // The pictures are flat, seen from above, with an earth bank round the water. Laid on the
+    // lawn as they are, the stream read as a strip stuck on top of the grass. So the water is
+    // shaded under the two far banks (north and west, whose sides face the viewer and would cast
+    // shade on water lying lower than they do), and catches a little light at the two near ones.
+
+    /** Where the water begins, inward from a cell's side, as a fraction of the cell: just inside the bank. */
+    const val BANK_EDGE = 0.215f
+
+    /** How far out over the water the shade under a far bank reaches, as a fraction of the cell. */
+    const val BANK_SHADE_WIDTH = 0.17f
+
+    /** The far sides of a tile with [mask] that are bank, not more river: the water is shaded under them. */
+    fun shadedSides(mask: Int): List<Int> = listOf(NORTH, WEST).filter { mask and it == 0 }
+
+    /** The near sides of a tile with [mask] that are bank: the water's edge catches the light there. */
+    fun litSides(mask: Int): List<Int> = listOf(SOUTH, EAST).filter { mask and it == 0 }
+
     /** Top edge, in atlas pixels, of the cell for [mask] in animation frame [frame] (wraps round). */
     fun cellTop(mask: Int, frame: Int, atlasWidth: Int, atlasHeight: Int): Int {
         val frames = frameCount(atlasWidth, atlasHeight)
@@ -87,7 +111,48 @@ fun DrawScope.drawRiverTile(atlas: Bitmap, mask: Int, frame: Int, transform: Iso
     val cellHeight = atlas.height / RiverAutotile.frameCount(atlas.width, atlas.height) / RiverAutotile.ROWS
     val left = RiverAutotile.column(mask) * cellWidth
     val top = RiverAutotile.cellTop(mask, frame, atlas.width, atlas.height)
-    drawGroundTexture(atlas, transform, x, y, left, top, left + cellWidth, top + cellHeight)
+    drawGroundTexture(atlas, transform, x, y, left, top, left + cellWidth, top + cellHeight) { canvas, cell ->
+        drawBanks(canvas, cell, mask)
+    }
+}
+
+// The shade under a far bank and the light at a near one, drawn for the north side of a cell one
+// unit across (rotated round for the others). Made once; all drawing happens on the main thread.
+private val bankShadePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    shader = LinearGradient(
+        0f, RiverAutotile.BANK_EDGE, 0f, RiverAutotile.BANK_EDGE + RiverAutotile.BANK_SHADE_WIDTH,
+        intArrayOf(0x5A1B3A4A, 0x221B3A4A, 0x001B3A4A), floatArrayOf(0f, 0.35f, 1f), Shader.TileMode.CLAMP,
+    )
+    // Over the picture only: the water and its bank, never the grass round them.
+    xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+}
+private val bankLightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    shader = LinearGradient(
+        0f, RiverAutotile.BANK_EDGE, 0f, RiverAutotile.BANK_EDGE + 0.05f,
+        intArrayOf(0x66FFF6DC, 0x00FFF6DC), null, Shader.TileMode.CLAMP,
+    )
+    xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+}
+
+/** Shade and light along the banks of a river picture drawn into [cell] (picture space). */
+private fun drawBanks(canvas: Canvas, cell: RectF, mask: Int) {
+    fun side(side: Int, paint: Paint) {
+        canvas.save()
+        canvas.translate(cell.left, cell.top)
+        canvas.scale(cell.width(), cell.height())
+        // Turn the north side's strip round to the side asked for: east a quarter turn, and on.
+        val turns = when (side) {
+            RiverAutotile.NORTH -> 0f
+            RiverAutotile.EAST -> 90f
+            RiverAutotile.SOUTH -> 180f
+            else -> 270f
+        }
+        canvas.rotate(turns, 0.5f, 0.5f)
+        canvas.drawRect(0f, RiverAutotile.BANK_EDGE - 0.01f, 1f, RiverAutotile.BANK_EDGE + RiverAutotile.BANK_SHADE_WIDTH, paint)
+        canvas.restore()
+    }
+    for (s in RiverAutotile.shadedSides(mask)) side(s, bankShadePaint)
+    for (s in RiverAutotile.litSides(mask)) side(s, bankLightPaint)
 }
 
 /**
@@ -104,6 +169,7 @@ fun DrawScope.drawGroundTexture(
     srcTop: Int = 0,
     srcRight: Int = texture.width,
     srcBottom: Int = texture.height,
+    overlay: ((canvas: Canvas, cell: RectF) -> Unit)? = null,
 ) {
     val top = transform.worldToScreen(x.toFloat(), y.toFloat())
     val right = transform.worldToScreen(x + 1f, y.toFloat())
@@ -128,7 +194,15 @@ fun DrawScope.drawGroundTexture(
         val native = canvas.nativeCanvas
         native.save()
         native.concat(groundMatrix)
-        native.drawBitmap(texture, groundSourceRect, groundDestination, groundPaint)
+        if (overlay == null) {
+            native.drawBitmap(texture, groundSourceRect, groundDestination, groundPaint)
+        } else {
+            // A layer of its own, so that what is laid over the picture can keep to it.
+            native.saveLayer(groundDestination, null)
+            native.drawBitmap(texture, groundSourceRect, groundDestination, groundPaint)
+            overlay(native, groundDestination)
+            native.restore()
+        }
         native.restore()
     }
 }

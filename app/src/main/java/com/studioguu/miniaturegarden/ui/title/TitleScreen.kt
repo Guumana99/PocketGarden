@@ -155,7 +155,8 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
                 val known = hasSavedGarden != null
                 WoodButton(
                     text = stringResource(R.string.title_start),
-                    onClick = { if (hasSavedGarden == true) confirmStartOver = true else onEnterGarden() },
+                    // A new garden, even with none saved, starts from a clean view: no zoom is carried over.
+                    onClick = { if (hasSavedGarden == true) confirmStartOver = true else viewModel.startOver(onEnterGarden) },
                     enabled = known,
                     modifier = Modifier.width(220.dp),
                 )

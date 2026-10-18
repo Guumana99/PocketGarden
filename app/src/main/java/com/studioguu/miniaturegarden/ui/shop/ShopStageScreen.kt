@@ -4,6 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -205,8 +207,9 @@ fun ShopStageContent(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {
-        // The room: each shop has its own walls, and they change with a soft cross-fade.
-        AnimatedContent(targetState = stage, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "room") { shown ->
+        // The room: each shop has its own walls. The new room fades in quickly over the old one,
+        // which stays as it is until it is covered, so nothing behind the shop shows through.
+        AnimatedContent(targetState = stage, transitionSpec = { ShopFades.room() }, label = "room") { shown ->
             ShopRoom(shown, Modifier.fillMaxSize())
         }
         Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp)) {
@@ -221,7 +224,8 @@ fun ShopStageContent(
             Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
             AnimatedContent(
                 targetState = stage,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                // The old shelves go first, quickly, then the new ones come: never both at half.
+                transitionSpec = { ShopFades.shelves() },
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 label = "shelves",
             ) { shown ->
@@ -589,3 +593,27 @@ const val CARD_HELD_TAG = "shop_card_held"
 private val ITEM_WIDTH = 96.dp
 private const val LOCKED_ALPHA = 0.45f
 private const val UNAFFORDABLE_ALPHA = 0.55f
+
+/**
+ * How the shop changes from one room to another when a signboard is tapped. Quick, so that the
+ * tap feels answered at once, and never two rooms at half strength: that let the room before
+ * show through for a moment.
+ */
+object ShopFades {
+    /** The new room fading in over the old one. */
+    const val ROOM_IN_MILLIS = 140
+
+    /** The old shelves fading out, before the new ones come in. */
+    const val SHELVES_OUT_MILLIS = 70
+
+    const val SHELVES_IN_MILLIS = 130
+
+    /** The new room comes in on top; the old one stays whole underneath until it is covered. */
+    fun room(): ContentTransform =
+        (fadeIn(tween(ROOM_IN_MILLIS)) togetherWith fadeOut(tween(durationMillis = 1, delayMillis = ROOM_IN_MILLIS)))
+            .apply { targetContentZIndex = 1f }
+
+    /** One after the other: out, then in. */
+    fun shelves(): ContentTransform =
+        fadeIn(tween(SHELVES_IN_MILLIS, delayMillis = SHELVES_OUT_MILLIS)) togetherWith fadeOut(tween(SHELVES_OUT_MILLIS))
+}

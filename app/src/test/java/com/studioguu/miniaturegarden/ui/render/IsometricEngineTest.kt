@@ -288,9 +288,12 @@ class IsometricEngineTest {
     }
 
     @Test
-    fun `a screen that already shows everything with larger tiles starts with all of it`() {
+    fun `a screen that shows even the largest garden with larger tiles starts at that zoom`() {
         val tablet = Size(1280f, 800f)
-        assertEquals(GardenCamera.fitting(tablet, metrics), GardenCamera.starting(tablet, metrics))
+        // The zoom that shows all of a 13 x 13 garden, for the 9 x 9 one too: the same default
+        // whatever the garden's size, so tiles do not change size when it grows.
+        assertEquals(GardenCamera.fitting(tablet, largest).scale, GardenCamera.starting(tablet, metrics).scale, 1e-6f)
+        assertEquals(GardenCamera.fitting(tablet, largest), GardenCamera.starting(tablet, largest))
         // The starting 9 x 9 garden on a phone starts at finger size too.
         assertEquals(GardenCamera.START_SCALE, GardenCamera.starting(phone, metrics).scale, 0f)
     }

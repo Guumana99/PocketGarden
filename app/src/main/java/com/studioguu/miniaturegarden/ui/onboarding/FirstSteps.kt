@@ -37,7 +37,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.studioguu.miniaturegarden.R
 import androidx.compose.ui.platform.testTag
-import com.studioguu.miniaturegarden.ui.components.CarvedButton
 import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.StarterGarden
@@ -100,13 +99,15 @@ fun StarterCrateDialog(onReceive: () -> Unit, onDismiss: () -> Unit) {
                         )
                     }
                 }
-                // Two framed buttons side by side, the same size: "later" carved, "receive" in wood.
+                // Two buttons side by side, of one make and one size: wooden planks with a dark edge
+                // and cream lettering. (A parchment "later" next to a wooden "receive" read as two
+                // different kinds of button on the wooden board.)
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    CarvedButton(
+                    WoodButton(
                         text = stringResource(R.string.crate_later),
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f).testTag(CRATE_LATER_TAG),

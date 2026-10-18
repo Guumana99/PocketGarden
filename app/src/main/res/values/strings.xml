@@ -133,7 +133,7 @@
     <string name="item_seed_poinsettia">ポインセチアの苗</string>
     <string name="item_seed_paprika">パプリカの苗</string>
     <string name="item_seed_daikon">大根の種</string>
-    <string name="item_tile_river">せせらぎの木枠</string>
+    <string name="item_tile_river">小川のかけら</string>
 
     <!-- Inventory -->
     <string name="inventory_title">持ち物</string>
@@ -293,6 +293,7 @@
     <string name="debug_cycle_weather">天気を切り替え</string>
     <string name="debug_boost">+500 コイン・Lv+1</string>
     <string name="debug_next_season">次の季節へ</string>
+    <string name="debug_zoom">マップ倍率 %1$s（標準 %2$s）</string>
 
     <!-- Title screen -->
     <string name="title_subtitle">Pocket Garden</string>

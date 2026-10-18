@@ -97,15 +97,23 @@ data class GardenCamera(
         }
 
         /**
-         * The garden's first view: centred, close enough for a tile to be finger-sized
-         * ([START_SCALE]), or as [fitting] when that already shows everything with larger tiles.
-         * Pinching out still goes as far as [fitting], to the whole garden.
+         * The garden's first view, the default zoom: centred, close enough for a tile to be
+         * finger-sized ([START_SCALE]), or on a screen large enough to show even the largest
+         * garden ([LARGEST_GRID]) with larger tiles than that, as that.
+         *
+         * It depends on the screen alone, never on how large the garden is now, so a new garden
+         * and a garden that has just grown open at the same zoom, and tiles do not change size
+         * when the garden grows. Pinching out still goes as far as [fitting], to the whole garden.
          */
         fun starting(viewport: Size, metrics: IsometricMetrics): GardenCamera {
             val fit = fitting(viewport, metrics)
-            if (fit.scale >= START_SCALE) return fit
-            return fit.copy(scale = START_SCALE).clamped(metrics)
+            val roomy = fitting(viewport, metrics.copy(gridSize = maxOf(LARGEST_GRID, metrics.gridSize))).scale
+            val scale = maxOf(START_SCALE, roomy).coerceIn(fit.minScale, MAX_SCALE)
+            return GardenCamera(scale, Offset.Zero, fit.minScale).clamped(metrics)
         }
+
+        /** The largest the garden grows (GardenExpansion.MAX_SIZE): the default zoom is set by it. */
+        const val LARGEST_GRID = 13
 
         /**
          * A view kept from before (saved state, or the player's last visit) put back on this

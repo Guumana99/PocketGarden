@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -87,6 +88,7 @@ import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
+import com.studioguu.miniaturegarden.ui.debug.DebugZoomReadout
 import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.effects.RainOverlay
 import com.studioguu.miniaturegarden.ui.effects.RainStyle
@@ -165,6 +167,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var inventoryFilter by rememberSaveable { mutableStateOf(InventoryFilter.ALL) }
     var showShop by rememberSaveable { mutableStateOf(false) }
     var showDebugMenu by rememberSaveable { mutableStateOf(false) }
+    // The garden's zoom as it is now, for the debug read-out; 0 until the garden is laid out.
+    var debugZoom by remember { mutableFloatStateOf(0f) }
     var showPost by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCollection by rememberSaveable { mutableStateOf(false) }
@@ -247,6 +251,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 visitors = visitors,
                 savedView = savedView,
                 onViewChanged = viewModel::saveView,
+                onZoomChanged = if (BuildConfig.DEBUG) ({ debugZoom = it }) else null,
                 paused = showInventory || showShop,
                 season = season,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
@@ -371,6 +376,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 }
                 if (BuildConfig.DEBUG) {
                     SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
+                    if (debugZoom > 0f) DebugZoomReadout(debugZoom)
                 }
             }
 
@@ -615,6 +621,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onCycleWeather = viewModel::debugCycleWeather,
             onBoost = viewModel::debugBoost,
             onNextSeason = viewModel::debugNextSeason,
+            zoomScale = debugZoom.takeIf { it > 0f },
             onDismiss = { showDebugMenu = false },
         )
     }
