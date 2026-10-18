@@ -288,6 +288,14 @@ class CollectionTest {
         assertEquals(100L, repo.profile?.coins)
     }
 
+
+    /** Finishes and unveils the building just placed: when it earns, since #50. */
+    private suspend fun finishAndUnveil(objectId: String, at: Long = t0) {
+        val site = repo.objects.values.first { it.objectId == objectId && it.isWorking }
+        repo.put(site.copy(workKind = com.studioguu.miniaturegarden.domain.model.WorkKind.READY))
+        UnveilBuildingUseCase(repo, RecordCollectionUseCase(repo))(site.instanceId, at)
+    }
+
     @Test
     fun `building the last missing structure earns its own XP and no completion bonus`() = runBlocking {
         CollectionEntry.entries.filter { it != CollectionEntry.HUT }.forEach { repo.discover(it, revealed = true) }
@@ -295,6 +303,7 @@ class CollectionTest {
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
 
         place(0, 2, 2, t0)
+        finishAndUnveil(GardenItem.STRUCT_HUT.objectId)  // the page and the XP come with the unveiling (#50)
         reveal(CollectionEntry.HUT)
 
         assertEquals(80L, repo.profile?.coins)      // the hut's page, nothing more

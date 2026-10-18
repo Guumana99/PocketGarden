@@ -102,7 +102,7 @@ class GardenActionUseCasesTest {
     @Test
     fun `fertilizer refills nutrition and boosts growth, capped at fully grown`() = runBlocking {
         repo.put(tulip(growth = 0.5f, nutrition = 0.1f, status = PlantStatus.UNNOURISHED))
-        repo.put(tulip(id = "p2", x = 1, growth = 0.99f))
+        repo.put(tulip(id = "p2", x = 1, growth = 0.99f, nutrition = 0.3f))
 
         assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
         assertEquals(ActionResult.SUCCESS, care.fertilize("p2", t0, sunny))
@@ -111,6 +111,21 @@ class GardenActionUseCasesTest {
         assertEquals(0.5f + 2f / 48f, stored("p1").growthProgress, 1e-4f)  // two of a tulip's 48 hours
         assertEquals(PlantStatus.HEALTHY, stored("p1").status)
         assertEquals(1f, stored("p2").growthProgress, 0f)
+    }
+
+    @Test
+    fun `fertilizer cannot rush a crop - a well-fed plant is not fed again`() = runBlocking {
+        repo.profile = repo.profile!!.copy(coins = 1_000)
+        repo.put(tulip(growth = 0.2f, nutrition = 0.3f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
+        val once = stored("p1").growthProgress
+        // Tapping again and again does nothing more: it is fed, and grows at its own pace.
+        repeat(20) { assertEquals(ActionResult.ALREADY_FED, care.fertilize("p1", t0, sunny)) }
+        assertEquals(once, stored("p1").growthProgress, 0f)
+        assertTrue(once < 0.3f)
+        // Once it has used up half its food (a day and a half), it can be fed again.
+        assertEquals(ActionResult.ALREADY_FED, care.fertilize("p1", t0 + 30 * hour, sunny))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0 + 37 * hour, sunny))
     }
 
     @Test
@@ -182,7 +197,7 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `watering and fertilizing earn experience`() = runBlocking {
-        repo.put(tulip(moisture = 0.5f))
+        repo.put(tulip(moisture = 0.5f, nutrition = 0.3f))
 
         care.water("p1", t0, sunny)
         assertEquals(5L, repo.profile?.currentXp)
@@ -193,11 +208,13 @@ class GardenActionUseCasesTest {
     @Test
     fun `fertilizer costs coins and is refused without them`() = runBlocking {
         repo.profile = UserProfile(coins = 20)
-        repo.put(tulip(growth = 0.2f))
+        repo.put(tulip(growth = 0.2f, nutrition = 0.3f))
+        repo.put(tulip(id = "p2", x = 1, growth = 0.2f, nutrition = 0.3f))
 
         assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
         assertEquals(5L, repo.profile?.coins)
-        assertEquals(ActionResult.NOT_ENOUGH_COINS, care.fertilize("p1", t0, sunny))
+        // Another hungry plant, but the coins have run out.
+        assertEquals(ActionResult.NOT_ENOUGH_COINS, care.fertilize("p2", t0, sunny))
 
         assertEquals(5L, repo.profile?.coins)
         assertEquals(0.2f + 2f / 48f, stored().growthProgress, 1e-4f)
@@ -260,7 +277,7 @@ class GardenActionUseCasesTest {
     fun `fertilizer is worth two hours of growth, so less on slower plants`() = runBlocking {
         repo.profile = UserProfile(coins = 1_000)
         PlantSpecies.entries.forEachIndexed { index, species ->
-            repo.put(tulip(id = species.name, x = index).copy(objectId = species.objectId))
+            repo.put(tulip(id = species.name, x = index, nutrition = 0.3f).copy(objectId = species.objectId))
             care.fertilize(species.name, t0, sunny)
             assertEquals(species.name, 2f / species.growthHours, stored(species.name).growthProgress, 1e-5f)
         }
@@ -384,6 +401,14 @@ class GardenActionUseCasesTest {
         assertTrue(repo.slots.getValue(0).isEmpty)
     }
 
+
+    /** Finishes and unveils the building just placed: when it earns, since #50. */
+    private suspend fun finishAndUnveil(objectId: String, at: Long = t0) {
+        val site = repo.objects.values.first { it.objectId == objectId && it.isWorking }
+        repo.put(site.copy(workKind = com.studioguu.miniaturegarden.domain.model.WorkKind.READY))
+        UnveilBuildingUseCase(repo, RecordCollectionUseCase(repo))(site.instanceId, at)
+    }
+
     @Test
     fun `building a structure earns experience and placing a seed does not`() = runBlocking {
         repo.profile = UserProfile(coins = 5, currentXp = 80)
@@ -397,6 +422,9 @@ class GardenActionUseCasesTest {
         assertEquals(0, repo.profileSaves)
 
         place(1, 4, 4, t0)
+        // The well earns when it is finished and unveiled (#50), not when its site goes up.
+        assertEquals(80L, repo.profile?.currentXp)
+        finishAndUnveil(GardenItem.STRUCT_WELL.objectId)
         assertEquals(110L, repo.profile?.currentXp)  // +30 for the well
         assertEquals(2, repo.profile?.playerLevel)   // which crosses the 100 needed for Lv.2
         assertEquals(5L, repo.profile?.coins)

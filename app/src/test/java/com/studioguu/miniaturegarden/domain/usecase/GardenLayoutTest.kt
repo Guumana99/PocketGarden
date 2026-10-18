@@ -71,12 +71,10 @@ class GardenLayoutTest {
     }
 
     @Test
-    fun `seeds are sown in either mode, everything else is laid out in edit mode`() {
-        for (item in GardenItem.entries) {
-            assertEquals(item.name, item.category != ItemCategory.SEED, GardenLayout.placingNeedsEditMode(item))
-        }
-        assertTrue(GardenLayout.placingNeedsEditMode(GardenItem.STRUCT_FENCE))
-        assertFalse(GardenLayout.placingNeedsEditMode(GardenItem.SEED_TULIP))
+    fun `edit mode keeps to rearranging - only the shop is in hand there`() {
+        // #50: no hoe, watering, feeding or putting new things down from the bag in edit mode.
+        assertEquals(setOf(com.studioguu.miniaturegarden.domain.model.TutorialTool.SHOP),
+            com.studioguu.miniaturegarden.domain.model.TutorialTool.entries.filter { GardenLayout.toolAllowedInEditMode(it) }.toSet())
     }
 
     @Test
@@ -95,6 +93,15 @@ class GardenLayoutTest {
         for (action in listOf("LayoutAction.MOVE", "LayoutAction.STORE", "LayoutAction.DISCARD")) {
             assertTrue(action, model.contains("GardenLayout.check($action, obj, _editMode.value)"))
         }
-        assertTrue(model.contains("GardenLayout.placingNeedsEditMode(item)"))
+        // Nothing is put down, tended or tilled in edit mode; the bag and the hoe are refused there.
+        for (action in listOf("fun waterSelected()", "fun fertilizeSelected()", "fun harvestSelected()", "fun reviveSelected()", "fun startPlacing(")) {
+            val body = model.substringAfter(action).substringBefore("\n    fun ")
+            assertTrue(action, body.contains("lockedByEditMode()"))
+        }
+        assertTrue(model.substringAfter("fun toggleHoe()").substringBefore("\n    fun ").contains("lockedByEditMode()"))
+        // Going into edit mode puts the hoe and what was in hand down.
+        val toggle = model.substringAfter("fun toggleEditMode()").substringBefore("\n    fun ")
+        assertTrue(toggle.contains("_hoeActive.value = false") && toggle.contains("_placingSlotIndex.value = null"))
+        assertFalse(model.contains("placingNeedsEditMode"))
     }
 }

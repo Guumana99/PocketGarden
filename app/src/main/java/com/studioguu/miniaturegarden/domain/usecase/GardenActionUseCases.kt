@@ -55,6 +55,9 @@ enum class ActionResult {
     /** Something that has only one way to face was to be turned round. */
     NOT_FLIPPABLE,
 
+    /** Fertilizer was given to a plant that is still well fed (#50: it cannot rush a crop). */
+    ALREADY_FED,
+
     /** The thing is being built or taken apart; it has to be finished first. */
     BUSY,
 
@@ -103,9 +106,18 @@ class CareForPlantUseCase @Inject constructor(
      * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, advances growth by what the plant
      * would grow in [FERTILIZER_GROWTH_HOURS] healthy hours and earns [FERTILIZE_XP]. Being a fixed
      * amount of time, it is worth proportionally less on slow, valuable plants.
+     *
+     * Only allowed once the plant has used up half its food ([FERTILIZING_THRESHOLD]); nutrition
+     * runs down over three days, so a plant can be fed about once a day and a half. Before #50 it
+     * could be fed again and again on the spot, and a few taps grew a crop to the full at once.
      */
     suspend fun fertilize(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
-        care(instanceId, now, weather, coinCost = FERTILIZER_COST, xp = FERTILIZE_XP, refuse = { null }) {
+        care(
+            instanceId, now, weather,
+            coinCost = FERTILIZER_COST,
+            xp = FERTILIZE_XP,
+            refuse = { if (it.nutritionLevel >= FERTILIZING_THRESHOLD) ActionResult.ALREADY_FED else null },
+        ) {
             it.copy(
                 nutritionLevel = 1f,
                 growthProgress = min(
@@ -195,6 +207,9 @@ class CareForPlantUseCase @Inject constructor(
         /** Watering is only possible while moisture is below this. */
         const val WATERING_THRESHOLD = 0.8f
 
+        /** Fertilizing is only possible while nutrition is below this. */
+        const val FERTILIZING_THRESHOLD = 0.5f
+
         /** How much one watering adds to the soil's moisture (35 points). */
         const val WATER_AMOUNT = 0.35f
 
@@ -209,8 +224,9 @@ class CareForPlantUseCase @Inject constructor(
  * ground (not the river) and free in its own layer: paving goes under things, and things can
  * be stood on paving. A building ([GardenItem.buildSeconds]) starts as a work site and is
  * finished by [CompleteWorkUseCase] when its time is up. Seeds and seedlings are the exception: they only go into soil that has
- * been tilled with the hoe (see [HoeUseCase]). Building a structure earns its [GardenItem.placeXp], and a
- * first placement makes its page of the encyclopedia ready to be filled in.
+ * been tilled with the hoe (see [HoeUseCase]). Something put down at once earns its
+ * [GardenItem.placeXp] and, the first time, readies its page of the encyclopedia; a building does
+ * both when it is finished and unveiled ([UnveilBuildingUseCase], #50), not when its site goes up.
  */
 class PlaceItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -267,9 +283,12 @@ class PlaceItemUseCase @Inject constructor(
             gardenRepository.upsertInventorySlot(
                 if (remaining > 0) slot.copy(amount = remaining) else InventorySlot(slotIndex)
             )
-            recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
-            if (item.placeXp > 0) {
-                gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
+            // A building earns and is recorded when it is unveiled; anything else now.
+            if (item.buildSeconds <= 0) {
+                recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
+                if (item.placeXp > 0) {
+                    gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
+                }
             }
             ActionResult.SUCCESS
         }
@@ -415,7 +434,9 @@ class StoreObjectUseCase @Inject constructor(
         gardenRepository.deleteGridObject(instanceId)
         val amount = if (slot.isEmpty) 1 else slot.amount + 1
         gardenRepository.upsertInventorySlot(InventorySlot(slot.slotIndex, item.itemId, amount, slots.nextAcquisition()))
-        if (item.placeXp > 0) gardenRepository.saveUserProfile(profile.loseXp(item.placeXp))
+        // A building called off before it was unveiled never earned its experience (#50).
+        val earned = target.workKind != WorkKind.BUILDING && target.workKind != WorkKind.READY
+        if (item.placeXp > 0 && earned) gardenRepository.saveUserProfile(profile.loseXp(item.placeXp))
         ActionResult.SUCCESS
     }
 
@@ -566,6 +587,8 @@ class FlipObjectUseCase @Inject constructor(
         val target = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
             ?: return@runInTransaction ActionResult.NOT_FOUND
         if (!target.canFlip) return@runInTransaction ActionResult.NOT_FLIPPABLE
+        // Turned round once it stands (#50): a work site is sheeting, with no front to face.
+        if (target.isWorking) return@runInTransaction ActionResult.BUSY
         gardenRepository.upsertGridObject(target.copy(isFlipped = !target.isFlipped))
         ActionResult.SUCCESS
     }

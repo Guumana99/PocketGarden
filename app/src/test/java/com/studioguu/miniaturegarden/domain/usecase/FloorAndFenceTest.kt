@@ -188,6 +188,14 @@ class FloorAndFenceTest {
         }
     }
 
+
+    /** Finishes and unveils the building just placed: when it earns, since #50. */
+    private suspend fun finishAndUnveil(objectId: String, at: Long = t0) {
+        val site = repo.objects.values.first { it.objectId == objectId && it.isWorking }
+        repo.put(site.copy(workKind = com.studioguu.miniaturegarden.domain.model.WorkKind.READY))
+        UnveilBuildingUseCase(repo, RecordCollectionUseCase(repo))(site.instanceId, at)
+    }
+
     @Test
     fun `first placements make the new encyclopedia pages ready`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.FLOOR_COBBLESTONE.itemId, 1))
@@ -197,6 +205,9 @@ class FloorAndFenceTest {
         place(1, 0, 0, t0)
 
         assertEquals(1, repo.collection[GridObject.COBBLESTONE_OBJECT_ID]?.count)
+        // A fence takes a moment to put up: its page comes when it is unveiled (#50).
+        assertEquals(null, repo.collection[GridObject.FENCE_OBJECT_ID])
+        finishAndUnveil(GridObject.FENCE_OBJECT_ID)
         assertEquals(1, repo.collection[GridObject.FENCE_OBJECT_ID]?.count)
         assertEquals(100L, repo.profile?.coins) // the coins come when the pages are filled in
     }

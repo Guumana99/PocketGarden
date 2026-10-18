@@ -2,7 +2,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
-import com.studioguu.miniaturegarden.domain.model.ItemCategory
+import com.studioguu.miniaturegarden.domain.model.TutorialTool
 
 /** What the player wants to do with something that stands in the garden. */
 enum class LayoutAction {
@@ -38,8 +38,8 @@ enum class LayoutCheck {
  * away at any time, but never moved. Everything else that came out of the bag is the garden's
  * **layout**: lawn, pebbles, flowers, paving, decking, fences, the river, decorations and the
  * buildings. The layout is arranged in edit mode, where the grid shows: only there can such a
- * piece be put down from the bag, moved, put back into the bag or thrown away. Outside it the
- * garden is just looked after, and a stray tap cannot pull a fence apart.
+ * piece be moved, put back into the bag or thrown away. New things are put down from the bag in
+ * the everyday garden (#50), and outside edit mode a stray tap cannot pull a fence apart.
  *
  * Clearing away is edit mode's for everything (#49): a crop, withered or not, and a bed of
  * tilled soil are cleared there too, so that nothing in the garden goes at a stray tap. What is in
@@ -52,8 +52,13 @@ object GardenLayout {
     /** Whether [obj] is a piece of the layout rather than something in the ground. */
     fun isLayoutPiece(obj: GridObject): Boolean = !obj.isPlant && !obj.isTilledSoil && !obj.isStarterCrate
 
-    /** Whether putting [item] down from the bag needs edit mode: anything but seeds. */
-    fun placingNeedsEditMode(item: GardenItem): Boolean = item.category != ItemCategory.SEED
+    /**
+     * Whether [tool] is in hand in edit mode: only the shop. Edit mode is for rearranging the
+     * garden (moving, putting back, clearing away), so the hoe, watering, feeding and the bag
+     * (putting new things down) wait outside it (#50; from #42 to #49 things from the bag were put
+     * down in edit mode instead).
+     */
+    fun toolAllowedInEditMode(tool: TutorialTool): Boolean = tool == TutorialTool.SHOP
 
     /**
      * Whether [obj] is the kind of thing that can be moved at all, edit mode or not: a layout

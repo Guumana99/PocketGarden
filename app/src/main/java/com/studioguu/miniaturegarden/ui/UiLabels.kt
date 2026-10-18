@@ -172,6 +172,7 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.EXPANSION_LOCKED -> R.string.msg_expansion_locked
     ActionResult.GARDEN_AT_MAX_SIZE -> R.string.msg_garden_at_max_size
     ActionResult.NOT_THIS_STEP -> R.string.msg_not_this_step
+    ActionResult.ALREADY_FED -> R.string.msg_already_fed
     ActionResult.OUT_OF_SEASON -> R.string.msg_out_of_season
     ActionResult.IN_USE -> R.string.msg_in_use
 }
