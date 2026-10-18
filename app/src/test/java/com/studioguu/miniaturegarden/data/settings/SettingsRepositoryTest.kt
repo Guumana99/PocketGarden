@@ -7,15 +7,17 @@ import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.InventorySort
 import java.io.File
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.take
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -144,14 +146,32 @@ class SettingsRepositoryTest {
     @Test
     fun `observers are told about each change`() = runBlocking {
         val (repository, _) = openRepository()
-        val seen = async(Dispatchers.IO) { repository.settings.take(3).toList() }
-        repository.settings.first() // make sure the collector above has its first value's source ready
+        val subscribed = CompletableDeferred<Unit>()
+        val seen = mutableListOf<Float>()
+        // Watches until the last value arrives. A busy machine may run the watcher late, so it is
+        // only asked to have its first value before the changes are made, and given time to end.
+        val watcher = async(Dispatchers.IO) {
+            withTimeout(WATCH_TIMEOUT_MILLIS) {
+                repository.settings
+                    .map { it.soundEffectVolume }
+                    .onEach { synchronized(seen) { seen += it } }
+                    .onEach { subscribed.complete(Unit) }
+                    .first { it == 0.1f }
+            }
+        }
+        subscribed.await()
 
         repository.update { it.copy(soundEffectVolume = 0.4f) }
         repository.update { it.copy(soundEffectVolume = 0.1f) }
 
-        // The collector may miss the intermediate value if it is slow, but never the last one.
-        assertEquals(0.1f, seen.await().last().soundEffectVolume, 0f)
+        // It may miss the value in between if it is slow, but never the last one, and it never
+        // goes back to an older one.
+        assertEquals(0.1f, watcher.await(), 0f)
+        val values = synchronized(seen) { seen.toList() }
+        assertEquals(0.9f, values.first(), 0f)
+        val order = listOf(0.9f, 0.4f, 0.1f)
+        val places = values.map { order.indexOf(it) }
+        assertTrue("seen out of order: $values", places.all { it >= 0 } && places.zipWithNext().all { (a, b) -> a <= b })
     }
 
     // --- Surviving a restart ---
@@ -215,5 +235,9 @@ class SettingsRepositoryTest {
         val (repository, _) = openRepository()
 
         assertEquals(AppSettings(bgmVolume = 0.6f), repository.settings.first())
+    }
+
+    private companion object {
+        const val WATCH_TIMEOUT_MILLIS = 10_000L
     }
 }
