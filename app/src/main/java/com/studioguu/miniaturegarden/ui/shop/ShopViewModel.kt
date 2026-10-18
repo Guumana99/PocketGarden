@@ -56,7 +56,15 @@ class ShopViewModel @Inject constructor(
     rewardLimits: RewardLimitRepository,
 ) : ViewModel() {
 
-    val items: List<GardenItem> = GardenItem.entries
+    private val _stage = MutableStateFlow(ShopStage.ENTRANCE)
+
+    /** The shop the player is standing in. */
+    val stage: StateFlow<ShopStage> = _stage.asStateFlow()
+
+    private val _inspecting = MutableStateFlow<GardenItem?>(null)
+
+    /** The thing picked up off the shelf to look at, with its card open; null while browsing. */
+    val inspecting: StateFlow<GardenItem?> = _inspecting.asStateFlow()
 
     /** The garden's season: the seed shelf only holds what is in season. */
     val season: StateFlow<Season> = gardenRepository.observeProgress()
@@ -81,6 +89,39 @@ class ShopViewModel @Inject constructor(
     val ownsSymbol: StateFlow<Boolean> =
         combine(gardenRepository.observeGridObjects(), gardenRepository.observeInventory(), ::ownsSymbolBuilding)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** What stands on the current shop's shelves, shelf by shelf ([ShopShelves]). */
+    val shelves: StateFlow<List<List<ShelfItem>>> =
+        combine(_stage, season, playerStats, coins, ownsSymbol) { stage, season, stats, coins, owns ->
+            ShopShelves.shelves(ShopShelves.stock(stage, season, stats, coins, owns))
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Walks to another shop down the lane. Whatever was in hand there is put back on its shelf. */
+    fun goTo(stage: ShopStage) {
+        if (stage == _stage.value) return
+        _stage.value = stage
+        _inspecting.value = null
+        clearFeedback()
+    }
+
+    /** Picks [item] off the shelf to look at it. */
+    fun inspect(item: GardenItem) {
+        _inspecting.value = item
+        clearFeedback()
+    }
+
+    /** Puts the thing being looked at back on the shelf. */
+    fun putBack() {
+        _inspecting.value = null
+        clearFeedback()
+    }
+
+    /** Back to the garden: the next visit starts at the lane's first shop, empty-handed. */
+    fun leave() {
+        _stage.value = ShopStage.ENTRANCE
+        _inspecting.value = null
+        clearFeedback()
+    }
 
     private val _feedback = MutableStateFlow<PurchaseFeedback?>(null)
     val feedback: StateFlow<PurchaseFeedback?> = _feedback.asStateFlow()

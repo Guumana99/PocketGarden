@@ -55,6 +55,30 @@ di/       Hilt の束ね
 - アイテムを足すときに触る場所：`GardenItem`、`CollectionEntry`（図鑑ページ）、`TileSetDefinition.objectIds`、
   `UiLabels`（名前・絵文字）、`CollectionDialog.flavorText`、`strings.xml`、描画（`GardenCanvas`）。
 
+## ショップ（店のステージ、#44）
+
+ポップアップではなく、庭から歩いて入る**店のステージ**。`GardenScreen` の中で庭の上に全画面で重なり（横に少し滑ってフェード、0.32 秒）、
+庭はその下で止まって待つ（`GardenCanvas(paused)`）。戻ると庭はそのまま。画面遷移の仕組み（Navigation）は使っていない。
+
+- 店は 3 軒（`ui/shop/ShopStage.kt` の `ShopStage`）。品ぞろえは `GardenItem` の棚（`ItemCategory`）と 1 対 1。
+
+| 店 | `ShopStage` | 棚 | 壁の色 |
+|---|---|---|---|
+| 🌱 種と苗の店（入口。ショップボタンで最初に入る） | `SEEDS` | 作物（旬のものだけ） | 若草 |
+| 🔨 大工の工房 | `WORKSHOP` | 建物 | 木の色 |
+| 🪴 庭の雑貨店 | `SUNDRIES` | 装飾・地表・床・川 | 藤色 |
+
+- 店の行き来は上の 3 枚の看板。部屋（壁・腰板・床）はコードで描き、店ごとに色が違う（`ShopRoom`）。
+- 棚の中身は純関数 `ShopShelves.stock(stage, season, stats, coins, ownsSymbol)` → `ShelfItem(item, ShelfTag)`。
+  `ShelfTag` は `FOR_SALE` / `SHORT_OF_COINS` / `LOCKED` / `OWNED`（持っているコテージ）。`ShopShelves.shelves` で 1 段 3 つに並べる。
+- 棚の物を押すと手に取り（棚には薄い跡が残る）、下から**カード**がせり上がる：絵・名前・図鑑の説明文（`CollectionDialog.flavorText`）・
+  旬（作物）や効果（井戸・小屋・風車）・「棚に戻す」と「N で買う」（または解放条件／所持済み）。買った結果はカードの中に出る。
+- 戻るキー：カードが出ていれば棚に戻す、出ていなければ庭へ。
+- 状態は `ShopViewModel`：`stage`（いる店）・`inspecting`（手に取った物）・`shelves`（派生）。`goTo` `inspect` `putBack` `leave`（入口の店・手ぶらに戻す）。
+  画面は `ShopStageScreen`（view model をつなぐ）と、状態だけで描く `ShopStageContent`（Robolectric のテスト `ShopStageContentTest`）。
+- 臨時ボーナス（リワード広告）は店の下のカウンターに置いた。コイン不足のダイアログと広告の確認は今までどおり。
+- 旧 `ShopDialog` は削除。
+
 ## シンボル建物
 
 庭の顔になる特別な建物。今はコテージ（`struct_cottage`、3×3、Lv.6、300 コイン、建築 2 時間）だけ。

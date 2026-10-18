@@ -94,9 +94,10 @@ class SymbolBuildingTest {
     @Test
     fun `an owned cottage stays on the shelf, marked as owned instead of for sale`() {
         val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
-        val shop = java.io.File(main, "java/com/studioguu/miniaturegarden/ui/shop/ShopDialog.kt").readText()
-        assertTrue(shop.contains("owned = item.isSymbol && ownsSymbol"))
-        assertTrue(shop.contains("R.string.shop_owned"))
+        // The shop is a stage since #44: its shelves tag the owned cottage (see ShopShelvesTest).
+        val shop = java.io.File(main, "java/com/studioguu/miniaturegarden/ui/shop/ShopStage.kt").readText()
+        assertTrue(shop.contains("item.isSymbol && ownsSymbol -> ShelfTag.OWNED"))
+        assertTrue(java.io.File(main, "java/com/studioguu/miniaturegarden/ui/shop/ShopStageScreen.kt").readText().contains("R.string.shop_owned"))
         val strings = java.io.File(main, "res/values/strings.xml").readText()
         assertTrue(strings.contains("<string name=\"shop_owned\">"))
     }
