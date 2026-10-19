@@ -46,6 +46,7 @@ import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
+import com.studioguu.miniaturegarden.ui.objectDisplayName
 import com.studioguu.miniaturegarden.ui.itemEmoji
 import com.studioguu.miniaturegarden.ui.seasonEmoji
 import com.studioguu.miniaturegarden.ui.seasonLabel
@@ -228,10 +229,9 @@ private fun letterTitle(letter: Letter): String {
 private fun letterBody(letter: Letter): String {
     val name = stringResource(seasonLabel(letter.season))
     return when (letter.kind) {
-        LetterKind.SEASON_ARRIVED -> listOfNotNull(
+        LetterKind.SEASON_ARRIVED -> listOf(
             stringResource(seasonScene(letter.season)),
-            stringResource(R.string.letter_arrived_body, name),
-            inSeasonLine(letter.season),
+            inSeasonLine(letter.season, name),
         ).joinToString("\n")
         LetterKind.SEASON_COMING -> stringResource(R.string.letter_coming_body, name)
         LetterKind.TIP -> listOfNotNull(
@@ -243,12 +243,23 @@ private fun letterBody(letter: Letter): String {
     }
 }
 
-/** The crops whose season [season] is, by name; null when there are none. */
+/**
+ * What can be grown now, said plainly with the crops' own names ("夏は、トマトやスイカ、ひまわり
+ * などが育てられる季節です。"), not the seed packets' ("トマトの苗").
+ */
 @Composable
-private fun inSeasonLine(season: Season): String? {
+private fun inSeasonLine(season: Season, seasonName: String): String {
     val crops = GardenItem.entries.filter { it.category == ItemCategory.SEED && season in it.seasons }
-    if (crops.isEmpty()) return null
-    return stringResource(R.string.letter_in_season, crops.map { "${itemEmoji(it)}${itemDisplayName(it)}" }.joinToString("、"))
+    if (crops.isEmpty()) return stringResource(R.string.letter_arrived_body_none, seasonName)
+    return stringResource(R.string.letter_arrived_body, seasonName, cropList(crops.map { objectDisplayName(it.objectId) }))
+}
+
+/** Names run together the way a letter would: "A", "AやB", "AやB、Cなど". */
+internal fun cropList(names: List<String>): String = when (names.size) {
+    0 -> ""
+    1 -> names[0]
+    2 -> names[0] + "や" + names[1]
+    else -> names[0] + "や" + names.drop(1).joinToString("、") + "など"
 }
 
 /** What came into the shop, one per line, with each crop's season. */

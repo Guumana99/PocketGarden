@@ -366,10 +366,10 @@
     <string name="post_all_read">お便りはすべて読みました</string>
     <string name="post_button">ポスト</string>
     <string name="letter_arrived_title">%1$s %2$sがやってきました</string>
-    <string name="letter_arrived_body">ショップには%1$sの種が並んでいます。季節の花を育ててみませんか。</string>
+    <string name="letter_arrived_body">%1$sは、%2$sが育てられる季節です。ショップで種を手に入れて、さっそく育ててみませんか。</string>
+    <string name="letter_arrived_body_none">%1$sになりました。庭でのんびり過ごしてみませんか。</string>
     <string name="letter_coming_title">%1$s もうすぐ%2$s</string>
     <string name="letter_coming_body">もうすぐ%1$sがやってきます。今の季節の種は、季節が変わるとショップから姿を消します。育てたい種があれば、今のうちに買っておくと安心です。季節外れの種も、ガラスの温室なら育てられます。</string>
-    <string name="letter_in_season">この季節が旬の作物：%1$s</string>
     <string name="letter_tip_watering_title">💧 お水のこと</string>
     <string name="letter_tip_watering_body">作物がしおれて見えたら、水が足りていないのかもしれません。じょうろで水をあげると、また元気に育ち始めます。</string>
     <string name="letter_tip_rain_title">☔ 雨の日のこと</string>

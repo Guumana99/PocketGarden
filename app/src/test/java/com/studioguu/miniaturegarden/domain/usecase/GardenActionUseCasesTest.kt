@@ -108,7 +108,7 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.SUCCESS, care.fertilize("p2", t0, sunny))
 
         assertEquals(1f, stored("p1").nutritionLevel, 0f)
-        assertEquals(0.5f + 2f / 48f, stored("p1").growthProgress, 1e-4f)  // two of a tulip's 48 hours
+        assertEquals(0.5f + 0.05f, stored("p1").growthProgress, 1e-4f)  // 5% of a tulip's 48 hours
         assertEquals(PlantStatus.HEALTHY, stored("p1").status)
         assertEquals(1f, stored("p2").growthProgress, 0f)
     }
@@ -202,12 +202,12 @@ class GardenActionUseCasesTest {
         care.water("p1", t0, sunny)
         assertEquals(5L, repo.profile?.currentXp)
         care.fertilize("p1", t0, sunny)
-        assertEquals(15L, repo.profile?.currentXp)
+        assertEquals(11L, repo.profile?.currentXp)
     }
 
     @Test
     fun `fertilizer costs coins and is refused without them`() = runBlocking {
-        repo.profile = UserProfile(coins = 20)
+        repo.profile = UserProfile(coins = 15)
         repo.put(tulip(growth = 0.2f, nutrition = 0.3f))
         repo.put(tulip(id = "p2", x = 1, growth = 0.2f, nutrition = 0.3f))
 
@@ -217,8 +217,8 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.NOT_ENOUGH_COINS, care.fertilize("p2", t0, sunny))
 
         assertEquals(5L, repo.profile?.coins)
-        assertEquals(0.2f + 2f / 48f, stored().growthProgress, 1e-4f)
-        assertEquals(10L, repo.profile?.currentXp)
+        assertEquals(0.2f + 0.05f, stored().growthProgress, 1e-4f)
+        assertEquals(6L, repo.profile?.currentXp)
     }
 
     // --- Levels ---
@@ -274,18 +274,36 @@ class GardenActionUseCasesTest {
     }
 
     @Test
-    fun `fertilizer is worth two hours of growth, so less on slower plants`() = runBlocking {
+    fun `fertilizer brings every crop on by the same share of its growing time`() = runBlocking {
         repo.profile = UserProfile(coins = 1_000)
         PlantSpecies.entries.forEachIndexed { index, species ->
             repo.put(tulip(id = species.name, x = index, nutrition = 0.3f).copy(objectId = species.objectId))
             care.fertilize(species.name, t0, sunny)
-            assertEquals(species.name, 2f / species.growthHours, stored(species.name).growthProgress, 1e-5f)
+            val expected = maxOf(0.05f, 2f / species.growthHours)
+            assertEquals(species.name, expected, stored(species.name).growthProgress, 1e-5f)
+            assertEquals(species.name, expected, CareForPlantUseCase.fertilizerBoost(species), 1e-6f)
         }
-        assertEquals(2f / 120f, stored("ROSE").growthProgress, 1e-5f)
+        // A slow rose gains six hours, not two; the quickest crop, mint, still gets its two.
+        assertEquals(6f / 120f, stored("ROSE").growthProgress, 1e-5f)
+        assertEquals(2f / 36f, stored("MINT").growthProgress, 1e-5f)
+    }
 
-        // Fertilizing a rose from seed to harvest costs far more than the harvest pays.
-        val usesToMature = PlantSpecies.ROSE.growthHours / CareForPlantUseCase.FERTILIZER_GROWTH_HOURS
-        assertTrue(usesToMature * CareForPlantUseCase.FERTILIZER_COST > PlantSpecies.ROSE.harvestCoins)
+    @Test
+    fun `fertilizer stays a help, never a shortcut or a money maker`() {
+        val feedEveryHours = 36f  // nutrition runs out over 72 hours and feeding waits for 50%
+        for (species in PlantSpecies.entries) {
+            // Fed every time it is allowed, a crop comes in at most a fifth sooner.
+            val feeds = kotlin.math.ceil(species.growthHours / feedEveryHours).toInt()
+            assertTrue(species.name, feeds * CareForPlantUseCase.fertilizerBoost(species) <= 0.2f)
+            // And the hours a feed saves are worth less than it costs, in what the crop pays per hour:
+            // it is bought for the refill and the time, not as an investment.
+            val hoursSaved = CareForPlantUseCase.fertilizerBoost(species) * species.growthHours
+            val coinsPerHour = species.harvestCoins.toFloat() / species.growthHours
+            assertTrue(species.name, hoursSaved * coinsPerHour < CareForPlantUseCase.FERTILIZER_COST)
+        }
+        // Cheaper than before, and its experience no more per coin than it was (10 for 15).
+        assertEquals(10, CareForPlantUseCase.FERTILIZER_COST)
+        assertTrue(CareForPlantUseCase.FERTILIZE_XP.toFloat() / CareForPlantUseCase.FERTILIZER_COST <= 10f / 15f)
     }
 
     // --- Debug time skip ---
