@@ -15,7 +15,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -98,7 +97,7 @@ fun ObjectStatusDialog(
                         },
                     )
                 }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_close)) }
+                WoodButton(text = stringResource(R.string.action_close), onClick = onDismiss)
             }
 
             if (gridObject.isWorking) WorkRow(gridObject)

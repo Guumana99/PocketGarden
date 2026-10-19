@@ -236,8 +236,8 @@ class IsometricEngineTest {
         val start = GardenCamera.starting(phone, largest)
         val t = start.toTransform(largest, phone)
         assertEquals(GardenCamera.START_SCALE, start.scale, 0f)
-        assertEquals(48f, t.tileWidth, 1e-3f)
-        assertEquals(24f, t.tileHeight, 1e-3f)
+        assertEquals(128f * 0.55f, t.tileWidth, 1e-3f)
+        assertEquals(64f * 0.55f, t.tileHeight, 1e-3f)
         assertOffset(Offset.Zero, start.pan)
         // The middle of the garden is in the middle of the screen.
         assertOffset(phone.center, t.worldToScreen(6.5f, 6.5f))
@@ -288,14 +288,13 @@ class IsometricEngineTest {
     }
 
     @Test
-    fun `a screen that shows even the largest garden with larger tiles starts at that zoom`() {
+    fun `every screen starts at the same fixed zoom, whatever the garden's size`() {
         val tablet = Size(1280f, 800f)
-        // The zoom that shows all of a 13 x 13 garden, for the 9 x 9 one too: the same default
-        // whatever the garden's size, so tiles do not change size when it grows.
-        assertEquals(GardenCamera.fitting(tablet, largest).scale, GardenCamera.starting(tablet, metrics).scale, 1e-6f)
-        assertEquals(GardenCamera.fitting(tablet, largest), GardenCamera.starting(tablet, largest))
-        // The starting 9 x 9 garden on a phone starts at finger size too.
-        assertEquals(GardenCamera.START_SCALE, GardenCamera.starting(phone, metrics).scale, 0f)
+        assertEquals(0.55f, GardenCamera.START_SCALE, 0f)
+        for (screen in listOf(phone, tablet)) {
+            assertEquals(GardenCamera.START_SCALE, GardenCamera.starting(screen, metrics).scale, 0f)
+            assertEquals(GardenCamera.START_SCALE, GardenCamera.starting(screen, largest).scale, 0f)
+        }
     }
 
     private val Size.center: Offset get() = Offset(width / 2f, height / 2f)

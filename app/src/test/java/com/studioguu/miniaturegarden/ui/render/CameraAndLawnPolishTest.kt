@@ -66,7 +66,7 @@ class CameraAndLawnPolishTest {
 
     @Test
     fun `the zoom reads as a multiplier with two places`() {
-        assertEquals("×0.38", zoomText(GardenCamera.START_SCALE))
+        assertEquals("×0.55", zoomText(GardenCamera.START_SCALE))
         assertEquals("×1.00", zoomText(1f))
         assertEquals("×2.50", zoomText(GardenCamera.MAX_SCALE))
     }

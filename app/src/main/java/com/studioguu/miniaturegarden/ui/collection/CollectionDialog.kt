@@ -343,7 +343,10 @@ private fun TabLabel(text: String, selected: Boolean) {
     )
 }
 
-/** The pages of one category, with the controls for turning them. */
+/**
+ * One category: its contents page first, every entry at a glance, and a tap on one turns to its
+ * page. A page waiting to be filled in is marked on the contents with a red dot.
+ */
 @Composable
 private fun Chapter(
     entries: List<CollectionEntry>,
@@ -353,38 +356,54 @@ private fun Chapter(
     onReveal: (CollectionEntry) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // Open at the first page that is waiting to be filled in.
-    val firstReady = remember { entries.indexOfFirst { progress.stateOf(it) == PageState.READY }.coerceAtLeast(0) }
-    val pagerState = rememberPagerState(initialPage = firstReady, pageCount = { entries.size })
+    // Page 0 is the contents; entry i is on page i + 1.
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { entries.size + 1 })
     val scope = rememberCoroutineScope()
 
     HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().height(SPREAD_HEIGHT)) { page ->
-        val entry = entries[page]
-        Spread(
-            entry = entry,
-            state = progress.stateOf(entry),
-            atlas = atlas,
-            terrain = terrain,
-            onReveal = { onReveal(entry) },
-        )
+        if (page == 0) {
+            ContentsPage(entries.size) { index ->
+                val entry = entries[index]
+                EntryCell(entry, progress.stateOf(entry), atlas, terrain) {
+                    scope.launch { pagerState.animateScrollToPage(index + 1) }
+                }
+            }
+        } else {
+            val entry = entries[page - 1]
+            Spread(
+                entry = entry,
+                state = progress.stateOf(entry),
+                enteredAt = progress.recordOf(entry)?.firstObtainedAt,
+                atlas = atlas,
+                terrain = terrain,
+                onReveal = { onReveal(entry) },
+            )
+        }
     }
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        PageButton("◀", enabled = pagerState.currentPage > 0) {
-            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-        }
-        Text(
-            text = stringResource(R.string.collection_page, pagerState.currentPage + 1, entries.size),
-            color = GoldLeaf,
-            fontFamily = BookFont,
-            style = MaterialTheme.typography.titleSmall,
-        )
-        PageButton("▶", enabled = pagerState.currentPage < entries.lastIndex) {
-            scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-        }
-        Spacer(Modifier.weight(1f))
-        TextButton(onClick = onDismiss) {
-            Text(stringResource(R.string.action_close), color = GoldLeaf, fontFamily = BookFont)
+    BookFooter(pagerState, entries.size, onDismiss)
+}
+
+/** An entry on the contents page: its picture once filled in, otherwise a "？". */
+@Composable
+private fun EntryCell(entry: CollectionEntry, state: PageState, atlas: SpriteAtlas, terrain: TerrainTextures, onClick: () -> Unit) {
+    val revealed = state == PageState.REVEALED
+    ContentsCell(
+        label = if (revealed) objectDisplayName(entry.objectId) else stringResource(R.string.collection_unknown),
+        known = revealed,
+        onClick = onClick,
+        highlighted = state == PageState.READY,
+        mark = if (state == PageState.READY) ({ ReadyDot() }) else null,
+    ) {
+        if (revealed) {
+            ObjectPreview(objectId = entry.objectId, atlas = atlas, terrain = terrain, modifier = Modifier.fillMaxSize())
+        } else {
+            Text(
+                text = "？",
+                fontSize = 26.sp,
+                color = if (state == PageState.READY) Leather else InkFaded,
+                fontFamily = BookFont,
+            )
         }
     }
 }
@@ -394,6 +413,7 @@ private fun Chapter(
 private fun Spread(
     entry: CollectionEntry,
     state: PageState,
+    enteredAt: Long?,
     atlas: SpriteAtlas,
     terrain: TerrainTextures,
     onReveal: () -> Unit,
@@ -446,12 +466,7 @@ private fun Spread(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = stringResource(R.string.collection_number, entry.ordinal + 1),
-                color = InkFaded,
-                fontFamily = FontFamily.Monospace,
-                style = MaterialTheme.typography.labelMedium,
-            )
+            PageHeader(entry.ordinal + 1, enteredAt.takeIf { state == PageState.REVEALED })
             Text(
                 text = if (state == PageState.REVEALED) objectDisplayName(entry.objectId) else stringResource(R.string.collection_unknown),
                 color = Ink,

@@ -77,12 +77,11 @@ data class GardenCamera(
         const val MAX_SCALE = 2.5f
 
         /**
-         * The zoom the garden is first shown at: a tile is 128 dp across at 1x, so this makes it
-         * 48 dp, about what a fingertip covers. On a phone the whole of a large garden would
-         * otherwise start with tiles too small to hit (a 13 x 13 garden fitted to a 411 dp
-         * screen has tiles 27 dp across).
+         * The zoom the garden is first shown at, whenever the app opens it: a new garden and a
+         * continued one alike, on any screen. A tile is 128 dp across at 1x, so this makes it
+         * about 70 dp.
          */
-        const val START_SCALE = 48f / 128f
+        const val START_SCALE = 0.55f
 
         /**
          * Starts zoomed out so that every tile is on screen, and lets the player zoom back out
@@ -97,22 +96,17 @@ data class GardenCamera(
         }
 
         /**
-         * The garden's first view, the default zoom: centred, close enough for a tile to be
-         * finger-sized ([START_SCALE]), or on a screen large enough to show even the largest
-         * garden ([LARGEST_GRID]) with larger tiles than that, as that.
-         *
-         * It depends on the screen alone, never on how large the garden is now, so a new garden
-         * and a garden that has just grown open at the same zoom, and tiles do not change size
-         * when the garden grows. Pinching out still goes as far as [fitting], to the whole garden.
+         * The garden's first view, the default zoom: centred, at [START_SCALE]. It depends on
+         * nothing else, so a new garden, a continued one and one that has just grown all open at
+         * the same zoom, and tiles do not change size when the garden grows. Pinching out still
+         * goes as far as [fitting], to the whole garden.
          */
         fun starting(viewport: Size, metrics: IsometricMetrics): GardenCamera {
             val fit = fitting(viewport, metrics)
-            val roomy = fitting(viewport, metrics.copy(gridSize = maxOf(LARGEST_GRID, metrics.gridSize))).scale
-            val scale = maxOf(START_SCALE, roomy).coerceIn(fit.minScale, MAX_SCALE)
-            return GardenCamera(scale, Offset.Zero, fit.minScale).clamped(metrics)
+            return GardenCamera(START_SCALE.coerceIn(fit.minScale, MAX_SCALE), Offset.Zero, fit.minScale).clamped(metrics)
         }
 
-        /** The largest the garden grows (GardenExpansion.MAX_SIZE): the default zoom is set by it. */
+        /** The largest the garden grows (GardenExpansion.MAX_SIZE). */
         const val LARGEST_GRID = 13
 
         /**

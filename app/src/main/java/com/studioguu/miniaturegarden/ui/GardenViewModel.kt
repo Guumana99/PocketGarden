@@ -22,7 +22,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.model.GardenMap
-import com.studioguu.miniaturegarden.domain.model.GardenView
+import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
@@ -75,6 +75,7 @@ import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
 import com.studioguu.miniaturegarden.domain.usecase.UnveilBuildingUseCase
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
+import com.studioguu.miniaturegarden.ui.effects.plusEffect
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -133,7 +134,11 @@ class GardenViewModel @Inject constructor(
     rewardLimits: RewardLimitRepository,
 ) : ViewModel() {
 
-    val gridObjects: StateFlow<List<GridObject>> = gardenRepository.observeGridObjects()
+    /** What stands in the garden as stored; null until it has been read. */
+    private val storedObjects: StateFlow<List<GridObject>?> = gardenRepository.observeGridObjects()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val gridObjects: StateFlow<List<GridObject>> = storedObjects.map { it.orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val profile: StateFlow<UserProfile?> = gardenRepository.observeUserProfile()
@@ -376,6 +381,17 @@ class GardenViewModel @Inject constructor(
     private val _terrain = MutableStateFlow(TerrainTextures.EMPTY)
     val terrain: StateFlow<TerrainTextures> = _terrain.asStateFlow()
 
+    private val _artLoaded = MutableStateFlow(false)
+
+    /**
+     * Whether everything the garden is drawn from has been read: what stands in it, its size and
+     * season, and its artwork. Until then the screen shows the sky alone, never the default 9 x 9
+     * lawn or the stand-in shapes for a moment before the saved garden replaces them.
+     */
+    val gardenReady: StateFlow<Boolean> = combine(storedObjects, progress, gardenMap, _artLoaded) { objects, saved, map, art ->
+        isGardenReady(objects, saved, map, art)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     private val _messages = Channel<Int>(Channel.BUFFERED)
 
     /** String resource ids of one-off messages (failed actions) to show the player. */
@@ -399,8 +415,13 @@ class GardenViewModel @Inject constructor(
     }
 
     init {
-        viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
-        viewModelScope.launch { _terrain.value = assetRepository.loadTerrainTextures() }
+        viewModelScope.launch {
+            coroutineScope {
+                launch { _atlas.value = assetRepository.loadAtlas() }
+                launch { _terrain.value = assetRepository.loadTerrainTextures() }
+            }
+            _artLoaded.value = true
+        }
         audio.preload()
         watchForLevelUps()
         watchCollection()
@@ -530,15 +551,6 @@ class GardenViewModel @Inject constructor(
         // still missing for a moment while it is being made, and that is not "done".
         ready && step == TutorialStep.DONE && settings.notificationsEnabled && !settings.notificationInviteShown
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-
-    /** How the player last left the garden zoomed and panned, to open it the same way. */
-    val savedView: StateFlow<GardenView?> = settingsRepository.settings.map { it.gardenView }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    fun saveView(view: GardenView) {
-        if (view == savedView.value) return
-        viewModelScope.launch { settingsRepository.update { it.copy(gardenView = view) } }
-    }
 
     /**
      * The player has read the closing board of the first steps, or the introduction of a feature
@@ -944,7 +956,7 @@ class GardenViewModel @Inject constructor(
     }
 
     private fun showEffect(create: (id: Long) -> GardenEffect) {
-        _effects.update { it + create(nextEffectId++) }
+        _effects.update { it.plusEffect(create(nextEffectId++)) }
     }
 
     /**
@@ -1039,3 +1051,11 @@ class GardenViewModel @Inject constructor(
         const val WORK_GRACE_MILLIS = 60L
     }
 }
+
+/**
+ * The garden can be shown once what stands in it ([objects]) and its progress ([saved]) have been
+ * read, the lawn drawn ([map]) is already the saved garden's size, and the artwork has loaded
+ * ([artLoaded]). Anything less would show the default garden, or stand-in shapes, for a moment.
+ */
+internal fun isGardenReady(objects: List<GridObject>?, saved: GardenProgress?, map: GardenMap, artLoaded: Boolean): Boolean =
+    objects != null && saved != null && map.size == saved.gardenSize && artLoaded

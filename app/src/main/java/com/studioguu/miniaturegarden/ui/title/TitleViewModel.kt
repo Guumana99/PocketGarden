@@ -11,6 +11,7 @@ import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,13 +36,23 @@ class TitleViewModel @Inject constructor(
     private val _terrain = MutableStateFlow(TerrainTextures.EMPTY)
     val terrain: StateFlow<TerrainTextures> = _terrain.asStateFlow()
 
+    private val _artLoaded = MutableStateFlow(false)
+
+    /** Whether the artwork has been read: the sample garden is shown from then on, never in stand-in shapes. */
+    val artLoaded: StateFlow<Boolean> = _artLoaded.asStateFlow()
+
     private var busy = false
 
     init {
         viewModelScope.launch { _hasSavedGarden.value = gardenRepository.hasSavedGarden() }
         // The same artwork the garden uses; it stays loaded for the garden afterwards.
-        viewModelScope.launch { _atlas.value = assetRepository.loadAtlas() }
-        viewModelScope.launch { _terrain.value = assetRepository.loadTerrainTextures() }
+        viewModelScope.launch {
+            coroutineScope {
+                launch { _atlas.value = assetRepository.loadAtlas() }
+                launch { _terrain.value = assetRepository.loadTerrainTextures() }
+            }
+            _artLoaded.value = true
+        }
     }
 
     /**
