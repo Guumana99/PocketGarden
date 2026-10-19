@@ -21,6 +21,7 @@ enum class Decoration(val objectId: String) {
     BENCH("deco_bench"),
     LANTERN("deco_lantern"),
     SPRINKLER("deco_sprinkler"),
+    POND("deco_pond"),
 }
 
 /** Flat ground cover, drawn below plants and decorations. */
@@ -78,6 +79,12 @@ object TileSetDefinition {
     /** The sprite of a visitor: `creature_<id>`, standing with its anchor at its feet. */
     fun assetIdFor(creature: Creature): String = "creature_${creature.id}"
 
+    /**
+     * Things drawn from a picture of their own in `res/drawable` (through [TerrainTextures]),
+     * not from the atlas: they are never looked up there.
+     */
+    val DRAWABLE_OBJECT_IDS: Set<String> = setOf(GridObject.POND_OBJECT_ID)
+
     /** The windmill's sails: a sprite of their own, hung on the mill's hub and turned. */
     const val WINDMILL_SAILS = "struct_windmill_blades"
 
@@ -96,7 +103,7 @@ object TileSetDefinition {
     val expectedSpriteIds: List<String> =
         GroundTile.entries.map { it.assetId } +
             PlantSpecies.entries.flatMap(::spriteIdsFor) +
-            (objectIds - PlantSpecies.entries.map { it.objectId }.toSet()) +
+            (objectIds - PlantSpecies.entries.map { it.objectId }.toSet() - DRAWABLE_OBJECT_IDS) +
             WINDMILL_SAILS +
             (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId) +
             Creature.entries.map(::assetIdFor)

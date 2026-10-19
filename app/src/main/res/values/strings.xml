@@ -65,6 +65,7 @@
     <string name="object_floor_cobblestone">石畳</string>
     <string name="object_floor_tilled">耕した土</string>
     <string name="object_floor_wood">ウッドデッキ</string>
+    <string name="object_deco_pond">池</string>
     <string name="object_ground_flowers">野の花</string>
     <string name="object_deco_bench">ベンチ</string>
     <string name="object_deco_lantern">石灯籠</string>
@@ -233,6 +234,7 @@
     <string name="flavor_pebble">河原で拾った、丸い小石。\n並べれば、小径になる。</string>
     <string name="flavor_flowers">名も知らぬ、小さな野の花。\n風が吹くと、いっせいに揺れる。</string>
     <string name="flavor_deck">木の香りがする、板張りの床。\n素足で歩くと、心地よい。</string>
+    <string name="flavor_pond">丸太と石で囲んだ、小さな池。\n睡蓮の葉に、光がゆれる。</string>
     <string name="flavor_bench">ひと休みにちょうどいい。\n腰かけて、庭を眺めよう。</string>
     <string name="flavor_lantern">苔むした、石の灯り。\n夕暮れに、ぽっと灯る。</string>
     <string name="flavor_sprinkler">くるくる回って、まわりの畑に水をまく。\n止めておけば、ただの飾り。</string>

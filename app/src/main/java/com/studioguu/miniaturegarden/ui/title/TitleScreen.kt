@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.ui.components.BareGround
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
@@ -147,6 +148,8 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
                     weather = WeatherType.SUNNY,
                     visitors = TitleSampleGarden.visitors,
                     initialZoom = SAMPLE_ZOOM,
+                    // A garden in full swing, grown over: the lawn, not the wasteland a new one starts as.
+                    bareGround = BareGround.LAWN,
                     modifier = Modifier.fillMaxSize().graphicsLayer { alpha = sampleAlpha },
                 )
                 // Laid over the sample so that it cannot be dragged, pinched or tapped: it is

@@ -88,12 +88,15 @@ class CodeArtTest {
     fun `every sprite still missing is drawn in code meanwhile`() {
         val missing = TileSetDefinition.expectedSpriteIds.filter { it !in sprites }
         val creatureIds = Creature.entries.map(TileSetDefinition::assetIdFor).toSet()
+        val sprayFrames = (0 until TileSetDefinition.SPRINKLER_SPRAY_FRAMES).map(TileSetDefinition::sprinklerSprayId).toSet()
         for (id in missing) {
             val species = PlantSpecies.entries.firstOrNull { id in TileSetDefinition.spriteIdsFor(it) }
             when {
                 species != null -> assertTrue(id, species in CROPS_DRAWN_IN_CODE)
                 // Every visitor has its drawing in drawCreature, an exhaustive `when`.
                 id in creatureIds -> Unit
+                // A running sprinkler's water is drawn in code from SprinklerSpray, frame by frame.
+                id in sprayFrames -> Unit
                 // Everything else in a cell has a placeholder shape (drawPlaceholder, drawStructure).
                 else -> assertTrue(id, id in TileSetDefinition.objectIds || id.startsWith("tile_"))
             }

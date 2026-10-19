@@ -13,6 +13,8 @@
 | `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 41 枚を 1 枚に詰めたもの（4019×2408、約 11MB、メモリ上 約 39MB、1 タイル 512px） | `tools/asset_packer.py` |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
+| `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。1 マス分の土の板 | 受け取ったまま（1536×768）。上面の位置は `GroundSlab.WASTELAND` |
+| `app/src/main/res/drawable/pond.png` | 池（`deco_pond`） | `tools/source_art/pond.png` をそのままコピー（1536×768）。上面の位置は `GroundSlab.POND` |
 | `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
 
 ### スプライトの内訳

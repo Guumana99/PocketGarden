@@ -133,7 +133,7 @@ class ProgressionTest {
             unlockedAt(2),
         )
         assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL + GardenItem.SEED_WATERMELON + GardenItem.SEED_LAVENDER + GardenItem.DECO_SPRINKLER, unlockedAt(3))
-        assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE + GardenItem.SEED_PAPRIKA + GardenItem.STRUCT_WINDMILL, unlockedAt(4))
+        assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE + GardenItem.SEED_PAPRIKA + GardenItem.STRUCT_WINDMILL + GardenItem.DECO_POND, unlockedAt(4))
         // Level opens everything but the two that the encyclopedia opens.
         val byPages = setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN)
         // The symbol building comes at Lv.6, the greenhouse much later, at Lv.18.
@@ -152,7 +152,7 @@ class ProgressionTest {
         assertEquals(
             setOf(
                 GardenItem.STRUCT_WELL, GardenItem.SEED_WATERMELON, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_PAPRIKA,
-                GardenItem.STRUCT_WINDMILL, GardenItem.DECO_SPRINKLER,
+                GardenItem.STRUCT_WINDMILL, GardenItem.DECO_SPRINKLER, GardenItem.DECO_POND,
             ),
             GardenItem.unlockedBetween(2, 4).toSet(),
         )
@@ -254,10 +254,13 @@ class ProgressionTest {
     }
 
     @Test
-    fun `only structures give experience for being placed`() {
+    fun `only structures, and the pond, give experience for being placed`() {
         val paying = GardenItem.entries.filter { it.placeXp > 0 }
         assertEquals(
-            setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WINDMILL, GardenItem.FLOOR_GREENHOUSE),
+            setOf(
+                GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WINDMILL, GardenItem.FLOOR_GREENHOUSE,
+                GardenItem.DECO_POND,
+            ),
             paying.toSet(),
         )
         assertTrue(GardenItem.STRUCT_HUT.placeXp > GardenItem.STRUCT_WELL.placeXp)

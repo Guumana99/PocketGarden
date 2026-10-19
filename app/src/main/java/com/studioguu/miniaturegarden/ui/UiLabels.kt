@@ -47,6 +47,7 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "deco_bench" -> R.string.object_deco_bench
     "deco_lantern" -> R.string.object_deco_lantern
     "deco_sprinkler" -> R.string.object_deco_sprinkler
+    "deco_pond" -> R.string.object_deco_pond
     "deco_starter_crate" -> R.string.object_deco_starter_crate
     // A fence is a fence under any of the ids it has been stored as.
     "struct_fence", "struct_fence_rail", "struct_fence_post" -> R.string.object_struct_fence
@@ -94,6 +95,7 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.DECO_BENCH -> "🪑"
     GardenItem.DECO_LANTERN -> "🏮"
     GardenItem.DECO_SPRINKLER -> "💦"
+    GardenItem.DECO_POND -> "⛲"
     GardenItem.STRUCT_COTTAGE -> "🏡"
     // There is no windmill emoji; the wind it turns in stands for it.
     GardenItem.STRUCT_WINDMILL -> "🌬️"
