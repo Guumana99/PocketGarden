@@ -1,7 +1,6 @@
 package com.studioguu.miniaturegarden.ui
 
 import com.studioguu.miniaturegarden.domain.model.WorkKind
-import com.studioguu.miniaturegarden.ui.collection.NOTICE_MILLIS
 import com.studioguu.miniaturegarden.ui.components.GardenToastState
 import com.studioguu.miniaturegarden.ui.components.toastMillis
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
@@ -68,11 +67,14 @@ class WordingAndToastTest {
     }
 
     @Test
-    fun `the book's notice stays as long as a toast of the same words would`() {
-        for (name in listOf("collection_revealed_coins", "collection_daily_reward")) {
-            val text = string(name)!!.replace("%1\$d", "30")
-            assertTrue(name, NOTICE_MILLIS >= toastMillis(text))
-        }
-        assertTrue(NOTICE_MILLIS <= GardenToastState.MAX_MILLIS)
+    fun `the book writes nothing over itself when a page is filled in or the day's coins come`() {
+        assertEquals(null, string("collection_revealed_coins"))
+        assertEquals(null, string("collection_daily_reward"))
+        val book = File(main, "java/com/studioguu/miniaturegarden/ui/collection/CollectionDialog.kt").readText()
+        assertFalse(book.contains("NoticeStrip"))
+        val model = File(main, "java/com/studioguu/miniaturegarden/ui/collection/CollectionViewModel.kt").readText()
+        assertFalse(model.contains("BookNotice"))
+        // The coins still chime.
+        assertTrue(model.contains("audio.play(SoundEffect.COIN)"))
     }
 }

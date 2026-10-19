@@ -219,8 +219,6 @@ class StoreObjectTest {
         assertFalse(label.contains("%"))
         assertFalse(label.contains("🪙"))
         assertFalse(label.any { it.isDigit() })
-        // The coins are still announced once the page is filled in.
-        assertTrue(string("collection_revealed_coins").contains("%1\$d"))
     }
 
     @Test

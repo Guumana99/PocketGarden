@@ -30,6 +30,7 @@ import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
+import com.studioguu.miniaturegarden.ui.toolStars
 
 /**
  * Floating tool bar. Water and fertilizer act on the currently selected plant and are disabled
@@ -41,7 +42,8 @@ import com.studioguu.miniaturegarden.ui.theme.GardenColors
  * @param bagActive something from the bag is in hand: the bag's button is lit, and tapping it
  *   puts that down again, as the hoe's does for the hoe (#50).
  * @param hoeLevel how far the hoe has come with use ([com.studioguu.miniaturegarden.domain.model.FarmTool]),
- *   shown on its button from level 2; [wateringCanLevel] the same for the watering can.
+ *   shown on its button as small gold stars from level 2 ([toolStars]), with its rank for the
+ *   screen reader; [wateringCanLevel] the same for the watering can.
  */
 @Composable
 fun QuickActionBar(
@@ -86,9 +88,8 @@ fun QuickActionBar(
     }
 }
 
-/** A tool's level as its button shows it, from level 2 on; a new tool shows none. */
-@Composable
-private fun levelBadge(level: Int): String? = if (level > 1) stringResource(R.string.tool_level, level) else null
+/** A tool's level as its button shows it: stars from level 2 on; a new tool shows none. */
+private fun levelBadge(level: Int): String? = toolStars(level).takeIf { it.isNotEmpty() }
 
 @Composable
 private fun ActionButton(
@@ -116,8 +117,9 @@ private fun ActionButton(
                 if (badge != null) {
                     Text(
                         text = badge,
-                        color = GardenColors.Cream,
-                        fontSize = 9.sp,
+                        color = BADGE_GOLD,
+                        fontSize = 8.sp,
+                        letterSpacing = (-0.5).sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -131,3 +133,6 @@ private fun ActionButton(
         }
     }
 }
+
+/** The stars of a tool that has come on with use: gold leaf on the dark wood tag. */
+private val BADGE_GOLD = Color(0xFFE6C36A)

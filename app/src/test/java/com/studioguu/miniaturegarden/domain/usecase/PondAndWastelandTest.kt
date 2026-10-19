@@ -113,7 +113,7 @@ class PondAndWastelandTest {
         val canvas = source("ui/components/GardenCanvas.kt")
         assertTrue(canvas.contains("bareGround: BareGround = BareGround.WASTELAND"))
         assertTrue(canvas.contains("val wasteland = if (bareGround == BareGround.WASTELAND) terrain.wasteland else null"))
-        assertTrue(canvas.contains("wasteland, GroundSlab.WASTELAND, transform.tileCenter(x, y), transform.tileWidth"))
+        assertTrue(canvas.contains("if (wasteland != null) drawFlatGround(wasteland, transform, gardenOutline(transform, max))"))
         assertTrue(source("ui/title/TitleScreen.kt").contains("bareGround = BareGround.LAWN"))
     }
 

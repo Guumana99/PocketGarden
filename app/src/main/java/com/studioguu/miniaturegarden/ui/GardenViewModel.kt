@@ -711,10 +711,10 @@ class GardenViewModel @Inject constructor(
                 onSuccess = {
                     _selectedTile.value = null
                     audio.play(SoundEffect.LEVEL_UP)
-                    showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
-                    // Its experience comes now, not when the site went up (#50).
+                    // Its experience comes now, not when the site went up (#50), and is said on the
+                    // building's own plaque: a "+XP" floating up beside it ran into the plaque.
                     val xp = StoreObjectUseCase.itemFor(site)?.placeXp ?: 0
-                    if (xp > 0) showEffect { GardenEffect.Xp(it, xp) }
+                    showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING, xp = xp) }
                 }
             ) { now, _ -> unveilBuilding(site.instanceId, now).also { if (it == ActionResult.SUCCESS) announceGrowthIfDue(now) } }
         } else if (_hoeActive.value) {

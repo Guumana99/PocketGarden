@@ -72,7 +72,6 @@ import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
 import com.studioguu.miniaturegarden.ui.render.drawCropInCode
-import com.studioguu.miniaturegarden.ui.render.drawSeasonGround
 import com.studioguu.miniaturegarden.ui.render.drawTurningSprite
 import com.studioguu.miniaturegarden.ui.render.WindmillSails
 import com.studioguu.miniaturegarden.ui.render.GustAxis
@@ -91,7 +90,9 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import com.studioguu.miniaturegarden.ui.render.LawnShade
 import com.studioguu.miniaturegarden.ui.render.SoilJoins
 import com.studioguu.miniaturegarden.ui.render.plantScale
+import com.studioguu.miniaturegarden.ui.render.PondWater
 import com.studioguu.miniaturegarden.ui.render.SprinklerSpray
+import com.studioguu.miniaturegarden.ui.render.drawFlatGround
 import com.studioguu.miniaturegarden.ui.render.drawGroundSlab
 import com.studioguu.miniaturegarden.ui.render.Wind
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
@@ -610,12 +611,15 @@ private fun submitObjects(
         if (obj.isPond) {
             // Low, lying in the ground: with the ground cover, under whatever stands round it.
             val pond = terrain.pond
+            // Its water moves on the garden's clock: glints and spreading rings (PondWater).
+            val water = PondWater.frameAt(ambience.windMillis ?: 0L, seed = obj.gridX * 31 + obj.gridY * 17)
             submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {
                 if (pond != null) {
                     drawGroundSlab(pond, GroundSlab.POND, transform.tileCenter(obj.gridX, obj.gridY), unit, coverage = POND_COVERAGE)
                 } else {
                     drawPondInCode(transform, obj.gridX, obj.gridY)
                 }
+                drawPondWater(transform, obj.gridX, obj.gridY, water)
             }
             continue
         }
@@ -1350,21 +1354,10 @@ private fun DrawScope.drawTerrain(
         drawPath(quad(bottom, right, right + thickness, bottom + thickness), SOIL_RIGHT)
     }
 
-    // Untilled ground: a slab of cracked earth for each cell (res/drawable/soil_wasteland.png),
-    // back to front so that each one's front edge comes over the one behind, and kept inside the
-    // garden so that the outer slabs' sides and tufts do not spill over the frame.
-    if (wasteland != null) {
-        clipPath(gardenOutline(transform, max)) {
-            for (x in 0 until gridSize) for (y in 0 until gridSize) {
-                val type = gardenMap.tileAt(x, y) ?: TileType.GRASS
-                if (TileSetDefinition.groundTileFor(type, x, y) != GroundTile.GRASS) continue
-                drawGroundSlab(
-                    wasteland, GroundSlab.WASTELAND, transform.tileCenter(x, y), transform.tileWidth,
-                    coverage = WASTELAND_COVERAGE, flipped = LawnShade.mirrored(x, y),
-                )
-            }
-        }
-    }
+    // Untilled ground: the cracked earth of res/drawable/soil_wasteland.png, flattened
+    // (FlatGround) and laid over the whole garden at once, like the beds of a field: one ground
+    // with no line between cells, and none of the picture's rim or tufts.
+    if (wasteland != null) drawFlatGround(wasteland, transform, gardenOutline(transform, max))
 
     // The lawn, feathered (#47, LawnShade.feather): one colour under all of it, then each cell
     // of grass drawn larger than itself and fading into its neighbours, so that no line runs
@@ -1403,8 +1396,6 @@ private fun DrawScope.drawTerrain(
                 else -> drawGroundTile(transform, x, y, GRASS_DARK, ambience.sway(x + 0.5f, y + 0.5f))
             }
         }
-        // The season, over the lawn: petals, a deeper green, fallen leaves or snow.
-        if (tile != GroundTile.WATER) drawSeasonGround(transform, x, y, ambience.season)
     }
     if (wasteland == null) drawLawnShade(transform, gridSize)
 }
@@ -1426,9 +1417,6 @@ enum class BareGround {
     /** The feathered lawn: the title's garden in full swing, and where the wasteland is missing. */
     LAWN,
 }
-
-/** A wasteland slab's face a touch larger than its cell, so that no seam of the frame shows between two. */
-private const val WASTELAND_COVERAGE = 1.02f
 
 /** The pond's ring of stones fills its cell, just short of the edges. */
 private const val POND_COVERAGE = 0.98f
@@ -2142,6 +2130,48 @@ private val LANTERN_LIGHT = Color(0xFFFFE9A8)
 private val POND_WATER = Color(0xFF8FC3D9)
 private val POND_WATER_DEEP = Color(0xFF5E9BB5)
 private val POND_STONE = Color(0xFFD8D3C8)
+
+private val POND_GLINT = Color(0xFFFFFFFF)
+private val POND_RING = Color(0xFFEAF6FB)
+
+/**
+ * The pond's water moving ([PondWater]): glints of light and rings spreading over it, kept to
+ * the open water inside the logs. Laid flat on the water, like everything on the ground.
+ */
+private fun DrawScope.drawPondWater(transform: IsometricTransform, x: Int, y: Int, frame: PondWater.Frame) {
+    val from = PondWater.WATER_FROM
+    val span = PondWater.WATER_TO - PondWater.WATER_FROM
+    fun at(u: Float, v: Float) = transform.worldToScreen(x + from + span * u, y + from + span * v)
+    val water = quad(at(0f, 0f), at(1f, 0f), at(1f, 1f), at(0f, 1f))
+    // A width on the water, in screen pixels: the water is [span] of a cell across.
+    val across = transform.tileWidth * span
+    clipPath(water) {
+        for (ripple in frame.ripples) {
+            if (ripple.alpha <= 0f) continue
+            val center = at(ripple.u, ripple.v)
+            val radius = across * ripple.radius
+            scale(scaleX = 1f, scaleY = 0.5f, pivot = center) {
+                drawCircle(POND_RING.copy(alpha = ripple.alpha), radius, center, style = Stroke(width = across * 0.012f))
+            }
+        }
+        for (glint in frame.glints) {
+            if (glint.alpha <= 0.01f) continue
+            val center = at(glint.u, glint.v)
+            val radius = across * glint.size
+            scale(scaleX = 1f, scaleY = 0.5f, pivot = center) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        listOf(POND_GLINT.copy(alpha = 0.85f * glint.alpha), POND_GLINT.copy(alpha = 0f)),
+                        center = center,
+                        radius = radius,
+                    ),
+                    radius = radius,
+                    center = center,
+                )
+            }
+        }
+    }
+}
 
 /** The pond when its picture cannot be read: a pool of water in a ring of pale stones. */
 private fun DrawScope.drawPondInCode(transform: IsometricTransform, x: Int, y: Int) {

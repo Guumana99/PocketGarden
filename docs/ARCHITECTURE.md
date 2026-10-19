@@ -515,12 +515,14 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
 - 満開でなくなるので、収穫した株に「満開のまま 72 時間で枯れる」時計は動かない。放っておけば水切れなどでほかの作物と同じように枯れる。
 - **肥料**（#50）：栄養が 50% 未満（`FERTILIZING_THRESHOLD`）のときだけ。10 コイン・経験値 6。満タンにして、その作物の育つ時間の 5%（最低 2 時間）ぶん育つ（`fertilizerBoost`）。栄養は 3 日で尽きるので、あげられるのは 1 日半に 1 回ほど
   （それまでは何度でもあげられ、連打で一気に実った）。足りているときは `ALREADY_FED`「まだ栄養は足りています」。
-- **農具の腕前（スタミナなし）**：キャラクターを動かすゲームではないので、道具を使っても何も減らない。代わりにクワとジョウロは使うほど上達する（`FarmTool`、経験は `garden_progress.hoeXp`／`wateringCanXp`、スキーマ v14）。クワは耕した区画 1 つで 1、ジョウロは水やり 1 回で 1。Lv5 まで（クワ 5/15/30/50、ジョウロ 10/30/60/100 回）。上がると「⛏️ クワの腕が上がった！」が浮かび、ツールバーのボタンに「Lv2」などが付く
+- **農具の腕前（スタミナなし）**：キャラクターを動かすゲームではないので、道具を使っても何も減らない。代わりにクワとジョウロは使うほど上達する（`FarmTool`、経験は `garden_progress.hoeXp`／`wateringCanXp`、スキーマ v14）。クワは耕した区画 1 つで 1、ジョウロは水やり 1 回で 1。Lv5 まで（クワ 15/40/90/180、ジョウロ 25/70/150/300 回。最初の 5/15/30/50 では数列耕すだけで極まってしまったので、庭の一生をかけて身につく腕前にした）。画面では数字の Lv は出さず、位（見習い・慣れた手つき・一人前・熟練・名人、`toolRank`）と星で見せる：上がると「⛏️ クワさばきが上達しました：一人前」が浮かび、ツールバーのボタンに金色の星（Lv2 で ★、Lv5 で ★★★★、`toolStars`）が付く
 - **荒れ地の硬さとクワ**：何もないマスには硬さ 1〜3（`SoilHardness.at`、マスごとに決まっていて変わらない）。耕すのに必要な回数は「硬さ −（クワの Lv − 1）」、最低 1（`HoeSkill.strikesNeeded`。新品で硬さ 3 は 3 回、Lv3 からはどこも 1 回）。足りないうちは `HOE_STRUCK`（「地面が固いようです」、にぶい音）で何も保存しない。叩いた回数はアプリを開いている間だけ覚える（`GardenViewModel.hoeStrikes`）。はじめの一歩の 1 マスはどこでも 1 回
 - **土の質**：耕した土はそのときのクワの Lv で質 0〜4（`HoeSkill.soilQualityFor`、`grid_objects.soilQuality`）。そこで育った作物の収穫コインは質 1 につき +5%（`SoilQuality.harvestCoins`、最大 +20%）。経験値は変わらない。詳細パネルに「🌱 土の質 ★★☆☆（収穫コイン +10%）」
 - **ジョウロの Lv**：1 回の水やりで足す水分は 35 + 10×(Lv−1) ポイント（`WateringCanSkill.waterAmount`、Lv5 で 75）。カラカラから水やりラインまで、新品は 3 回、Lv3 からは 2 回
-- **荒れ地（未耕作の地面）**：何も敷いていないマスは `res/drawable/soil_wasteland.png`（ひび割れた黒土の板 1 枚が 1 マス）で描く。`AssetRepository.loadTerrainTextures` が `R.drawable.soil_wasteland` を元の大きさのまま読み（`TerrainTextures.wasteland`）、`drawTerrain` が奥から手前へ 1 マスずつ置く（上面がマスより 2% 大きく、庭の菱形で切り抜くので外側の土の側面や枯れ草は枠にはみ出さない。左右はマスごとにランダムに反転）。上面の位置は `GroundSlab.WASTELAND`（上面の中心 0.502, 0.519、幅は絵の 88.4%。乾いた草を除いた黒土だけで測った値、`PondAndWastelandTest` が絵から測り直して確かめる）。荒れ地があるときは芝（`FeatheredLawn`）は敷かない。絵が読めないときは今までどおり芝。タイトルの見本の庭は「育ちきった庭」なので芝のまま（`GardenCanvas(bareGround = BareGround.LAWN)`）。ショップや図鑑の小さな絵も芝のまま
-- **池**（`deco_pond`、`GardenItem.DECO_POND`）：ショップの「かざり」、Lv4、75 コイン、置くと経験値 20（建物以外で経験値が入るのは池だけ）、図鑑の「ちけい」、持ち物では「地面」の仲間。川と同じく 1 マスを丸ごと使う（`PlacementKind.TERRAIN`：下に舗装は敷けず、上に何も置けず、クワも入らない。`GardenGrid.checkPlacement` が池のマスを `OCCUPIED` にする）。川と違って動かせて、持ち物に戻せる。絵は `res/drawable/pond.png`（`R.drawable.pond`、`TerrainTextures.pond`、上面は `GroundSlab.POND`、マスの 98%）を地面の物と同じ層（`BOTTOM_OBJECTS`）に描く。アトラスには探しに行かない（`TileSetDefinition.DRAWABLE_OBJECT_IDS`）。絵が読めないときは石の縁と水色の菱形をコードで描く。保存は他の置物と同じく `grid_objects` の 1 行（`objectId = "deco_pond"`、スキーマの変更なし）
+- **荒れ地（未耕作の地面）**：何も敷いていないマスは `res/drawable/soil_wasteland.png` の土。`AssetRepository.loadTerrainTextures` が `R.drawable.soil_wasteland` を読み、読み込み時に平らな正方形のテクスチャにする（`FlatGround.flatten`）：絵の上面（`GroundSlab.WASTELAND`、上面の中心 0.502, 0.519、幅は絵の 88.4%）を真上から見た正方形に戻し、各辺 14% を切り落とす（`FlatGround.INSET`：崩れた縁・白い枯れ草・板の側面を取り除く）。それを継ぎ目なく並ぶように作り直す（`FlatGround.seamless`：透けた所は土の平均色で埋め、半分ずらした写し 3 枚と重ね、各写しを自分の端からの近さで重み付けする。鏡写しで並べると万華鏡のような模様になったのでやめた）。庭ではそれを 1.5 マスに 1 枚の割合で、庭のx・y方向に沿って一度に敷く（`drawFlatGround`、`BitmapShader` の REPEAT）。マスごとの境目は出ない。荒れ地があるときは芝（`FeatheredLawn`）は敷かない。絵が読めないときは今までどおり芝。タイトルの見本の庭は「育ちきった庭」なので芝のまま（`GardenCanvas(bareGround = BareGround.LAWN)`）。ショップや図鑑の小さな絵も芝のまま
+- **池**（`deco_pond`、`GardenItem.DECO_POND`）：ショップの「かざり」、Lv4、75 コイン、置くと経験値 20（建物以外で経験値が入るのは池だけ）、図鑑の「ちけい」、持ち物では「地面」の仲間。川と同じく 1 マスを丸ごと使う（`PlacementKind.TERRAIN`：下に舗装は敷けず、上に何も置けず、クワも入らない。`GardenGrid.checkPlacement` が池のマスを `OCCUPIED` にする）。川と違って動かせて、持ち物に戻せる。絵は `res/drawable/pond.png`（`R.drawable.pond`、`TerrainTextures.pond`、上面は `GroundSlab.POND`、マスの 98%）を地面の物と同じ層（`BOTTOM_OBJECTS`）に描く。アトラスには探しに行かない（`TileSetDefinition.DRAWABLE_OBJECT_IDS`）。絵が読めないときは石の縁と水色の菱形をコードで描く。水面は動く（`PondWater`：庭の時計で、きらめき 5 つがそれぞれ明るくなっては消えて場所を変え、輪が 2 つ広がりながら薄れる。丸太の内側の水面＝マスの 0.2〜0.7 に切り抜いて描く。池ごとに位置と時刻をずらすので並んだ池がそろって動かない）。保存は他の置物と同じく `grid_objects` の 1 行（`objectId = "deco_pond"`、スキーマの変更なし）
+- **お披露目の札と経験値**：建物をお披露目したときの経験値は「🎉 井戸 が完成！」の札の 2 行目に「+40 XP」と書く（`GardenEffect.WorkDone.xp`）。別に「+XP」を浮かべていたときは札と重なって読めなかった
+- **図鑑の目次へ**：どの詳細ページにも下の段に「📖 もくじ」の木のボタン（`BookFooter`、目次では出さない）。ページを埋めたとき・その日初めて開いたときのコインは音（`SoundEffect.COIN`）だけで知らせ、「登録しました！ +N 🪙」「今日の図鑑ボーナス」の帯は出さない（`NoticeStrip` と文字列を削除）
 - **スプリンクラー**（`deco_sprinkler`、`Sprinkler`）：道具ではなく庭に置く物（ショップ Lv3、70 コイン（井戸より安く。ショップの値段の決まり、`ShopAndEffectsTest`）、図鑑の「たてもの」）。動いている間（`grid_objects.isOn`）は周り 1 マス（斜めも）の土の乾きが 1/4（`PlantSurroundings` で井戸や風車と同じく一番よいものを取る）。詳細パネルの「止める／動かす」で切り替え（`ToggleSprinklerUseCase`。切り替える前に周りの作物を今まで進めるので、それまでの時間は前の設定で数える）。動いている間は水しぶきが回る（`SprinklerSpray`：コマ番号・頭の向き・しずくの位置をデータで持つ。`deco_sprinkler_spray_0`〜`_7` の絵があればコマごとにそれを使う）
 - **枯れた作物**：絵は `<objectId>_withered`（`TileSetDefinition.assetIdFor`）。収穫・水やり・肥料はできず（`WITHERED`）、勝手には消えない。
   **空き地に戻すのは撤去だけ**（`RemoveObjectUseCase`。下の耕した土はたい肥入りになる）。30 コインの復活（`revive`）は従来どおり残してある（株がよみがえるだけで、空き地にはならない）。
@@ -535,7 +537,7 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
 
 #### 季節の見た目
 
-- 芝生のマスごとに季節の層を重ねる（`drawSeasonGround`、`SeasonGround`）：春は花びら、夏は濃い緑、秋は黄金色と落ち葉、冬は雪と小さなきらめき。位置はマス座標から決まる。
+- 地面には季節の層を重ねない。以前は春の花びら（白・ピンク）・秋の落ち葉・冬の雪ときらめきを各マスに散らしていたが（`drawSeasonGround`）、地面の上の白やピンクの斑点が汚れのように見えたので取り除いた。季節は空・作物・音楽・お便りで伝える
 - 背景（`GardenBackdrop(season = …)`）：丘と草原の色を季節の色へ寄せ、枝と茂みの葉の色を変える（秋は橙、冬は雪をかぶる）。空は天気の色のまま。
 - 作物・建物・川そのものの見た目は季節で変えていない。
 

@@ -227,7 +227,7 @@ class BundledArtTest {
 
         for (name in listOf(
             "collection_tab_crops", "collection_tab_terrain", "collection_tab_structures",
-            "collection_reveal_button", "collection_revealed_coins", "collection_daily_reward",
+            "collection_reveal_button",
         )) {
             assertTrue("missing string $name", strings.contains("name=\"$name\""))
         }

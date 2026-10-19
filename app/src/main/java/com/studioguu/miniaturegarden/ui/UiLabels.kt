@@ -183,6 +183,19 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.NOT_SWITCHABLE -> R.string.msg_not_switchable
 }
 
+/** A tool's level as a rank, "見習い" (1) to "名人" (5). */
+@StringRes
+fun toolRank(level: Int): Int = when (level.coerceIn(1, 5)) {
+    1 -> R.string.tool_rank_1
+    2 -> R.string.tool_rank_2
+    3 -> R.string.tool_rank_3
+    4 -> R.string.tool_rank_4
+    else -> R.string.tool_rank_5
+}
+
+/** A tool's level as the stars on its button: one for each step past the first, none for a new tool. */
+fun toolStars(level: Int): String = "★".repeat((level - 1).coerceAtLeast(0))
+
 @StringRes
 fun creatureName(creature: Creature): Int = when (creature) {
     Creature.BUTTERFLY -> R.string.creature_butterfly

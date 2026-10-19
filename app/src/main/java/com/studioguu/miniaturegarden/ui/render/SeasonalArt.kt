@@ -1,68 +1,14 @@
 package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.rotate
-import com.studioguu.miniaturegarden.domain.model.Season
 
-// Drawn stand-ins for what has no artwork yet: the seasons on the ground and the glass
-// greenhouse (the crops are in CropArt.kt). Everything is placed from the cell alone, so it
-// looks the same every time and does not shimmer as the camera moves.
-
-/**
- * What a season lays over the lawn of one cell, after the grass itself is drawn.
- *
- * - Spring: a few fallen petals, pink and white.
- * - Summer: the grass a deeper, brighter green.
- * - Autumn: the grass gone golden, with fallen leaves.
- * - Winter: snow over everything but a few tufts, and a glint or two.
- */
-object SeasonGround {
-    /** The wash laid over the whole cell, or null for none. */
-    fun wash(season: Season): Color? = when (season) {
-        Season.SPRING -> null
-        Season.SUMMER -> Color(0x2236A33A)
-        Season.AUTUMN -> Color(0x40D99A3A)
-        Season.WINTER -> Color(0xC8F4F7FA)
-    }
-
-    /** The small things scattered on a cell: petals, leaves or glints. */
-    fun specks(season: Season): List<Color> = when (season) {
-        Season.SPRING -> listOf(Color(0xFFF7B6C8), Color(0xFFFFFFFF), Color(0xFFF7B6C8))
-        Season.SUMMER -> emptyList()
-        Season.AUTUMN -> listOf(Color(0xFFC8642A), Color(0xFFE0A030), Color(0xFFA8432A))
-        Season.WINTER -> listOf(Color(0xFFFFFFFF), Color(0xFFDCE8F2))
-    }
-}
-
-fun DrawScope.drawSeasonGround(transform: IsometricTransform, x: Int, y: Int, season: Season) {
-    SeasonGround.wash(season)?.let { drawPath(transform.tilePath(x, y), it) }
-    val specks = SeasonGround.specks(season)
-    if (specks.isEmpty()) return
-    val unit = transform.tileWidth
-    var seed = x * 92821 xor y * 68917 xor season.ordinal * 7
-    fun next(): Float {
-        seed = seed * 1103515245 + 12345
-        return ((seed ushr 16) and 0x7FFF) / 32767f
-    }
-    // Only some cells have anything on them, so the scatter does not look like a pattern.
-    val count = (next() * 3.2f).toInt()
-    repeat(count) { i ->
-        val at = transform.worldToScreen(x + 0.15f + next() * 0.7f, y + 0.15f + next() * 0.7f)
-        val color = specks[i % specks.size]
-        when (season) {
-            Season.AUTUMN -> rotate(next() * 360f, pivot = at) {
-                drawOval(color, at - Offset(unit * 0.03f, unit * 0.015f), Size(unit * 0.06f, unit * 0.03f))
-            }
-            Season.WINTER -> drawCircle(color, unit * 0.012f, at)
-            else -> drawOval(color, at - Offset(unit * 0.018f, unit * 0.01f), Size(unit * 0.036f, unit * 0.02f))
-        }
-    }
-}
+// A drawn stand-in for what has no artwork yet: the glass greenhouse (the crops are in
+// CropArt.kt). The seasons no longer lay petals, leaves or snow over the ground: those white and
+// pink specks read as noise on the earth.
 
 private val GLASS = Color(0x33CDEBF7)
 private val GLASS_SHINE = Color(0x66FFFFFF)

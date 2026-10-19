@@ -1,7 +1,6 @@
 package com.studioguu.miniaturegarden.ui.collection
 
 import androidx.annotation.StringRes
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -9,10 +8,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,7 +74,6 @@ import com.studioguu.miniaturegarden.ui.components.ObjectPreview
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.objectDisplayName
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // The book's own colours: a leather cover, aged paper, brown ink.
@@ -95,8 +89,6 @@ internal val ReadyMark = Color(0xFFD8442F)
 internal val BookFont = FontFamily.Serif
 internal val SPREAD_HEIGHT = 330.dp
 private const val REVEAL_MILLIS = 900
-/** How long the book's notice ("登録しました！ +N 🪙") stays: as long as the garden's toasts at least (#52). */
-internal const val NOTICE_MILLIS = 3_400L
 
 /**
  * The garden encyclopedia, laid out as an open book with a chapter per category: one spread per
@@ -116,16 +108,10 @@ fun CollectionDialog(
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
     val terrain by viewModel.terrain.collectAsStateWithLifecycle()
-    val notice by viewModel.notice.collectAsStateWithLifecycle()
     val natureNotes by viewModel.natureNotes.collectAsStateWithLifecycle()
 
     // Opening the book is what earns the day's bonus.
     LaunchedEffect(Unit) { viewModel.onOpened() }
-    LaunchedEffect(notice?.id) {
-        val shown = notice ?: return@LaunchedEffect
-        delay(NOTICE_MILLIS)
-        viewModel.onNoticeShown(shown.id)
-    }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
@@ -139,7 +125,6 @@ fun CollectionDialog(
         ) {
             val loaded = progress
             Cover(loaded)
-            NoticeStrip(notice)
             if (loaded == null) {
                 Spacer(Modifier.height(SPREAD_HEIGHT))
             } else {
@@ -214,34 +199,6 @@ private fun Cover(progress: CollectionProgress?) {
                 color = GoldLeaf.copy(alpha = 0.85f),
                 fontFamily = BookFont,
                 style = MaterialTheme.typography.bodySmall,
-            )
-        }
-    }
-}
-
-/** Slides in under the cover when coins were paid, and away again a moment later. */
-@Composable
-private fun NoticeStrip(notice: BookNotice?) {
-    // Keeps the words while the strip slides away.
-    var last by remember { mutableStateOf<BookNotice?>(null) }
-    if (notice != null) last = notice
-    AnimatedVisibility(
-        visible = notice != null,
-        enter = expandVertically() + fadeIn(),
-        exit = shrinkVertically() + fadeOut(),
-    ) {
-        last?.let {
-            Text(
-                text = stringResource(it.message, it.coins),
-                color = Ink,
-                fontFamily = BookFont,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(GoldLeaf, RoundedCornerShape(6.dp))
-                    .padding(vertical = 6.dp),
             )
         }
     }

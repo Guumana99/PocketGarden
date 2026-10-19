@@ -71,15 +71,17 @@ class FarmToolsTest {
     @Test
     fun `a tool's level comes from its uses`() {
         assertEquals(1, FarmTool.HOE.levelFor(0))
-        assertEquals(1, FarmTool.HOE.levelFor(4))
-        assertEquals(2, FarmTool.HOE.levelFor(5))
-        assertEquals(5, FarmTool.HOE.levelFor(50))
+        assertEquals(1, FarmTool.HOE.levelFor(14))
+        assertEquals(2, FarmTool.HOE.levelFor(15))
+        assertEquals(3, FarmTool.HOE.levelFor(50))
+        assertEquals(5, FarmTool.HOE.levelFor(180))
         assertEquals(5, FarmTool.HOE.levelFor(10_000))
-        assertEquals(5, FarmTool.HOE.usesToNextLevel(0))
-        assertEquals(null, FarmTool.HOE.usesToNextLevel(50))
-        assertEquals(2, FarmTool.WATERING_CAN.levelFor(10))
-        assertEquals(FarmTool.WATERING_CAN.maxLevel, FarmTool.WATERING_CAN.levelFor(100))
-        assertEquals(2, GardenProgress(hoeXp = 5).hoeLevel)
+        assertEquals(15, FarmTool.HOE.usesToNextLevel(0))
+        assertEquals(null, FarmTool.HOE.usesToNextLevel(180))
+        assertEquals(1, FarmTool.WATERING_CAN.levelFor(24))
+        assertEquals(2, FarmTool.WATERING_CAN.levelFor(25))
+        assertEquals(FarmTool.WATERING_CAN.maxLevel, FarmTool.WATERING_CAN.levelFor(300))
+        assertEquals(2, GardenProgress(hoeXp = 15).hoeLevel)
         assertEquals(1, GardenProgress().wateringCanLevel)
     }
 
@@ -127,7 +129,7 @@ class FarmToolsTest {
 
     @Test
     fun `a better hoe makes richer beds, whose crops fetch more`() = runBlocking {
-        repo.progress = GardenProgress(hoeXp = 15) // level 3
+        repo.progress = GardenProgress(hoeXp = 40) // level 3
         val (x, y) = cellOfHardness(3)
         assertEquals(ActionResult.SUCCESS, hoe(x, y, t0)) // one strike at level 3
         val bed = repo.objects.values.single()
@@ -167,11 +169,11 @@ class FarmToolsTest {
         assertEquals(2, poursFromDry(5))
 
         // Each pour counts for the can, and its level sets the pour.
-        repo.progress = GardenProgress(wateringCanXp = 30) // level 3
+        repo.progress = GardenProgress(wateringCanXp = 70) // level 3
         repo.put(GridObject("p", 0, 0, objectId = "plant_tulip", moistureLevel = 0.1f, lastUpdatedTimestamp = t0))
         assertEquals(ActionResult.SUCCESS, care.water("p", t0, sunny))
         assertEquals(0.1f + WateringCanSkill.waterAmount(3), repo.objects.getValue("p").moistureLevel, 1e-4f)
-        assertEquals(31, repo.progress?.wateringCanXp)
+        assertEquals(71, repo.progress?.wateringCanXp)
     }
 
     // --- The sprinkler ---
