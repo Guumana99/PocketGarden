@@ -20,6 +20,10 @@ data class GridObject(
     val workEndsAt: Long = 0L,
     /** How many times this plant has been harvested; only a repeatable crop is ever above 0. */
     val harvestCount: Int = 0,
+    /** How rich a tilled bed is ([SoilQuality]), set by the hoe that tilled it; 0 for anything else. */
+    val soilQuality: Int = 0,
+    /** Whether a thing that can be switched (the sprinkler) is running. True for everything else. */
+    val isOn: Boolean = true,
 ) {
     /** Whether this is a work site: being built (or built and not yet unveiled), taken apart or packed up. */
     val isWorking: Boolean get() = workKind != WorkKind.NONE
@@ -68,6 +72,9 @@ data class GridObject(
 
     /** A fence, under whichever of its ids. Fences join up with the fences next to them. */
     val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
+
+    /** The sprinkler, which waters the beds round it while it is switched on. */
+    val isSprinkler: Boolean get() = objectId == Sprinkler.OBJECT_ID
 
     /** The crate a new player opens for their first seed. */
     val isStarterCrate: Boolean get() = objectId == STARTER_CRATE_OBJECT_ID

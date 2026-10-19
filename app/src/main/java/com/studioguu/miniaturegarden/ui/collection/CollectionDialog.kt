@@ -633,6 +633,7 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.DECK -> R.string.flavor_deck
     CollectionEntry.BENCH -> R.string.flavor_bench
     CollectionEntry.LANTERN -> R.string.flavor_lantern
+    CollectionEntry.SPRINKLER -> R.string.flavor_sprinkler
     CollectionEntry.FENCE -> R.string.flavor_fence
     CollectionEntry.WELL -> R.string.flavor_well
     CollectionEntry.HUT -> R.string.flavor_hut

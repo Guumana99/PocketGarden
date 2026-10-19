@@ -89,6 +89,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import com.studioguu.miniaturegarden.ui.render.LawnShade
 import com.studioguu.miniaturegarden.ui.render.SoilJoins
 import com.studioguu.miniaturegarden.ui.render.plantScale
+import com.studioguu.miniaturegarden.ui.render.SprinklerSpray
 import com.studioguu.miniaturegarden.ui.render.Wind
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
 import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
@@ -690,6 +691,18 @@ private fun submitObjects(
         }
         if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
             submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit) }
+        }
+        // A running sprinkler throws its water over the beds round it, on the garden's clock.
+        if (obj.isSprinkler && obj.isOn && !obj.isWorking) {
+            val frame = SprinklerSpray.frameAt(ambience.windMillis ?: 0L, running = true)
+            val sprayArt = atlas[SprinklerSpray.spriteIdFor(frame.index)]
+            submit(obj, RenderLayer.TOP_EFFECTS, depth) {
+                if (sprayArt != null && atlasImage != null) {
+                    drawSprite(atlasImage, sprayArt, base, spriteScale)
+                } else {
+                    drawSprinklerSpray(base, unit, frame)
+                }
+            }
         }
     }
 }
@@ -2066,6 +2079,35 @@ private val LANTERN_LIGHT = Color(0xFFFFE9A8)
  * A stone lantern: a wide foot, a post, the lamp chamber with its lit window, and a broad cap
  * with a knob on top. A warm glow hangs round the window.
  */
+private val SPRINKLER_METAL = Color(0xFF9AA5AD)
+private val SPRINKLER_METAL_DARK = Color(0xFF6D7880)
+private val SPRINKLER_BRASS = Color(0xFFC9A44C)
+private val SPRINKLER_WATER = Color(0xFFB3E0F7)
+
+/** The sprinkler: a short post on a round foot, with a brass head; a little blue light while it runs. */
+private fun DrawScope.drawSprinkler(base: Offset, unit: Float, running: Boolean) {
+    drawOval(SPRINKLER_METAL_DARK, base - Offset(unit * 0.09f, unit * 0.035f), Size(unit * 0.18f, unit * 0.07f))
+    val top = base - Offset(0f, unit * 0.2f)
+    drawLine(SPRINKLER_METAL, base - Offset(0f, unit * 0.02f), top, unit * 0.035f, StrokeCap.Round)
+    drawOval(SPRINKLER_BRASS, top - Offset(unit * 0.06f, unit * 0.03f), Size(unit * 0.12f, unit * 0.05f))
+    drawCircle(if (running) SPRINKLER_WATER else SPRINKLER_METAL_DARK, unit * 0.015f, top - Offset(0f, unit * 0.025f))
+}
+
+/**
+ * The water of a running sprinkler, from [SprinklerSpray]: drops thrown out along its turning
+ * jets over the ring of cells it waters, fading as they land.
+ */
+private fun DrawScope.drawSprinklerSpray(base: Offset, unit: Float, frame: SprinklerSpray.Frame) {
+    val head = base - Offset(0f, unit * 0.23f)
+    for (drop in frame.drops) {
+        // Out over the ground in the garden's flattened view, rising and falling on its way.
+        val out = drop.reach * unit * 0.9f
+        val x = head.x + kotlin.math.cos(drop.angle) * out
+        val y = head.y + kotlin.math.sin(drop.angle) * out * 0.5f - kotlin.math.sin(drop.reach * Math.PI.toFloat()) * unit * 0.18f + drop.reach * unit * 0.2f
+        drawCircle(SPRINKLER_WATER.copy(alpha = 0.85f * drop.alpha), unit * (0.018f + 0.01f * (1f - drop.reach)), Offset(x, y))
+    }
+}
+
 private fun DrawScope.drawLantern(base: Offset, unit: Float) {
     fun slab(centre: Offset, width: Float, height: Float, colour: Color) =
         drawRoundRect(colour, centre - Offset(width / 2f, height), Size(width, height), CornerRadius(height * 0.25f, height * 0.25f))
@@ -2209,6 +2251,7 @@ private fun DrawScope.drawPlaceholder(obj: GridObject, base: Offset, unit: Float
             obj.isPlant -> drawPlant(obj, base, unit)
             obj.objectId == Decoration.BENCH.objectId -> drawBench(base, unit)
             obj.objectId == Decoration.LANTERN.objectId -> drawLantern(base, unit)
+            obj.isSprinkler -> drawSprinkler(base, unit, obj.isOn)
             obj.isStarterCrate -> drawStarterCrate(base, unit)
             else -> drawDecoration(base, unit)
         }

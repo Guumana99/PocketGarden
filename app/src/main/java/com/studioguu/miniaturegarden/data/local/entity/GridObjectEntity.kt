@@ -32,4 +32,10 @@ data class GridObjectEntity(
     /** Times a repeatable crop has been harvested. Added in schema version 13. */
     @ColumnInfo(defaultValue = "0")
     val harvestCount: Int = 0,
+    /** How rich a tilled bed is, 0 to 4. Added in schema version 14. */
+    @ColumnInfo(defaultValue = "0")
+    val soilQuality: Int = 0,
+    /** Whether a switchable thing (the sprinkler) is running. Added in schema version 14. */
+    @ColumnInfo(defaultValue = "1")
+    val isOn: Boolean = true,
 )

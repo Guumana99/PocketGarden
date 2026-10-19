@@ -179,9 +179,9 @@ class SymbolBuildingTest {
         assertEquals(9 to 9, repo.objects["soil_8_8"]!!.let { it.gridX to it.gridY })
         // The new outer ring is lawn that can be used straight away.
         val hoe = HoeUseCase(repo, storedMap)
-        assertEquals(ActionResult.SUCCESS, hoe(0, 10, t0))
-        assertEquals(ActionResult.SUCCESS, hoe(10, 0, t0))
-        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe(11, 0, t0))
+        assertEquals(ActionResult.SUCCESS, hoe.till(0, 10, t0))
+        assertEquals(ActionResult.SUCCESS, hoe.till(10, 0, t0))
+        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(11, 0, t0))
     }
 
     @Test

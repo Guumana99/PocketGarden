@@ -29,7 +29,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         NatureNoteEntity::class,
         LetterEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -157,6 +157,19 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_12_13 = object : Migration(12, 13) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN harvestCount INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v14: the tools learn with use, beds keep the richness their hoe gave them, and a
+         * sprinkler can be switched off. Old beds are plain, old tools new, everything running.
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN soilQuality INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN isOn INTEGER NOT NULL DEFAULT 1")
+                db.execSQL("ALTER TABLE garden_progress ADD COLUMN hoeXp INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE garden_progress ADD COLUMN wateringCanXp INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

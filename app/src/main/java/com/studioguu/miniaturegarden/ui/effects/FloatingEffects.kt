@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.objectDisplayName
 
@@ -35,6 +36,9 @@ sealed interface GardenEffect {
 
     /** A page of the encyclopedia became ready to be filled in. */
     data class Discovery(override val id: Long) : GardenEffect
+
+    /** The hoe or the watering can got better with use ([FarmTool]). */
+    data class ToolLevelUp(override val id: Long, val tool: FarmTool, val level: Int) : GardenEffect
 
     /**
      * A building was finished, or taking one apart was. [newPage]: finishing it also made a page
@@ -77,6 +81,8 @@ data class EffectTiming(val durationMillis: Int, val visibleShare: Float, val ri
 
 fun effectTiming(effect: GardenEffect): EffectTiming = when (effect) {
     is GardenEffect.WorkDone -> EffectTiming(durationMillis = 3_600, visibleShare = 0.8f, riseShare = 0.35f)
+    // A tool getting better is news, read like a new page of the book.
+    is GardenEffect.ToolLevelUp -> EffectTiming(durationMillis = 3_200, visibleShare = 0.78f, riseShare = 0.45f)
     // A new page for the book is news too: it stays nearly as long as a building's (#52).
     is GardenEffect.Discovery -> EffectTiming(durationMillis = 3_200, visibleShare = 0.78f, riseShare = 0.45f)
     // The sums of a harvest: readable for about two seconds before they fade (#52: one was too quick).
@@ -93,6 +99,8 @@ private fun liftSteps(effect: GardenEffect): Int = when (effect) {
     is GardenEffect.Harvest, is GardenEffect.Xp -> 0
     is GardenEffect.Discovery -> 1
     is GardenEffect.WorkDone -> 1
+    // Above a harvest's sums and a page's news, which can come from the same tap.
+    is GardenEffect.ToolLevelUp -> 2
 }
 
 /**
@@ -130,6 +138,13 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
         is GardenEffect.Harvest -> stringResource(R.string.effect_harvest, effect.coins, effect.xp)
         is GardenEffect.Xp -> stringResource(R.string.effect_xp, effect.amount)
         is GardenEffect.Discovery -> stringResource(R.string.effect_discovery)
+        is GardenEffect.ToolLevelUp -> stringResource(
+            when (effect.tool) {
+                FarmTool.HOE -> R.string.effect_hoe_level_up
+                FarmTool.WATERING_CAN -> R.string.effect_can_level_up
+            },
+            effect.level,
+        )
         is GardenEffect.WorkDone -> stringResource(
             when (effect.kind) {
                 WorkKind.DEMOLISHING -> R.string.effect_demolished

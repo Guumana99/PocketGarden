@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -37,6 +40,8 @@ import com.studioguu.miniaturegarden.ui.theme.GardenColors
  *   asks for, in edit mode only the shop; the others are greyed out and cannot be tapped.
  * @param bagActive something from the bag is in hand: the bag's button is lit, and tapping it
  *   puts that down again, as the hoe's does for the hoe (#50).
+ * @param hoeLevel how far the hoe has come with use ([com.studioguu.miniaturegarden.domain.model.FarmTool]),
+ *   shown on its button from level 2; [wateringCanLevel] the same for the watering can.
  */
 @Composable
 fun QuickActionBar(
@@ -50,6 +55,8 @@ fun QuickActionBar(
     modifier: Modifier = Modifier,
     allows: (TutorialTool) -> Boolean = { true },
     bagActive: Boolean = false,
+    hoeLevel: Int = 1,
+    wateringCanLevel: Int = 1,
 ) {
     Surface(
         modifier = modifier,
@@ -61,8 +68,14 @@ fun QuickActionBar(
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            ActionButton("⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive, enabled = allows(TutorialTool.HOE))
-            ActionButton("💧", stringResource(R.string.action_water), onWater, enabled = canCare && allows(TutorialTool.WATER))
+            ActionButton(
+                "⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive, enabled = allows(TutorialTool.HOE),
+                badge = levelBadge(hoeLevel),
+            )
+            ActionButton(
+                "💧", stringResource(R.string.action_water), onWater, enabled = canCare && allows(TutorialTool.WATER),
+                badge = levelBadge(wateringCanLevel),
+            )
             ActionButton(
                 "🧪", stringResource(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST), onFertilize,
                 enabled = canCare && allows(TutorialTool.FERTILIZE),
@@ -73,6 +86,10 @@ fun QuickActionBar(
     }
 }
 
+/** A tool's level as its button shows it, from level 2 on; a new tool shows none. */
+@Composable
+private fun levelBadge(level: Int): String? = if (level > 1) stringResource(R.string.tool_level, level) else null
+
 @Composable
 private fun ActionButton(
     emoji: String,
@@ -80,6 +97,7 @@ private fun ActionButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
     selected: Boolean = false,
+    badge: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     TextButton(
@@ -93,7 +111,22 @@ private fun ActionButton(
             .background(if (selected) GardenColors.WoodLight else Color.Transparent, RoundedCornerShape(20.dp)),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(emoji, fontSize = 24.sp)
+            Box {
+                Text(emoji, fontSize = 24.sp)
+                if (badge != null) {
+                    Text(
+                        text = badge,
+                        color = GardenColors.Cream,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 14.dp, y = (-2).dp)
+                            .background(GardenColors.WoodDark, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 3.dp),
+                    )
+                }
+            }
             Text(label, style = MaterialTheme.typography.labelMedium)
         }
     }

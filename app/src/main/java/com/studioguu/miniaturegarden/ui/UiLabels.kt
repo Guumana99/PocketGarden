@@ -46,6 +46,7 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "ground_flowers" -> R.string.object_ground_flowers
     "deco_bench" -> R.string.object_deco_bench
     "deco_lantern" -> R.string.object_deco_lantern
+    "deco_sprinkler" -> R.string.object_deco_sprinkler
     "deco_starter_crate" -> R.string.object_deco_starter_crate
     // A fence is a fence under any of the ids it has been stored as.
     "struct_fence", "struct_fence_rail", "struct_fence_post" -> R.string.object_struct_fence
@@ -92,6 +93,7 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.FLOOR_WOOD -> "🟫"
     GardenItem.DECO_BENCH -> "🪑"
     GardenItem.DECO_LANTERN -> "🏮"
+    GardenItem.DECO_SPRINKLER -> "💦"
     GardenItem.STRUCT_COTTAGE -> "🏡"
     // There is no windmill emoji; the wind it turns in stands for it.
     GardenItem.STRUCT_WINDMILL -> "🌬️"
@@ -175,6 +177,8 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.ALREADY_FED -> R.string.msg_already_fed
     ActionResult.OUT_OF_SEASON -> R.string.msg_out_of_season
     ActionResult.IN_USE -> R.string.msg_in_use
+    ActionResult.HOE_STRUCK -> R.string.msg_hoe_struck
+    ActionResult.NOT_SWITCHABLE -> R.string.msg_not_switchable
 }
 
 @StringRes

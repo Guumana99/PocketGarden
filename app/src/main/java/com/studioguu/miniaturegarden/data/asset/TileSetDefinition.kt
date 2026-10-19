@@ -20,6 +20,7 @@ enum class Decoration(val objectId: String) {
     ROCK("deco_rock"),
     BENCH("deco_bench"),
     LANTERN("deco_lantern"),
+    SPRINKLER("deco_sprinkler"),
 }
 
 /** Flat ground cover, drawn below plants and decorations. */
@@ -80,6 +81,12 @@ object TileSetDefinition {
     /** The windmill's sails: a sprite of their own, hung on the mill's hub and turned. */
     const val WINDMILL_SAILS = "struct_windmill_blades"
 
+    /** Frames of a running sprinkler's water, drawn over the sprinkler one after another. */
+    const val SPRINKLER_SPRAY_FRAMES = 8
+
+    /** The sprite of one frame of the sprinkler's water, 0 to [SPRINKLER_SPRAY_FRAMES] - 1. */
+    fun sprinklerSprayId(frame: Int): String = "deco_sprinkler_spray_$frame"
+
     /**
      * Every sprite id the garden may look up: the ground tiles, each crop's stages, every other
      * thing that stands in a cell, the windmill's sails and the visitors, whether the atlas has
@@ -91,6 +98,7 @@ object TileSetDefinition {
             PlantSpecies.entries.flatMap(::spriteIdsFor) +
             (objectIds - PlantSpecies.entries.map { it.objectId }.toSet()) +
             WINDMILL_SAILS +
+            (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId) +
             Creature.entries.map(::assetIdFor)
 
     /** 1-based stage; the last stage is reserved for a fully grown plant (progress 1.0). */

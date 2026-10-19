@@ -29,6 +29,7 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
+import com.studioguu.miniaturegarden.domain.model.SoilQuality
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.usecase.GardenLayout
@@ -51,6 +52,10 @@ import kotlinx.coroutines.delay
  *   here only then ([GardenLayout]); otherwise the panel says where that is done.
  * @param guiding the first steps are under way: the panel shows the plant and its watering
  *   only, without harvesting, clearing away or the notes underneath.
+ * @param bedQuality how rich the bed under it is ([SoilQuality]); shown, with what it adds to a
+ *   harvest, when above 0.
+ * @param sprinkled a running sprinkler waters it.
+ * @param onToggleSprinkler switches the sprinkler on or off; its button is shown for a sprinkler.
  */
 @Composable
 fun ObjectStatusDialog(
@@ -69,6 +74,9 @@ fun ObjectStatusDialog(
     onExpand: () -> Unit = {},
     editing: Boolean = false,
     guiding: Boolean = false,
+    bedQuality: Int = 0,
+    sprinkled: Boolean = false,
+    onToggleSprinkler: () -> Unit = {},
 ) {
     Surface(
         modifier = modifier,
@@ -102,6 +110,20 @@ fun ObjectStatusDialog(
 
             if (gridObject.isWorking) WorkRow(gridObject)
 
+            if (gridObject.isSprinkler) {
+                Text(
+                    text = stringResource(if (gridObject.isOn) R.string.sprinkler_running else R.string.sprinkler_stopped),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (gridObject.isOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (bedQuality > 0 && !guiding) {
+                Text(
+                    text = stringResource(R.string.soil_quality, "★".repeat(bedQuality) + "☆".repeat(SoilQuality.MAX - bedQuality), SoilQuality.bonusPercent(bedQuality)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
             if (gridObject.isPlant) {
                 LevelRow(stringResource(R.string.label_growth), gridObject.growthProgress)
                 LevelRow(stringResource(R.string.label_moisture), gridObject.moistureLevel)
@@ -125,7 +147,12 @@ fun ObjectStatusDialog(
             }
             // What the buildings nearby do for this plant, or what this building does for plants.
             val effects = buildList {
-                if (surroundings.moistureDrainFactor < 1f) add(R.string.hint_near_well)
+                if (sprinkled) {
+                    add(R.string.hint_near_sprinkler)
+                } else if (surroundings.moistureDrainFactor < 1f) {
+                    add(R.string.hint_near_well)
+                }
+                if (gridObject.isSprinkler) add(if (gridObject.isOn) R.string.hint_sprinkler_effect else R.string.hint_sprinkler_stopped)
                 if (surroundings.growthFactor > 1f) add(R.string.hint_near_hut)
                 if (!gridObject.isWorking) {
                     when (StructureEffect.forObjectId(gridObject.objectId)) {
@@ -178,6 +205,12 @@ fun ObjectStatusDialog(
                 // Edit mode keeps to rearranging (#50): no watering, harvesting or reviving there.
                 if (editing) {
                     Unit
+                } else if (gridObject.isSprinkler) {
+                    // Switched where it stands, at a tap, outside edit mode like any care.
+                    WoodButton(
+                        text = stringResource(if (gridObject.isOn) R.string.action_sprinkler_stop else R.string.action_sprinkler_start),
+                        onClick = onToggleSprinkler,
+                    )
                 } else if (gridObject.isPlant && gridObject.status == PlantStatus.WITHERED) {
                     Button(onClick = onRevive) {
                         Text(stringResource(R.string.action_revive, CareForPlantUseCase.REVIVE_COST))

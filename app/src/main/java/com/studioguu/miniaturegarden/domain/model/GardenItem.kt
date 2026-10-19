@@ -162,6 +162,15 @@ enum class GardenItem(
         unlock = UnlockCondition.CollectionPages(4),
     ),
 
+    /**
+     * A sprinkler, put down among the beds: while it is on, the soil round it hardly dries
+     * ([Sprinkler]). A thing in the garden, not a tool in the hand.
+     */
+    DECO_SPRINKLER(
+        "deco_sprinkler", price = 90, objectId = Sprinkler.OBJECT_ID, category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(3),
+    ),
+
     /** The symbol building: a cottage. One per garden; with it standing, the garden can grow. */
     STRUCT_COTTAGE(
         "struct_cottage", price = 300, objectId = StructureData.COTTAGE.objectId, category = ItemCategory.STRUCTURE,

@@ -22,6 +22,9 @@ import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.ToolLevels
+import com.studioguu.miniaturegarden.domain.model.SoilQuality
+import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -63,6 +66,7 @@ import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HoeUseCase
+import com.studioguu.miniaturegarden.domain.usecase.ToggleSprinklerUseCase
 import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.OpenStarterCrateUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
@@ -119,6 +123,7 @@ class GardenViewModel @Inject constructor(
     private val unveilBuilding: UnveilBuildingUseCase,
     private val skipTime: SkipTimeUseCase,
     private val hoe: HoeUseCase,
+    private val toggleSprinkler: ToggleSprinklerUseCase,
     private val openStarterCrate: OpenStarterCrateUseCase,
     private val followTutorial: FollowTutorialUseCase,
     private val audio: AudioManager,
@@ -162,6 +167,17 @@ class GardenViewModel @Inject constructor(
 
     val season: StateFlow<Season> = progress.map { it?.season ?: Season.SPRING }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
+
+    /** The hoe's and the watering can's levels ([FarmTool]), for the tool bar. */
+    val toolLevels: StateFlow<ToolLevels> = progress.map { ToolLevels(it?.hoeLevel ?: 1, it?.wateringCanLevel ?: 1) }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ToolLevels())
+
+    /**
+     * Strikes the hoe has given each cell of hard ground that is not broken up yet. Kept while the
+     * app is open only: a few taps in a row are what it is for, not a chore to come back to.
+     */
+    private val hoeStrikes = HashMap<GridCell, Int>()
 
     /** The post, newest first: every letter that has come, read or not. */
     val letters: StateFlow<List<Letter>> = gardenRepository.observeLetters()
@@ -428,6 +444,29 @@ class GardenViewModel @Inject constructor(
         watchWork()
         watchVisitors()
         watchSeasonForMusic()
+        watchToolLevels()
+    }
+
+    /** A word, and the celebration's sound, when the hoe or the watering can gets better. */
+    private fun watchToolLevels() {
+        viewModelScope.launch {
+            var last: ToolLevels? = null
+            gardenRepository.observeProgress().map { p -> p?.let { ToolLevels(it.hoeLevel, it.wateringCanLevel) } }
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect { levels ->
+                    val before = last
+                    last = levels
+                    if (before == null) return@collect
+                    if (levels.hoe > before.hoe) toolLevelUp(FarmTool.HOE, levels.hoe)
+                    if (levels.wateringCan > before.wateringCan) toolLevelUp(FarmTool.WATERING_CAN, levels.wateringCan)
+                }
+        }
+    }
+
+    private fun toolLevelUp(tool: FarmTool, level: Int) {
+        audio.play(SoundEffect.LEVEL_UP)
+        showEffect { GardenEffect.ToolLevelUp(it, tool, level) }
     }
 
     /** The garden's season as last read, for its music; null until the garden has been read. */
@@ -688,7 +727,13 @@ class GardenViewModel @Inject constructor(
                         if (tutorialStep.value?.isGuiding == true) _hoeActive.value = false
                     }
                 ) { now, _ ->
-                    hoe(tile.x, tile.y, now).also { if (it == ActionResult.SUCCESS) followTutorial() }
+                    val cell = GridCell(tile.x, tile.y)
+                    val strikes = hoeStrikes[cell] ?: 0
+                    hoe(tile.x, tile.y, now, strikes).also {
+                        // Hard ground gives a little at each strike, and is remembered until it goes.
+                        if (it == ActionResult.HOE_STRUCK) hoeStrikes[cell] = strikes + 1 else hoeStrikes.remove(cell)
+                        if (it == ActionResult.SUCCESS) followTutorial()
+                    }
                 }
             }
         } else if (slotIndex == null) {
@@ -868,8 +913,10 @@ class GardenViewModel @Inject constructor(
 
     fun harvestSelected() = withSelectedObject { obj ->
         if (lockedByEditMode()) return@withSelectedObject
-        // A crop that bears again pays less from its second harvest on.
-        val reward = PlantSpecies.forObjectId(obj.objectId).harvestReward(obj.harvestCount)
+        // A crop that bears again pays less from its second harvest on, and a rich bed pays more.
+        val base = PlantSpecies.forObjectId(obj.objectId).harvestReward(obj.harvestCount)
+        val quality = HarvestPlantUseCase.bedUnder(obj, gridObjects.value)?.soilQuality ?: 0
+        val reward = base.copy(coins = SoilQuality.harvestCoins(base.coins, quality))
         act(
             onSuccess = {
                 clearSelection()
@@ -912,6 +959,13 @@ class GardenViewModel @Inject constructor(
     }
 
     /** Turns the selected building to face the other way, where it stands. */
+    /** Switches the selected sprinkler on or off. */
+    fun toggleSprinklerSelected() = withSelectedObject { obj ->
+        act(onSuccess = { audio.play(if (obj.isOn) SoundEffect.TAP else SoundEffect.WATER) }) { now, weather ->
+            toggleSprinkler(obj.instanceId, now, weather)
+        }
+    }
+
     fun flipSelected() = withSelectedObject { obj ->
         act(onSuccess = { audio.play(SoundEffect.PLANT) }) { _, _ -> flipObject(obj.instanceId) }
     }
@@ -1024,7 +1078,12 @@ class GardenViewModel @Inject constructor(
                 val now = System.currentTimeMillis()
                 block(now, currentWeather(now))
             }
-            if (result == ActionResult.SUCCESS) onSuccess() else audio.play(SoundEffect.ERROR)
+            when (result) {
+                ActionResult.SUCCESS -> onSuccess()
+                // Hard ground giving a little is not a mistake: a dull knock, and strike again.
+                ActionResult.HOE_STRUCK -> audio.play(SoundEffect.TAP)
+                else -> audio.play(SoundEffect.ERROR)
+            }
             actionResultMessage(result)?.let { _messages.send(it) }
         }
     }
