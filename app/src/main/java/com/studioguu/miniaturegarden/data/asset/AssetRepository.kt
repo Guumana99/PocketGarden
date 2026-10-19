@@ -43,7 +43,10 @@ class SpriteAtlas(
 class TerrainTextures(
     val riverAutotile: Bitmap? = null,
     val cobblestone: Bitmap? = null,
-    /** The untilled ground every cell starts as, one slab a cell ([GroundSlab.WASTELAND]). */
+    /**
+     * The untilled ground every cell starts as: the earth of `soil_wasteland.png` flattened into
+     * a square texture ([FlatGround]), laid over the whole garden as one field.
+     */
     val wasteland: Bitmap? = null,
     /** The pond, a cell of water in a ring of stones and logs ([GroundSlab.POND]). */
     val pond: Bitmap? = null,
@@ -85,7 +88,9 @@ class AssetRepository @Inject constructor(
             TerrainTextures(
                 riverAutotile = decodeUnscaled(R.drawable.tile_river_autotile),
                 cobblestone = decodeUnscaled(R.drawable.tile_path_cobblestone),
-                wasteland = decodeUnscaled(R.drawable.soil_wasteland),
+                wasteland = decodeUnscaled(R.drawable.soil_wasteland)?.let { slab ->
+                    FlatGround.flatten(slab).also { slab.recycle() }
+                },
                 pond = decodeUnscaled(R.drawable.pond),
             )
         }.also { cachedTerrain = it }

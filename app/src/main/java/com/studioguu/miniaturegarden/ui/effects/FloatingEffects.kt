@@ -26,6 +26,7 @@ import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.objectDisplayName
+import com.studioguu.miniaturegarden.ui.toolRank
 
 /** A short-lived piece of feedback. [id] must be unique among the effects on screen. */
 sealed interface GardenEffect {
@@ -49,6 +50,8 @@ sealed interface GardenEffect {
         val objectId: String,
         val kind: WorkKind,
         val newPage: Boolean = false,
+        /** Experience its unveiling paid, said on the plaque rather than floating up under it. */
+        val xp: Int = 0,
     ) : GardenEffect
 }
 
@@ -143,7 +146,7 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
                 FarmTool.HOE -> R.string.effect_hoe_level_up
                 FarmTool.WATERING_CAN -> R.string.effect_can_level_up
             },
-            effect.level,
+            stringResource(toolRank(effect.level)),
         )
         is GardenEffect.WorkDone -> stringResource(
             when (effect.kind) {
@@ -152,7 +155,8 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
                 else -> R.string.effect_built
             },
             objectDisplayName(effect.objectId),
-        ) + if (effect.newPage) "\n" + stringResource(R.string.effect_discovery) else ""
+        ) + (if (effect.xp > 0) "\n" + stringResource(R.string.effect_xp, effect.xp) else "") +
+            if (effect.newPage) "\n" + stringResource(R.string.effect_discovery) else ""
     }
     Text(
         text = text,

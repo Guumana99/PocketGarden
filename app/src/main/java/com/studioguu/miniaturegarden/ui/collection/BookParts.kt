@@ -154,8 +154,8 @@ internal fun PageHeader(number: Int, enteredAt: Long?) {
 
 /**
  * Under the pages: back and forward, where the book is open ("もくじ" on the contents, "n / N"
- * on an entry's page), and the button that closes the book. Page 0 is the contents; entry i is on
- * page i + 1.
+ * on an entry's page), and the button that closes the book. From an entry's page a button goes
+ * straight back to the contents. Page 0 is the contents; entry i is on page i + 1.
  */
 @Composable
 internal fun BookFooter(pagerState: PagerState, entryCount: Int, onDismiss: () -> Unit) {
@@ -183,6 +183,13 @@ internal fun BookFooter(pagerState: PagerState, entryCount: Int, onDismiss: () -
             scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
         }
         Spacer(Modifier.weight(1f))
+        if (pagerState.currentPage > 0) {
+            WoodButton(
+                text = stringResource(R.string.book_to_contents),
+                onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+                modifier = Modifier.padding(end = 6.dp),
+            )
+        }
         WoodButton(text = stringResource(R.string.action_close), onClick = onDismiss)
     }
 }

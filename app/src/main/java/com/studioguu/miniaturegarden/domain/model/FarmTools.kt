@@ -10,13 +10,16 @@ import kotlin.math.roundToInt
 /**
  * A tool that gets better with use. Its level comes from how often it has been used ([xp], one
  * per use that did something), through [thresholds]: the uses needed to reach each level from 1.
+ * It is a skill learnt over the life of the garden, not a reward for the first afternoon: the
+ * first step up comes after a good few beds, the last only after a season or two of work.
+ * On screen a level is a rank ("見習い" to "名人") and stars, never a bare number.
  */
 enum class FarmTool(private val thresholds: IntArray) {
-    /** Ground broken up into a bed. */
-    HOE(intArrayOf(0, 5, 15, 30, 50)),
+    /** Ground broken up into a bed. (Was 5 / 15 / 30 / 50: too quick, a few rows and it was mastered.) */
+    HOE(intArrayOf(0, 15, 40, 90, 180)),
 
     /** Plants watered. */
-    WATERING_CAN(intArrayOf(0, 10, 30, 60, 100));
+    WATERING_CAN(intArrayOf(0, 25, 70, 150, 300));
 
     val maxLevel: Int get() = thresholds.size
 
