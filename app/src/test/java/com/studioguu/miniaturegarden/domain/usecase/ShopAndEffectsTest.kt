@@ -57,7 +57,7 @@ class ShopAndEffectsTest {
 
         assertEquals(14, shelves.getValue(ItemCategory.SEED).size)
         assertEquals(6, shelves.getValue(ItemCategory.STRUCTURE).size)
-        assertEquals(9, shelves.getValue(ItemCategory.DECORATION).size)
+        assertEquals(11, shelves.getValue(ItemCategory.DECORATION).size)
     }
 
     @Test
@@ -80,8 +80,8 @@ class ShopAndEffectsTest {
         assertEquals(5, fromStart.size)
         assertEquals(fromStart.map { it.price }.sorted(), fromStart.map { it.price })
         // ... then what a level opens, then what the encyclopedia opens.
-        assertEquals(listOf(GardenItem.DECO_ROCK, GardenItem.DECO_BENCH), decorations.subList(5, 7))
-        assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(7, 9))
+        assertEquals(listOf(GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_SPRINKLER, GardenItem.DECO_POND), decorations.subList(5, 9))
+        assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(9, 11))
 
         assertEquals(
             listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE),

@@ -163,11 +163,21 @@ enum class GardenItem(
     ),
 
     /**
+     * A pond in a ring of stones and logs: a cell of still water with water lilies. Like the
+     * river it takes its cell to itself ([PlacementKind.TERRAIN]); unlike the river it is one
+     * finished thing, bought whole, and pays a little experience for being put down.
+     */
+    DECO_POND(
+        "deco_pond", price = 75, objectId = GridObject.POND_OBJECT_ID, category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(4), placeXp = 20,
+    ),
+
+    /**
      * A sprinkler, put down among the beds: while it is on, the soil round it hardly dries
      * ([Sprinkler]). A thing in the garden, not a tool in the hand.
      */
     DECO_SPRINKLER(
-        "deco_sprinkler", price = 90, objectId = Sprinkler.OBJECT_ID, category = ItemCategory.DECORATION,
+        "deco_sprinkler", price = 70, objectId = Sprinkler.OBJECT_ID, category = ItemCategory.DECORATION,
         unlock = UnlockCondition.PlayerLevel(3),
     ),
 

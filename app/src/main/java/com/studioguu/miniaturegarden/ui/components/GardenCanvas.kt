@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.ui.components
 
+import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.toSize
 import com.studioguu.miniaturegarden.data.asset.Decoration
 import com.studioguu.miniaturegarden.data.asset.GroundCover
 import com.studioguu.miniaturegarden.data.asset.GroundTile
+import com.studioguu.miniaturegarden.data.asset.GroundSlab
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.asset.AssetManifest
@@ -90,6 +92,7 @@ import com.studioguu.miniaturegarden.ui.render.LawnShade
 import com.studioguu.miniaturegarden.ui.render.SoilJoins
 import com.studioguu.miniaturegarden.ui.render.plantScale
 import com.studioguu.miniaturegarden.ui.render.SprinklerSpray
+import com.studioguu.miniaturegarden.ui.render.drawGroundSlab
 import com.studioguu.miniaturegarden.ui.render.Wind
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
 import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
@@ -155,6 +158,8 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param growableId the symbol building the garden can grow from now, if any: a bubble over it
  *   says so, and tapping the bubble picks it.
  * @param onZoomChanged told the zoom at every change, as it happens (the debug read-out).
+ * @param bareGround what a cell with nothing laid on it looks like: the untilled wasteland of a
+ *   garden being made, or the lawn of the title's garden in full swing.
  */
 @Composable
 fun GardenCanvas(
@@ -179,6 +184,7 @@ fun GardenCanvas(
     editing: Boolean = false,
     growableId: String? = null,
     onZoomChanged: ((Float) -> Unit)? = null,
+    bareGround: BareGround = BareGround.WASTELAND,
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -334,7 +340,8 @@ fun GardenCanvas(
         val ambience = Ambience(Daylight.at(hourOfDay, weather), weather, windMillis, season = season)
 
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
-            drawTerrain(transform, gardenMap, framed = true, ambience, lawn) { tile, center, flip ->
+            val wasteland = if (bareGround == BareGround.WASTELAND) terrain.wasteland else null
+            drawTerrain(transform, gardenMap, framed = true, ambience, lawn, wasteland) { tile, center, flip ->
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale * groundOverlap(tile), flipped = flip)
                 sprite != null
@@ -600,6 +607,18 @@ private fun submitObjects(
 
         val light = ambience.light
         val sway = ambience.sway(obj.gridX + 0.5f, obj.gridY + 0.5f)
+        if (obj.isPond) {
+            // Low, lying in the ground: with the ground cover, under whatever stands round it.
+            val pond = terrain.pond
+            submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {
+                if (pond != null) {
+                    drawGroundSlab(pond, GroundSlab.POND, transform.tileCenter(obj.gridX, obj.gridY), unit, coverage = POND_COVERAGE)
+                } else {
+                    drawPondInCode(transform, obj.gridX, obj.gridY)
+                }
+            }
+            continue
+        }
         if (obj.isFence) {
             // How a fence looks is read off its neighbours every time it is drawn: alone it is a
             // short section; next to other fences it is a post with rails reaching out to them.
@@ -1314,6 +1333,7 @@ private fun DrawScope.drawTerrain(
     framed: Boolean,
     ambience: Ambience,
     lawn: FeatheredLawn?,
+    wasteland: Bitmap? = null,
     drawTileSprite: DrawScope.(tile: GroundTile, center: Offset, flip: Boolean) -> Boolean,
 ) {
     val gridSize = gardenMap.size
@@ -1330,11 +1350,27 @@ private fun DrawScope.drawTerrain(
         drawPath(quad(bottom, right, right + thickness, bottom + thickness), SOIL_RIGHT)
     }
 
+    // Untilled ground: a slab of cracked earth for each cell (res/drawable/soil_wasteland.png),
+    // back to front so that each one's front edge comes over the one behind, and kept inside the
+    // garden so that the outer slabs' sides and tufts do not spill over the frame.
+    if (wasteland != null) {
+        clipPath(gardenOutline(transform, max)) {
+            for (x in 0 until gridSize) for (y in 0 until gridSize) {
+                val type = gardenMap.tileAt(x, y) ?: TileType.GRASS
+                if (TileSetDefinition.groundTileFor(type, x, y) != GroundTile.GRASS) continue
+                drawGroundSlab(
+                    wasteland, GroundSlab.WASTELAND, transform.tileCenter(x, y), transform.tileWidth,
+                    coverage = WASTELAND_COVERAGE, flipped = LawnShade.mirrored(x, y),
+                )
+            }
+        }
+    }
+
     // The lawn, feathered (#47, LawnShade.feather): one colour under all of it, then each cell
     // of grass drawn larger than itself and fading into its neighbours, so that no line runs
     // between two cells. Kept inside the garden, and laid before any water, which it must not
-    // spill over.
-    val lawnPath = lawn?.let {
+    // spill over. Where the wasteland is the bare ground, there is no lawn.
+    val lawnPath = lawn?.takeIf { wasteland == null }?.let {
         Path().apply {
             val a = transform.worldToScreen(0f, 0f)
             val b = transform.worldToScreen(max, 0f)
@@ -1343,7 +1379,7 @@ private fun DrawScope.drawTerrain(
             moveTo(a.x, a.y); lineTo(b.x, b.y); lineTo(c.x, c.y); lineTo(d.x, d.y); close()
         }
     }
-    if (lawn != null && lawnPath != null) {
+    if (lawn != null && lawnPath != null && wasteland == null) {
         drawPath(lawnPath, lawn.base)
         val spriteScale = transform.tileWidth / lawn.tileWidth * LawnShade.FEATHER_OVERLAP
         clipPath(lawnPath) {
@@ -1358,7 +1394,7 @@ private fun DrawScope.drawTerrain(
     for (x in 0 until gridSize) for (y in 0 until gridSize) {
         val type = gardenMap.tileAt(x, y) ?: TileType.GRASS
         val tile = TileSetDefinition.groundTileFor(type, x, y)
-        val laid = lawn != null && tile == GroundTile.GRASS
+        val laid = (lawn != null || wasteland != null) && tile == GroundTile.GRASS
         // Cells of grass are mirrored at random, so that the one picture does not repeat in step.
         if (!laid && !drawTileSprite(tile, transform.tileCenter(x, y), LawnShade.mirrored(x, y))) {
             when (tile) {
@@ -1370,8 +1406,32 @@ private fun DrawScope.drawTerrain(
         // The season, over the lawn: petals, a deeper green, fallen leaves or snow.
         if (tile != GroundTile.WATER) drawSeasonGround(transform, x, y, ambience.season)
     }
-    drawLawnShade(transform, gridSize)
+    if (wasteland == null) drawLawnShade(transform, gridSize)
 }
+
+/** The outline of the whole garden, a diamond [max] cells a side. */
+private fun gardenOutline(transform: IsometricTransform, max: Float): Path = Path().apply {
+    val a = transform.worldToScreen(0f, 0f)
+    val b = transform.worldToScreen(max, 0f)
+    val c = transform.worldToScreen(max, max)
+    val d = transform.worldToScreen(0f, max)
+    moveTo(a.x, a.y); lineTo(b.x, b.y); lineTo(c.x, c.y); lineTo(d.x, d.y); close()
+}
+
+/** What a cell with nothing laid on it looks like. */
+enum class BareGround {
+    /** Untilled earth (`soil_wasteland`): a garden being made. */
+    WASTELAND,
+
+    /** The feathered lawn: the title's garden in full swing, and where the wasteland is missing. */
+    LAWN,
+}
+
+/** A wasteland slab's face a touch larger than its cell, so that no seam of the frame shows between two. */
+private const val WASTELAND_COVERAGE = 1.02f
+
+/** The pond's ring of stones fills its cell, just short of the edges. */
+private const val POND_COVERAGE = 0.98f
 
 /**
  * Where the garden box's rim meets the ground inside it. Drawn after everything that lies on the
@@ -2079,6 +2139,23 @@ private val LANTERN_LIGHT = Color(0xFFFFE9A8)
  * A stone lantern: a wide foot, a post, the lamp chamber with its lit window, and a broad cap
  * with a knob on top. A warm glow hangs round the window.
  */
+private val POND_WATER = Color(0xFF8FC3D9)
+private val POND_WATER_DEEP = Color(0xFF5E9BB5)
+private val POND_STONE = Color(0xFFD8D3C8)
+
+/** The pond when its picture cannot be read: a pool of water in a ring of pale stones. */
+private fun DrawScope.drawPondInCode(transform: IsometricTransform, x: Int, y: Int) {
+    fun diamond(inset: Float) = quad(
+        transform.worldToScreen(x + inset, y + inset),
+        transform.worldToScreen(x + 1 - inset, y + inset),
+        transform.worldToScreen(x + 1 - inset, y + 1 - inset),
+        transform.worldToScreen(x + inset, y + 1 - inset),
+    )
+    drawPath(diamond(0.04f), POND_STONE)
+    drawPath(diamond(0.16f), POND_WATER_DEEP)
+    drawPath(diamond(0.22f), POND_WATER)
+}
+
 private val SPRINKLER_METAL = Color(0xFF9AA5AD)
 private val SPRINKLER_METAL_DARK = Color(0xFF6D7880)
 private val SPRINKLER_BRASS = Color(0xFFC9A44C)

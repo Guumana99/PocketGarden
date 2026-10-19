@@ -28,6 +28,8 @@ enum class PlacementKind {
     companion object {
         fun forObjectId(objectId: String): PlacementKind = when {
             objectId.startsWith(GridObject.TERRAIN_ID_PREFIX) -> TERRAIN
+            // A pond is ground too: no paving under it, nothing standing in it.
+            objectId == GridObject.POND_OBJECT_ID -> TERRAIN
             objectId.startsWith(GridObject.FLOOR_ID_PREFIX) -> FLOOR
             else -> OBJECT
         }
@@ -85,6 +87,8 @@ class GardenGrid(
             cells.any { !map.isInside(it.x, it.y) } -> PlacementCheck.OUT_OF_BOUNDS
             cells.any { !map.isBuildable(it.x, it.y) } -> PlacementCheck.NOT_BUILDABLE
             cells.any { occupants[it]?.isTerrain == true } -> PlacementCheck.NOT_BUILDABLE
+            // Nor is anything laid under or stood in a pond, though it can be taken away again.
+            cells.any { occupants[it]?.isPond == true } -> PlacementCheck.OCCUPIED
             kind != PlacementKind.OBJECT && cells.any { it in floors } -> PlacementCheck.OCCUPIED
             kind != PlacementKind.FLOOR && cells.any { it in occupants } -> PlacementCheck.OCCUPIED
             else -> PlacementCheck.OK

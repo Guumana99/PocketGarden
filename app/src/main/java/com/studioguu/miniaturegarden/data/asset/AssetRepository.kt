@@ -43,6 +43,10 @@ class SpriteAtlas(
 class TerrainTextures(
     val riverAutotile: Bitmap? = null,
     val cobblestone: Bitmap? = null,
+    /** The untilled ground every cell starts as, one slab a cell ([GroundSlab.WASTELAND]). */
+    val wasteland: Bitmap? = null,
+    /** The pond, a cell of water in a ring of stones and logs ([GroundSlab.POND]). */
+    val pond: Bitmap? = null,
 ) {
     companion object {
         val EMPTY = TerrainTextures()
@@ -72,19 +76,25 @@ class AssetRepository @Inject constructor(
 
     /**
      * Returns the ground textures, loading them on first use. They are drawable resources
-     * (`res/drawable-nodpi`), named here through `R.drawable`, so a missing or renamed file is a
-     * build error rather than a tile that silently fails to appear.
+     * (`res/drawable-nodpi`, and the wasteland and the pond in `res/drawable`), named here
+     * through `R.drawable`, so a missing or renamed file is a build error rather than a tile that
+     * silently fails to appear.
      */
     suspend fun loadTerrainTextures(): TerrainTextures = mutex.withLock {
         cachedTerrain ?: withContext(Dispatchers.IO) {
             TerrainTextures(
                 riverAutotile = decodeUnscaled(R.drawable.tile_river_autotile),
                 cobblestone = decodeUnscaled(R.drawable.tile_path_cobblestone),
+                wasteland = decodeUnscaled(R.drawable.soil_wasteland),
+                pond = decodeUnscaled(R.drawable.pond),
             )
         }.also { cachedTerrain = it }
     }
 
-    /** Decodes at the file's own pixel size, whatever the screen density. */
+    /**
+     * Decodes at the file's own pixel size, whatever the screen density: a picture in plain
+     * `res/drawable` would otherwise be scaled up as if it were drawn for the lowest density.
+     */
     private fun decodeUnscaled(@DrawableRes id: Int): Bitmap? =
         BitmapFactory.decodeResource(context.resources, id, BitmapFactory.Options().apply { inScaled = false })
 

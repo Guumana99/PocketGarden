@@ -73,6 +73,9 @@ data class GridObject(
     /** A fence, under whichever of its ids. Fences join up with the fences next to them. */
     val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
 
+    /** The pond: water in a ring of stones, which takes its whole cell like the river does. */
+    val isPond: Boolean get() = objectId == POND_OBJECT_ID
+
     /** The sprinkler, which waters the beds round it while it is switched on. */
     val isSprinkler: Boolean get() = objectId == Sprinkler.OBJECT_ID
 
@@ -124,6 +127,9 @@ data class GridObject(
          * it cannot be bought, moved or put away, and tapping it opens it, which uses it up.
          */
         const val STARTER_CRATE_OBJECT_ID = "deco_starter_crate"
+
+        /** The pond, bought in the shop and put down on a cell of its own. */
+        const val POND_OBJECT_ID = "deco_pond"
     }
 }
 

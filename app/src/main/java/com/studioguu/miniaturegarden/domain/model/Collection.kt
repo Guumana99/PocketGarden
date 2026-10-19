@@ -53,6 +53,7 @@ enum class CollectionEntry(
     PATH(GridObject.COBBLESTONE_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     FLOWERS("ground_flowers", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     DECK(GridObject.WOOD_DECK_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
+    POND(GridObject.POND_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     ROCK("deco_rock", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     FENCE(GridObject.FENCE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     BENCH("deco_bench", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 20),
