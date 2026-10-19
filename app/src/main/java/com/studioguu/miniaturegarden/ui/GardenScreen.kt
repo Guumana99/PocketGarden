@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
@@ -129,6 +131,9 @@ private const val SHOP_SWITCH_MILLIS = 320
 /** How often plants are advanced while the garden is on screen. */
 private const val SYNC_INTERVAL_MILLIS = 30_000L
 
+/** How long the garden takes to fade in once it has been read. */
+private const val GARDEN_FADE_IN_MILLIS = 250
+
 @Composable
 fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val gridObjects by viewModel.gridObjects.collectAsStateWithLifecycle()
@@ -158,7 +163,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val season by viewModel.season.collectAsStateWithLifecycle()
     val letters by viewModel.letters.collectAsStateWithLifecycle()
     val inventorySlots by viewModel.inventorySlots.collectAsStateWithLifecycle()
-    val savedView by viewModel.savedView.collectAsStateWithLifecycle()
+    val gardenReady by viewModel.gardenReady.collectAsStateWithLifecycle()
     val inventorySort by viewModel.inventorySort.collectAsStateWithLifecycle()
     val levelUp by viewModel.levelUp.collectAsStateWithLifecycle()
 
@@ -229,7 +234,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     ?.let { building -> StructureEffect.forObjectId(building.objectId)?.cellsInReach(building.gridX, building.gridY) }
                     ?: emptySet()
             }
-            GardenCanvas(
+            // The garden comes in softly once it has been read, so the default lawn is never seen
+            // for a moment before the saved one; until then there is only the sky.
+            val gardenAlpha by animateFloatAsState(if (gardenReady) 1f else 0f, tween(GARDEN_FADE_IN_MILLIS), label = "gardenIn")
+            if (gardenReady) GardenCanvas(
                 gridObjects = gridObjects,
                 // In camera mode the garden is only looked at: no selection, no grid, and taps
                 // do nothing, though it can still be dragged and pinched into place.
@@ -249,8 +257,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 hintCells = if (cameraMode) emptySet() else hintCells,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
-                savedView = savedView,
-                onViewChanged = viewModel::saveView,
                 onZoomChanged = if (BuildConfig.DEBUG) ({ debugZoom = it }) else null,
                 paused = showInventory || showShop,
                 season = season,
@@ -267,7 +273,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         )
                     }
                 },
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = gardenAlpha },
             )
             // Inside the recorded box, so a shared picture shows the rain too.
             if (weather == WeatherType.RAINY || blessedRainFalling) {

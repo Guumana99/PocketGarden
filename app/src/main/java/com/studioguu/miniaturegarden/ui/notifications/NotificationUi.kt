@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -218,7 +217,7 @@ fun NotificationPermissionDialog(onOk: () -> Unit, onDismiss: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.notification_permission_cancel), color = GardenColors.Cream) }
+                    WoodButton(text = stringResource(R.string.notification_permission_cancel), onClick = onDismiss)
                     WoodButton(text = stringResource(R.string.notification_permission_ok), onClick = onOk)
                 }
             }
@@ -271,7 +270,7 @@ fun NotificationInviteDialog(onAccept: () -> Unit, onLater: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    TextButton(onClick = onLater) { Text(stringResource(R.string.notification_invite_later), color = GardenColors.Cream) }
+                    WoodButton(text = stringResource(R.string.notification_invite_later), onClick = onLater)
                     WoodButton(text = stringResource(R.string.notification_invite_ok), onClick = onAccept)
                 }
             }

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.WorkKind
@@ -35,8 +36,32 @@ sealed interface GardenEffect {
     /** A page of the encyclopedia became ready to be filled in. */
     data class Discovery(override val id: Long) : GardenEffect
 
-    /** A building was finished, or taking one apart was. */
-    data class WorkDone(override val id: Long, val objectId: String, val kind: WorkKind) : GardenEffect
+    /**
+     * A building was finished, or taking one apart was. [newPage]: finishing it also made a page
+     * of the encyclopedia ready, said on the same plaque rather than on a second one over it.
+     */
+    data class WorkDone(
+        override val id: Long,
+        val objectId: String,
+        val kind: WorkKind,
+        val newPage: Boolean = false,
+    ) : GardenEffect
+}
+
+/**
+ * [effect] added to the effects on screen. A building's first completion also makes its page of
+ * the book ready, and the two would otherwise float up in the same place at the same moment: the
+ * news of the page joins the plaque of the building instead, whichever of the two comes first.
+ */
+fun List<GardenEffect>.plusEffect(effect: GardenEffect): List<GardenEffect> {
+    val built = indexOfLast { it is GardenEffect.WorkDone && it.kind == WorkKind.BUILDING }
+    return when {
+        effect is GardenEffect.Discovery && built >= 0 ->
+            toMutableList().also { it[built] = (it[built] as GardenEffect.WorkDone).copy(newPage = true) }
+        effect is GardenEffect.WorkDone && effect.kind == WorkKind.BUILDING && any { it is GardenEffect.Discovery } ->
+            filterNot { it is GardenEffect.Discovery } + effect.copy(newPage = true)
+        else -> this + effect
+    }
 }
 
 private const val DURATION_MILLIS = 2_600
@@ -112,12 +137,13 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
                 else -> R.string.effect_built
             },
             objectDisplayName(effect.objectId),
-        )
+        ) + if (effect.newPage) "\n" + stringResource(R.string.effect_discovery) else ""
     }
     Text(
         text = text,
         style = if (isBig) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
         color = if (isBig) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
             .graphicsLayer {

@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.ui.title
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -22,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -75,6 +75,9 @@ private const val SAMPLE_BEAT_MILLIS = 1_200L
  */
 private const val SAMPLE_ZOOM = 1.22f
 
+/** How long the sample garden takes to fade in once its artwork has been read. */
+private const val SAMPLE_FADE_IN_MILLIS = 250
+
 /**
  * The first thing the app shows: the sky and meadow behind the garden, a wooden sign with the
  * name hanging from above, a large live garden in full swing drawn by the real renderer, and the
@@ -90,6 +93,7 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
     val hasSavedGarden by viewModel.hasSavedGarden.collectAsStateWithLifecycle()
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
     val terrain by viewModel.terrain.collectAsStateWithLifecycle()
+    val artLoaded by viewModel.artLoaded.collectAsStateWithLifecycle()
     var confirmStartOver by rememberSaveable { mutableStateOf(false) }
 
     // Music while the title is in front. Leaving for the garden is not leaving the foreground:
@@ -130,7 +134,9 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
                     .fillMaxWidth()
                     .semantics { contentDescription = sampleLabel },
             ) {
-                GardenCanvas(
+                // Fades in once the artwork is read, rather than flashing up in stand-in shapes.
+                val sampleAlpha by animateFloatAsState(if (artLoaded) 1f else 0f, tween(SAMPLE_FADE_IN_MILLIS), label = "sampleIn")
+                if (artLoaded) GardenCanvas(
                     gridObjects = sample,
                     selectedTile = null,
                     onTileTapped = {},
@@ -141,7 +147,7 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
                     weather = WeatherType.SUNNY,
                     visitors = TitleSampleGarden.visitors,
                     initialZoom = SAMPLE_ZOOM,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = sampleAlpha },
                 )
                 // Laid over the sample so that it cannot be dragged, pinched or tapped: it is
                 // only to be looked at.
@@ -186,7 +192,7 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
                 )
             },
             dismissButton = {
-                TextButton(onClick = { confirmStartOver = false }) { Text(stringResource(R.string.action_cancel)) }
+                WoodButton(text = stringResource(R.string.action_cancel), onClick = { confirmStartOver = false })
             },
         )
     }

@@ -441,7 +441,7 @@
     <string name="nature_heading_hints">うわさ</string>
     <string name="nature_index">もくじ</string>
     <string name="nature_new">あたらしい</string>
-    <string name="nature_first_met">初めて出会った日　%1$d月%2$d日</string>
+    <string name="book_entered_on">登録日 %1$s</string>
     <string name="nature_none_yet">まだ誰にも出会っていない。\n庭を整えて、待ってみよう。</string>
     <string name="creature_flavor_butterfly">咲きそろった花から花へと渡り歩く。\n羽をたたむと、木の葉によく似ている。</string>
     <string name="creature_flavor_ladybug">小さくて赤い、丸い虫。\nチューリップの葉の上で、日向ぼっこをする。</string>

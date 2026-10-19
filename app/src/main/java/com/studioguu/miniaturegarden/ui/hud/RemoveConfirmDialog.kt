@@ -4,9 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,10 +71,16 @@ fun RemoveConfirmDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                OutlinedButton(onClick = onDiscard, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(if (gridObject.isTilledSoil) R.string.remove_soil else R.string.remove_discard))
-                }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+                WoodButton(
+                    text = stringResource(if (gridObject.isTilledSoil) R.string.remove_soil else R.string.remove_discard),
+                    onClick = onDiscard,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                WoodButton(
+                    text = stringResource(R.string.action_cancel),
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         },
     )
