@@ -132,7 +132,7 @@ class ProgressionTest {
             unlockedAt(1) + GardenItem.SEED_SUNFLOWER + GardenItem.DECO_ROCK + GardenItem.DECO_BENCH + GardenItem.SEED_DAIKON,
             unlockedAt(2),
         )
-        assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL + GardenItem.SEED_WATERMELON + GardenItem.SEED_LAVENDER, unlockedAt(3))
+        assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL + GardenItem.SEED_WATERMELON + GardenItem.SEED_LAVENDER + GardenItem.DECO_SPRINKLER, unlockedAt(3))
         assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE + GardenItem.SEED_PAPRIKA + GardenItem.STRUCT_WINDMILL, unlockedAt(4))
         // Level opens everything but the two that the encyclopedia opens.
         val byPages = setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN)
@@ -152,7 +152,7 @@ class ProgressionTest {
         assertEquals(
             setOf(
                 GardenItem.STRUCT_WELL, GardenItem.SEED_WATERMELON, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_PAPRIKA,
-                GardenItem.STRUCT_WINDMILL,
+                GardenItem.STRUCT_WINDMILL, GardenItem.DECO_SPRINKLER,
             ),
             GardenItem.unlockedBetween(2, 4).toSet(),
         )

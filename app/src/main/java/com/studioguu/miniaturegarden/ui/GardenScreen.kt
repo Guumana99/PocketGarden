@@ -66,6 +66,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
+import com.studioguu.miniaturegarden.domain.model.Sprinkler
 import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridCell
@@ -166,6 +168,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val gardenReady by viewModel.gardenReady.collectAsStateWithLifecycle()
     val inventorySort by viewModel.inventorySort.collectAsStateWithLifecycle()
     val levelUp by viewModel.levelUp.collectAsStateWithLifecycle()
+    val toolLevels by viewModel.toolLevels.collectAsStateWithLifecycle()
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     // The bag's tab is kept while the app is open; its sort order is kept in the settings.
@@ -429,6 +432,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     // Lit while something from the bag is in hand; tapping it again puts that down.
                     bagActive = placing != null,
                     onToggleHoe = viewModel::toggleHoe,
+                    hoeLevel = toolLevels.hoe,
+                    wateringCanLevel = toolLevels.wateringCan,
                     canCare = placing == null && !hoeActive && target?.isPlant == true && target.status != PlantStatus.WITHERED,
                     onWater = viewModel::waterSelected,
                     onFertilize = viewModel::fertilizeSelected,
@@ -500,6 +505,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 editing = editMode,
                                 // During the first steps the panel keeps to what the step is about.
                                 guiding = tutorialStep?.isGuiding == true,
+                                bedQuality = remember(it, gridObjects) {
+                                    if (it.isTilledSoil) it.soilQuality else HarvestPlantUseCase.bedUnder(it, gridObjects)?.soilQuality ?: 0
+                                },
+                                sprinkled = remember(it, gridObjects) { it.isPlant && Sprinkler.waters(it, gridObjects) },
+                                onToggleSprinkler = viewModel::toggleSprinklerSelected,
                             )
                         }
                     }

@@ -2,8 +2,15 @@ package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
+import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.Footprint
+import com.studioguu.miniaturegarden.domain.model.HoeSkill
+import com.studioguu.miniaturegarden.domain.model.SoilHardness
+import com.studioguu.miniaturegarden.domain.model.SoilQuality
+import com.studioguu.miniaturegarden.domain.model.WateringCanSkill
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GridCell
+import com.studioguu.miniaturegarden.domain.model.Sprinkler
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -78,6 +85,12 @@ enum class ActionResult {
 
     /** The first steps ask for something else just now (one cell is tilled, then the seed is sown). */
     NOT_THIS_STEP,
+
+    /** The hoe struck hard ground and broke it a little: it needs more strikes to be tilled. */
+    HOE_STRUCK,
+
+    /** Only the sprinkler can be switched on and off. */
+    NOT_SWITCHABLE,
 }
 
 /**
@@ -90,9 +103,11 @@ class CareForPlantUseCase @Inject constructor(
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
     /**
-     * Adds [WATER_AMOUNT] of moisture, up to 100% ([wateredMoisture]), for [WATER_XP]. Only
-     * allowed below [WATERING_THRESHOLD]. One can of water does not bring parched soil all the
-     * way back: a plant left to dry right out needs a few.
+     * Pours what the watering can holds at its level ([WateringCanSkill.waterAmount], 35 points
+     * from a new can) up to 100% ([wateredMoisture]), for [WATER_XP]. Only allowed below
+     * [WATERING_THRESHOLD]. A new can does not bring parched soil all the way back: a plant left
+     * to dry right out needs a few pours, and fewer as the can gets better. Each pour is a use
+     * of the can ([FarmTool.WATERING_CAN]).
      */
     suspend fun water(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         care(
@@ -100,7 +115,13 @@ class CareForPlantUseCase @Inject constructor(
             coinCost = 0,
             xp = WATER_XP,
             refuse = { if (it.moistureLevel >= WATERING_THRESHOLD) ActionResult.ALREADY_MOIST else null },
-        ) { it.copy(moistureLevel = wateredMoisture(it.moistureLevel)) }
+            afterwards = {
+                gardenRepository.getProgress()?.let { gardenRepository.saveProgress(it.copy(wateringCanXp = it.wateringCanXp + 1)) }
+            },
+        ) {
+            val level = gardenRepository.getProgress()?.wateringCanLevel ?: 1
+            it.copy(moistureLevel = wateredMoisture(it.moistureLevel, level))
+        }
 
     /**
      * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, advances growth by
@@ -168,7 +189,8 @@ class CareForPlantUseCase @Inject constructor(
         coinCost: Int,
         xp: Int,
         refuse: (GridObject) -> ActionResult?,
-        treat: (GridObject) -> GridObject,
+        afterwards: suspend () -> Unit = {},
+        treat: suspend (GridObject) -> GridObject,
     ): ActionResult = gardenRepository.runInTransaction {
         val garden = gardenRepository.getGridObjects()
         val stored = garden.firstOrNull { it.instanceId == instanceId }
@@ -195,6 +217,7 @@ class CareForPlantUseCase @Inject constructor(
             )
         )
         gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - coinCost).gainXp(xp))
+        afterwards()
         ActionResult.SUCCESS
     }
 
@@ -225,11 +248,15 @@ class CareForPlantUseCase @Inject constructor(
         /** Fertilizing is only possible while nutrition is below this. */
         const val FERTILIZING_THRESHOLD = 0.5f
 
-        /** How much one watering adds to the soil's moisture (35 points). */
-        const val WATER_AMOUNT = 0.35f
+        /** How much one watering from a new can adds to the soil's moisture (35 points). */
+        const val WATER_AMOUNT = WateringCanSkill.BASE_AMOUNT
 
-        /** The soil's moisture after one watering from [moisture]: [WATER_AMOUNT] more, never above 100%. */
-        fun wateredMoisture(moisture: Float): Float = (moisture.coerceAtLeast(0f) + WATER_AMOUNT).coerceAtMost(1f)
+        /**
+         * The soil's moisture after one watering from [moisture] with a can of [canLevel]: what
+         * that can pours ([WateringCanSkill.waterAmount]) more, never above 100%.
+         */
+        fun wateredMoisture(moisture: Float, canLevel: Int = 1): Float =
+            (moisture.coerceAtLeast(0f) + WateringCanSkill.waterAmount(canLevel)).coerceAtMost(1f)
     }
 }
 
@@ -311,8 +338,15 @@ class PlaceItemUseCase @Inject constructor(
 
 /**
  * The hoe: turns a cell of open ground into tilled soil, which is where seeds can be planted.
- * It is a tool, not an item, so it costs nothing and is never used up. The cell must be empty
- * ground: no river, no paving, nothing standing on it, and not tilled already.
+ * It is a tool, not an item, so it costs nothing and is never used up (nor tires anyone: there is
+ * no stamina). The cell must be empty ground: no river, no paving, nothing standing on it, and
+ * not tilled already.
+ *
+ * Ground is not all alike ([SoilHardness]): hard ground takes a few strikes. [strikes] is how many
+ * the cell has had already; until there are enough ([HoeSkill.strikesNeeded]) a strike only
+ * answers [ActionResult.HOE_STRUCK] and nothing is stored. The hoe gets better with each bed
+ * ([FarmTool.HOE]): fewer strikes, and richer beds ([HoeSkill.soilQualityFor]) whose crops fetch
+ * more at harvest ([SoilQuality]).
  *
  * During the first steps it tills one cell, wherever the player likes, and that moves them on
  * to sowing at once; until the guided steps are over it tills nothing more
@@ -322,7 +356,7 @@ class HoeUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val gardenMap: GardenMapSource,
 ) {
-    suspend operator fun invoke(gridX: Int, gridY: Int, now: Long): ActionResult =
+    suspend operator fun invoke(gridX: Int, gridY: Int, now: Long, strikes: Int = 0): ActionResult =
         gardenRepository.runInTransaction {
             val progress = gardenRepository.getProgress()
             if (progress != null && !progress.tutorialStep.allows(TutorialTool.HOE)) return@runInTransaction ActionResult.NOT_THIS_STEP
@@ -334,10 +368,16 @@ class HoeUseCase @Inject constructor(
                 PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED
                 PlacementCheck.OK -> Unit
             }
-            gardenRepository.upsertGridObject(tilledSoil(gridX, gridY, now))
-            // The first steps ask for one cell: with it tilled, on to sowing.
-            if (progress?.tutorialStep == TutorialStep.TILL_SOIL) {
-                gardenRepository.saveProgress(progress.copy(tutorialStep = TutorialStep.PLANT_SEED))
+            val level = progress?.hoeLevel ?: 1
+            // The first steps ask for one cell, and one strike is enough for it.
+            val guided = progress?.tutorialStep == TutorialStep.TILL_SOIL
+            val needed = if (guided) 1 else HoeSkill.strikesNeeded(SoilHardness.at(gridX, gridY), level)
+            if (strikes + 1 < needed) return@runInTransaction ActionResult.HOE_STRUCK
+            gardenRepository.upsertGridObject(tilledSoil(gridX, gridY, now, HoeSkill.soilQualityFor(level)))
+            if (progress != null) {
+                // With it tilled, on to sowing.
+                val step = if (guided) TutorialStep.PLANT_SEED else progress.tutorialStep
+                gardenRepository.saveProgress(progress.copy(tutorialStep = step, hoeXp = progress.hoeXp + 1))
             }
             ActionResult.SUCCESS
         }
@@ -355,12 +395,13 @@ class HoeUseCase @Inject constructor(
         if (missing.isNotEmpty()) gardenRepository.upsertGridObjects(missing)
     }
 
-    private fun tilledSoil(gridX: Int, gridY: Int, now: Long) = GridObject(
+    private fun tilledSoil(gridX: Int, gridY: Int, now: Long, quality: Int = 0) = GridObject(
         instanceId = UUID.randomUUID().toString(),
         gridX = gridX,
         gridY = gridY,
         objectId = GridObject.TILLED_SOIL_OBJECT_ID,
         lastUpdatedTimestamp = now,
+        soilQuality = quality,
     )
 }
 
@@ -395,14 +436,20 @@ class HarvestPlantUseCase @Inject constructor(
 
             val species = PlantSpecies.forObjectId(current.objectId)
             val reward = species.harvestReward(current.harvestCount)
+            // A richer bed, tilled by a better hoe, fetches more for what grew in it.
+            val coins = SoilQuality.harvestCoins(reward.coins, bedUnder(current, garden)?.soilQuality ?: 0)
             afterHarvest(current, species, now)?.let { gardenRepository.upsertGridObject(it) }
                 ?: gardenRepository.deleteGridObject(instanceId)
             recordCollection(current.objectId, CollectionTrigger.HARVEST, now)
-            gardenRepository.saveUserProfile(profile.copy(coins = profile.coins + reward.coins).gainXp(reward.xp))
+            gardenRepository.saveUserProfile(profile.copy(coins = profile.coins + coins).gainXp(reward.xp))
             ActionResult.SUCCESS
         }
 
     companion object {
+        /** The tilled bed [plant] grows in, if it grows in one. */
+        fun bedUnder(plant: GridObject, garden: List<GridObject>): GridObject? =
+            garden.firstOrNull { it.isTilledSoil && it.gridX == plant.gridX && it.gridY == plant.gridY }
+
         /**
          * What is left of [plant] (fully grown, brought up to [now]) once it has been harvested:
          * null for a [HarvestType.SINGLE_HARVEST] crop, which goes; for a repeatable one, the same
@@ -607,4 +654,28 @@ class FlipObjectUseCase @Inject constructor(
         gardenRepository.upsertGridObject(target.copy(isFlipped = !target.isFlipped))
         ActionResult.SUCCESS
     }
+}
+
+/**
+ * Switches a sprinkler on or off. The plants in its reach are brought up to [now] first, under
+ * the sprinkler as it was, so that the time before the switch is counted the way it was spent
+ * and only what comes after it changes.
+ */
+class ToggleSprinklerUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+    private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
+) {
+    suspend operator fun invoke(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
+        gardenRepository.runInTransaction {
+            val garden = gardenRepository.getGridObjects()
+            val sprinkler = garden.firstOrNull { it.instanceId == instanceId }
+                ?: return@runInTransaction ActionResult.NOT_FOUND
+            if (!sprinkler.isSprinkler) return@runInTransaction ActionResult.NOT_SWITCHABLE
+            val reach = Sprinkler.cellsInReach(sprinkler.gridX, sprinkler.gridY)
+            val caughtUp = garden.filter { it.isPlant && GridCell(it.gridX, it.gridY) in reach }
+                .map { calculateOfflineProgress(it, now, weather, garden) }
+            if (caughtUp.isNotEmpty()) gardenRepository.upsertGridObjects(caughtUp)
+            gardenRepository.upsertGridObject(sprinkler.copy(isOn = !sprinkler.isOn))
+            ActionResult.SUCCESS
+        }
 }

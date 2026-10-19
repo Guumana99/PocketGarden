@@ -42,7 +42,7 @@ class HoeTest {
     fun `the hoe turns open ground into tilled soil, for free`() = runBlocking {
         assertFalse(grid().isTilled(3, 4))
 
-        assertEquals(ActionResult.SUCCESS, hoe(3, 4, t0))
+        assertEquals(ActionResult.SUCCESS, hoe.till(3, 4, t0))
 
         val soil = repo.objects.values.single()
         assertEquals(GridObject.TILLED_SOIL_OBJECT_ID, soil.objectId)
@@ -75,20 +75,20 @@ class HoeTest {
         repo.put(obj("hut", 5, 5, "struct_hut"))
         val before = repo.objects.size
 
-        assertEquals(ActionResult.TILE_NOT_BUILDABLE, hoe(1, 1, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe(2, 2, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe(3, 3, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe(6, 6, t0)) // any cell of the hut
-        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe(9, 0, t0))
-        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe(0, -1, t0))
+        assertEquals(ActionResult.TILE_NOT_BUILDABLE, hoe.till(1, 1, t0))
+        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(2, 2, t0))
+        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(3, 3, t0))
+        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(6, 6, t0)) // any cell of the hut
+        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(9, 0, t0))
+        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(0, -1, t0))
 
         assertEquals(before, repo.objects.size)
     }
 
     @Test
     fun `tilling the same cell twice changes nothing the second time`() = runBlocking {
-        assertEquals(ActionResult.SUCCESS, hoe(4, 4, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe(4, 4, t0 + 1))
+        assertEquals(ActionResult.SUCCESS, hoe.till(4, 4, t0))
+        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(4, 4, t0 + 1))
         assertEquals(1, repo.objects.size)
     }
 
@@ -98,7 +98,7 @@ class HoeTest {
         val hoeOnRiverMap = HoeUseCase(repo, riverMap)
 
         assertEquals(ActionResult.TILE_NOT_BUILDABLE, hoeOnRiverMap(6, 2, t0))
-        assertEquals(ActionResult.SUCCESS, hoeOnRiverMap(5, 2, t0))
+        assertEquals(ActionResult.SUCCESS, hoeOnRiverMap.till(5, 2, t0))
     }
 
     // --- Planting ---
@@ -109,7 +109,7 @@ class HoeTest {
         assertEquals(14, seeds.size)
         seeds.forEachIndexed { slot, seed -> repo.putSlot(InventorySlot(slot, seed.itemId, 2)) }
         // Two rows of tilled soil along the top, nine to a row.
-        seeds.indices.forEach { hoe(it % 9, it / 9, t0) }
+        seeds.indices.forEach { hoe.till(it % 9, it / 9, t0) }
 
         seeds.indices.forEach { slot ->
             assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(slot, slot % 9, 5 + slot / 9, t0)) // open ground
@@ -125,7 +125,7 @@ class HoeTest {
     @Test
     fun `a plant stands on its soil and the two share the cell`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 2))
-        hoe(2, 2, t0)
+        hoe.till(2, 2, t0)
         place(0, 2, 2, t0)
 
         assertEquals(PlantSpecies.TULIP.objectId, grid().objectAt(2, 2)?.objectId)
@@ -140,7 +140,7 @@ class HoeTest {
         repo.putSlot(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 2))
         repo.putSlot(InventorySlot(1, GardenItem.STRUCT_FENCE.itemId, 1))
         repo.putSlot(InventorySlot(2, GardenItem.GROUND_GRASS.itemId, 1))
-        hoe(1, 1, t0)
+        hoe.till(1, 1, t0)
 
         assertEquals(ActionResult.SUCCESS, place(0, 0, 0, t0)) // open ground
         assertEquals(ActionResult.SUCCESS, place(0, 1, 1, t0)) // on a bed
@@ -152,7 +152,7 @@ class HoeTest {
     fun `paving and river cannot be laid over a bed`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.FLOOR_COBBLESTONE.itemId, 1))
         repo.putSlot(InventorySlot(1, GardenItem.TILE_RIVER.itemId, 1))
-        hoe(2, 2, t0)
+        hoe.till(2, 2, t0)
 
         assertEquals(ActionResult.TILE_OCCUPIED, place(0, 2, 2, t0))
         assertEquals(ActionResult.TILE_OCCUPIED, place(1, 2, 2, t0))
@@ -164,7 +164,7 @@ class HoeTest {
     @Test
     fun `after the harvest the bed is still tilled and can be planted again`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 2))
-        hoe(2, 2, t0)
+        hoe.till(2, 2, t0)
         place(0, 2, 2, t0)
         val tulip = repo.plants.single()
         repo.put(tulip.copy(growthProgress = 1f))
@@ -179,7 +179,7 @@ class HoeTest {
     @Test
     fun `a tap on a planted bed means the plant, and on an empty one the soil`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1))
-        hoe(2, 2, t0)
+        hoe.till(2, 2, t0)
         assertTrue(grid().objectAt(2, 2)!!.isTilledSoil)
 
         place(0, 2, 2, t0)
@@ -196,7 +196,7 @@ class HoeTest {
 
     @Test
     fun `time does nothing to a bed`() = runBlocking {
-        hoe(2, 2, t0)
+        hoe.till(2, 2, t0)
         val soil = repo.objects.values.single()
 
         val later = CalculateOfflineProgressUseCase()(soil, t0 + 30L * 24 * 3_600_000, sunny)

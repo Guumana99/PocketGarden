@@ -68,7 +68,8 @@ data class PlantSurroundings(
          * Only finished buildings count: one that is being built, is under wraps or is coming
          * down does nothing yet (or any more). Two buildings of the same kind do not add up: a
          * plant between two wells is as well off as one beside a single well. A well and a hut
-         * together give both effects.
+         * together give both effects. A running sprinkler ([Sprinkler]) counts like a building
+         * that keeps the soil moist.
          */
         fun of(plant: GridObject, garden: List<GridObject>): PlantSurroundings {
             if (!plant.isPlant) return OPEN_GROUND
@@ -82,6 +83,7 @@ data class PlantSurroundings(
                 drain = minOf(drain, effect.moistureDrainFactor)
                 growth = maxOf(growth, effect.growthFactor)
             }
+            if (Sprinkler.waters(plant, garden)) drain = minOf(drain, Sprinkler.MOISTURE_DRAIN_FACTOR)
             return if (drain == 1f && growth == 1f) OPEN_GROUND else PlantSurroundings(drain, growth)
         }
     }

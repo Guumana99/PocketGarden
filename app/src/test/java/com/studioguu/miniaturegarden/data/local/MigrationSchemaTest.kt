@@ -33,7 +33,7 @@ class MigrationSchemaTest {
     private val migrations: List<Migration> = with(AppDatabase.Companion) {
         listOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
+            MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
         )
     }
 
@@ -162,5 +162,22 @@ class MigrationSchemaTest {
             val columns = if (name == "grid_objects") after.getValue(name).columns - "harvestCount" else after.getValue(name).columns
             assertEquals(name, table.columns, columns)
         }
+    }
+
+    @Test
+    fun `v14 adds the tools' skill, the beds' richness and the sprinkler's switch, with nothing changed`() {
+        val added = mapOf(
+            "grid_objects" to setOf("soilQuality", "isOn"),
+            "garden_progress" to setOf("hoeXp", "wateringCanXp"),
+        )
+        val before = schema(13)
+        val after = schema(14)
+        for ((name, table) in before) {
+            assertEquals(name, table.columns, after.getValue(name).columns - added[name].orEmpty())
+        }
+        // Old beds are plain, old tools new, and everything that can run is running.
+        assertEquals("0", after.getValue("grid_objects").columns.getValue("soilQuality").default)
+        assertEquals("1", after.getValue("grid_objects").columns.getValue("isOn").default)
+        assertEquals("0", after.getValue("garden_progress").columns.getValue("hoeXp").default)
     }
 }

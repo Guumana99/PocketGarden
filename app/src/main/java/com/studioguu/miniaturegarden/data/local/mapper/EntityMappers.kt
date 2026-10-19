@@ -57,6 +57,8 @@ fun GridObjectEntity.toDomain() = GridObject(
     workStartedAt = workStartedAt,
     workEndsAt = workEndsAt,
     harvestCount = harvestCount,
+    soilQuality = soilQuality,
+    isOn = isOn,
 )
 
 fun GridObject.toEntity() = GridObjectEntity(
@@ -76,6 +78,8 @@ fun GridObject.toEntity() = GridObjectEntity(
     workStartedAt = workStartedAt,
     workEndsAt = workEndsAt,
     harvestCount = harvestCount,
+    soilQuality = soilQuality,
+    isOn = isOn,
 )
 
 fun InventorySlotEntity.toDomain() = InventorySlot(
@@ -111,6 +115,8 @@ fun GardenProgressEntity.toDomain() = GardenProgress(
     tutorialStep = TutorialStep.fromName(tutorialStep),
     gardenSize = gardenSize,
     seasonStartedAt = seasonStartedAt,
+    hoeXp = hoeXp,
+    wateringCanXp = wateringCanXp,
 )
 
 fun GardenProgress.toEntity() = GardenProgressEntity(
@@ -118,6 +124,8 @@ fun GardenProgress.toEntity() = GardenProgressEntity(
     tutorialStep = tutorialStep.name,
     gardenSize = gardenSize,
     seasonStartedAt = seasonStartedAt,
+    hoeXp = hoeXp,
+    wateringCanXp = wateringCanXp,
 )
 
 /** Null for a letter of a kind this version does not know (written by a newer one). */

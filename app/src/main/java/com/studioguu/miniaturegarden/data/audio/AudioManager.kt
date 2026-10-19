@@ -27,7 +27,7 @@ import kotlin.math.min
  * re-measure when one is replaced.
  */
 enum class SoundEffect(val resourceName: String, val gain: Float = 1f) {
-    /** Not triggered by anything at the moment: selecting a tile on the map is silent. */
+    /** The hoe knocking on hard ground, and a sprinkler being switched off. Selecting a tile is silent. */
     TAP("se_tap", gain = 0.80f),          // -19.2 dBFS
     WATER("se_water"),                    // -24.6 dBFS, already below target
     FERTILIZE("se_fertilize"),            // -22.6 dBFS

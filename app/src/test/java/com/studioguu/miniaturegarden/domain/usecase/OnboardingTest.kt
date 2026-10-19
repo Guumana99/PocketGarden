@@ -144,7 +144,7 @@ class OnboardingTest {
         // Any cell of lawn will do: nothing sparkles, the player chooses (#46). One off to the side.
         assertTrue(TutorialGuide.hintCells(TutorialStep.TILL_SOIL, repo.objects.values.toList()).isEmpty())
         val patch = GridCell(1, 6)
-        assertEquals(ActionResult.SUCCESS, hoe(patch.x, patch.y, t0))
+        assertEquals(ActionResult.SUCCESS, hoe.till(patch.x, patch.y, t0))
         // One cell is enough: sowing is next at once, without waiting for the garden to be looked at.
         assertEquals(TutorialStep.PLANT_SEED, step)
         assertEquals(TutorialStep.PLANT_SEED, follow())
@@ -204,17 +204,17 @@ class OnboardingTest {
     @Test
     fun `the first steps till one cell, and not a second until they are over`() = runBlocking {
         // Not before the crate is opened.
-        assertEquals(ActionResult.NOT_THIS_STEP, hoe(2, 2, t0))
+        assertEquals(ActionResult.NOT_THIS_STEP, hoe.till(2, 2, t0))
         openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID)
         follow()
-        assertEquals(ActionResult.SUCCESS, hoe(7, 1, t0))
-        assertEquals(ActionResult.NOT_THIS_STEP, hoe(2, 2, t0))
+        assertEquals(ActionResult.SUCCESS, hoe.till(7, 1, t0))
+        assertEquals(ActionResult.NOT_THIS_STEP, hoe.till(2, 2, t0))
         assertEquals(1, repo.objects.values.count { it.isTilledSoil })
         // Once the first steps are over, the hoe is free again.
         repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.FINISHED)
-        assertEquals(ActionResult.SUCCESS, hoe(2, 2, t0))
+        assertEquals(ActionResult.SUCCESS, hoe.till(2, 2, t0))
         repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.DONE)
-        assertEquals(ActionResult.SUCCESS, hoe(3, 2, t0))
+        assertEquals(ActionResult.SUCCESS, hoe.till(3, 2, t0))
     }
 
     @Test
@@ -323,7 +323,7 @@ class OnboardingTest {
     @Test
     fun `a seedling cleared away before its watering ends the guided steps`() = runBlocking {
         openCrate(StarterGarden.STARTER_CRATE_INSTANCE_ID)
-        hoe(4, 5, t0)
+        hoe.till(4, 5, t0)
         place(0, 4, 5, t0)
         assertEquals(TutorialStep.WATER_SEEDLING, follow())
 

@@ -17,6 +17,10 @@ data class GardenProgressEntity(
     @ColumnInfo(defaultValue = "9") val gardenSize: Int = 9,
     /** When the current season began; 0 until the season clock has started. Added in schema version 10. */
     @ColumnInfo(defaultValue = "0") val seasonStartedAt: Long = 0L,
+    /** Beds the hoe has tilled, its experience. Added in schema version 14. */
+    @ColumnInfo(defaultValue = "0") val hoeXp: Int = 0,
+    /** Times the watering can has watered, its experience. Added in schema version 14. */
+    @ColumnInfo(defaultValue = "0") val wateringCanXp: Int = 0,
 ) {
     companion object {
         const val SINGLETON_ID = 1
