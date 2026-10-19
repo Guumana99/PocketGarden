@@ -94,7 +94,8 @@ class AssetRepository @Inject constructor(
         } catch (_: FileNotFoundException) {
             return SpriteAtlas.EMPTY
         }
-        val manifest = AtlasManifest.parse(manifestText)
+        // The crops' stages are brought to a natural size next to one another (CropScale).
+        val manifest = CropScale.normalized(AtlasManifest.parse(manifestText))
         val bitmap = context.assets.open("$ATLAS_DIR/${manifest.atlas}").use(BitmapFactory::decodeStream)
             ?: error("Atlas image '${manifest.atlas}' could not be decoded")
         check(bitmap.width == manifest.atlasWidth && bitmap.height == manifest.atlasHeight) {

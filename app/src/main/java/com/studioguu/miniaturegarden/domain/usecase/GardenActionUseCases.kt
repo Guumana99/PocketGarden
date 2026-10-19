@@ -103,9 +103,10 @@ class CareForPlantUseCase @Inject constructor(
         ) { it.copy(moistureLevel = wateredMoisture(it.moistureLevel)) }
 
     /**
-     * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, advances growth by what the plant
-     * would grow in [FERTILIZER_GROWTH_HOURS] healthy hours and earns [FERTILIZE_XP]. Being a fixed
-     * amount of time, it is worth proportionally less on slow, valuable plants.
+     * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, advances growth by
+     * [fertilizerBoost] and earns [FERTILIZE_XP]. The boost is a share of the crop's own growing
+     * time, so it is worth the same to a quick mint as to a slow pumpkin (before, a fixed two
+     * hours was next to nothing on the slow crops, and the coins bought little but the refill).
      *
      * Only allowed once the plant has used up half its food ([FERTILIZING_THRESHOLD]); nutrition
      * runs down over three days, so a plant can be fed about once a day and a half. Before #50 it
@@ -122,7 +123,7 @@ class CareForPlantUseCase @Inject constructor(
                 nutritionLevel = 1f,
                 growthProgress = min(
                     1f,
-                    it.growthProgress + FERTILIZER_GROWTH_HOURS * PlantSpecies.forObjectId(it.objectId).growthPerHour,
+                    it.growthProgress + fertilizerBoost(PlantSpecies.forObjectId(it.objectId)),
                 ),
             )
         }
@@ -199,9 +200,23 @@ class CareForPlantUseCase @Inject constructor(
 
     companion object {
         const val WATER_XP = 5
-        const val FERTILIZE_XP = 10
-        const val FERTILIZER_COST = 15
-        const val FERTILIZER_GROWTH_HOURS = 2
+        /** Less than before (10) now that it is cheaper, so that it is not a way to buy levels. */
+        const val FERTILIZE_XP = 6
+        const val FERTILIZER_COST = 10
+
+        /** The share of a crop's whole growing time one feed brings forward. */
+        const val FERTILIZER_GROWTH_SHARE = 0.05f
+
+        /** And never less than this many hours' growth, for the quickest crops. */
+        const val FERTILIZER_MIN_GROWTH_HOURS = 2
+
+        /**
+         * How far one feed brings [species] on, as growth progress: [FERTILIZER_GROWTH_SHARE] of
+         * its growing time, or [FERTILIZER_MIN_GROWTH_HOURS] if that is more. Fed every time it is
+         * allowed (about every day and a half), a crop comes in at most about a sixth sooner.
+         */
+        fun fertilizerBoost(species: PlantSpecies): Float =
+            maxOf(FERTILIZER_GROWTH_SHARE, FERTILIZER_MIN_GROWTH_HOURS * species.growthPerHour)
         const val REVIVE_COST = 30
 
         /** Watering is only possible while moisture is below this. */
