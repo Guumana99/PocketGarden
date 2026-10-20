@@ -62,14 +62,14 @@ class EncyclopediaTest {
         val chapter = book.substringAfter("private fun Chapter(").substringBefore("\n}\n")
         assertTrue(chapter.contains("rememberPagerState(initialPage = 0, pageCount = { entries.size + 1 })"))
         assertTrue(chapter.contains("ContentsPage(entries.size)"))
-        assertTrue(chapter.contains("animateScrollToPage(index + 1)"))
+        assertTrue(chapter.contains("pagerState.turnTo(index + 1)"))
         assertTrue(chapter.contains("BookFooter(pagerState, entries.size, onDismiss)"))
 
         val notes = source("ui/collection/NatureNotesChapter.kt")
         val nature = notes.substringAfter("internal fun NatureNotesChapter(").substringBefore("\n}\n")
         assertTrue(nature.contains("rememberPagerState(initialPage = 0, pageCount = { creatures.size + 1 })"))
         assertTrue(nature.contains("ContentsPage("))
-        assertTrue(nature.contains("animateScrollToPage(index + 1)"))
+        assertTrue(nature.contains("pagerState.turnTo(index + 1)"))
         assertTrue(nature.contains("BookFooter(pagerState, creatures.size, onDismiss)"))
         // One contents layout for the whole book.
         assertFalse(notes.contains("CONTENTS_COLUMNS"))

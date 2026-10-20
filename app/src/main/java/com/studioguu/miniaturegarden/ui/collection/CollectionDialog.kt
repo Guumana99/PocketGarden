@@ -322,7 +322,7 @@ private fun Chapter(
             ContentsPage(entries.size) { index ->
                 val entry = entries[index]
                 EntryCell(entry, progress.stateOf(entry), atlas, terrain) {
-                    scope.launch { pagerState.animateScrollToPage(index + 1) }
+                    scope.launch { pagerState.turnTo(index + 1) }
                 }
             }
         } else {

@@ -33,8 +33,10 @@ import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import com.studioguu.miniaturegarden.ui.toolStars
 
 /**
- * Floating tool bar. Water and fertilizer act on the currently selected plant and are disabled
- * while none is selected ([canCare] false). The hoe is a tool that stays in hand until it is
+ * Floating tool bar. Fertilizer acts on the currently selected plant and is disabled while none
+ * is selected ([canCare] false). Watering is not on the bar: it is the "水やり" button of the
+ * selected plant's panel ([ObjectStatusDialog]), which a plant needs tapping for anyway, and a
+ * second watering can here only stood in the way. The hoe is a tool that stays in hand until it is
  * put down: its button is lit while it is ([hoeActive]).
  *
  * @param allows which tools can be picked up now: during the first steps only the one the step
@@ -43,14 +45,13 @@ import com.studioguu.miniaturegarden.ui.toolStars
  *   puts that down again, as the hoe's does for the hoe (#50).
  * @param hoeLevel how far the hoe has come with use ([com.studioguu.miniaturegarden.domain.model.FarmTool]),
  *   shown on its button as small gold stars from level 2 ([toolStars]), with its rank for the
- *   screen reader; [wateringCanLevel] the same for the watering can.
+ *   screen reader. The watering can's stars are on the panel's watering button.
  */
 @Composable
 fun QuickActionBar(
     canCare: Boolean,
     hoeActive: Boolean,
     onToggleHoe: () -> Unit,
-    onWater: () -> Unit,
     onFertilize: () -> Unit,
     onOpenInventory: () -> Unit,
     onOpenShop: () -> Unit,
@@ -58,7 +59,6 @@ fun QuickActionBar(
     allows: (TutorialTool) -> Boolean = { true },
     bagActive: Boolean = false,
     hoeLevel: Int = 1,
-    wateringCanLevel: Int = 1,
 ) {
     Surface(
         modifier = modifier,
@@ -73,10 +73,6 @@ fun QuickActionBar(
             ActionButton(
                 "⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive, enabled = allows(TutorialTool.HOE),
                 badge = levelBadge(hoeLevel),
-            )
-            ActionButton(
-                "💧", stringResource(R.string.action_water), onWater, enabled = canCare && allows(TutorialTool.WATER),
-                badge = levelBadge(wateringCanLevel),
             )
             ActionButton(
                 "🧪", stringResource(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST), onFertilize,

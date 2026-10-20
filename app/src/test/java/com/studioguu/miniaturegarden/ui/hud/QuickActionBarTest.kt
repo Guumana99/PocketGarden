@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.ui.hud
 
 import android.app.Application
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
@@ -37,17 +38,30 @@ class QuickActionBarTest {
         compose.setContent {
             GardenTheme {
                 QuickActionBar(
-                    canCare = true, hoeActive = false, onToggleHoe = {}, onWater = {}, onFertilize = {},
+                    canCare = true, hoeActive = false, onToggleHoe = {}, onFertilize = {},
                     onOpenInventory = {}, onOpenShop = {},
                     allows = { GardenLayout.toolAllowedInEditMode(it) },
                 )
             }
         }
         compose.onNode(hasText(text(R.string.action_hoe)) and hasClickAction()).assertIsNotEnabled()
-        compose.onNode(hasText(text(R.string.action_water)) and hasClickAction()).assertIsNotEnabled()
         compose.onNode(hasText(text(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST)) and hasClickAction()).assertIsNotEnabled()
         compose.onNode(hasText(text(R.string.action_inventory)) and hasClickAction()).assertIsNotEnabled()
         compose.onNode(hasText(text(R.string.action_shop)) and hasClickAction()).assertIsEnabled()
+    }
+
+    @Test
+    fun `the bar has no watering can - watering is the plant panel's button`() {
+        compose.setContent {
+            GardenTheme {
+                QuickActionBar(
+                    canCare = true, hoeActive = false, onToggleHoe = {}, onFertilize = {},
+                    onOpenInventory = {}, onOpenShop = {},
+                )
+            }
+        }
+        compose.onNode(hasText(text(R.string.action_hoe)) and hasClickAction()).assertIsEnabled()
+        compose.onAllNodes(hasText(text(R.string.action_water))).assertCountEquals(0)
     }
 
     @Test
@@ -56,7 +70,7 @@ class QuickActionBarTest {
         compose.setContent {
             GardenTheme {
                 QuickActionBar(
-                    canCare = false, hoeActive = false, onToggleHoe = {}, onWater = {}, onFertilize = {},
+                    canCare = false, hoeActive = false, onToggleHoe = {}, onFertilize = {},
                     onOpenInventory = { taps++ }, onOpenShop = {},
                     bagActive = true,
                     allows = { it != TutorialTool.HOE },

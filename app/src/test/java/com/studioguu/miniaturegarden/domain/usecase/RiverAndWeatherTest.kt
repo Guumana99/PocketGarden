@@ -96,7 +96,8 @@ class RiverAndWeatherTest {
 
         assertEquals(ActionResult.SUCCESS, remove("r"))
         // Lawn again: it can be tilled and planted like any other.
-        assertEquals(ActionResult.SUCCESS, HoeUseCase(repo, GardenMap.DEFAULT)(4, 4, t0))
+        // However hard that ground is, a few strikes of the hoe till it (SoilHardness).
+        assertEquals(ActionResult.SUCCESS, HoeUseCase(repo, GardenMap.DEFAULT).till(4, 4, t0))
         assertEquals(ActionResult.SUCCESS, place(0, 4, 4, t0))
     }
 

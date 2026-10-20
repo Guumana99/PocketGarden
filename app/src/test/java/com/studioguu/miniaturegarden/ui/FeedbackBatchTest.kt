@@ -16,7 +16,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Feedback from the device: a building's experience on its own plaque, the wasteland as one
+ * Feedback from the device: a building's plaque without its experience, the wasteland as one
  * seamless field with no tufts or rim, no specks on the ground, a hoe that takes its time and
  * shows its rank, a way back to the book's contents, no "登録しました +N" over the book, and a
  * pond whose water moves.
@@ -31,13 +31,15 @@ class FeedbackBatchTest {
     // --- 1. The building's plaque and its experience ---
 
     @Test
-    fun `an unveiled building says its experience on its own plaque, not in a second popup under it`() {
+    fun `an unveiled building's plaque says it is finished, without its experience`() {
         val viewModel = source("ui/GardenViewModel.kt")
         val unveil = viewModel.substringAfter("// A finished building under wraps: the tap unveils it.").substringBefore("} else if (_hoeActive.value)")
-        assertTrue(unveil.contains("GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING, xp = xp)"))
+        assertTrue(unveil.contains("GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING)"))
         assertFalse(unveil.contains("GardenEffect.Xp("))
-        assertEquals(20, GardenEffect.WorkDone(1, "struct_well", WorkKind.BUILDING, xp = 20).xp)
-        assertTrue(source("ui/effects/FloatingEffects.kt").contains("stringResource(R.string.effect_xp, effect.xp)"))
+        assertFalse(unveil.contains("xp = "))
+        // "完成", the new page and "+XP" at once were too much: the plaque no longer carries the XP.
+        val plaque = source("ui/effects/FloatingEffects.kt").substringAfter("is GardenEffect.WorkDone -> stringResource(")
+        assertFalse(plaque.substringBefore("    Text(").contains("effect_xp"))
     }
 
     // --- 2 and 3. The wasteland as one field, without its rim and tufts ---
@@ -72,9 +74,12 @@ class FeedbackBatchTest {
         val size = 64
         val ramp = IntArray(size * size) { i -> val v = (i % size) * 255 / (size - 1); (0xFF shl 24) or (v shl 16) or (v shl 8) or v }
         val out = FlatGround.seamless(ramp, size)
+        // A tile a margin smaller than the face (#54: the far edge is blended into the near one).
+        val tile = FlatGround.tileSize(size)
+        assertEquals(tile * tile, out.size)
         fun grey(p: Int) = p and 0xFF
-        for (y in 0 until size) {
-            val wrap = abs(grey(out[y * size + size - 1]) - grey(out[y * size]))
+        for (y in 0 until tile) {
+            val wrap = abs(grey(out[y * tile + tile - 1]) - grey(out[y * tile]))
             assertTrue("row $y: a step of $wrap across the edge", wrap < 40)
         }
         assertTrue(abs(grey(ramp[size - 1]) - grey(ramp[0])) > 200)
@@ -132,7 +137,8 @@ class FeedbackBatchTest {
         val footer = source("ui/collection/BookParts.kt").substringAfter("internal fun BookFooter(").substringBefore("\n}\n")
         assertTrue(footer.contains("if (pagerState.currentPage > 0)"))
         assertTrue(footer.contains("text = stringResource(R.string.book_to_contents)"))
-        assertTrue(footer.contains("pagerState.animateScrollToPage(0)"))
+        // Straight there, not sliding through every page in between (#54).
+        assertTrue(footer.contains("pagerState.turnTo(0)"))
         assertEquals("📖 もくじ", string("book_to_contents"))
     }
 

@@ -42,6 +42,17 @@ class CropScaleTest {
     }
 
     @Test
+    fun `a bushy seedling like the rose's is held to a slim shoot's breadth`() {
+        for (stages in crops.values) {
+            assertTrue(stages.first(), width(stages.first()) <= CropScale.SEEDLING_WIDTH + 1e-4f)
+        }
+        // The rose's first stage is drawn at about 0.6 of its painted size (it stood as full as a young plant).
+        val rose = drawn("plant_rose_stage1").drawScale
+        assertTrue("rose seedling at $rose", rose in 0.5f..0.65f)
+        assertTrue(height("plant_rose_stage1") < height("plant_rose_stage2") * 0.6f)
+    }
+
+    @Test
     fun `no stage stands taller or spreads wider than its place`() {
         for (asset in scaled.assets.filter { it.assetId.startsWith("plant_") }) {
             assertTrue(asset.assetId, height(asset.assetId) <= CropScale.MAX_HEIGHT + 1e-4f)

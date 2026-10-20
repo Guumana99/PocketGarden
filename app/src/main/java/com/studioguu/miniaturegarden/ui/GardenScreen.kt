@@ -433,9 +433,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     bagActive = placing != null,
                     onToggleHoe = viewModel::toggleHoe,
                     hoeLevel = toolLevels.hoe,
-                    wateringCanLevel = toolLevels.wateringCan,
                     canCare = placing == null && !hoeActive && target?.isPlant == true && target.status != PlantStatus.WITHERED,
-                    onWater = viewModel::waterSelected,
                     onFertilize = viewModel::fertilizeSelected,
                     onOpenInventory = { if (viewModel.onBagTapped()) showInventory = true },
                     onOpenShop = { showShop = true },
@@ -510,6 +508,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 },
                                 sprinkled = remember(it, gridObjects) { it.isPlant && Sprinkler.waters(it, gridObjects) },
                                 onToggleSprinkler = viewModel::toggleSprinklerSelected,
+                                wateringCanLevel = toolLevels.wateringCan,
                             )
                         }
                     }
