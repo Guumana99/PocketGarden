@@ -54,8 +54,9 @@ class PondAndWastelandTest {
     fun `both pictures are in res drawable and are read through R drawable`() {
         for (name in listOf("soil_wasteland", "pond")) assertTrue(name, File(main, "res/drawable/$name.png").isFile)
         val repository = source("data/asset/AssetRepository.kt")
-        assertTrue(repository.contains("wasteland = decodeUnscaled(R.drawable.soil_wasteland)"))
-        assertTrue(repository.contains("pond = decodeUnscaled(R.drawable.pond)"))
+        // Decoded side by side (#54), each in its own job.
+        assertTrue(repository.contains("decodeUnscaled(R.drawable.soil_wasteland)"))
+        assertTrue(repository.contains("val pond = async { decodeUnscaled(R.drawable.pond) }"))
     }
 
     /** The middle and width of the top face, measured off the picture's solid pixels. */

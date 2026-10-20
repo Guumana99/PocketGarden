@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.toSize
 import com.studioguu.miniaturegarden.data.asset.Decoration
 import com.studioguu.miniaturegarden.data.asset.GroundCover
 import com.studioguu.miniaturegarden.data.asset.GroundTile
+import com.studioguu.miniaturegarden.data.asset.AssetRepository
 import com.studioguu.miniaturegarden.data.asset.GroundSlab
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
@@ -60,6 +62,8 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.LawnGrowth
+import com.studioguu.miniaturegarden.domain.model.LawnStage
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
@@ -90,6 +94,9 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import com.studioguu.miniaturegarden.ui.render.LawnShade
 import com.studioguu.miniaturegarden.ui.render.SoilJoins
 import com.studioguu.miniaturegarden.ui.render.plantScale
+import com.studioguu.miniaturegarden.ui.render.PondJoin
+import com.studioguu.miniaturegarden.ui.render.fillWithTexture
+import com.studioguu.miniaturegarden.ui.render.SoilPalette
 import com.studioguu.miniaturegarden.ui.render.PondWater
 import com.studioguu.miniaturegarden.ui.render.SprinklerSpray
 import com.studioguu.miniaturegarden.ui.render.drawFlatGround
@@ -338,7 +345,11 @@ fun GardenCanvas(
     ) {
         val transform = camera?.toTransform(metrics, size) ?: return@Canvas
         val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
-        val ambience = Ambience(Daylight.at(hourOfDay, weather), weather, windMillis, season = season)
+        val ambience = Ambience(
+            Daylight.at(hourOfDay, weather), weather, windMillis, season = season,
+            // The bare ground as it is actually laid: the lawn wherever the wasteland cannot be read.
+            bareGround = if (bareGround == BareGround.WASTELAND && terrain.wasteland != null) BareGround.WASTELAND else BareGround.LAWN,
+        )
 
         pipeline.submit(RenderLayer.BASE_TERRAIN) {
             val wasteland = if (bareGround == BareGround.WASTELAND) terrain.wasteland else null
@@ -376,7 +387,7 @@ fun GardenCanvas(
         }
         val pops = if (bursts.isEmpty()) emptyMap() else bursts.associate { it.gridObject.instanceId to it.progress.value }
         val fades = if (fadeAlpha >= 1f) emptyMap() else fadingIds.associateWith { fadeAlpha }
-        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience, pops = pops, fades = fades)
+        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience, pops = pops, fades = fades, lawn = lawn)
         // The garden can grow: a bubble over the building it is grown from.
         gridObjects.firstOrNull { it.instanceId == growableId }?.let { building ->
             pipeline.submit(RenderLayer.TOP_EFFECTS) {
@@ -386,7 +397,7 @@ fun GardenCanvas(
         for (ghost in ghosts) {
             submitObjects(
                 pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
-                vanish = ghost.progress.value,
+                vanish = ghost.progress.value, lawn = lawn,
             )
         }
         for (visit in visitors) {
@@ -445,6 +456,8 @@ private class Ambience(
     val epochMillis: Long = System.currentTimeMillis(),
     /** The garden's season, which the lawn shows. */
     val season: Season = Season.SPRING,
+    /** What the cells with nothing on them are: what stands on open ground grows from it. */
+    val bareGround: BareGround = BareGround.LAWN,
 ) {
     /** How far something at this place in the grid leans right now, see [Wind.sway]. */
     fun sway(gridX: Float, gridY: Float): Float =
@@ -489,6 +502,8 @@ private fun submitObjects(
     vanish: Float? = null,
     pops: Map<String, Float> = emptyMap(),
     fades: Map<String, Float> = emptyMap(),
+    /** The feathered lawn, for a lawn sown on the bare earth ([LawnGrowth]). */
+    lawn: FeatheredLawn? = null,
 ) {
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
     // Everything is queued through here, so that objects on their way out can be drawn fading.
@@ -556,13 +571,13 @@ private fun submitObjects(
                 if (obj.isTilledSoil) {
                     // Beds side by side are one field: each knows which of its sides carry on (#47).
                     val joins = SoilJoins.at(obj.gridX, obj.gridY) { bx, by -> grid.floorAt(bx, by)?.isTilledSoil == true }
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, joins = joins)
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND)
                 } else if (obj.isGreenhouse && soil != null && atlasImage != null) {
                     // Compost darkens the earth.
                     val center = transform.tileCenter(obj.gridX, obj.gridY)
                     drawSprite(atlasImage, soil, center, spriteScale, tint = if (obj.isComposted) COMPOST_TINT else null)
                 } else if (obj.isGreenhouse) {
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted)
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, onBareEarth = ambience.bareGround == BareGround.WASTELAND)
                 } else if (obj.objectId == GridObject.WOOD_DECK_OBJECT_ID) {
                     drawWoodDeck(transform, obj.gridX, obj.gridY)
                 } else if (paving != null) {
@@ -621,6 +636,29 @@ private fun submitObjects(
                 }
                 drawPondWater(transform, obj.gridX, obj.gridY, water)
             }
+            // Ponds side by side are one pool (PondJoin): the water runs through where they meet.
+            // Painted after both ponds of a join (at the later one's depth), so that neither one's
+            // logs stand over it; the middle of four ponds in a square after all four.
+            if (vanish == null) {
+                val isPond: (Int, Int) -> Boolean = { px, py -> grid.occupantAt(px, py)?.let { it.isPond && !it.isWorking } == true }
+                for (bridge in PondJoin.bridgesFrom(obj.gridX, obj.gridY, isPond)) {
+                    val later = if (bridge.alongX) LayerPipeline.depthOf(obj.gridX + 1, obj.gridY) else LayerPipeline.depthOf(obj.gridX, obj.gridY + 1)
+                    submit(obj, RenderLayer.BOTTOM_OBJECTS, later + 0.5f) { drawPondBridge(transform, bridge, terrain.pondWater) }
+                }
+                if (PondJoin.cornerInside(obj.gridX, obj.gridY, isPond)) {
+                    submit(obj, RenderLayer.BOTTOM_OBJECTS, LayerPipeline.depthOf(obj.gridX + 1, obj.gridY + 1) + 0.6f) {
+                        drawPondCorner(transform, obj.gridX, obj.gridY, terrain.pondWater)
+                    }
+                }
+            }
+            continue
+        }
+        if (LawnGrowth.isLawn(obj)) {
+            // A lawn lies on the ground with the ground cover, drawn by its stage of growth.
+            val stage = LawnGrowth.stageOf(obj)
+            submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {
+                drawLawnPatch(transform, obj.gridX, obj.gridY, stage, lawn, onBareEarth = ambience.bareGround == BareGround.WASTELAND, sway = sway)
+            }
             continue
         }
         if (obj.isFence) {
@@ -653,7 +691,7 @@ private fun submitObjects(
                     }
                     drawFenceArms(transform, obj.gridX, obj.gridY, mask, behind = false, postHeight)
                 }
-                if (grid.floorAt(obj.gridX, obj.gridY) == null) {
+                if (grid.floorAt(obj.gridX, obj.gridY) == null && ambience.bareGround == BareGround.LAWN) {
                     drawGrassAtFoot(base, unit, unit * (if (alone) 0.28f else 0.1f), sway, seed = obj.gridX * 31 + obj.gridY * 17)
                 }
             }
@@ -707,6 +745,8 @@ private fun submitObjects(
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
                 val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
+                    // On the wasteland there is no grass to come up round it: crumbs of the earth instead.
+                    floor == null && ambience.bareGround == BareGround.WASTELAND -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
                     floor == null -> drawGrassAtFoot(base, unit, reach, sway, seed = obj.gridX * 31 + obj.gridY * 17)
                     floor.isTilledSoil || floor.isGreenhouse -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
                 }
@@ -1293,7 +1333,7 @@ fun ObjectPreview(
                 sprite != null
             }
         }
-        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, waterTick, Ambience.CALM)
+        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, waterTick, Ambience.CALM, lawn = lawn)
         pipeline.render(this)
     }
 }
@@ -1700,13 +1740,16 @@ internal fun convexHull(points: List<Offset>): List<Offset> {
     return half(sorted) + half(sorted.reversed())
 }
 
-// Tilled soil.
-private val DIRT_DARK = Color(0xFF5B3D28)
-private val DIRT_EDGE = Color(0xFF452C1C)
-private val DIRT_RIDGE = Color(0xFF7B5536)
-private val DIRT_DEEP = Color(0xFF3B2618)
-private val DIRT_DRY = Color(0xFF9A7350)
-private val DIRT_DUST = Color(0xFF7E5E40)
+// Tilled soil, in the tones of the wasteland it is dug from (#54): that earth is a dark, cool
+// grey-black (about #29282A on average), so a bed is the same earth turned over, a touch warmer
+// and darker where it is damp, with paler crumbs where it has dried; no longer the red-brown of
+// the old tile, which stood out on it like a rug. The values are SoilPalette's.
+private val DIRT_DARK = Color(SoilPalette.DARK)
+private val DIRT_EDGE = Color(SoilPalette.EDGE)
+private val DIRT_RIDGE = Color(SoilPalette.RIDGE)
+private val DIRT_DEEP = Color(SoilPalette.DEEP)
+private val DIRT_DRY = Color(SoilPalette.DRY)
+private val DIRT_DUST = Color(SoilPalette.DUST)
 private val COMPOST_LEAF = Color(0xFF8FB25A)
 private val COMPOST_STRAW = Color(0xFFE2C879)
 private const val FURROWS = 4
@@ -1732,6 +1775,7 @@ private fun DrawScope.drawTilledSoil(
     y: Int,
     composted: Boolean,
     joins: SoilJoins = SoilJoins.NONE,
+    onBareEarth: Boolean = false,
 ) {
     val unit = transform.tileWidth
     val inset = SoilTexture.INSET
@@ -1781,7 +1825,7 @@ private fun DrawScope.drawTilledSoil(
 
     // The earth: one colour shading smoothly over the field, ...
     val damp = SoilTexture.fieldDampness(x + 0.5f, y + 0.5f)
-    val body = lerp(DIRT_DRY, DIRT_DARK, 0.5f + 0.35f * damp)
+    val body = lerp(DIRT_DRY, DIRT_DARK, SoilPalette.bodyMix(damp))
     drawPath(bed, body)
     // ... with soft damp and dry patches laid over the whole field, clipped to this bed.
     clipPath(bed) {
@@ -1862,7 +1906,8 @@ private fun DrawScope.drawTilledSoil(
             else -> (x0 + off) to (y0 + along * (y1 - y0))
         }
         val at = transform.worldToScreen(wx, wy)
-        if (i < 6) {
+        // On the wasteland no grass grows at the bed's edge: clods all the way round.
+        if (i < 6 || onBareEarth) {
             val radius = unit * (0.014f + extra * 0.014f)
             drawCircle(DIRT_DEEP, radius, at + Offset(0f, radius * 0.35f))
             drawCircle(if (i % 2 == 0) DIRT_DARK else DIRT_RIDGE, radius, at)
@@ -2173,6 +2218,106 @@ private fun DrawScope.drawPondWater(transform: IsometricTransform, x: Int, y: In
     }
 }
 
+// The water and the stones of the pond's picture, as measured from it, for where ponds join.
+private val POND_JOIN_WATER = Color(0xFFA3AAB4)
+private val POND_JOIN_SHADE = Color(0xFF55606C)
+private val POND_BANK_STONE = Color(0xFFC9C3B8)
+private val POND_BANK_STONE_LIGHT = Color(0xFFE7E2DA)
+private val POND_BANK_STONE_DARK = Color(0xFF9C958A)
+
+/** How much of a cell one copy of the pond's water ([TerrainTextures.pondWater]) spans where it is laid. */
+private const val POND_WATER_CELLS = AssetRepository.POND_WATER_CELLS
+
+/**
+ * The water running through where two ponds meet ([PondJoin.Bridge]): over both ponds' logs along
+ * the shared side, from the open water of one to the open water of the other. It is the pond's
+ * own water ([water], made to tile so that it shows no seams or bands), fading at its two ends into the
+ * water of the pictures, with a little shade under its far bank. Without the picture, plain
+ * water of its colour. At an end on the pool's outer edge, stones of the bank over the ends of
+ * the logs.
+ */
+private fun DrawScope.drawPondBridge(transform: IsometricTransform, bridge: PondJoin.Bridge, water: Bitmap?) {
+    val x = bridge.x.toFloat()
+    val y = bridge.y.toFloat()
+    val across0 = PondWater.WATER_FROM - 0.02f
+    val across1 = PondWater.WATER_TO - 0.04f
+    // A point of the join, [along] the way from the first pond to the second and [across] it.
+    fun at(along: Float, across: Float): Offset =
+        if (bridge.alongX) transform.worldToScreen(x + along, y + across) else transform.worldToScreen(x + across, y + along)
+    val from = PondJoin.JOIN_FROM
+    val to = PondJoin.JOIN_TO
+    val fade = PondJoin.JOIN_FADE
+    val area = quad(at(from - fade, across0), at(to + fade, across0), at(to + fade, across1), at(from - fade, across1))
+    val mid = (across0 + across1) / 2f
+    val f = fade / (to - from + 2 * fade)
+    val bounds = area.getBounds()
+    drawIntoCanvas { it.saveLayer(bounds, Paint()) }
+    if (water != null) {
+        fillWithTexture(water, transform, area, POND_WATER_CELLS)
+    } else {
+        drawPath(area, POND_JOIN_WATER)
+    }
+    // Shade under the far bank (north or west), where the logs stand over the water.
+    val shade = quad(at(from - fade, across0), at(to + fade, across0), at(to + fade, across0 + 0.06f), at(from - fade, across0 + 0.06f))
+    drawPath(shade, Brush.linearGradient(listOf(POND_JOIN_SHADE.copy(alpha = 0.35f), POND_JOIN_SHADE.copy(alpha = 0f)), start = at(1f, across0), end = at(1f, across0 + 0.06f)))
+    // Both ends fade into the water of the pictures.
+    drawRect(
+        brush = Brush.linearGradient(
+            0f to Color.Transparent, f to Color.Black, 1f - f to Color.Black, 1f to Color.Transparent,
+            start = at(from - fade, mid), end = at(to + fade, mid),
+        ),
+        topLeft = bounds.topLeft,
+        size = bounds.size,
+        blendMode = BlendMode.DstIn,
+    )
+    drawIntoCanvas { it.restore() }
+    val unit = transform.tileWidth
+    val seed = bridge.x * 31 + bridge.y * 17 + if (bridge.alongX) 1 else 2
+    // Along the bank at each open end: across the gap the join made in the ring of logs.
+    if (bridge.openBefore) drawBankStones(unit, seed) { t, off -> at(0.74f + 0.52f * t, 0.11f + off) }
+    if (bridge.openAfter) drawBankStones(unit, seed + 7) { t, off -> at(0.74f + 0.52f * t, 0.86f + off) }
+}
+
+/** The middle of four ponds in a square: open water where their corners meet. */
+private fun DrawScope.drawPondCorner(transform: IsometricTransform, x: Int, y: Int, water: Bitmap?) {
+    val from = PondJoin.JOIN_FROM
+    val to = PondJoin.JOIN_TO
+    val corner = quad(
+        transform.worldToScreen(x + from, y + from),
+        transform.worldToScreen(x + to, y + from),
+        transform.worldToScreen(x + to, y + to),
+        transform.worldToScreen(x + from, y + to),
+    )
+    if (water != null) fillWithTexture(water, transform, corner, POND_WATER_CELLS) else drawPath(corner, POND_JOIN_WATER)
+}
+
+/**
+ * Rounded stones of the bank laid along a stretch of it, [place] giving the point [t] of the way
+ * along (0 to 1) and [off] across: of differing sizes and greys, each with a dark underside, its
+ * body and light on its top, in two loose rows so that they cover the ends of the logs.
+ */
+private fun DrawScope.drawBankStones(unit: Float, seed: Int, place: (t: Float, off: Float) -> Offset) {
+    var s = seed * 1103515245 + 12345
+    fun next(): Float {
+        s = s * 1103515245 + 12345
+        return ((s ushr 16) and 0x7FFF) / 32767f
+    }
+    val count = 9
+    repeat(count) { i ->
+        val t = (i + 0.5f + (next() - 0.5f) * 0.5f) / count
+        val off = (if (i % 2 == 0) -0.045f else 0.04f) + (next() - 0.5f) * 0.03f
+        val at = place(t.coerceIn(0f, 1f), off)
+        val w = unit * (0.045f + next() * 0.035f)
+        val h = w * (0.55f + next() * 0.15f)
+        val tone = next()
+        val body = lerp(POND_BANK_STONE_DARK, POND_BANK_STONE, 0.55f + 0.45f * tone)
+        drawOval(Color.Black.copy(alpha = 0.28f), at - Offset(w / 2f, h / 2f - h * 0.28f), Size(w, h))
+        drawOval(lerp(POND_BANK_STONE_DARK, body, 0.4f), at - Offset(w / 2f, h / 2f - h * 0.12f), Size(w, h))
+        drawOval(body, at - Offset(w / 2f, h / 2f), Size(w, h * 0.9f))
+        drawOval(POND_BANK_STONE_LIGHT.copy(alpha = 0.8f), at - Offset(w * 0.28f, h * 0.4f), Size(w * 0.45f, h * 0.32f))
+    }
+}
+
 /** The pond when its picture cannot be read: a pool of water in a ring of pale stones. */
 private fun DrawScope.drawPondInCode(transform: IsometricTransform, x: Int, y: Int) {
     fun diamond(inset: Float) = quad(
@@ -2201,19 +2346,69 @@ private fun DrawScope.drawSprinkler(base: Offset, unit: Float, running: Boolean)
 }
 
 /**
- * The water of a running sprinkler, from [SprinklerSpray]: drops thrown out along its turning
- * jets over the ring of cells it waters, fading as they land.
+ * The water of a running sprinkler, from [SprinklerSpray]: each drop a short streak along its
+ * own arc, out over the ring of cells it waters in the garden's flattened view, and a small ring
+ * on the ground where one has just come down. A faint wet sheen lies over the ground it reaches.
  */
 private fun DrawScope.drawSprinklerSpray(base: Offset, unit: Float, frame: SprinklerSpray.Frame) {
-    val head = base - Offset(0f, unit * 0.23f)
+    val head = base - Offset(0f, unit * SPRAY_HEAD_HEIGHT)
+    // Where a drop is: out over the ground along its own direction, raised by its arc. The head
+    // sits above the ground, so the arc starts there and comes down onto the ground at the far end.
+    fun at(angle: Float, reach: Float, lift: Float): Offset {
+        val out = reach * unit * SPRAY_REACH
+        val ground = Offset(base.x + cos(angle) * out, base.y + sin(angle) * out * 0.5f)
+        val fromHead = (1f - reach).coerceIn(0f, 1f) * (head.y - base.y)
+        return Offset(ground.x, ground.y + fromHead - lift * unit * SPRAY_ARC_HEIGHT)
+    }
+    // The ground it waters, a little darker and glossier, very faintly.
+    drawOval(
+        brush = Brush.radialGradient(
+            listOf(SPRINKLER_WATER.copy(alpha = 0.10f), SPRINKLER_WATER.copy(alpha = 0f)),
+            center = base,
+            radius = unit * SPRAY_REACH,
+        ),
+        topLeft = base - Offset(unit * SPRAY_REACH, unit * SPRAY_REACH * 0.5f),
+        size = Size(unit * SPRAY_REACH * 2f, unit * SPRAY_REACH),
+    )
+    for (splash in frame.splashes) {
+        val p = at(splash.angle, splash.reach, 0f)
+        val r = unit * (0.02f + 0.05f * splash.progress)
+        drawOval(
+            color = SPRINKLER_WATER.copy(alpha = 0.55f * (1f - splash.progress)),
+            topLeft = p - Offset(r, r * 0.45f),
+            size = Size(r * 2f, r * 0.9f),
+            style = Stroke(width = unit * 0.008f),
+        )
+    }
     for (drop in frame.drops) {
-        // Out over the ground in the garden's flattened view, rising and falling on its way.
-        val out = drop.reach * unit * 0.9f
-        val x = head.x + kotlin.math.cos(drop.angle) * out
-        val y = head.y + kotlin.math.sin(drop.angle) * out * 0.5f - kotlin.math.sin(drop.reach * Math.PI.toFloat()) * unit * 0.18f + drop.reach * unit * 0.2f
-        drawCircle(SPRINKLER_WATER.copy(alpha = 0.85f * drop.alpha), unit * (0.018f + 0.01f * (1f - drop.reach)), Offset(x, y))
+        // A streak from a moment ago to now, so the drop reads as moving water rather than a dot.
+        val tail = (drop.flight - SPRAY_STREAK).coerceAtLeast(0f)
+        val share = if (drop.flight > 0f) drop.reach / drop.flight else 0f
+        val from = at(drop.angle, tail * share, SprinklerSpray.arc(tail))
+        val to = at(drop.angle, drop.reach, drop.lift)
+        drawLine(
+            color = SPRINKLER_WATER.copy(alpha = 0.8f * drop.alpha),
+            start = from,
+            end = to,
+            strokeWidth = unit * (0.022f - 0.008f * drop.flight),
+            cap = StrokeCap.Round,
+        )
+        // A bright glint at the head of the streak.
+        drawCircle(Color.White.copy(alpha = 0.55f * drop.alpha), unit * 0.008f, to)
     }
 }
+
+/** How high the sprinkler's nozzle stands above the ground, in tile widths. */
+private const val SPRAY_HEAD_HEIGHT = 0.23f
+
+/** How far the spray carries over the ground, in tile widths: the ring of cells round it. */
+private const val SPRAY_REACH = 0.95f
+
+/** How high the drops rise above the line from the nozzle to the ground, at the top of their arc. */
+private const val SPRAY_ARC_HEIGHT = 0.16f
+
+/** How much of its flight a drop's streak trails behind it. */
+private const val SPRAY_STREAK = 0.07f
 
 private fun DrawScope.drawLantern(base: Offset, unit: Float) {
     fun slab(centre: Offset, width: Float, height: Float, colour: Color) =
@@ -2302,6 +2497,51 @@ private fun DrawScope.drawGroundCover(obj: GridObject, base: Offset, unit: Float
     drawCircle(color, r * 1.3f, base + Offset(-unit * 0.12f, unit * 0.01f))
     drawCircle(color, r, base + Offset(unit * 0.04f, -unit * 0.05f))
     drawCircle(color, r * 1.1f, base + Offset(unit * 0.13f, unit * 0.04f))
+}
+
+/**
+ * A lawn on cell ([x], [y]) at its [stage] of growth ([LawnGrowth]). On the bare earth, the
+ * lawn's own feathered picture of grass, laid as the lawn of a grown garden is (a little larger
+ * than its cell and fading at its edges, so that lawns side by side are one lawn) and as thick
+ * as the stage covers ([LawnStage.cover]), with a few tufts standing up from it. Where the bare
+ * ground is the lawn already (the title's garden, the book's pictures), only the tufts.
+ * Without the picture, the green is a plain diamond.
+ */
+private fun DrawScope.drawLawnPatch(
+    transform: IsometricTransform,
+    x: Int,
+    y: Int,
+    stage: LawnStage,
+    lawn: FeatheredLawn?,
+    onBareEarth: Boolean,
+    sway: Float,
+) {
+    val unit = transform.tileWidth
+    if (onBareEarth && stage.cover > 0f) {
+        if (lawn != null) {
+            val scale = unit / lawn.tileWidth * LawnShade.FEATHER_OVERLAP
+            drawSprite(lawn.image, lawn.sprite, transform.tileCenter(x, y), scale, flipped = LawnShade.mirrored(x, y), alpha = stage.cover)
+        } else {
+            drawPath(transform.tilePath(x, y), GRASS_LIGHT.copy(alpha = stage.cover))
+        }
+    }
+    // Tufts: a few on a full lawn, more and shorter while it comes up.
+    var seed = x * 92821 xor y * 68917
+    fun next(): Float {
+        seed = seed * 1103515245 + 12345
+        return ((seed ushr 16) and 0x7FFF) / 32767f
+    }
+    val height = if (stage == LawnStage.FULL) 0.05f else 0.03f + 0.02f * stage.cover
+    repeat(stage.blades) { i ->
+        val at = transform.worldToScreen(x + 0.18f + next() * 0.64f, y + 0.18f + next() * 0.64f)
+        val blade = unit * height * (0.8f + next() * 0.4f)
+        val stroke = unit * 0.011f
+        val bend = blade * 0.55f * sway
+        val colour = if (i % 2 == 0) GRASS_TUFT else GRASS_BLADE_LIGHT
+        drawLine(colour, at, at + Offset(-blade * 0.45f + bend, -blade), stroke, StrokeCap.Round)
+        drawLine(colour, at, at + Offset(bend * 1.1f, -blade * 1.15f), stroke, StrokeCap.Round)
+        drawLine(colour, at, at + Offset(blade * 0.45f + bend, -blade * 0.85f), stroke, StrokeCap.Round)
+    }
 }
 
 private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {

@@ -711,10 +711,9 @@ class GardenViewModel @Inject constructor(
                 onSuccess = {
                     _selectedTile.value = null
                     audio.play(SoundEffect.LEVEL_UP)
-                    // Its experience comes now, not when the site went up (#50), and is said on the
-                    // building's own plaque: a "+XP" floating up beside it ran into the plaque.
-                    val xp = StoreObjectUseCase.itemFor(site)?.placeXp ?: 0
-                    showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING, xp = xp) }
+                    // Its experience comes now, not when the site went up (#50). The plaque says only
+                    // that it is finished (and a new page, if any): no "+XP" on it or beside it.
+                    showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
                 }
             ) { now, _ -> unveilBuilding(site.instanceId, now).also { if (it == ActionResult.SUCCESS) announceGrowthIfDue(now) } }
         } else if (_hoeActive.value) {
@@ -1080,8 +1079,9 @@ class GardenViewModel @Inject constructor(
             }
             when (result) {
                 ActionResult.SUCCESS -> onSuccess()
-                // Hard ground giving a little is not a mistake: a dull knock, and strike again.
-                ActionResult.HOE_STRUCK -> audio.play(SoundEffect.TAP)
+                // Hard ground giving a little is not a mistake, and it makes no sound: the knock
+                // played here sounded out of place. The words "地面が固いようです" say it.
+                ActionResult.HOE_STRUCK -> Unit
                 else -> audio.play(SoundEffect.ERROR)
             }
             actionResultMessage(result)?.let { _messages.send(it) }

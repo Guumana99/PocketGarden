@@ -49,7 +49,8 @@ class TitleViewModel @Inject constructor(
         viewModelScope.launch {
             coroutineScope {
                 launch { _atlas.value = assetRepository.loadAtlas() }
-                launch { _terrain.value = assetRepository.loadTerrainTextures() }
+                // Its garden is grown over: no wasteland to wait for.
+                launch { _terrain.value = assetRepository.loadTerrainTextures(withWasteland = false) }
             }
             _artLoaded.value = true
         }

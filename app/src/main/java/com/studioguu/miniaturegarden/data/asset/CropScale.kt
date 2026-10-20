@@ -6,7 +6,9 @@ package com.studioguu.miniaturegarden.data.asset
  * stage 1 was 316 px against the tulip's 222 px), or a middle stage taller than the plant it
  * grows into. Here each stage is given a draw scale, never larger than it had, so that:
  *
- * - a seedling (stage 1) is no taller than [SEEDLING_HEIGHT] of a tile;
+ * - a seedling (stage 1) is no taller than [SEEDLING_HEIGHT] of a tile, and no wider than
+ *   [SEEDLING_WIDTH]: a bushy seedling (the rose's, painted with a full head of leaves) is held to
+ *   a slim tulip shoot's breadth, which brings it to about 0.6 of the size it was painted at;
  * - no stage is taller than [MAX_HEIGHT] or wider than [MAX_WIDTH] of a tile;
  * - every stage is at most as tall as the next one: a plant only ever grows.
  *
@@ -15,6 +17,12 @@ package com.studioguu.miniaturegarden.data.asset
 object CropScale {
     /** A seedling is a small thing: about the height of the tulip's first shoots. */
     const val SEEDLING_HEIGHT = 0.47f
+
+    /**
+     * How wide a seedling spreads, at most: the tulip's first shoots (0.30 of a tile). Height
+     * alone let the rose's leafy seedling stand nearly as full as a young plant.
+     */
+    const val SEEDLING_WIDTH = 0.30f
 
     /** The tallest any crop stands, fully grown. */
     const val MAX_HEIGHT = 0.9f
@@ -38,7 +46,8 @@ object CropScale {
                 var nextHeight = Float.MAX_VALUE
                 for ((stage, asset) in stages.sortedByDescending { it.first }) {
                     val heightCap = minOf(if (stage == 1) SEEDLING_HEIGHT * tile else MAX_HEIGHT * tile, nextHeight)
-                    val scale = capped(asset, heightCap, MAX_WIDTH * tile)
+                    val widthCap = if (stage == 1) SEEDLING_WIDTH * tile else MAX_WIDTH * tile
+                    val scale = capped(asset, heightCap, widthCap)
                     scales[asset.assetId] = scale
                     nextHeight = asset.height * scale
                 }

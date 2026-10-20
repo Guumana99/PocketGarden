@@ -92,7 +92,7 @@ internal fun NatureNotesChapter(notes: NatureNotes, atlas: SpriteAtlas, onOpenNo
                 ContentsCell(
                     label = if (met) stringResource(creatureName(creature)) else stringResource(R.string.nature_unknown),
                     known = met,
-                    onClick = { scope.launch { pagerState.animateScrollToPage(index + 1) } },
+                    onClick = { scope.launch { pagerState.turnTo(index + 1) } },
                     mark = if (creature in newOnes) ({ NewMark() }) else null,
                 ) {
                     CreaturePicture(creature, atlas, silhouette = !met)

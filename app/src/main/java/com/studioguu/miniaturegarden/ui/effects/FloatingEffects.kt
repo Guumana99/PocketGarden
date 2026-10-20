@@ -44,14 +44,14 @@ sealed interface GardenEffect {
     /**
      * A building was finished, or taking one apart was. [newPage]: finishing it also made a page
      * of the encyclopedia ready, said on the same plaque rather than on a second one over it.
+     * The experience its unveiling pays is not said here: "完成", the new page and "+XP" at once
+     * were too much to read, and the level bar shows it filling.
      */
     data class WorkDone(
         override val id: Long,
         val objectId: String,
         val kind: WorkKind,
         val newPage: Boolean = false,
-        /** Experience its unveiling paid, said on the plaque rather than floating up under it. */
-        val xp: Int = 0,
     ) : GardenEffect
 }
 
@@ -155,8 +155,7 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
                 else -> R.string.effect_built
             },
             objectDisplayName(effect.objectId),
-        ) + (if (effect.xp > 0) "\n" + stringResource(R.string.effect_xp, effect.xp) else "") +
-            if (effect.newPage) "\n" + stringResource(R.string.effect_discovery) else ""
+        ) + if (effect.newPage) "\n" + stringResource(R.string.effect_discovery) else ""
     }
     Text(
         text = text,

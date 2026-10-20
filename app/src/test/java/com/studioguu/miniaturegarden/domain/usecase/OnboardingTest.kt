@@ -225,7 +225,9 @@ class OnboardingTest {
         assertTrue(screen.contains("(tutorialStep?.allows(tool) ?: true) && (!editMode || GardenLayout.toolAllowedInEditMode(tool))"))
         assertTrue(screen.contains("visible = tutorialStep?.reveals(GardenFeature.EDIT_MODE)"))
         val bar = source("ui/hud/QuickActionBar.kt")
-        for (tool in TutorialTool.entries) assertTrue(tool.name, bar.contains("allows(TutorialTool.${tool.name})"))
+        // Watering has no button on the bar: it is the plant panel's own (see QuickActionBar).
+        for (tool in TutorialTool.entries - TutorialTool.WATER) assertTrue(tool.name, bar.contains("allows(TutorialTool.${tool.name})"))
+        assertFalse(bar.contains("TutorialTool.WATER"))
         // The crate's seed is received with a soft tap, not the till's coins.
         val model = source("ui/GardenViewModel.kt")
         val openCrate = model.substringAfter("fun openCrate()").substringBefore("fun closeCrate()")

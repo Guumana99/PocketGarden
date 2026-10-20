@@ -185,17 +185,23 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
             onDismissRequest = { confirmStartOver = false },
             title = { Text(stringResource(R.string.title_reset_title)) },
             text = { Text(stringResource(R.string.title_reset_text)) },
+            // Both choices side by side under the text, centred like the other wooden dialogs,
+            // rather than pushed to the right as an AlertDialog's own button row would put them.
             confirmButton = {
-                WoodButton(
-                    text = stringResource(R.string.title_reset_ok),
-                    onClick = {
-                        confirmStartOver = false
-                        viewModel.startOver(onEnterGarden)
-                    },
-                )
-            },
-            dismissButton = {
-                WoodButton(text = stringResource(R.string.action_cancel), onClick = { confirmStartOver = false })
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    WoodButton(text = stringResource(R.string.action_cancel), onClick = { confirmStartOver = false })
+                    WoodButton(
+                        text = stringResource(R.string.title_reset_ok),
+                        onClick = {
+                            confirmStartOver = false
+                            viewModel.startOver(onEnterGarden)
+                        },
+                    )
+                }
             },
         )
     }

@@ -39,6 +39,7 @@ import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.objectDisplayName
 import com.studioguu.miniaturegarden.ui.statusLabel
+import com.studioguu.miniaturegarden.ui.toolStars
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -56,6 +57,8 @@ import kotlinx.coroutines.delay
  *   harvest, when above 0.
  * @param sprinkled a running sprinkler waters it.
  * @param onToggleSprinkler switches the sprinkler on or off; its button is shown for a sprinkler.
+ * @param wateringCanLevel how far the watering can has come with use: its stars ([toolStars])
+ *   follow the word on the watering button, the one place a plant is watered from.
  */
 @Composable
 fun ObjectStatusDialog(
@@ -77,6 +80,7 @@ fun ObjectStatusDialog(
     bedQuality: Int = 0,
     sprinkled: Boolean = false,
     onToggleSprinkler: () -> Unit = {},
+    wateringCanLevel: Int = 1,
 ) {
     Surface(
         modifier = modifier,
@@ -85,7 +89,12 @@ fun ObjectStatusDialog(
         shadowElevation = 6.dp,
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // The header: name on the left, then the plant's state as a small tag, then the close
+            // button, each with room of its own (the state used to sit right against the button).
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(HEADER_GAP),
+            ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(objectDisplayName(gridObject.objectId), style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -94,17 +103,7 @@ fun ObjectStatusDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (gridObject.isPlant) {
-                    Text(
-                        text = stringResource(statusLabel(gridObject.status)),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (gridObject.status == PlantStatus.HEALTHY) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        },
-                    )
-                }
+                if (gridObject.isPlant) StatusTag(gridObject.status)
                 WoodButton(text = stringResource(R.string.action_close), onClick = onDismiss)
             }
 
@@ -218,7 +217,8 @@ fun ObjectStatusDialog(
                 } else if (gridObject.isPlant) {
                     val alive = gridObject.status != PlantStatus.WITHERED
                     FilledTonalButton(onClick = onWater, enabled = alive) {
-                        Text(stringResource(R.string.action_water))
+                        val stars = toolStars(wateringCanLevel)
+                        Text(stringResource(R.string.action_water) + if (stars.isEmpty()) "" else " $stars")
                     }
                     if (!guiding) {
                         Button(onClick = onHarvest, enabled = alive && gridObject.growthProgress >= 1f) {
@@ -240,6 +240,23 @@ fun ObjectStatusDialog(
                 }
             }
         }
+    }
+}
+
+/** Room between the name, the plant's state and the close button in the panel's header. */
+internal val HEADER_GAP = 12.dp
+
+/** A plant's state ("元気", "のどがかわいた"…) as a small tinted tag, set apart from the close button. */
+@Composable
+private fun StatusTag(status: PlantStatus) {
+    val colour = if (status == PlantStatus.HEALTHY) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+    Surface(shape = RoundedCornerShape(50), color = colour.copy(alpha = 0.12f)) {
+        Text(
+            text = stringResource(statusLabel(status)),
+            style = MaterialTheme.typography.labelLarge,
+            color = colour,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        )
     }
 }
 

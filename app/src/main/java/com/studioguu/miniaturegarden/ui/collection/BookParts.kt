@@ -36,6 +36,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /*
  * The parts every chapter of the book is made of, so that each one reads the same way: a contents
@@ -153,6 +154,21 @@ internal fun PageHeader(number: Int, enteredAt: Long?) {
 }
 
 /**
+ * How the book goes to another page. The next or the previous page is turned to, sliding; any
+ * page further off is opened at once. Sliding there ran through every page in between, whose
+ * pictures (most of them a patch of lawn) flashed past on the way back to the contents.
+ */
+internal object BookTurn {
+    /** Whether going from page [from] to page [to] slides rather than jumps. */
+    fun slides(from: Int, to: Int): Boolean = abs(to - from) <= 1
+}
+
+/** Goes to [page] the way [BookTurn] says: sliding to a neighbour, at once to anything further. */
+internal suspend fun PagerState.turnTo(page: Int) {
+    if (BookTurn.slides(currentPage, page)) animateScrollToPage(page) else scrollToPage(page)
+}
+
+/**
  * Under the pages: back and forward, where the book is open ("もくじ" on the contents, "n / N"
  * on an entry's page), and the button that closes the book. From an entry's page a button goes
  * straight back to the contents. Page 0 is the contents; entry i is on page i + 1.
@@ -176,7 +192,7 @@ internal fun BookFooter(pagerState: PagerState, entryCount: Int, onDismiss: () -
             modifier = if (pagerState.currentPage == 0) {
                 Modifier
             } else {
-                Modifier.clickable { scope.launch { pagerState.animateScrollToPage(0) } }
+                Modifier.clickable { scope.launch { pagerState.turnTo(0) } }
             },
         )
         PageButton("▶", enabled = pagerState.currentPage < entryCount) {
@@ -186,7 +202,7 @@ internal fun BookFooter(pagerState: PagerState, entryCount: Int, onDismiss: () -
         if (pagerState.currentPage > 0) {
             WoodButton(
                 text = stringResource(R.string.book_to_contents),
-                onClick = { scope.launch { pagerState.animateScrollToPage(0) } },
+                onClick = { scope.launch { pagerState.turnTo(0) } },
                 modifier = Modifier.padding(end = 6.dp),
             )
         }

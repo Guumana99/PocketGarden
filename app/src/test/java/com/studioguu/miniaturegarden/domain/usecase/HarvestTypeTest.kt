@@ -218,7 +218,9 @@ class HarvestTypeTest {
     fun `the move to schema 13 adds the harvest count, as Room expects it`() {
         val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
         val database = main.resolve("java/com/studioguu/miniaturegarden/data/local/AppDatabase.kt").readText()
-        assertTrue(database.contains("version = 13"))
+        // At 13 or later (v14 added the tools' experience): the move to 13 stays in the chain.
+        val version = Regex("""version = (\d+)""").find(database)!!.groupValues[1].toInt()
+        assertTrue("version $version", version >= 13)
         assertTrue(database.contains("ALTER TABLE grid_objects ADD COLUMN harvestCount INTEGER NOT NULL DEFAULT 0"))
         assertTrue(main.resolve("java/com/studioguu/miniaturegarden/di/DatabaseModule.kt").readText().contains("MIGRATION_12_13"))
         val schemas = listOf(File("schemas"), File("app/schemas")).first { it.isDirectory }
