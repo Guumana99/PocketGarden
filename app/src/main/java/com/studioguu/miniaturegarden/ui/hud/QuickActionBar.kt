@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.components.pressScale
@@ -43,9 +44,10 @@ import com.studioguu.miniaturegarden.ui.toolStars
  *   asks for, in edit mode only the shop; the others are greyed out and cannot be tapped.
  * @param bagActive something from the bag is in hand: the bag's button is lit, and tapping it
  *   puts that down again, as the hoe's does for the hoe (#50).
- * @param hoeLevel how far the hoe has come with use ([com.studioguu.miniaturegarden.domain.model.FarmTool]),
- *   shown on its button as small gold stars from level 2 ([toolStars]), with its rank for the
- *   screen reader. The watering can's stars are on the panel's watering button.
+ * @param hoeLevel how far the hoe has come with use ([FarmTool]),
+ *   shown on its button as small gold stars from level 2 ([toolStars]) while the hoe shows its
+ *   level ([FarmTool.showsLevel]; hidden for now). The watering can's stars are on the panel's
+ *   watering button.
  */
 @Composable
 fun QuickActionBar(
@@ -72,7 +74,7 @@ fun QuickActionBar(
         ) {
             ActionButton(
                 "⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive, enabled = allows(TutorialTool.HOE),
-                badge = levelBadge(hoeLevel),
+                badge = levelBadge(hoeLevel).takeIf { FarmTool.HOE.showsLevel },
             )
             ActionButton(
                 "🧪", stringResource(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST), onFertilize,

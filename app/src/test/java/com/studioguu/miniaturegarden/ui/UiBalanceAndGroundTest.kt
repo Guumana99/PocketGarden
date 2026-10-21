@@ -317,9 +317,10 @@ class UiBalanceAndGroundTest {
     }
 
     @Test
-    fun `lawns stand fully grown until they grow in stages, as they always did`() {
-        assertFalse(LawnGrowth.GROWS_IN_STAGES)
-        assertEquals(LawnStage.FULL, LawnGrowth.stageOf(lawn(0f)))
+    fun `a lawn is drawn by its stage while lawns grow in stages, fully grown otherwise`() {
+        // Turned on in #55 (DeviceFeedbackTest).
+        assertTrue(LawnGrowth.GROWS_IN_STAGES)
+        assertEquals(LawnStage.FULL, LawnGrowth.stageOf(lawn(0f), growsInStages = false))
         assertEquals(LawnStage.SOWN, LawnGrowth.stageOf(lawn(0f), growsInStages = true))
         assertTrue(LawnGrowth.isLawn(lawn(0f)))
     }

@@ -74,7 +74,7 @@ class WordingAndToastTest {
         assertFalse(book.contains("NoticeStrip"))
         val model = File(main, "java/com/studioguu/miniaturegarden/ui/collection/CollectionViewModel.kt").readText()
         assertFalse(model.contains("BookNotice"))
-        // The coins still chime.
-        assertTrue(model.contains("audio.play(SoundEffect.COIN)"))
+        // Nor does it chime any more (#55): opening the book and filling a page in are quiet.
+        assertFalse(model.contains("SoundEffect.COIN"))
     }
 }

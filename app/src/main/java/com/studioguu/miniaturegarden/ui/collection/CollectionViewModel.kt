@@ -5,8 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
-import com.studioguu.miniaturegarden.data.audio.AudioManager
-import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.Creature
@@ -15,7 +13,6 @@ import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.OpenNatureNoteUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RevealCollectionEntryUseCase
-import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -34,7 +31,6 @@ class CollectionViewModel @Inject constructor(
     private val revealEntry: RevealCollectionEntryUseCase,
     private val grantReward: GrantRewardUseCase,
     private val openNatureNote: OpenNatureNoteUseCase,
-    private val audio: AudioManager,
 ) : ViewModel() {
 
     /**
@@ -65,24 +61,20 @@ class CollectionViewModel @Inject constructor(
 
     /**
      * The book was opened. The first time each day that pays a few coins; after that it does
-     * nothing until tomorrow, however often the book is opened. The coins chime; nothing is
-     * written over the book about it.
+     * nothing until tomorrow, however often the book is opened. Opening the book is quiet (#55):
+     * no chime, and nothing written over the book about the coins.
      */
     fun onOpened() {
-        viewModelScope.launch {
-            if (grantReward.bookOpen(todayEpochDay()) == RewardResult.GRANTED) audio.play(SoundEffect.COIN)
-        }
+        viewModelScope.launch { grantReward.bookOpen(todayEpochDay()) }
     }
 
     /**
-     * The player asked for a ready page to be filled in. Its coins chime as the picture comes
-     * in; the page itself is the news, so no "登録しました +N" is written over it.
+     * The player asked for a ready page to be filled in. Its coins come in silently (#55: the
+     * coins' chime did not belong to a book); the picture coming in is the news, so no
+     * "登録しました +N" is written over it either.
      */
     fun reveal(entry: CollectionEntry) {
-        viewModelScope.launch {
-            revealEntry(entry) ?: return@launch
-            audio.play(SoundEffect.COIN)
-        }
+        viewModelScope.launch { revealEntry(entry) }
     }
 
     /** The player turned to [creature]'s page in the nature notes: it is no longer new. */

@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -94,6 +95,11 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         val newTimestamp = currentTimeMillis - remainder
 
         if (ticks == 0L && gridObject.lastUpdatedTimestamp <= currentTimeMillis) return gridObject
+        // A lawn comes on with time alone, whatever the weather (LawnGrowth).
+        if (ticks > 0L && LawnGrowth.isLawn(gridObject) && LawnGrowth.GROWS_IN_STAGES) {
+            val grown = LawnGrowth.grownBy(gridObject.growthProgress, ticks * TICK_MILLIS)
+            return gridObject.copy(growthProgress = grown, lastUpdatedTimestamp = newTimestamp)
+        }
         if (ticks == 0L || !gridObject.isPlant || gridObject.status == PlantStatus.WITHERED) {
             return gridObject.copy(lastUpdatedTimestamp = newTimestamp)
         }

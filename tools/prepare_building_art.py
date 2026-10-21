@@ -463,7 +463,9 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     dark[:, :, :3] = (dark[:, :, :3].astype(float) * 0.9).astype(np.uint8)
     out["tile_grass_dark"] = (dark, dict(grass_override))
     out["floor_tilled"] = flat_to_tile("tile_soil_flat.png", side_depth=33)
-    out["struct_cottage"] = prepare_building(load("building_cottage.png"), tiles=3, centred=True)
+    # Stood like the others, halfway between its side and front corners (#55): centred on its
+    # side corners alone, its flat base left the front row of its lot bare and it looked set back.
+    out["struct_cottage"] = prepare_building(load("building_cottage.png"), tiles=3)
     out["floor_greenhouse"] = prepare_building(load("building_greenhouse.png"), tiles=1)
     out.update(prepare_windmill())
     return out

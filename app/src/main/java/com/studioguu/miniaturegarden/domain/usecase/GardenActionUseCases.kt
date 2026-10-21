@@ -286,7 +286,7 @@ class PlaceItemUseCase @Inject constructor(
             // The symbol building is one of a kind: a second one never goes up.
             if (item.isSymbol && grid.hasSymbol) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
             val kind = PlacementKind.forObjectId(item.objectId)
-            when (grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY, kind)) {
+            when (grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY, kind, item.objectId)) {
                 PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
                 PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
                 PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED

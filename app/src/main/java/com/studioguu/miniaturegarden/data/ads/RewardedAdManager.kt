@@ -52,11 +52,17 @@ class RewardedAdManager @Inject constructor(
     /** True while an ad is loaded and waiting; buttons that need one follow this. */
     val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
 
-    /** Initializes the ads SDK and loads the first ad. Safe to call more than once. */
+    /**
+     * Initializes the ads SDK and loads the first ad. Safe to call more than once.
+     *
+     * The SDK is initialized on a thread of its own, as Google advises: on the main thread it held
+     * up the app's start, and so the title, by a second or more (#55). The first ad is then
+     * loaded back on the main thread, like every later one.
+     */
     fun start() {
         if (started) return
         started = true
-        MobileAds.initialize(context) { load() }
+        Thread({ MobileAds.initialize(context) { handler.post(::load) } }, "ads-init").start()
     }
 
     /**

@@ -67,6 +67,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
+import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.Sprinkler
 import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -97,6 +98,7 @@ import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.effects.RainOverlay
 import com.studioguu.miniaturegarden.ui.effects.RainStyle
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
+import com.studioguu.miniaturegarden.ui.hud.ExpandConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.LevelUpDialog
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
@@ -182,6 +184,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var showCollection by rememberSaveable { mutableStateOf(false) }
     var confirmRain by rememberSaveable { mutableStateOf(false) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
+    // Growing the garden is asked about first (#55).
+    var confirmExpand by rememberSaveable { mutableStateOf(false) }
     // Camera mode: nothing on screen but the garden, a viewfinder and a shutter.
     var cameraMode by rememberSaveable { mutableStateOf(false) }
     var shots by remember { mutableStateOf(0) }
@@ -499,7 +503,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },
                                 gardenSize = gardenMap.size,
                                 playerLevel = profile?.playerLevel ?: 1,
-                                onExpand = viewModel::expand,
+                                onExpand = { confirmExpand = true },
                                 editing = editMode,
                                 // During the first steps the panel keeps to what the step is about.
                                 guiding = tutorialStep?.isGuiding == true,
@@ -607,6 +611,17 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 context.findActivity()?.let(viewModel::claimBlessedRain)
             },
             onDismiss = { confirmRain = false },
+        )
+    }
+    val growTo = GardenExpansion.nextStage(gardenMap.size)?.size
+    if (confirmExpand && growTo != null) {
+        ExpandConfirmDialog(
+            size = growTo,
+            onConfirm = {
+                confirmExpand = false
+                viewModel.expand()
+            },
+            onDismiss = { confirmExpand = false },
         )
     }
     // Nothing leaves the garden on a single tap: the choice is made here first.

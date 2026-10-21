@@ -104,6 +104,7 @@ di/       Hilt の束ね
 | 13×13 | それに加えて Lv.8 |
 
 - 広さは `garden_progress.gardenSize`（`GardenProgress.gardenSize`）。
+- 広げる前に確認ダイアログ「庭を広げますか？」（#55、`ui/hud/ExpandConfirmDialog.kt`。広げた後の大きさ、まわりに 1 マスずつ加わること、元に戻せないことを書く。キャンセル→広げる の順で中央に横並び）。コテージのパネルの「庭を広げる」はダイアログを開くだけ。
 - 広げるのは `ExpandGardenUseCase`。庭の中心を保つため、**すべての物を x・y とも +1 ずらす**（`GardenExpansion.shifted`）。1 トランザクション。
 - 規則側は地図を `GardenMapSource` から受け取る（`PlaceItemUseCase` `HoeUseCase` `MoveObjectUseCase`）。
   本番は `StoredGardenMap`（保存された広さの芝生）、テストは `GardenMap` そのもの（`GardenMap` は自分自身を返す `GardenMapSource`）。
@@ -311,7 +312,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v13**（v12→v13 は `grid_objects.harvestCount`、既存の作物は 0＝まだ収穫していない）。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v15**（v14→v15 は列の変更なし。既存の芝生の `growthProgress` を 1＝育ちきったにする）。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|
@@ -327,6 +328,8 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 | 11 | `nature_notes.opened`（既存の行は既読＝1） |
 | 12 | `letters.topic`（#34、`MIGRATION_11_12`。ヒントの種類・入荷のレベル。既存の手紙は空文字） |
 | 13 | `grid_objects.harvestCount`（#39、`MIGRATION_12_13`。連続収穫の作物が何回収穫されたか。既存は 0） |
+| 14 | `grid_objects.soilQuality / isOn`、`garden_progress.hoeXp / wateringCanXp`（道具の上達・畑の質・スプリンクラーの入切） |
+| 15 | 列の変更なし（#55、`MIGRATION_14_15`）。芝生が段階で育つようになったので、それまでに置いた芝生（`growthProgress` 0）を 1 にする |
 
 - マイグレーションは `AppDatabase.MIGRATION_x_y`、登録は `di/DatabaseModule.kt`。
 - DB は SQLCipher。鍵は Android Keystore で包む。プロフィールは HMAC 署名付き（`SecurityManager`）。
@@ -358,6 +361,10 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 ### フェンス（`FenceAutotile`）
 
 - 同じ 4 ビットのマスク。隣が無ければ柵の画像 1 枚、あれば支柱の画像＋隣へ伸びる横木と杭（プログラム描画）。
+  - 単体の画像は #55 から `struct_fence_rail`（2 本の支柱と横木の 1 枚板）。それまでの `struct_fence`（杭が 5 本並ぶ絵）は単体でもつながった柵に見えたため。ショップの絵は `struct_fence` のまま。
+  - **芝生の上に置ける**（#55）：`GardenGrid` は芝生（`ground_grass`）を別の層に持ち、フェンスと芝生だけは同じマスに重なれる（`GardenGrid.sharesCellWithLawn`、`checkPlacement(..., objectId)`）。
+    重なったマスの `occupantAt` / `objectAt` はフェンス、芝生は `lawnAt`。芝生だけのマスは今までどおり `occupantAt` が芝生。他の物（ベンチなど）やクワは芝生のマスに入れない。
+    荒れ地の上でも、芝生に立つフェンスの足もとには草を描く。
 - 横木はマスの辺の中央で終わるので隣と必ず繋がる。奥（北・西）の腕は支柱より先に描く。
 
 ### 風と光（`Atmosphere.kt`）
@@ -382,6 +389,9 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
   以前の赤茶色（旧タイルの色）は荒れ地の上で敷物のように浮いていたので、「同じ土を掘り返した」色に：湿った本体 `DARK`、乾いた粒 `DRY`、畝の頂 `RIDGE`、畝の底と湿った斑 `DEEP`。
   本体は `DRY` から `DARK` へ `bodyMix(dampness)`（0.78 ± 0.2）。畑は色の違いではなく、少し暖かい本体と畝で見分ける（`UiBalanceAndGroundTest` が荒れ地の絵の明るさと照らし合わせる）。
   荒れ地の上（`Ambience.bareGround == WASTELAND`）では、畑の開いた縁の草は描かず土くれだけ（`drawTilledSoil(onBareEarth)`）。
+- **荒れ地の土そのものを掘り返す（#55）**：荒れ地の上の畑は、まず荒れ地の地面（`terrain.wasteland`）を周りと同じ写像で畑の形に敷き（`drawFlatGround`、土の粒やひびが畑の下へそのまま続く）、
+  その上に畑の本体色を `SoilPalette.TURNED_OVER`（0.55）の濃さで重ね、斑・畝・粒を描く。色だけ合わせていたときの「質感の違い」をなくすため。芝の地面（タイトル・図鑑）では従来どおり単色。
+- 作物の足もとには土くれを描かない（#55）。畑の上に重ねると土が二重に見えたため。作物以外の物の足もとは従来どおり。
 
 ### 工事現場
 
@@ -532,7 +542,7 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
 - **荒れ地（未耕作の地面）**：何も敷いていないマスは `res/drawable/soil_wasteland.png` の土。`AssetRepository.loadTerrainTextures` が `R.drawable.soil_wasteland` を読み、読み込み時に平らな正方形のテクスチャにする（`FlatGround.flatten`）：絵の上面（`GroundSlab.WASTELAND`、上面の中心 0.502, 0.519、幅は絵の 88.4%）を真上から見た正方形（512 px）に戻し、各辺 20% を切り落とす（`FlatGround.INSET`。#54 で 14% から広げた：崩れた縁・白い枯れ草・板の側面に加えて、縁の内側の明るく茶色い土も除く）。#54 からは次の 3 段で「線も模様も見えない地面」にする（以前の「半分ずらした写しと重ねる」方式は、土の斑が 1 枚に 2 回ずつ現れ、縁の茶色い土が 1.5 マスごとの帯になって、庭全体に格子・縞が見えていた）。①`FlatGround.seamless`：奥の端の 96 px（`MARGIN`）を手前の端に重ねて 416 px（`TILE_SIZE`）のつながるタイルにする。重みは sin²（`FlatGround.weight`）、混ぜた所は平均色からの差を 1/√(重みの二乗和) 倍に戻して土の粒を薄めない。②`FlatGround.evenOut`：土くれより大きい明暗（半径 32 px のぼかし 3 回、端は折り返し）を引き、色の差を 45% に寄せる（`COLOUR_KEPT`）。③`FlatGround.field`：そのタイルから 1024 px（`FIELD_SIZE`）の地面を、6×6 の区画（`FIELD_CELLS`）ごとにタイルの別の場所を取って、隣の区画となめらかに混ぜて作る（端は折り返すので、この地面自体もつながる）。中でタイルの繰り返しは見えない。庭ではそれを約 3.7 マスに 1 枚（`FLAT_GROUND_CELLS` = 1.5 × 1024 / 416）、庭の x・y 方向に沿って一度に敷く（`drawFlatGround`、`BitmapShader` の REPEAT）。その上に大きな明暗のむら（`FlatGround.variation`、64 px のつながるノイズ、中間の灰色 128 を中心に ±46）を 4.3 マスに 1 枚・庭の軸から 0.41 rad 傾けてオーバーレイで重ねる（`GROUND_VARIATION_CELLS` `GROUND_VARIATION_TURN`、`PorterDuff.Mode.OVERLAY`）。周期も向きもそろわないので、3.7 マスごとの繰り返しも同じに見えない。作るのに時間がかかる（遅いエミュレータで十数秒）ので、**インストールした版ごとに 1 回だけ作り**、`cacheDir/ground/wasteland-<FIELD_VERSION>-<更新時刻>.png` に保存して次からは読むだけにする（`AssetRepository.loadWasteland`。作り方を変えたら `FlatGround.FIELD_VERSION` を上げる）。マスごとの境目は出ない。荒れ地があるときは芝（`FeatheredLawn`）は敷かない。絵が読めないときは今までどおり芝。タイトルの見本の庭は「育ちきった庭」なので芝のまま（`GardenCanvas(bareGround = BareGround.LAWN)`）。ショップや図鑑の小さな絵も芝のまま。荒れ地の上では、物の足もとの草（`drawGrassAtFoot`）・畑の縁の草は描かず、土くれにする（`Ambience.bareGround`）
 - **池**（`deco_pond`、`GardenItem.DECO_POND`）：ショップの「かざり」、Lv4、75 コイン、置くと経験値 20（建物以外で経験値が入るのは池だけ）、図鑑の「ちけい」、持ち物では「地面」の仲間。川と同じく 1 マスを丸ごと使う（`PlacementKind.TERRAIN`：下に舗装は敷けず、上に何も置けず、クワも入らない。`GardenGrid.checkPlacement` が池のマスを `OCCUPIED` にする）。川と違って動かせて、持ち物に戻せる。絵は `res/drawable/pond.png`（`R.drawable.pond`、`TerrainTextures.pond`、上面は `GroundSlab.POND`、マスの 98%）を地面の物と同じ層（`BOTTOM_OBJECTS`）に描く。アトラスには探しに行かない（`TileSetDefinition.DRAWABLE_OBJECT_IDS`）。絵が読めないときは石の縁と水色の菱形をコードで描く。水面は動く（`PondWater`：庭の時計で、きらめき 5 つがそれぞれ明るくなっては消えて場所を変え、輪が 2 つ広がりながら薄れる。丸太の内側の水面＝マスの 0.2〜0.7 に切り抜いて描く。池ごとに位置と時刻をずらすので並んだ池がそろって動かない）。**隣り合う池は一つの池になる**（#54、`ui/render/PondJoin.kt`）：上下左右で辺を共有する 2 つの池のあいだは、両方の丸太の上に水を塗って水面をつなぐ（`PondJoin.Bridge`、つなぎ目の手前のマスの 0.6 から奥のマスの 0.27 まで＝`JOIN_FROM`〜`JOIN_TO`、両端 0.08 で絵の水へぼかす（`saveLayer` と `BlendMode.DstIn`）。奥の岸の下に影）。
   水は池の絵そのものの水：`pond.png` の上面の 0.25〜0.62 を真上から見た正方形に戻し（`FlatGround.region`）、荒れ地と同じ手順でつながるタイルにしたもの（`FlatGround.tileable`、色はそのまま）を、
-  庭の軸に沿って REPEAT で敷く（`TerrainTextures.pondWater`、`fillWithTexture`）。鏡写しで敷いたときは、水面の光が斜めの縞になった。描く順は 2 つ目の池の奥行き +0.5 なので、どちらの丸太もその上に出ない。2×2 に並んだ真ん中も水（`cornerInside`）。つなぎ目の端が池全体の外周にあるところ（`openBefore` / `openAfter`）は、丸太の切れ端の上に岸の石を 9 つ（大きさと濃さはまちまち、岸に沿って 2 列）置いて外周の岸がつながって見えるようにする（`drawBankStones`）。角だけで接する池はつながらない。つながりは保存せず、毎回位置から求める（`PondJoin.mask` `bridgesFrom` `pools`）保存は他の置物と同じく `grid_objects` の 1 行（`objectId = "deco_pond"`、スキーマの変更なし）
+  庭の軸に沿って REPEAT で敷く（`TerrainTextures.pondWater`、`fillWithTexture`）。鏡写しで敷いたときは、水面の光が斜めの縞になった。描く順は 2 つ目の池の奥行き +0.5 なので、どちらの丸太もその上に出ない。2×2 に並んだ真ん中も水（`cornerInside`）。つなぎ目の端が池全体の外周にあるところ（`openBefore` / `openAfter`）は、#55 から**丸太をつなぐ**：最初の池の絵を、その辺の丸太の真ん中がすき間に来るよう `GAP_SHIFT`（0.49 マス）ずらして描き、すき間（`GAP_FROM` 0.74 から 0.52 マス、岸の帯 `BANK_BEFORE` / `BANK_AFTER`）で切り抜く（`drawPondLogAcross`）。同じ丸太の木目と光なので両側の丸太の端につながる。以前の岸の石（`drawBankStones`）は、池の絵が読めないときだけ。角だけで接する池はつながらない。つながりは保存せず、毎回位置から求める（`PondJoin.mask` `bridgesFrom` `pools`）保存は他の置物と同じく `grid_objects` の 1 行（`objectId = "deco_pond"`、スキーマの変更なし）
 - **お披露目の札**：#54 から札は「🎉 井戸 が完成！」（初めてなら 2 行目に図鑑の一言）だけで、**経験値は書かない**（「完成」「図鑑登録」「+XP」の 3 つが一度に出て多すぎた）。経験値はこれまでどおりお披露目のときに入り、レベルのバーが伸びる。`GardenEffect.WorkDone` の `xp` は削除。別に「+XP」を浮かべることもしない
 - **図鑑の目次へ**：どの詳細ページにも下の段に「📖 もくじ」の木のボタン（`BookFooter`、目次では出さない）。#54 から、となりのページへは滑らせ、2 ページ以上離れたページ（目次へ戻る、目次から開く）へは**一度に開く**（`BookTurn.slides`、`PagerState.turnTo`）。滑らせると途中のページの絵（多くは芝生）が次々に映ってちらついていた。ページを埋めたとき・その日初めて開いたときのコインは音（`SoundEffect.COIN`）だけで知らせ、「登録しました！ +N 🪙」「今日の図鑑ボーナス」の帯は出さない（`NoticeStrip` と文字列を削除）
 - **スプリンクラー**（`deco_sprinkler`、`Sprinkler`）：道具ではなく庭に置く物（ショップ Lv3、70 コイン（井戸より安く。ショップの値段の決まり、`ShopAndEffectsTest`）、図鑑の「たてもの」）。動いている間（`grid_objects.isOn`）は周り 1 マス（斜めも）の土の乾きが 1/4（`PlantSurroundings` で井戸や風車と同じく一番よいものを取る）。詳細パネルの「止める／動かす」で切り替え（`ToggleSprinklerUseCase`。切り替える前に周りの作物を今まで進めるので、それまでの時間は前の設定で数える）。動いている間は水しぶきが回る（`SprinklerSpray`：コマ番号・頭の向き・しずくの位置をデータで持つ。`deco_sprinkler_spray_0`〜`_7` の絵があればコマごとにそれを使う）。#54 で水の動きを作り直した：ノズルは 2 本、しずくは 150ms ごとに 1 粒ずつ打ち出され、**打ち出されたときのノズルの向きのまま**まっすぐ飛ぶ（前は頭と一緒に回り、決まった量だけ曲げていたので、硬いらせんがその場で回って見えた）。外へは一定の速さで、高さは放物線（`SprinklerSpray.arc`）、飛ぶのは 0.9 秒。頭が回る間に粒が飛ぶので、列は自然にノズルの後ろへ弧を描いて流れる。粒ごとに届く距離が少し違い（`carry`、一周ごとに同じ）、着いた所に小さな輪が 0.3 秒広がる（`Splash`）。描画は短い筋＋先の光、水の届く範囲にごく薄い濡れ色（`drawSprinklerSpray`）
@@ -584,12 +594,13 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
     下に絵の平均色（`LawnShade.meanColour`）を庭の形で敷き、芝生は庭の形で切り抜く。川（`TileType.RIVER`）のマスより先に描く。絵が読めないときは従来どおり。
   - （従来）各マスを 1.04 倍で描いて隣と重ねる（`LawnShade.CELL_OVERLAP`）。半分ほどのマスを左右反転（`LawnShade.mirrored`、マス座標のハッシュ）して、同じ模様が並ばないようにする。
   - その上に、マスをまたぐ大きく淡い明暗の斑（`LawnShade.patches`、1〜2 マス幅）を庭の形で切り抜いて重ねる。
-- **芝生（ショップの「芝生」、`ground_grass`、#54 で段階育成の準備）**：以前は緑の点 3 つの仮の絵だった。今は荒れ地の上に、庭の芝生と同じぼかした芝の絵（`FeatheredLawn`、1.32 倍）を
+- **芝生（ショップの「芝生」、`ground_grass`、#54 で準備、#55 で段階育成を有効化）**：以前は緑の点 3 つの仮の絵だった。今は荒れ地の上に、庭の芝生と同じぼかした芝の絵（`FeatheredLawn`、1.32 倍）を
   そのマスに敷き、草の房を数本立てる（`drawLawnPatch`）。隣どうしの芝生は縁のぼかしで重なって 1 枚になる。芝が地面のタイトルの見本の庭・図鑑の絵では房だけ。
   - 段階は `domain/model/LawnGrowth.kt` の `LawnStage`：`SOWN`（まいたばかり）→ `SPROUTING`（芽）→ `PATCHY`（まだら）→ `FULL`（ふかふか）。段階ごとに、芝がマスを覆う割合（`cover`、0/0.35/0.7/1）と房の数を持つ。
   - 状態は**芝生の行の `growthProgress`**（0 まいた〜1 育ちきった）から読む（耕した土がたい肥をそこに持つのと同じく、芝生では使っていない列。スキーマの変更なし）。`grownBy` は時間でどれだけ育つか（種から 48 時間＝`HOURS_TO_FULL`）。
-  - **まだ段階では育たない**（`LawnGrowth.GROWS_IN_STAGES = false`）：何で育つか（時間・水・季節）と値打ちが決まっていないため、今はどの芝生も `FULL` で描く（これまでどおり置いたらすぐ芝生）。
-    有効にするときは、このフラグ、置いたときに 0 から始めること、作物と同じ同期（`CalculateOfflineProgressUseCase` のあたり）で `grownBy` を呼ぶことの 3 か所。
+  - **段階で育つ**（#55、`LawnGrowth.GROWS_IN_STAGES = true`）：置くと 0（まいたばかり）から始まり、時間だけで育つ（48 時間で `FULL`）。天気・水やりは関係なく、枯れない。
+    庭を開いている間も離れている間も `CalculateOfflineProgressUseCase.advance` が `grownBy` で進める（作物と同じ同期）。DB v15 で、それまでに置いた芝生は育ちきった扱い。タイトルの見本の庭の芝生も育ちきり。
+  - 見た目（#55）：房の数を増やし（6/10/12/14）、育ちきると背を高く、房ごとに奥の濃い葉＋手前の明るい葉を描いて奥から手前の順に並べる（「ペタッとした」敷物に見えないように）。
 - **耕した土**：コード描画の「つながった畑」（上の「耕した土」）。地面の層の中で**マスの奥から手前の順**（`1f + depthOf(x, y)`）に描く。
   たい肥入りは葉やわらの粒を足す。
 - **作物の大きさ（`CropScale`）**：段階ごとに描く倍率を決める（小さくするだけ）。苗（1 段階目）は高さ `SEEDLING_HEIGHT`（タイル幅の 0.47）まで、#54 から**幅も `SEEDLING_WIDTH`（0.30＝チューリップの芽の幅）まで**。

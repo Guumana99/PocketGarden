@@ -235,7 +235,8 @@ class BundledArtTest {
         assertTrue(strings.contains("<string name=\"collection_tab_crops\">さくもつ</string>"))
         assertTrue(strings.contains("<string name=\"collection_tab_terrain\">ちけい</string>"))
         assertTrue(strings.contains("<string name=\"collection_tab_structures\">たてもの</string>"))
-        assertTrue(strings.contains("✨ 登録する"))
+        // No sparkle in front of it any more (#55).
+        assertTrue(strings.contains("<string name=\"collection_reveal_button\">登録する</string>"))
     }
 
     @Test
