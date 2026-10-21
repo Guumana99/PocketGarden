@@ -38,6 +38,13 @@ object SoilPalette {
      */
     fun bodyMix(dampness: Float): Float = (0.78f + 0.2f * dampness).coerceIn(0f, 1f)
 
+    /**
+     * How strongly a bed's colour is laid over the wasteland's own earth where it is drawn on it
+     * (#55): enough to read as turned, damp soil, little enough that the earth's grain and cracks
+     * still show through, so that the bed is plainly the same ground.
+     */
+    const val TURNED_OVER = 0.55f
+
     /** The red, green and blue of an ARGB [colour]. */
     fun rgb(colour: Long): Triple<Int, Int, Int> =
         Triple(((colour shr 16) and 0xFF).toInt(), ((colour shr 8) and 0xFF).toInt(), (colour and 0xFF).toInt())

@@ -12,11 +12,16 @@ import kotlin.math.roundToInt
  * per use that did something), through [thresholds]: the uses needed to reach each level from 1.
  * It is a skill learnt over the life of the garden, not a reward for the first afternoon: the
  * first step up comes after a good few beds, the last only after a season or two of work.
- * On screen a level is a rank ("見習い" to "名人") and stars, never a bare number.
+ * On screen a level is a rank ("見習い" to "名人") and stars, never a bare number; a tool whose
+ * [showsLevel] is off shows neither.
  */
-enum class FarmTool(private val thresholds: IntArray) {
-    /** Ground broken up into a bed. (Was 5 / 15 / 30 / 50: too quick, a few rows and it was mastered.) */
-    HOE(intArrayOf(0, 15, 40, 90, 180)),
+enum class FarmTool(private val thresholds: IntArray, val showsLevel: Boolean = true) {
+    /**
+     * Ground broken up into a bed. (Was 5 / 15 / 30 / 50: too quick, a few rows and it was mastered.)
+     * Its level is kept out of sight for now (#55): it still learns, and still breaks the ground
+     * faster and makes richer beds, but neither its button nor a word over the garden says so.
+     */
+    HOE(intArrayOf(0, 15, 40, 90, 180), showsLevel = false),
 
     /** Plants watered. */
     WATERING_CAN(intArrayOf(0, 25, 70, 150, 300));

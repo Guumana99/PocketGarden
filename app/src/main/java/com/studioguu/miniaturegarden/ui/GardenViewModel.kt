@@ -465,6 +465,8 @@ class GardenViewModel @Inject constructor(
     }
 
     private fun toolLevelUp(tool: FarmTool, level: Int) {
+        // A tool whose level is kept out of sight gets better without a word (#55).
+        if (!tool.showsLevel) return
         audio.play(SoundEffect.LEVEL_UP)
         showEffect { GardenEffect.ToolLevelUp(it, tool, level) }
     }

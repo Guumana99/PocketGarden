@@ -12,9 +12,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -91,11 +93,26 @@ class AssetRepository @Inject constructor(
      * after the atlas has been decoded, and the wasteland is ready by the time the garden opens.
      * Later calls to [loadAtlas] and [loadTerrainTextures] wait for these reads instead of
      * starting their own.
+     *
+     * The wasteland is made only once what the title shows has been read: making it keeps the
+     * background threads busy, and beside it the title's ground took seconds longer on a small
+     * device (#55). The garden, which needs it, opens only after the title anyway.
+     *
+     * @return done once what the title shows (the atlas and the ground without the wasteland) has
+     *   been read, so that other work at the start can wait for it rather than slow it down.
      */
-    fun prefetch(scope: CoroutineScope) {
-        scope.launch { runCatching { loadAtlas() } }
-        scope.launch { runCatching { loadTerrainTextures(withWasteland = false) } }
-        scope.launch { runCatching { loadWasteland() } }
+    fun prefetch(scope: CoroutineScope): Job {
+        val titleArt = Job()
+        val title = listOf(
+            scope.launch { runCatching { loadAtlas() } },
+            scope.launch { runCatching { loadTerrainTextures(withWasteland = false) } },
+        )
+        scope.launch {
+            title.joinAll()
+            titleArt.complete()
+            runCatching { loadWasteland() }
+        }
+        return titleArt
     }
 
     /**
@@ -215,6 +232,9 @@ class AssetRepository @Inject constructor(
             "Atlas image is ${bitmap.width}x${bitmap.height} but the manifest says " +
                 "${manifest.atlasWidth}x${manifest.atlasHeight}; re-run tools/asset_packer.py"
         }
+        // Starts its upload to the graphics memory now, off the main thread, instead of on the
+        // first frame that draws the title's garden: it is one large picture (#55).
+        bitmap.prepareToDraw()
         return SpriteAtlas(manifest, bitmap)
     }
 

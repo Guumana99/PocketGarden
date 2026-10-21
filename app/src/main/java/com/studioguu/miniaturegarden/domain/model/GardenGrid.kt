@@ -40,6 +40,10 @@ enum class PlacementKind {
  * The garden as a whole: the terrain plus everything on it. A cell has two layers, a floor
  * (paving) and an occupant (whatever stands there); every object counts on all the cells of
  * its footprint.
+ *
+ * A lawn is an occupant too, with one exception (#55): a fence may stand on a lawn, and a lawn
+ * be sown under a fence ([sharesCellWithLawn]). Such a cell holds both; the fence is what stands
+ * there ([occupantAt]), and the lawn lies under it ([lawnAt]).
  */
 class GardenGrid(
     val map: GardenMap,
@@ -48,12 +52,21 @@ class GardenGrid(
     private val floors: Map<GridCell, GridObject> = buildMap {
         for (obj in objects) if (obj.isFloor) for (cell in obj.occupiedCells()) put(cell, obj)
     }
-    private val occupants: Map<GridCell, GridObject> = buildMap {
-        for (obj in objects) if (!obj.isFloor) for (cell in obj.occupiedCells()) put(cell, obj)
+    private val lawns: Map<GridCell, GridObject> = buildMap {
+        for (obj in objects) if (LawnGrowth.isLawn(obj)) for (cell in obj.occupiedCells()) put(cell, obj)
+    }
+    private val standing: Map<GridCell, GridObject> = buildMap {
+        for (obj in objects) if (!obj.isFloor && !LawnGrowth.isLawn(obj)) for (cell in obj.occupiedCells()) put(cell, obj)
     }
 
-    /** What stands on (x, y), or the river tile there; whichever of the object's cells that is. */
-    fun occupantAt(x: Int, y: Int): GridObject? = occupants[GridCell(x, y)]
+    /**
+     * What stands on (x, y), or the river tile there; whichever of the object's cells that is.
+     * A lawn counts when nothing else stands on it.
+     */
+    fun occupantAt(x: Int, y: Int): GridObject? = GridCell(x, y).let { standing[it] ?: lawns[it] }
+
+    /** The lawn on (x, y), if any, whether or not a fence stands on it. */
+    fun lawnAt(x: Int, y: Int): GridObject? = lawns[GridCell(x, y)]
 
     /** The paving on (x, y), if any. */
     fun floorAt(x: Int, y: Int): GridObject? = floors[GridCell(x, y)]
@@ -74,24 +87,43 @@ class GardenGrid(
      * Whether something of [kind] with [footprint] fits with its first cell at
      * (originX, originY). Every cell must be inside the grid and not river, and its layer must
      * be free: paving only needs the floor layer, so it can go under something already standing
-     * there, and anything can be stood on paving.
+     * there, and anything can be stood on paving. Given its [objectId], a fence may also go onto
+     * a lawn and a lawn under a fence.
      */
     fun checkPlacement(
         footprint: Footprint,
         originX: Int,
         originY: Int,
         kind: PlacementKind = PlacementKind.OBJECT,
+        objectId: String? = null,
     ): PlacementCheck {
         val cells = footprint.cells(originX, originY)
         return when {
             cells.any { !map.isInside(it.x, it.y) } -> PlacementCheck.OUT_OF_BOUNDS
             cells.any { !map.isBuildable(it.x, it.y) } -> PlacementCheck.NOT_BUILDABLE
-            cells.any { occupants[it]?.isTerrain == true } -> PlacementCheck.NOT_BUILDABLE
+            cells.any { standing[it]?.isTerrain == true } -> PlacementCheck.NOT_BUILDABLE
             // Nor is anything laid under or stood in a pond, though it can be taken away again.
-            cells.any { occupants[it]?.isPond == true } -> PlacementCheck.OCCUPIED
+            cells.any { standing[it]?.isPond == true } -> PlacementCheck.OCCUPIED
             kind != PlacementKind.OBJECT && cells.any { it in floors } -> PlacementCheck.OCCUPIED
-            kind != PlacementKind.FLOOR && cells.any { it in occupants } -> PlacementCheck.OCCUPIED
+            kind != PlacementKind.FLOOR && cells.any { taken(it, objectId) } -> PlacementCheck.OCCUPIED
             else -> PlacementCheck.OK
         }
+    }
+
+    /** Whether [cell] has no room for [objectId] (null: something that shares with nothing). */
+    private fun taken(cell: GridCell, objectId: String?): Boolean {
+        val placingLawn = objectId == LawnGrowth.OBJECT_ID
+        val placingFence = objectId != null && sharesCellWithLawn(objectId)
+        val thing = standing[cell]
+        return when {
+            thing != null -> !(placingLawn && thing.isFence)
+            cell in lawns -> !placingFence
+            else -> false
+        }
+    }
+
+    companion object {
+        /** Whether [objectId] can share its cell with a lawn: a fence (#55). */
+        fun sharesCellWithLawn(objectId: String): Boolean = FencePart.fromObjectId(objectId) != null
     }
 }

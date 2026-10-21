@@ -212,7 +212,7 @@
     <string name="collection_tab_terrain">ちけい</string>
     <string name="collection_tab_structures">たてもの</string>
     <string name="collection_ready_hint">条件を満たしました。\nボタンを押して、図鑑に登録しましょう。</string>
-    <string name="collection_reveal_button">✨ 登録する</string>
+    <string name="collection_reveal_button">登録する</string>
     <string name="collection_page">%1$d / %2$d</string>
     <string name="collection_number">No.%1$02d</string>
     <string name="collection_unknown">？？？</string>
@@ -416,6 +416,9 @@
     <string name="reveal_post_text">あなたのお庭に届いたお便りが読めます。</string>
     <string name="expand_button">庭を広げる（%1$d×%1$d）</string>
     <string name="expand_needs_level">Lv.%1$d で %2$d×%2$d に広げられます</string>
+    <string name="expand_confirm_title">庭を広げますか？</string>
+    <string name="expand_confirm_text">庭が %1$d×%1$d に広がります。まわりに1マスずつ新しい土地が加わり、いま置いてあるものはそのまま真ん中に残ります。広げた庭は元に戻せません。</string>
+    <string name="expand_confirm_ok">広げる</string>
     <string name="expand_max">庭が最大の広さになりました</string>
     <string name="expand_after_unveil">🏡 完成してお披露目すると、ここから庭を広げられます</string>
     <string name="msg_garden_can_grow">🏡 庭を広げられるようになりました。コテージの上の吹き出しをタップしてみましょう</string>
@@ -460,7 +463,7 @@
     <string name="nature_heading_found">見つけた組み合わせ</string>
     <string name="nature_heading_hints">うわさ</string>
     <string name="nature_index">もくじ</string>
-    <string name="nature_new">あたらしい</string>
+    <string name="nature_new">NEW</string>
     <string name="book_entered_on">登録日 %1$s</string>
     <string name="nature_none_yet">まだ誰にも出会っていない。\n庭を整えて、待ってみよう。</string>
     <string name="creature_flavor_butterfly">咲きそろった花から花へと渡り歩く。\n羽をたたむと、木の葉によく似ている。</string>

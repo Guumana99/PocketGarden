@@ -169,7 +169,7 @@ class MoveObjectUseCase @Inject constructor(
 
             // Checked against the garden as it would be with the thing lifted off it.
             val others = GardenGrid(gardenMap.current(), objects.filter { it.instanceId != instanceId })
-            when (others.checkPlacement(target.footprint, gridX, gridY, PlacementKind.forObjectId(target.objectId))) {
+            when (others.checkPlacement(target.footprint, gridX, gridY, PlacementKind.forObjectId(target.objectId), target.objectId)) {
                 PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
                 PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
                 PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED

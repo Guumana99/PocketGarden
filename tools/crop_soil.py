@@ -122,12 +122,90 @@ def strip_soil_ball(image: Image.Image, withered: bool = False) -> Image.Image:
     grown = np.array(Image.fromarray((remove * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(5))) > 0
     remove |= grown & band & (soil | (a[..., 3] < 160))
     a[remove, 3] = 0
+    if not withered:
+        _strip_clumps(a, int(ys.min()), height)
     # Stray crumbs left in the band, not joined to the plant above it, go too: otherwise they
     # hang below the stem and the picture's foot is not where the plant stands.
     kept = a[..., 3] > 8
     attached = _grow(kept & ~band, kept)
     a[band & kept & ~attached, 3] = 0
     return Image.fromarray(a)
+
+
+def _strip_clumps(a: np.ndarray, top: int, height: int) -> None:
+    """
+    Takes out a clump of earth the band missed (#55): the mound a seedling stands in, with its
+    lower leaves hanging down past it, so that scanning up from the bottom meets leaves first
+    (the strawberry's first stage). Any patch of earth colour in the lower part of the picture
+    that is large and wide enough to be a clump goes, with its soft edge; specks of brown on a
+    leaf or a stem are far smaller and stay. Not for a withered plant, which is earth-brown all over.
+    """
+    opaque = a[..., 3] > 8
+    r, g, b = (a[..., i].astype(int) for i in range(3))
+    # Earth, not a grey-green leaf in shade: no greener than it is red.
+    soil = soil_mask(a[..., :3]) & opaque & (r >= g)
+    soil[: top + int(height * CLUMP_FROM)] = False
+    picture_width = int(opaque.any(axis=0).sum())
+    area = int(opaque.sum())
+    labels, count = _label(soil)
+    remove = np.zeros_like(soil)
+    for label in range(1, count + 1):
+        part = labels == label
+        width = int(part.any(axis=0).sum())
+        # And brown on the whole, warmer than it is blue.
+        brown = r[part].mean() - b[part].mean() >= CLUMP_MIN_WARMTH
+        if brown and part.sum() >= area * CLUMP_MIN_AREA and width >= picture_width * CLUMP_MIN_WIDTH:
+            remove |= part
+    if not remove.any():
+        return
+    # The clump's shaded side, almost black, which is as green as it is red: kept only where it
+    # is joined to the brown of the clump.
+    dark = soil_mask(a[..., :3], dark_only=True) & opaque
+    dark[: top + int(height * CLUMP_FROM)] = False
+    joined, _ = _label(dark | remove)
+    touching = np.unique(joined[remove])
+    remove |= np.isin(joined, touching[touching > 0])
+    # Its soft edge too: what is round it and half see-through, or earth-coloured.
+    grown = np.array(Image.fromarray((remove * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(5))) > 0
+    rgb = a[..., :3].astype(int)
+    pale = (rgb.min(axis=2) > 150) & ((rgb.max(axis=2) - rgb.min(axis=2)) < 40)
+    remove |= grown & ((soil_mask(a[..., :3]) & (r >= g)) | (a[..., 3] < 160) | pale)
+    a[remove, 3] = 0
+
+
+def _label(mask: np.ndarray) -> tuple[np.ndarray, int]:
+    """The patches of [mask] (8 neighbours), numbered from 1, and how many there are."""
+    labels = np.zeros(mask.shape, dtype=np.int32)
+    h, w = mask.shape
+    count = 0
+    for y0, x0 in np.argwhere(mask):
+        if labels[y0, x0]:
+            continue
+        count += 1
+        labels[y0, x0] = count
+        stack = [(int(y0), int(x0))]
+        while stack:
+            y, x = stack.pop()
+            for ny in (y - 1, y, y + 1):
+                if ny < 0 or ny >= h:
+                    continue
+                for nx in (x - 1, x, x + 1):
+                    if 0 <= nx < w and mask[ny, nx] and not labels[ny, nx]:
+                        labels[ny, nx] = count
+                        stack.append((ny, nx))
+    return labels, count
+
+
+#: Where in a picture, from the top, a clump missed by the band is looked for.
+CLUMP_FROM = 0.35
+
+#: How large a patch of earth colour is, against the whole picture, to be a clump: its share of
+#: the picture's pixels, and of its width.
+CLUMP_MIN_AREA = 0.01
+CLUMP_MIN_WIDTH = 0.15
+
+#: How much redder than blue a clump is on average (0..255): earth is brown.
+CLUMP_MIN_WARMTH = 8
 
 
 def _grow(seed: np.ndarray, within: np.ndarray) -> np.ndarray:

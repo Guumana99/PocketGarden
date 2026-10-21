@@ -140,10 +140,10 @@ data class GridObject(
  * they are fences like any other.
  */
 enum class FencePart(val objectId: String) {
-    /** What every new fence is stored as. Its sprite is the stand-alone section. */
+    /** What every new fence is stored as. Its sprite, a run of pales, is the shop's picture of a fence. */
     SECTION(GridObject.FENCE_OBJECT_ID),
 
-    /** Stored by older versions only. Its sprite is not used any more. */
+    /** Stored by older versions only. Its sprite, one panel between two posts, is a fence standing alone (#55). */
     RAIL("struct_fence_rail"),
 
     /** Stored by older versions only. Its sprite is the post that joined fences are built round. */

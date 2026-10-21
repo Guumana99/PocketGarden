@@ -29,7 +29,7 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         NatureNoteEntity::class,
         LetterEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -170,6 +170,17 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN isOn INTEGER NOT NULL DEFAULT 1")
                 db.execSQL("ALTER TABLE garden_progress ADD COLUMN hoeXp INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE garden_progress ADD COLUMN wateringCanXp INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v15: lawns grow in stages (LawnGrowth), from 0 sown to 1 fully grown, kept in their
+         * growthProgress. The lawns laid before stood fully grown at 0; they stay fully grown.
+         * No table changes.
+         */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE grid_objects SET growthProgress = 1.0 WHERE objectId = 'ground_grass'")
             }
         }
     }

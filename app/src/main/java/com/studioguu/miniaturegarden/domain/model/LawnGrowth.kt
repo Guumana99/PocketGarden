@@ -1,32 +1,27 @@
 package com.studioguu.miniaturegarden.domain.model
 
 /**
- * How a lawn comes up on bare ground, stage by stage (#54, prepared). The garden starts as
- * wasteland; a lawn sown on it is meant to grow, the way a crop does, from seed scattered over
- * the earth to a full, soft green — not to be laid fully grown at a tap.
+ * How a lawn comes up on bare ground, stage by stage (#54 prepared, #55 on). The garden starts as
+ * wasteland; a lawn sown on it grows, the way a crop does, from seed scattered over the earth to
+ * a full, soft green, rather than being laid fully grown at a tap.
  *
- * Today every lawn stands fully grown ([GROWS_IN_STAGES] is off): there is no rule yet for what
- * makes it grow (time, water, the season) or for what it is worth, and a lawn that never left
- * its first stage would be worse than one laid ready. What is here is the shape of it, so that
- * the screen already draws a lawn by its stage ([LawnStage]) and the rules can be added in one
- * place:
- *
- * - the stage is read from [GridObject.growthProgress] (0 sown, 1 fully grown), a field a lawn
- *   does not otherwise use, the way tilled soil keeps its compost there: nothing new is stored;
- * - [grownBy] is how far a lawn comes on in a while ([HOURS_TO_FULL] from seed to full);
- * - how much of its cell the grass covers at each stage ([LawnStage.cover]) is what the garden draws.
- *
- * To turn it on: set [GROWS_IN_STAGES], have placing a lawn start it at 0, and bring lawns on
- * with [grownBy] where the crops are brought up to date (CalculateOfflineProgressUseCase).
+ * - The stage is read from [GridObject.growthProgress] (0 sown, 1 fully grown), a field a lawn
+ *   does not otherwise use, the way tilled soil keeps its compost there: nothing new is stored.
+ *   A lawn is placed at 0 like any seed; lawns laid before it grew were set fully grown when the
+ *   database moved to version 15.
+ * - It grows with time alone ([grownBy], [HOURS_TO_FULL] from seed to full), while the garden
+ *   is open and while it is away (CalculateOfflineProgressUseCase). It needs no water and does
+ *   not wither.
+ * - How much of its cell the grass covers at each stage ([LawnStage.cover]) is what the garden draws.
  */
 object LawnGrowth {
     /** The lawn's object id: "芝生" in the shop. */
     const val OBJECT_ID = "ground_grass"
 
-    /** Whether lawns grow in stages yet. Off: every lawn is drawn fully grown, as it was laid. */
-    const val GROWS_IN_STAGES = false
+    /** Whether lawns grow in stages. Off, every lawn would be drawn fully grown, as it was laid. */
+    const val GROWS_IN_STAGES = true
 
-    /** How long a lawn takes from seed to fully grown, once it grows. */
+    /** How long a lawn takes from seed to fully grown. */
     const val HOURS_TO_FULL = 48f
 
     /** Whether [obj] is a lawn. */
@@ -56,15 +51,18 @@ object LawnGrowth {
  * (the rest is the earth under it). [blades]: how many tufts stand up on it.
  */
 enum class LawnStage(val from: Float, val cover: Float, val blades: Int) {
-    /** Just sown: seed on the earth, a first few shoots. */
-    SOWN(from = 0f, cover = 0f, blades = 4),
+    /** Just sown: seed on the earth, a first few short shoots. */
+    SOWN(from = 0f, cover = 0f, blades = 6),
 
     /** Shoots coming up all over, thin, with the earth between them. */
-    SPROUTING(from = 0.25f, cover = 0.35f, blades = 7),
+    SPROUTING(from = 0.25f, cover = 0.35f, blades = 10),
 
-    /** Patchy green, a few bare spots left. */
-    PATCHY(from = 0.6f, cover = 0.7f, blades = 6),
+    /** Patchy green, a few bare spots left, tufts standing up all over. */
+    PATCHY(from = 0.6f, cover = 0.7f, blades = 12),
 
-    /** A full, soft lawn over the whole cell. */
-    FULL(from = 1f, cover = 1f, blades = 3),
+    /**
+     * A full lawn over the whole cell, with tufts of blades standing up from it all over (#55:
+     * three tufts on the flat green read as a carpet laid down, not grass growing).
+     */
+    FULL(from = 1f, cover = 1f, blades = 14),
 }

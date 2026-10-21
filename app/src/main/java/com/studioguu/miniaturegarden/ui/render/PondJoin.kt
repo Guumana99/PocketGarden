@@ -8,8 +8,8 @@ import com.studioguu.miniaturegarden.domain.model.GridCell
  * a double wall of logs between them. Where two ponds share a side, the logs along it are taken
  * away and the water runs through ([Bridge]); where four make a square, the middle where their
  * corners meet is water too ([corners]); and at either end of a join that lies on the pool's
- * outer edge, a few stones cover the ends of the logs ([Bridge.openBefore], [Bridge.openAfter]),
- * so that the bank runs on round the pool.
+ * outer edge, the logs run on across the join ([Bridge.openBefore], [Bridge.openAfter], [GAP_FROM]),
+ * so that the ring of logs runs on round the pool without a gap.
  *
  * Like the river and the fences, nothing of this is stored: it is read from where the ponds are,
  * every time the garden is drawn.
@@ -31,6 +31,21 @@ object PondJoin {
     const val JOIN_FROM = 0.6f
     const val JOIN_TO = 1.27f
     const val JOIN_FADE = 0.08f
+
+    /**
+     * The gap a join leaves in the ring of logs on the pool's outer edge, along the join: from
+     * the first pond's log end to the second's, with a little of each ([GAP_FROM], [GAP_SPAN]).
+     * It is closed with the middle of the first pond's own log, moved [GAP_SHIFT] along: the
+     * part of the log that ends up over the gap is its middle ([GAP_FROM] - [GAP_SHIFT] on), not
+     * its end (#55).
+     */
+    const val GAP_FROM = 0.74f
+    const val GAP_SPAN = 0.52f
+    const val GAP_SHIFT = 0.49f
+
+    /** Across the join, where the log on the first (north or west) and the last bank lies, shares of the cell. */
+    val BANK_BEFORE = -0.06f..0.26f
+    val BANK_AFTER = 0.74f..1.06f
 
     /**
      * A join between the pond at ([x], [y]) and the next one east of it ([alongX]) or south of it.

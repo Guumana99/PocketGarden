@@ -72,7 +72,7 @@
       "width": 339,
       "height": 343,
       "isFlippedAllowed": true,
-      "atlasX": 382,
+      "atlasX": 379,
       "atlasY": 1364
     },
     {
@@ -87,8 +87,8 @@
     },
     {
       "assetId": "plant_paprika_stage3",
-      "anchorX": 0.516,
-      "anchorY": 0.976,
+      "anchorX": 0.5373,
+      "anchorY": 0.9928,
       "width": 469,
       "height": 417,
       "isFlippedAllowed": true,
@@ -112,7 +112,7 @@
       "width": 254,
       "height": 324,
       "isFlippedAllowed": true,
-      "atlasX": 1895,
+      "atlasX": 1892,
       "atlasY": 1364
     },
     {
@@ -127,9 +127,9 @@
     },
     {
       "assetId": "plant_rose_stage3",
-      "anchorX": 0.5344,
+      "anchorX": 0.5467,
       "anchorY": 1.0,
-      "width": 378,
+      "width": 375,
       "height": 356,
       "isFlippedAllowed": true,
       "atlasX": 2,
@@ -137,7 +137,7 @@
     },
     {
       "assetId": "plant_rose_stage4",
-      "anchorX": 0.4929,
+      "anchorX": 0.5166,
       "anchorY": 0.984,
       "width": 422,
       "height": 438,
@@ -212,7 +212,7 @@
       "width": 285,
       "height": 339,
       "isFlippedAllowed": true,
-      "atlasX": 723,
+      "atlasX": 720,
       "atlasY": 1364
     },
     {
@@ -242,7 +242,7 @@
       "width": 262,
       "height": 326,
       "isFlippedAllowed": true,
-      "atlasX": 1010,
+      "atlasX": 1007,
       "atlasY": 1364
     },
     {
@@ -252,7 +252,7 @@
       "width": 234,
       "height": 316,
       "isFlippedAllowed": true,
-      "atlasX": 2151,
+      "atlasX": 2148,
       "atlasY": 1364
     },
     {
@@ -267,12 +267,12 @@
     },
     {
       "assetId": "plant_tomato_stage3",
-      "anchorX": 0.5267,
-      "anchorY": 1.0,
+      "anchorX": 0.525,
+      "anchorY": 0.9969,
       "width": 619,
       "height": 325,
       "isFlippedAllowed": true,
-      "atlasX": 1274,
+      "atlasX": 1271,
       "atlasY": 1364
     },
     {
@@ -338,7 +338,7 @@
     {
       "assetId": "struct_cottage",
       "anchorX": 0.4994,
-      "anchorY": 0.7975,
+      "anchorY": 0.7481,
       "width": 616,
       "height": 513,
       "isFlippedAllowed": true,
@@ -396,7 +396,7 @@
       "width": 312,
       "height": 303,
       "isFlippedAllowed": true,
-      "atlasX": 2387,
+      "atlasX": 2384,
       "atlasY": 1364,
       "drawScale": 3.2802
     },
@@ -407,7 +407,7 @@
       "width": 512,
       "height": 295,
       "isFlippedAllowed": true,
-      "atlasX": 2701,
+      "atlasX": 2698,
       "atlasY": 1364
     },
     {
@@ -417,7 +417,7 @@
       "width": 512,
       "height": 295,
       "isFlippedAllowed": true,
-      "atlasX": 3215,
+      "atlasX": 3212,
       "atlasY": 1364
     }
   ]
