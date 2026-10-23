@@ -79,7 +79,7 @@ class HoeTest {
         assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(2, 2, t0))
         assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(3, 3, t0))
         assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(6, 6, t0)) // any cell of the hut
-        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(9, 0, t0))
+        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(GridObject.GRID_SIZE, 0, t0))
         assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(0, -1, t0))
 
         assertEquals(before, repo.objects.size)

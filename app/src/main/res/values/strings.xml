@@ -3,7 +3,7 @@
     <string name="app_name">ぽけっと庭園</string>
 
     <!-- Top status bar -->
-    <string name="status_level">Lv.%1$d　%2$d/%3$d XP</string>
+    <string name="status_level">Lv.%1$d</string>
     <string name="status_level_max">Lv.%1$d　MAX</string>
     <string name="weather_sunny">晴れ</string>
     <string name="weather_cloudy">曇り</string>
@@ -201,8 +201,7 @@
     <string name="msg_select_plant">先に作物をタップして選んでください</string>
 
     <!-- Floating effects -->
-    <string name="effect_harvest">+%1$d 🪙　+%2$d XP</string>
-    <string name="effect_xp">+%1$d XP</string>
+    <string name="effect_harvest">+%1$d 🪙</string>
 
     <!-- Garden encyclopedia. Its pages read as calm, ordinary Japanese with kanji; only the short tab labels stay in kana. The book is always written 図鑑, never ずかん. -->
     <string name="collection_title">ガーデン図鑑</string>
@@ -414,17 +413,17 @@
     <string name="letter_scene_winter">庭がうっすらと雪化粧をしました。</string>
     <string name="reveal_post_name">📮 ポスト</string>
     <string name="reveal_post_text">あなたのお庭に届いたお便りが読めます。</string>
-    <string name="expand_button">庭を広げる（%1$d×%1$d）</string>
-    <string name="expand_needs_level">Lv.%1$d で %2$d×%2$d に広げられます</string>
-    <string name="expand_confirm_title">庭を広げますか？</string>
-    <string name="expand_confirm_text">庭が %1$d×%1$d に広がります。まわりに1マスずつ新しい土地が加わり、いま置いてあるものはそのまま真ん中に残ります。広げた庭は元に戻せません。</string>
+    <string name="expand_button">お庭を広げる</string>
+    <string name="expand_needs_level">Lv.%1$d になると、お庭をもうひと回り広げられます</string>
+    <string name="expand_confirm_title">お庭を広げますか？</string>
+    <string name="expand_confirm_text">お庭がひと回り広がります。まわりに新しい土地が加わり、いま置いてあるものはそのまま真ん中に残ります。広げたお庭は元に戻せません。</string>
     <string name="expand_confirm_ok">広げる</string>
     <string name="expand_max">庭が最大の広さになりました</string>
     <string name="expand_after_unveil">🏡 完成してお披露目すると、ここから庭を広げられます</string>
     <string name="msg_garden_can_grow">🏡 庭を広げられるようになりました。コテージの上の吹き出しをタップしてみましょう</string>
     <string name="letter_grow_title">🏡 庭を広げられるようになりました</string>
-    <string name="letter_grow_body">庭をもう一回り、%1$d×%1$dマスまで広げられるようになりました。
-コテージをタップして「庭を広げる」を押してください。広げるかどうかは、お好きなときに決めて大丈夫です。
+    <string name="letter_grow_body">お庭をもうひと回り広げられるようになりました。
+コテージをタップして「お庭を広げる」を押してください。広げるかどうかは、お好きなときに決めて大丈夫です。
 広がった外周は芝生になり、庭のものは今の並びのまま真ん中に残ります。</string>
     <string name="shop_held">所持数: %1$d個</string>
     <string name="shop_card_pages">📖 図鑑に%1$dページ登録すると、買えるようになります</string>

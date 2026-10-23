@@ -17,16 +17,16 @@ import com.studioguu.miniaturegarden.ui.components.popIn
 /**
  * Asked before the garden grows (#55): growing cannot be undone, and everything in the garden
  * moves one cell along to stay in the middle, so it is not done on a single tap of the symbol
- * building's panel. [size] is the size it grows to ([com.studioguu.miniaturegarden.domain.model.GardenExpansion]).
- * Cancelling, or tapping outside, leaves the garden as it is.
+ * building's panel. The wording speaks of the garden growing "one ring larger" rather than of a
+ * grid size: the player never sees cell counts. Cancelling, or tapping outside, leaves the garden as it is.
  */
 @Composable
-fun ExpandConfirmDialog(size: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun ExpandConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         modifier = Modifier.popIn(),
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.expand_confirm_title)) },
-        text = { Text(stringResource(R.string.expand_confirm_text, size)) },
+        text = { Text(stringResource(R.string.expand_confirm_text)) },
         // Side by side and centred, cancel first, like the other wooden dialogs.
         confirmButton = {
             Row(

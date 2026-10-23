@@ -28,7 +28,8 @@ class SymbolBuildingTest {
 
     private val repo = FakeGardenRepository().apply {
         profile = UserProfile(coins = 1_000, playerLevel = 6, currentXp = LevelTable.xpForLevel(6))
-        progress = GardenProgress()
+        // A garden saved at the old 9 x 9 start, so that every stage of growing can be followed.
+        progress = GardenProgress(gardenSize = GridObject.LEGACY_GRID_SIZE)
         (0 until UserProfile.DEFAULT_INVENTORY_CAPACITY).forEach { putSlot(InventorySlot(it)) }
     }
     private val storedMap = StoredGardenMap(repo)

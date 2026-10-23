@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the window shows before the first frame is drawn: the title's sky, horizon and meadow
+     (GardenBackdrop, sunny), so that starting the app never flashes a blank white screen. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="@color/launch_sky"
+        android:centerColor="@color/launch_horizon"
+        android:endColor="@color/launch_meadow" />
+</shape>

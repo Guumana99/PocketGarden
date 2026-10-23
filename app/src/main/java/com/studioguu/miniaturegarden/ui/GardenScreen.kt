@@ -98,6 +98,7 @@ import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.effects.RainOverlay
 import com.studioguu.miniaturegarden.ui.effects.RainStyle
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
+import com.studioguu.miniaturegarden.ui.components.LoadingSprout
 import com.studioguu.miniaturegarden.ui.hud.ExpandConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.LevelUpDialog
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
@@ -282,6 +283,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 },
                 modifier = Modifier.fillMaxSize().graphicsLayer { alpha = gardenAlpha },
             )
+            if (!gardenReady) LoadingSprout(Modifier.align(Alignment.Center))
             // Inside the recorded box, so a shared picture shows the rain too.
             if (weather == WeatherType.RAINY || blessedRainFalling) {
                 RainOverlay(Modifier.fillMaxSize(), style = if (blessedRainFalling) RainStyle.BLESSED else RainStyle.RAIN)
@@ -314,14 +316,16 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 24.dp, start = 24.dp, end = 24.dp),
             )
         } else {
-            TopStatusBar(
+            // Keyed on the profile having arrived, so that the level gauge starts from the saved
+            // level rather than greeting every visit with a level-up from Lv.1.
+            key(profile != null) { TopStatusBar(
                 coins = profile?.coins ?: 0L,
                 playerLevel = profile?.playerLevel ?: 1,
                 currentXp = profile?.currentXp ?: 0L,
                 weather = weather,
                 season = season,
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
-            )
+            ) }
 
             // Greyed out when today's rains are used up or none is ready to be shown. Put away
             // during the first steps, and handed over after them.
@@ -616,7 +620,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val growTo = GardenExpansion.nextStage(gardenMap.size)?.size
     if (confirmExpand && growTo != null) {
         ExpandConfirmDialog(
-            size = growTo,
             onConfirm = {
                 confirmExpand = false
                 viewModel.expand()

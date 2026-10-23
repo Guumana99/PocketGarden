@@ -239,7 +239,7 @@ private fun letterBody(letter: Letter): String {
             stringResource(R.string.letter_tip_footer),
         ).joinToString("\n\n")
         LetterKind.NEW_STOCK -> stockBody(letter)
-        LetterKind.GARDEN_CAN_GROW -> stringResource(R.string.letter_grow_body, letter.growSize ?: 0)
+        LetterKind.GARDEN_CAN_GROW -> stringResource(R.string.letter_grow_body)
     }
 }
 

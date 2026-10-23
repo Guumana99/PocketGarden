@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import kotlinx.coroutines.delay
 
 /** The sky behind the garden. */
 fun skyColor(weather: WeatherType): Color = when (weather) {
@@ -18,6 +19,9 @@ fun skyColor(weather: WeatherType): Color = when (weather) {
     WeatherType.CLOUDY -> Color(0xFFD3DBDF)
     WeatherType.RAINY -> Color(0xFFB4C2CB)
 }
+
+/** Time between two frames of the rain: about 30 a second. */
+private const val RAIN_FRAME_MILLIS = 33L
 
 private val DROP_COLOR = Color(0xFFF1F8FF)
 private val BLESSED_COLOR = Color(0xFFFFF4D6)
@@ -33,8 +37,13 @@ private val GLINT_COLOR = Color(0xFFFFFBEA)
  */
 @Composable
 fun RainOverlay(modifier: Modifier = Modifier, style: RainStyle = RainStyle.RAIN) {
+    // Every drop's place comes from the clock alone, so a steady 30 frames a second looks the
+    // same as the display's full rate (up to 120 on some phones) at a fraction of the drawing.
     val timeMillis by produceState(0L) {
-        while (true) withFrameMillis { value = it }
+        while (true) {
+            withFrameMillis { value = it }
+            delay(RAIN_FRAME_MILLIS)
+        }
     }
     Canvas(modifier) {
         val stroke = (if (style == RainStyle.RAIN) 1.5.dp else 2.dp).toPx()

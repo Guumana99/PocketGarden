@@ -88,7 +88,8 @@ class ExpansionGuideTest {
     fun `the post office posts it once, from what is stored`() = runBlocking {
         val repo = FakeGardenRepository().apply {
             profile = UserProfile(coins = 0, playerLevel = 6, currentXp = LevelTable.xpForLevel(6))
-            progress = GardenProgress()
+            // A garden saved at the old 9 x 9 start, which grows to 11 first.
+            progress = GardenProgress(gardenSize = GridObject.LEGACY_GRID_SIZE)
             put(cottage())
         }
         val post = PostLettersUseCase(repo)
@@ -101,7 +102,8 @@ class ExpansionGuideTest {
     fun `growing really happens, from the cottage's panel`() = runBlocking {
         val repo = FakeGardenRepository().apply {
             profile = UserProfile(coins = 0, playerLevel = 6, currentXp = LevelTable.xpForLevel(6))
-            progress = GardenProgress()
+            // A garden saved at the old 9 x 9 start, which grows to 11 first.
+            progress = GardenProgress(gardenSize = GridObject.LEGACY_GRID_SIZE)
             put(cottage())
         }
         assertEquals(ActionResult.SUCCESS, ExpandGardenUseCase(repo)())

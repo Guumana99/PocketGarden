@@ -476,7 +476,7 @@ class ConstructionTest {
         assertEquals(ActionResult.TILE_OCCUPIED, move("hut", 4, 4))       // its far corner hits the rock
         assertEquals(ActionResult.TILE_OCCUPIED, move("hut", 5, 5))
         assertEquals(ActionResult.TILE_NOT_BUILDABLE, move("hut", 6, 2)) // into the river
-        assertEquals(ActionResult.OUT_OF_BOUNDS, move("hut", 8, 8))       // half off the garden
+        assertEquals(ActionResult.OUT_OF_BOUNDS, move("hut", 10, 10))     // half off the garden
         assertEquals(ActionResult.OUT_OF_BOUNDS, move("hut", -1, 0))
         assertEquals(0 to 0, repo.objects.getValue("hut").let { it.gridX to it.gridY })
 

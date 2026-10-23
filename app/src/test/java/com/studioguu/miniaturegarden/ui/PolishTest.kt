@@ -86,7 +86,7 @@ class PolishTest {
         val built = com.studioguu.miniaturegarden.ui.effects.effectTiming(
             com.studioguu.miniaturegarden.ui.effects.GardenEffect.WorkDone(1, "struct_hut", com.studioguu.miniaturegarden.domain.model.WorkKind.BUILDING),
         )
-        val harvest = com.studioguu.miniaturegarden.ui.effects.effectTiming(com.studioguu.miniaturegarden.ui.effects.GardenEffect.Xp(2, 5))
+        val harvest = com.studioguu.miniaturegarden.ui.effects.effectTiming(com.studioguu.miniaturegarden.ui.effects.GardenEffect.Harvest(2, coins = 10))
         // "🎉 … が完成！" is fully readable for close to three seconds, and drifts up only a little.
         assertTrue(built.durationMillis * built.visibleShare >= 2_800f)
         assertTrue(built.durationMillis in 3_000..4_000)

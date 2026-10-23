@@ -21,6 +21,31 @@ class AudioManagerTest {
         engine = engine,
     )
 
+    // --- Start-up, before the saved settings are read ---
+
+    @Test
+    fun `held until the settings arrive, then the music starts at the saved volume`() {
+        rawFiles["bgm_spring"] = 7
+        rawFiles["se_tap"] = 3
+        audio.holdUntilSettings()
+        audio.playBgm(BgmTrack.TITLE)
+        audio.play(SoundEffect.TAP)
+        assertTrue(engine.bgmStarts.isEmpty())
+        assertTrue(engine.played.isEmpty())
+
+        audio.apply(AppSettings(bgmVolume = 0.2f))
+        assertEquals(listOf(7 to 0.2f), engine.bgmStarts)
+    }
+
+    @Test
+    fun `a player who muted the music hears none at start-up`() {
+        rawFiles["bgm_spring"] = 7
+        audio.holdUntilSettings()
+        audio.playBgm(BgmTrack.TITLE)
+        audio.apply(AppSettings(bgmEnabled = false))
+        assertTrue(engine.bgmStarts.isEmpty())
+    }
+
     // --- No sound files at all (the state the project ships in) ---
 
     @Test
@@ -517,8 +542,9 @@ class AudioManagerTest {
     fun `saved settings reach the music before it starts, and every change after`() {
         val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
         val app = main.resolve("java/com/studioguu/miniaturegarden/PocketGardenApplication.kt").readText()
-        assertTrue(app.contains("audio.apply(runBlocking { settingsRepository.settings.first() })"))
-        assertTrue(app.contains("settingsRepository.settings.collect(audio::apply)"))
+        // Silent until the first value arrives, read off the main thread (holdUntilSettings).
+        assertTrue(app.contains("audio.holdUntilSettings()"))
+        assertTrue(app.contains("settingsRepository.settings.flowOn(Dispatchers.IO).collect(audio::apply)"))
         // The settings screen plays each change at once, then saves it.
         val screen = main.resolve("java/com/studioguu/miniaturegarden/ui/settings/SettingsViewModel.kt").readText()
         val change = screen.substringAfter("private fun change(")
