@@ -23,8 +23,9 @@ enum class ExpansionCheck {
 data class ExpansionStage(val size: Int, val needsSymbol: Boolean, val playerLevel: Int)
 
 /**
- * How the garden grows. It starts at 9 x 9 and grows a ring of new lawn all the way round at a
- * time: 9 -> 11 -> 13. Growing keeps the garden centred, so everything in it moves one cell
+ * How the garden grows. A new garden starts at 11 x 11 ([GridObject.GRID_SIZE]) and grows a ring
+ * of new lawn all the way round at a time: 11 -> 13. Gardens saved while 9 x 9 was the start
+ * ([GridObject.LEGACY_GRID_SIZE]) grow 9 -> 11 -> 13. Growing keeps the garden centred, so everything in it moves one cell
  * along each axis ([RING]); nothing is changed otherwise, and new cells are plain lawn.
  *
  *     size    needs

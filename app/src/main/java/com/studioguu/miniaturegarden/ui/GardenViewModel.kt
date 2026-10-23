@@ -752,15 +752,12 @@ class GardenViewModel @Inject constructor(
                 _messages.trySend(R.string.msg_edit_mode_tools)
                 return
             }
-            // A building earns its experience when it is unveiled, not now (#50).
-            val placeXp = if ((item?.buildSeconds ?: 0) > 0) 0 else item?.placeXp ?: 0
             // A building larger than one cell is fitted round the tapped cell, inside the garden.
             val footprint = item?.let { Footprint.forObjectId(it.objectId) } ?: Footprint.SINGLE
             val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
             act(
                 onSuccess = {
                     audio.play(SoundEffect.PLANT)
-                    if (placeXp > 0) showEffect { GardenEffect.Xp(it, placeXp) }
                     if ((item?.buildSeconds ?: 0) > 0) _messages.trySend(R.string.work_started_building)
                 }
             ) { now, _ ->
@@ -857,10 +854,7 @@ class GardenViewModel @Inject constructor(
     fun waterSelected() = withSelectedObject { obj ->
         if (lockedByEditMode()) return@withSelectedObject
         act(
-            onSuccess = {
-                audio.play(SoundEffect.WATER)
-                showEffect { GardenEffect.Xp(it, CareForPlantUseCase.WATER_XP) }
-            },
+            onSuccess = { audio.play(SoundEffect.WATER) },
         ) { now, weather ->
             careForPlant.water(obj.instanceId, now, weather).also {
                 // Under the first steps a try counts even when the soil is moist already (rain).
@@ -905,10 +899,7 @@ class GardenViewModel @Inject constructor(
     fun fertilizeSelected() = withSelectedObject { obj ->
         if (lockedByEditMode()) return@withSelectedObject
         act(
-            onSuccess = {
-                audio.play(SoundEffect.FERTILIZE)
-                showEffect { GardenEffect.Xp(it, CareForPlantUseCase.FERTILIZE_XP) }
-            }
+            onSuccess = { audio.play(SoundEffect.FERTILIZE) }
         ) { now, weather -> careForPlant.fertilize(obj.instanceId, now, weather) }
     }
 
@@ -922,7 +913,7 @@ class GardenViewModel @Inject constructor(
             onSuccess = {
                 clearSelection()
                 audio.play(SoundEffect.HARVEST)
-                showEffect { GardenEffect.Harvest(it, reward.coins, reward.xp) }
+                showEffect { GardenEffect.Harvest(it, reward.coins) }
             }
         ) { now, weather -> harvestPlant(obj.instanceId, now, weather) }
     }

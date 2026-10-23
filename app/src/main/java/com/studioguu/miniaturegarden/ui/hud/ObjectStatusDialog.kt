@@ -266,12 +266,12 @@ private fun ExpansionRow(gardenSize: Int, playerLevel: Int, symbol: GridObject, 
     val stage = GardenExpansion.nextStage(gardenSize)
     when (GardenExpansion.check(gardenSize, listOf(symbol), playerLevel)) {
         ExpansionCheck.READY -> WoodButton(
-            text = stringResource(R.string.expand_button, stage?.size ?: gardenSize),
+            text = stringResource(R.string.expand_button),
             onClick = onExpand,
         )
         ExpansionCheck.NEEDS_LEVEL -> if (stage != null) {
             Text(
-                text = stringResource(R.string.expand_needs_level, stage.playerLevel, stage.size),
+                text = stringResource(R.string.expand_needs_level, stage.playerLevel),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

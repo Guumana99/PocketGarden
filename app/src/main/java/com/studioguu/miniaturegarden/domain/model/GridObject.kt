@@ -91,8 +91,14 @@ data class GridObject(
     fun occupiedCells(): List<GridCell> = footprint.cells(gridX, gridY)
 
     companion object {
-        /** The size a garden starts at; it can grow from there, see [GardenExpansion]. */
-        const val GRID_SIZE = 9
+        /** The size a new garden starts at; it can grow from there, see [GardenExpansion]. */
+        const val GRID_SIZE = 11
+
+        /**
+         * The size gardens started at until 11 x 11 became the start: a garden saved before then
+         * may still be this size, and grows from it through every stage of [GardenExpansion].
+         */
+        const val LEGACY_GRID_SIZE = 9
         const val PLANT_ID_PREFIX = "plant_"
         const val TERRAIN_ID_PREFIX = "terrain_"
         const val RIVER_OBJECT_ID = "terrain_river"

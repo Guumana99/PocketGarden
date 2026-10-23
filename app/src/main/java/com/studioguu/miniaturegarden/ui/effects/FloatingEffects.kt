@@ -32,8 +32,11 @@ import com.studioguu.miniaturegarden.ui.toolRank
 sealed interface GardenEffect {
     val id: Long
 
-    data class Harvest(override val id: Long, val coins: Int, val xp: Int) : GardenEffect
-    data class Xp(override val id: Long, val amount: Int) : GardenEffect
+    /**
+     * The coins a harvest brought. Experience is not floated up, from a harvest or anything else:
+     * it fills the gauge in the top bar instead (TopStatusBar).
+     */
+    data class Harvest(override val id: Long, val coins: Int) : GardenEffect
 
     /** A page of the encyclopedia became ready to be filled in. */
     data class Discovery(override val id: Long) : GardenEffect
@@ -99,7 +102,7 @@ fun effectTiming(effect: GardenEffect): EffectTiming = when (effect) {
 private val LIFT_STEP = 60.dp
 
 private fun liftSteps(effect: GardenEffect): Int = when (effect) {
-    is GardenEffect.Harvest, is GardenEffect.Xp -> 0
+    is GardenEffect.Harvest -> 0
     is GardenEffect.Discovery -> 1
     is GardenEffect.WorkDone -> 1
     // Above a harvest's sums and a page's news, which can come from the same tap.
@@ -138,8 +141,7 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
     val isBig = effect is GardenEffect.WorkDone && effect.kind == WorkKind.BUILDING
     val lift = LIFT_STEP * liftSteps(effect)
     val text = when (effect) {
-        is GardenEffect.Harvest -> stringResource(R.string.effect_harvest, effect.coins, effect.xp)
-        is GardenEffect.Xp -> stringResource(R.string.effect_xp, effect.amount)
+        is GardenEffect.Harvest -> stringResource(R.string.effect_harvest, effect.coins)
         is GardenEffect.Discovery -> stringResource(R.string.effect_discovery)
         is GardenEffect.ToolLevelUp -> stringResource(
             when (effect.tool) {

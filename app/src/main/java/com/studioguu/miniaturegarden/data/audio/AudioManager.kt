@@ -8,6 +8,7 @@ import android.media.SoundPool
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import java.util.concurrent.Executors
 import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.domain.model.Season
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -133,6 +134,15 @@ class AudioManager internal constructor(
         }
 
     /**
+     * Keeps everything silent until the first [apply]: for the moment at start-up while the saved
+     * settings are still being read, so that nothing plays at the defaults first.
+     */
+    fun holdUntilSettings() {
+        soundEffectsEnabled = false
+        bgmEnabled = false
+    }
+
+    /**
      * Takes over the player's saved settings. Safe to call with every change: only what
      * actually differs is touched, so music that is playing is not interrupted.
      */
@@ -253,7 +263,11 @@ class AudioManager internal constructor(
 }
 
 /** An effect accepted by the engine: the handle to play it with and how long it lasts. */
-internal data class LoadedEffect(val handle: Int, val durationMillis: Long)
+internal data class LoadedEffect(
+    val handle: Int,
+    /** May be filled in later, from another thread, once the file's real length has been read. */
+    @Volatile var durationMillis: Long,
+)
 
 /** The actual players, separated out so [AudioManager]'s rules can be tested without Android. */
 internal interface AudioEngine {
@@ -279,11 +293,29 @@ internal interface AudioEngine {
     fun release()
 }
 
-/** Every call is guarded: a failing player must never take the game down with it. */
+/**
+ * Every call is guarded: a failing player must never take the game down with it.
+ *
+ * Nothing slow happens on the main thread: a tune is prepared in the background
+ * ([MediaPlayer.prepareAsync]) and starts, fading in, once it is ready, and an effect's length is
+ * read on a thread of its own. Both used to be done in place, which held up the first frames of
+ * the title and of the garden.
+ */
 private class AndroidAudioEngine(private val context: Context) : AudioEngine {
 
     private var soundPool: SoundPool? = null
+
+    /** The tune that is playing, or the one being prepared to play next ([bgmPrepared] false). */
     private var bgmPlayer: MediaPlayer? = null
+
+    /** Whether [bgmPlayer] has been prepared; until then it is not touched, only released. */
+    private var bgmPrepared = false
+
+    /** The music was paused while [bgmPlayer] was still being prepared: it waits for [resumeBgm]. */
+    private var startHeld = false
+
+    /** The tune still playing while the one replacing it is prepared; it fades out once that starts. */
+    private var waitingPrevious: MediaPlayer? = null
 
     /** The tune being faded out after another took its place; released when the fade ends. */
     private var fadingPlayer: MediaPlayer? = null
@@ -295,6 +327,11 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     private val handler = Handler(Looper.getMainLooper())
     private val duckToken = Any()
     private var duckEndUptime = 0L
+
+    /** Reads the effects' lengths, one after another, away from the main thread. */
+    private val durationReader by lazy {
+        Executors.newSingleThreadExecutor { task -> Thread(task, "effect-durations").apply { isDaemon = true } }
+    }
 
     private fun pool(): SoundPool = soundPool ?: SoundPool.Builder()
         .setMaxStreams(MAX_STREAMS)
@@ -309,10 +346,13 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
 
     override fun loadEffect(resId: Int): LoadedEffect? {
         val handle = runCatching { pool().load(context, resId, 1) }.getOrNull()?.takeIf { it != 0 } ?: return null
-        return LoadedEffect(handle, durationOf(resId))
+        // Assumed until its real length has been read.
+        val effect = LoadedEffect(handle, DEFAULT_EFFECT_MILLIS)
+        runCatching { durationReader.execute { durationOf(resId)?.let { effect.durationMillis = it } } }
+        return effect
     }
 
-    private fun durationOf(resId: Int): Long = runCatching {
+    private fun durationOf(resId: Int): Long? = runCatching {
         context.resources.openRawResourceFd(resId).use { fd ->
             val retriever = MediaMetadataRetriever()
             try {
@@ -322,7 +362,7 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
                 retriever.release()
             }
         }
-    }.getOrNull() ?: DEFAULT_EFFECT_MILLIS
+    }.getOrNull()
 
     override fun playEffect(handle: Int, volume: Float) {
         runCatching { pool().play(handle, volume, volume, 1, 0, 1f) }
@@ -330,37 +370,84 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
 
     override fun startBgm(resId: Int, volume: Float): Boolean {
         // What is sounding now fades out over the same time the new tune fades in; a paused
-        // or broken player simply goes.
-        val previous = bgmPlayer?.takeIf { runCatching { it.isPlaying }.getOrDefault(false) }
+        // or broken player simply goes. A tune still being prepared is dropped for this one, and
+        // what was playing before it is the one that fades out.
+        val previous = if (bgmPrepared) {
+            bgmPlayer?.takeIf { runCatching { it.isPlaying }.getOrDefault(false) }
+        } else {
+            bgmPlayer?.let(::releasePlayer)
+            bgmPlayer = null
+            waitingPrevious.also { waitingPrevious = null }
+        }
         if (previous == null) {
             stopBgm()
         } else {
             bgmPlayer = null
+            bgmPrepared = false
             cancelDuck()
             endFade()
         }
+        startHeld = false
         val attributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_GAME)
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
             .build()
-        // create() returns null for a file it cannot decode.
         val player = runCatching {
-            val systemAudio = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-            MediaPlayer.create(context, resId, attributes, systemAudio.generateAudioSessionId())
+            MediaPlayer().apply {
+                setAudioAttributes(attributes)
+                context.resources.openRawResourceFd(resId).use { fd -> setDataSource(fd.fileDescriptor, fd.startOffset, fd.length) }
+                isLooping = true
+            }
         }.getOrNull() ?: run {
             previous?.let(::releasePlayer)
             return false
         }
         bgmVolume = volume
+        bgmPlayer = player
+        bgmPrepared = false
+        waitingPrevious = previous
+        player.setOnPreparedListener { ready -> onBgmPrepared(ready, volume) }
+        player.setOnErrorListener { failed, _, _ ->
+            if (bgmPlayer === failed) {
+                // The tune that was playing, if any, carries on in its place.
+                bgmPlayer = waitingPrevious
+                bgmPrepared = waitingPrevious != null
+                waitingPrevious = null
+            }
+            releasePlayer(failed)
+            true
+        }
+        return runCatching { player.prepareAsync() }.onFailure {
+            bgmPlayer = null
+            waitingPrevious = null
+            releasePlayer(player)
+            previous?.let(::releasePlayer)
+        }.isSuccess
+    }
+
+    /** [player] is ready: it starts quietly and fades in while what played before fades out. */
+    private fun onBgmPrepared(player: MediaPlayer, volume: Float) {
+        // Replaced or stopped while it was being prepared: it has been released already.
+        if (bgmPlayer !== player) return
+        bgmPrepared = true
+        val previous = waitingPrevious
+        waitingPrevious = null
+        if (startHeld) {
+            // Paused meanwhile: it starts, at its full volume, when the music resumes.
+            previous?.let(::releasePlayer)
+            applyBgmVolume(bgmVolume)
+            return
+        }
         val started = runCatching {
-            player.isLooping = true
             player.setVolume(0f, 0f)
             player.start()
-            bgmPlayer = player
-        }.onFailure { runCatching { player.release() } }.isSuccess
+        }.isSuccess
         if (!started) {
+            bgmPlayer = null
+            bgmPrepared = false
+            releasePlayer(player)
             previous?.let(::releasePlayer)
-            return false
+            return
         }
         fadingPlayer = previous
         val start = SystemClock.uptimeMillis()
@@ -376,7 +463,6 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
                 start + FADE_MILLIS * step / FADE_STEPS,
             )
         }
-        return true
     }
 
     /** Ends any fade where it is: the old tune goes, the new one is set to its full volume. */
@@ -395,10 +481,20 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     override fun pauseBgm() {
         // A tune halfway out is not worth coming back to.
         endFade()
+        if (!bgmPrepared) {
+            // Not ready yet: it waits, and the old tune it was to replace goes now.
+            if (bgmPlayer != null) startHeld = true
+            waitingPrevious?.let(::releasePlayer)
+            waitingPrevious = null
+            return
+        }
         runCatching { bgmPlayer?.takeIf { it.isPlaying }?.pause() }
     }
 
     override fun resumeBgm() {
+        startHeld = false
+        // A tune still being prepared starts by itself once it is ready.
+        if (!bgmPrepared) return
         runCatching { bgmPlayer?.takeIf { !it.isPlaying }?.start() }
     }
 
@@ -407,8 +503,12 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
         handler.removeCallbacksAndMessages(fadeToken)
         fadingPlayer?.let(::releasePlayer)
         fadingPlayer = null
+        waitingPrevious?.let(::releasePlayer)
+        waitingPrevious = null
+        startHeld = false
         val player = bgmPlayer ?: return
         bgmPlayer = null
+        bgmPrepared = false
         releasePlayer(player)
     }
 
@@ -421,7 +521,7 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     }
 
     override fun duckBgm(duckedVolume: Float, restoreVolume: Float, holdMillis: Long) {
-        if (bgmPlayer == null) return
+        if (bgmPlayer == null || !bgmPrepared) return
         handler.removeCallbacksAndMessages(duckToken)
         applyBgmVolume(duckedVolume)
         duckEndUptime = max(duckEndUptime, SystemClock.uptimeMillis() + holdMillis)
@@ -442,6 +542,8 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     }
 
     private fun applyBgmVolume(volume: Float) {
+        // A player still being prepared may not be touched; it gets its volume once ready.
+        if (!bgmPrepared) return
         runCatching { bgmPlayer?.setVolume(volume, volume) }
     }
 

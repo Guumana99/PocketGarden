@@ -37,8 +37,8 @@ class StartupAndDialogsTest {
 
     @Test
     fun `the garden is ready only once all of it has been read`() {
-        val saved = GardenProgress(gardenSize = 11)
-        val map = GardenMap.allGrass(11)
+        val saved = GardenProgress(gardenSize = 13)
+        val map = GardenMap.allGrass(13)
         assertTrue(isGardenReady(emptyList(), saved, map, artLoaded = true))
         // Not before the objects, the progress, or the artwork have come.
         assertFalse(isGardenReady(null, saved, map, artLoaded = true))
@@ -53,7 +53,7 @@ class StartupAndDialogsTest {
         val screen = source("ui/GardenScreen.kt")
         assertTrue(screen.contains("if (gardenReady) GardenCanvas("))
         assertTrue(screen.contains("viewModel.gardenReady.collectAsStateWithLifecycle()"))
-        assertTrue(source("ui/title/TitleScreen.kt").contains("if (artLoaded) GardenCanvas("))
+        assertTrue(source("ui/title/TitleScreen.kt").contains("if (artLoaded) {\n                    SampleGarden("))
     }
 
     // --- One plaque for a building and its page ---
@@ -68,7 +68,7 @@ class StartupAndDialogsTest {
         val before = listOf<GardenEffect>(GardenEffect.Discovery(2)).plusEffect(built)
         assertEquals(listOf<GardenEffect>(built.copy(newPage = true)), before)
         // A page with no building about it floats up as before, and so do the sums of a harvest.
-        val harvest = GardenEffect.Harvest(3, coins = 10, xp = 5)
+        val harvest = GardenEffect.Harvest(3, coins = 10)
         assertEquals(listOf(harvest, GardenEffect.Discovery(4)), listOf<GardenEffect>(harvest).plusEffect(GardenEffect.Discovery(4)))
         // Taking a building down is not a first completion.
         val demolished = GardenEffect.WorkDone(5, "struct_hut", WorkKind.DEMOLISHING)

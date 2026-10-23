@@ -19,6 +19,18 @@ object LevelTable {
         return 50L * n * (n - 1)
     }
 
+    /**
+     * How far a player with [xp] total experience is through [level], 0 (just reached) .. 1 (the
+     * next level). Full at [MAX_LEVEL], where there is no next level.
+     */
+    fun progressInLevel(xp: Long, level: Int): Float {
+        if (level >= MAX_LEVEL) return 1f
+        val from = xpForLevel(level)
+        val span = xpForLevel(level + 1) - from
+        if (span <= 0L) return 1f
+        return ((xp - from).toFloat() / span).coerceIn(0f, 1f)
+    }
+
     /** The level a player with [xp] total experience is at. */
     fun levelForXp(xp: Long): Int {
         var level = 1

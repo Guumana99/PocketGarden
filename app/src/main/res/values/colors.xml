@@ -2,4 +2,8 @@
 <resources>
     <color name="ic_launcher_background">#DDEFC9</color>
     <color name="notification_leaf">#FF5E8C3A</color>
+    <!-- The sunny backdrop's sky, horizon and meadow (GardenBackdrop), shown while the app starts. -->
+    <color name="launch_sky">#FFB9DFF0</color>
+    <color name="launch_horizon">#FFFDF1D3</color>
+    <color name="launch_meadow">#FFB7D184</color>
 </resources>

@@ -41,7 +41,7 @@ di/       Hilt の束ね
 - `GardenGrid` が「床」と「占有物」の 2 層を持ち、`checkPlacement(footprint, x, y, kind)` で可否を返す。
 - 建物の大きさは `StructureData`（小屋 2×2、井戸 1×2、コテージ 3×3）。それ以外は 1×1。
   `StructureData` は高さ（`heightSteps`、裏が隠れるかの判定用）と、シンボル建物かどうか（`isSymbol`）も持つ。
-- 庭の大きさは固定ではない（下の「庭の拡張」）。`GridObject.GRID_SIZE` は**始まりの大きさ** 9 のこと。
+- 庭の大きさは固定ではない（下の「庭の拡張」）。`GridObject.GRID_SIZE` は新しい庭の**始まりの大きさ** 11 のこと（#56 まで 9。それ以前の庭は `GridObject.LEGACY_GRID_SIZE` = 9 のまま残り、そこから広がる）。
 - **種・苗は耕した土の上にしか置けない**（`PlaceItemUseCase`）。耕すのは `HoeUseCase`。
 - 空きフィールドの流用が 1 つある：耕した土の `growthProgress > 0` は「たい肥入り」。
 
@@ -96,7 +96,7 @@ di/       Hilt の束ね
 
 ## 庭の拡張
 
-`GardenExpansion`。9×9 から外周に 1 周ずつ芝生を足す：9 → 11 → 13。
+`GardenExpansion`。外周に 1 周ずつ芝生を足す。新しい庭は 11×11 で始まり 11 → 13（#56）。それより前に 9×9 で始めた庭は 9 → 11 → 13。画面の文言にはマス数を出さない（「お庭をひと回り広げられます」）。
 
 | 広さ | 条件 |
 |---|---|
@@ -662,3 +662,10 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
   木箱・チュートリアル完了のボード・カメラモードの間は待たせ、通知の招待はボードが出ている間は出さない。
 - 通知は自前の `GardenToastHost`（レイアウトを動かさない）。
 - カメラモードは HUD 全体と排他の分岐。写真は庭の `graphicsLayer` を 4:5 の枠で切り抜く（`CameraFrame`）。
+
+## 起動と省電力（#56）
+
+- 起動時、メインスレッドでは重い読み込みをしない。設定は `Dispatchers.IO` で読み、届くまで音は鳴らさない（`AudioManager.holdUntilSettings`）。BGM は `MediaPlayer.prepareAsync` で準備し、できしだいフェードイン。効果音の長さ（ダッキング用）は別スレッドで読む。アトラス・地面の絵は従来どおり `AssetRepository.prefetch` が裏で読む。
+- ウィンドウの背景はタイトルの空と草原のグラデーション（`window_background`、Android 12+ はスプラッシュの背景色も同じ空色）。絵が読み終わるまでは庭の位置に揺れる芽（`LoadingSprout`）。
+- 経験値は数字で出さない。上部バーは「Lv.5」とその下の細いゲージ（`LevelTable.progressInLevel`）。レベルアップでいったん満タン→0 から残りを伸ばす。収穫の札はコインだけ（`GardenEffect.Harvest(coins)`）、水やり・肥料・設置の「+XP」は廃止（`GardenEffect.Xp` 削除）。
+- 描き直しを減らす：雨は 30fps（`RAIN_FRAME_MILLIS`）、図鑑の「？」の鼓動とレベルのゲージは描画フェーズだけで読む（再コンポーズしない）、タイトルの見本の庭の拍は見本の中だけで持つ。

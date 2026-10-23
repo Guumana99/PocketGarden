@@ -78,7 +78,7 @@ class OnboardingTest {
         assertNoOverlaps(objects)
         val crate = objects.single()
         assertTrue(crate.isStarterCrate)
-        assertEquals(GridCell(4, 4), GridCell(crate.gridX, crate.gridY))
+        assertEquals(GridCell(5, 5), GridCell(crate.gridX, crate.gridY))
         // No fences and no tilled soil: the garden is the player's to make.
         assertTrue(objects.none { it.isTilledSoil || it.isFence || it.isWorking || it.isPlant })
         assertTrue(objects.all { it.objectId in TileSetDefinition.objectIds })

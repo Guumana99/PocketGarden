@@ -56,7 +56,7 @@ class WordingAndToastTest {
 
     @Test
     fun `harvest sums and new pages stay up long enough to read`() {
-        val harvest = effectTiming(GardenEffect.Harvest(1, coins = 10, xp = 5))
+        val harvest = effectTiming(GardenEffect.Harvest(1, coins = 10))
         val discovery = effectTiming(GardenEffect.Discovery(2))
         val built = effectTiming(GardenEffect.WorkDone(3, "struct_hut", WorkKind.BUILDING))
         // About two seconds fully readable for a harvest, more for a new page, most for a building.

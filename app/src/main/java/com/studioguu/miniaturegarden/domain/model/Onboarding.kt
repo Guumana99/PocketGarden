@@ -127,7 +127,7 @@ data class GardenProgress(
         val NEW_GARDEN = GardenProgress(Season.SPRING, TutorialStep.OPEN_CRATE)
 
         /** A garden saved before there were first steps: its player knows the way already. */
-        val EXISTING_GARDEN = GardenProgress(Season.SPRING, TutorialStep.DONE)
+        val EXISTING_GARDEN = GardenProgress(Season.SPRING, TutorialStep.DONE, gardenSize = GridObject.LEGACY_GRID_SIZE)
     }
 }
 
@@ -136,7 +136,8 @@ data class GardenProgress(
  * middle. Fences, beds and everything else are theirs to make.
  */
 object StarterGarden {
-    val CRATE = GridCell(4, 4)
+    /** The middle of a new garden. */
+    val CRATE = GridCell(GridObject.GRID_SIZE / 2, GridObject.GRID_SIZE / 2)
 
     /** What the crate holds: one seed, the first crop of the game. */
     val CRATE_REWARD: GardenItem = GardenItem.SEED_TULIP

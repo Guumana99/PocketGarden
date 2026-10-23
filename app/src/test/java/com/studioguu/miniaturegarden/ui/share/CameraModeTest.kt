@@ -84,7 +84,7 @@ class CameraModeTest {
     fun `in camera mode none of the game's interface is put on screen`() {
         // Camera mode and the interface are the two branches of one choice.
         val camera = screen.substringAfter("if (cameraMode) {\n            CameraOverlay(").substringBefore("        } else {\n")
-        val hud = screen.substringAfter("        } else {\n            TopStatusBar(").substringBefore("\n    if (showInventory)")
+        val hud = screen.substringAfter("        } else {\n").substringAfter("TopStatusBar(").substringBefore("\n    if (showInventory)")
 
         for (piece in listOf("TopStatusBar(", "QuickActionBar(", "SideButton(", "ObjectStatusDialog(", "ToolBanner(", "FloatingEffectsHost(")) {
             assertFalse("$piece is shown in camera mode", camera.contains(piece))

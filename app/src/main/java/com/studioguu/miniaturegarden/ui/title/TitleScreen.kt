@@ -58,9 +58,12 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.components.BareGround
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
+import com.studioguu.miniaturegarden.ui.components.LoadingSprout
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
@@ -112,15 +115,6 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // The sample garden's flowers grow a step at every beat.
-    val beat by produceState(0) {
-        while (true) {
-            delay(SAMPLE_BEAT_MILLIS)
-            value++
-        }
-    }
-    val sample = remember(beat) { TitleSampleGarden.objects(beat) }
-
     Box(modifier = Modifier.fillMaxSize()) {
         GardenBackdrop(WeatherType.SUNNY, Modifier.fillMaxSize())
         Column(
@@ -137,21 +131,11 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
             ) {
                 // Fades in once the artwork is read, rather than flashing up in stand-in shapes.
                 val sampleAlpha by animateFloatAsState(if (artLoaded) 1f else 0f, tween(SAMPLE_FADE_IN_MILLIS), label = "sampleIn")
-                if (artLoaded) GardenCanvas(
-                    gridObjects = sample,
-                    selectedTile = null,
-                    onTileTapped = {},
-                    atlas = atlas,
-                    terrain = terrain,
-                    gardenMap = TitleSampleGarden.MAP,
-                    showGrid = false,
-                    weather = WeatherType.SUNNY,
-                    visitors = TitleSampleGarden.visitors,
-                    initialZoom = SAMPLE_ZOOM,
-                    // A garden in full swing, grown over: the lawn, not the wasteland a new one starts as.
-                    bareGround = BareGround.LAWN,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = sampleAlpha },
-                )
+                if (artLoaded) {
+                    SampleGarden(atlas, terrain, Modifier.fillMaxSize().graphicsLayer { alpha = sampleAlpha })
+                } else {
+                    LoadingSprout(Modifier.align(Alignment.Center))
+                }
                 // Laid over the sample so that it cannot be dragged, pinched or tapped: it is
                 // only to be looked at.
                 Box(Modifier.fillMaxSize().pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } })
@@ -205,6 +189,36 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
             },
         )
     }
+}
+
+/**
+ * The sample garden, whose flowers grow a step at every beat. The beat is kept in here, so that
+ * each step recomposes the garden alone rather than the whole title around it.
+ */
+@Composable
+private fun SampleGarden(atlas: SpriteAtlas, terrain: TerrainTextures, modifier: Modifier) {
+    val beat by produceState(0) {
+        while (true) {
+            delay(SAMPLE_BEAT_MILLIS)
+            value++
+        }
+    }
+    val sample = remember(beat) { TitleSampleGarden.objects(beat) }
+    GardenCanvas(
+        gridObjects = sample,
+        selectedTile = null,
+        onTileTapped = {},
+        atlas = atlas,
+        terrain = terrain,
+        gardenMap = TitleSampleGarden.MAP,
+        showGrid = false,
+        weather = WeatherType.SUNNY,
+        visitors = TitleSampleGarden.visitors,
+        initialZoom = SAMPLE_ZOOM,
+        // A garden in full swing, grown over: the lawn, not the wasteland a new one starts as.
+        bareGround = BareGround.LAWN,
+        modifier = modifier,
+    )
 }
 
 /**

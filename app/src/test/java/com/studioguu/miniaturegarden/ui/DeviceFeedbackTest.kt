@@ -90,14 +90,15 @@ class DeviceFeedbackTest {
     @Test
     fun `growing the garden is asked about first, and goes 9 to 11 to 13`() {
         assertEquals(listOf(11, 13), GardenExpansion.STAGES.map { it.size })
-        assertEquals(11, GardenExpansion.nextStage(GridObject.GRID_SIZE)?.size)
+        assertEquals(13, GardenExpansion.nextStage(GridObject.GRID_SIZE)?.size)
+        assertEquals(11, GardenExpansion.nextStage(GridObject.LEGACY_GRID_SIZE)?.size)
         val screen = source("ui/GardenScreen.kt")
         assertFalse(screen.contains("onExpand = viewModel::expand"))
         assertTrue(screen.contains("onExpand = { confirmExpand = true }"))
         val dialog = screen.substringAfter("if (confirmExpand && growTo != null) {").substringBefore("\n    }\n")
         assertTrue(dialog.contains("ExpandConfirmDialog("))
         assertTrue(dialog.contains("viewModel.expand()"))
-        assertTrue(strings.contains("<string name=\"expand_confirm_title\">庭を広げますか？</string>"))
+        assertTrue(strings.contains("<string name=\"expand_confirm_title\">お庭を広げますか？</string>"))
         assertTrue(strings.contains("name=\"expand_confirm_text\""))
         val confirm = source("ui/hud/ExpandConfirmDialog.kt")
         assertTrue(confirm.indexOf("R.string.action_cancel") < confirm.indexOf("R.string.expand_confirm_ok"))

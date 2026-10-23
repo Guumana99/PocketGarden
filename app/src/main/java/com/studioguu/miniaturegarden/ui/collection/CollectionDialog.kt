@@ -36,8 +36,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -494,16 +496,18 @@ private fun Spread(
  */
 @Composable
 private fun Illustration(entry: CollectionEntry, state: PageState, reveal: Float, atlas: SpriteAtlas, terrain: TerrainTextures) {
-    val beat = if (state == PageState.READY) {
+    // Kept as a State and read only in the question mark's layer, so that its beat redraws that
+    // one layer rather than recomposing the whole page on every frame.
+    val beat: State<Float> = if (state == PageState.READY) {
         val transition = rememberInfiniteTransition(label = "ready")
         transition.animateFloat(
             initialValue = 0.92f,
             targetValue = 1.1f,
             animationSpec = infiniteRepeatable(tween(700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
             label = "beat",
-        ).value
+        )
     } else {
-        1f
+        STILL_BEAT
     }
     Box(
         modifier = Modifier.fillMaxSize().drawBehind {
@@ -540,7 +544,7 @@ private fun Illustration(entry: CollectionEntry, state: PageState, reveal: Float
                 color = if (state == PageState.READY) Leather else InkFaded,
                 fontFamily = BookFont,
                 modifier = Modifier.graphicsLayer {
-                    val grow = beat * (1f + reveal * 2f)
+                    val grow = beat.value * (1f + reveal * 2f)
                     scaleX = grow
                     scaleY = grow
                     alpha = 1f - reveal / 0.5f
@@ -598,3 +602,6 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.WINDMILL -> R.string.flavor_windmill
     CollectionEntry.COTTAGE -> R.string.flavor_cottage
 }
+
+/** The question mark's size when its page is not waiting to be filled in. */
+private val STILL_BEAT: State<Float> = mutableFloatStateOf(1f)
