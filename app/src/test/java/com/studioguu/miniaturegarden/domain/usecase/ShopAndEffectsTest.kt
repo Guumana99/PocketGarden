@@ -284,8 +284,9 @@ class ShopAndEffectsTest {
 
         val (_, near, far) = calc(garden, t0 + 44 * hour, sunny)
 
-        // In the open: dry after 19 h, withered 24 h after that. Beside the well: only just thirsty.
-        assertEquals(PlantStatus.WITHERED, far.status)
+        // In the open: dry after 19 h, and 24 h after that as stressed as a tulip ever gets (it
+        // never withers, #58). Beside the well: only just thirsty.
+        assertEquals(CalculateOfflineProgressUseCase.NEVER_WITHERED_STRESS, far.stressRate.toDouble(), 1e-6)
         assertFalse(near.status == PlantStatus.WITHERED)
         assertTrue(near.stressRate < 0.3f)
         assertTrue(near.growthProgress > far.growthProgress)

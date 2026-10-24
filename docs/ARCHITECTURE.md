@@ -276,6 +276,8 @@ di/       Hilt の束ね
   80% 未満なら続けて水やりできるので、カラカラの土を満たすには 2〜3 回かかる（そのぶん XP も 1 回ごとに入る）。
   復活（`revive`）と雨は従来どおり 100% にする。
 - ストレス 100% で `WITHERED`。復活は 30 コイン（`CareForPlantUseCase.revive`）。
+- **チューリップは枯れない（#58、`PlantSpecies.canWither = false`）**：ストレスは `NEVER_WITHERED_STRESS`（0.99）で止まり、水切れ・栄養切れ・満開のままでも `WITHERED` にならない（のどが渇いた等の状態にはなる）。
+  それより前に枯れたまま保存されたチューリップは、次の計算で生き返る。枯れた絵も無い（`spriteIdsFor` に `_withered` を含めない）。
   枯れた作物を撤去すると土がたい肥入りになり、次の種は成長 20% から始まる。
 - **天候**は `WeatherType`（晴れ・くもり・雨）。UTC の日付から決定的に決まる（`forTime`）。
   雨は水分を満たし、ストレスの増加をすべて止める。
@@ -519,7 +521,8 @@ FINISHED ──タップ──▶ REVEAL_EDIT ──タップ──▶ REVEAL_RA
 Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（Lv.4）のあいだ、Lv.5 はバラより上に収めてある。
 また、育つのに時間がかかる作物ほど収穫のコインと XP が多い（`GardenActionUseCasesTest`）。乾く時間（`dryOutHours`）は 16 時間以上にする（半日で水切れになると、12 時間の成長を見るテストが落ちる）。
 もちもののタブでは、ラベンダーはミントと同じ「ハーブ・観葉」（`InventoryGroup.GREENERY`）、ほかは「作物」。
-アトラスの絵があるのはチューリップ・ひまわり・バラ（4 段階＋枯れ）と、トマト・イチゴ・パプリカ・大根（#39、**3 段階**＋枯れ、`growthStages = 3`）。
+アトラスの絵があるのはバラ（4 段階＋枯れ）と、チューリップ・ひまわり（#58 から **3 段階**、チューリップは枯れなし）、トマト・イチゴ・パプリカ・大根（#39、**3 段階**＋枯れ、`growthStages = 3`）と #57 の 4 種。
+最後の段階に色違いがある作物（`TileSetDefinition.BLOOM_COLOURS`、#58 はチューリップの 5 色＋赤）は `<objectId>_stage<N>_<色>`。`CropScale` は色違いをその段階と同じ倍率で描く。
 ほかの 7 種は絵が無いので、コードで描いている（`ui/render/CropArt.kt`。種類ごとの絵は `CROP_DRAWINGS` の 1 行と private な関数 1 つで、`GardenCanvas.drawPlant` は `drawCropInCode` を呼ぶだけ）。
 スプライト名の決まり（`<objectId>_stage<N>`・`_withered`・`creature_<id>`・風車の羽根）は `TileSetDefinition` にまとめてあり、`expectedSpriteIds` がゲームの引くスプライト名の一覧。アトラスにあってこの一覧に無い名前（綴り違い）は `CodeArtTest` が落とす。
 アトラスに絵があればそちらが優先されるので、トマト・イチゴの `drawTomato` `drawStrawberry` は今は使われない（絵が欠けたときの代わりとして残してある）。

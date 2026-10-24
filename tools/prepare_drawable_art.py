@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare the crop, icon and ground pictures received in #57 (all opaque, 1024 x 1024, on white).
+"""Prepare the crop, icon and ground pictures received in #57 and #58 (all opaque, 1024 x 1024, on white).
 
 The originals are kept in tools/source_art/ under the names they came with and are never changed.
 This script:
@@ -18,8 +18,10 @@ This script:
       - carrot: no stage 2 came; it is stage 3's leaves alone, the root still in the ground;
       - wheat: all three stages are a whole field filling the cell; they are laid out one tile wide
         and stood on the middle of the field (atlas_overrides.json) instead of on a stem;
-      - withered pictures, for the four new crops, are their last green stage dried to brown
-        and drooping (wither); the tomato's and strawberry's from #39 are kept;
+      - tulip (#58): stages 1 and 2, and stage 3 in six colours: red is plant_tulip_stage3, the
+        others plant_tulip_stage3_<colour> (TULIP_COLOURS), all at the same size;
+      - withered pictures (#58) came for every crop here but the tulip, which does not wither;
+        each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag;
   * the lawn: the top face of tile_grass_iso.png unprojected into a flat square, for
     prepare_building_art.py to make tile_grass from (flat_lawn);
@@ -62,14 +64,32 @@ STAGES: dict[str, list] = {
     "wheat": [("w", 0.92), ("w", 0.92), ("w", 0.92)],
     "tomato": [0.34, 0.74, 0.86],
     "strawberry": [0.3, 0.48, 0.58],
+    "tulip": [0.3, 0.48, 0.62],
+    "sunflower": [0.32, 0.7, 0.88],
 }
+
+#: The tulip's flowers (#58): red is its plain stage 3, the others are variants of it.
+TULIP_COLOURS = ["pink", "yellow", "white", "purple", "blue"]
 
 #: Anchors set by hand, where the foot of the picture is not the stem (asset_packer's stem_base
 #: would stand it on the tip of a hanging leaf): the tomato's main stem, behind its lower leaves.
-ANCHORS = {"plant_tomato_stage3": {"anchorX": 0.47, "anchorY": 0.97, "isFlippedAllowed": True}}
+#: The sunflower's first stage (#58) is three seedlings: it stands on their middle, not the left one's stem.
+ANCHORS = {
+    "plant_tomato_stage3": {"anchorX": 0.47, "anchorY": 0.97, "isFlippedAllowed": True},
+    "plant_sunflower_stage1": {"anchorX": 0.5, "anchorY": 1.0, "isFlippedAllowed": True},
+}
 
-#: Crops whose withered picture is made here (the others came with one, #39).
-WITHER = {"corn": 3, "eggplant": 3, "carrot": 2, "wheat": 3}
+#: Each withered picture's size in tiles, as in STAGES (#58: drawn ones replaced those made by
+#: browning the last stage in #57, and the tomato's and strawberry's from #39).
+WITHERED: dict[str, object] = {
+    "corn": 0.8,
+    "eggplant": 0.7,
+    "carrot": 0.42,
+    "wheat": ("w", 0.92),
+    "tomato": 0.75,
+    "strawberry": 0.48,
+    "sunflower": 0.72,
+}
 
 
 # --- Cutting out -------------------------------------------------------------------------------
@@ -184,18 +204,6 @@ def simple_stages(name: str, suffix: str) -> list[np.ndarray]:
     return [crop(load_cut(f"crop_{name}{suffix}{n}.png")) for n in (1, 2, 3)]
 
 
-def wither(rgba: np.ndarray) -> np.ndarray:
-    """A plant dried out: its colours drawn to a dull straw brown, darker, and drooping a little."""
-    out = rgba.copy().astype(float)
-    rgb = out[:, :, :3]
-    lum = rgb @ np.array([0.299, 0.587, 0.114])
-    straw = np.array([150.0, 118.0, 72.0])
-    dried = lum[..., None] / 128.0 * straw * 0.8
-    out[:, :, :3] = np.clip(rgb * 0.2 + dried * 0.8, 0, 255)
-    h, w = rgba.shape[:2]
-    return crop(resize(out.astype(np.uint8), 1.04, 0.84))
-
-
 def to_size(rgba: np.ndarray, size) -> np.ndarray:
     h, w = rgba.shape[:2]
     if isinstance(size, tuple):
@@ -220,6 +228,8 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "wheat": simple_stages("wheat", "_stage"),
         "tomato": simple_stages("tomato", "_"),
         "strawberry": simple_stages("strawberry", "_"),
+        "tulip": [crop(load_cut(f"crop_tulip_stage{n}.png")) for n in (1, 2)] + [crop(load_cut("crop_tulip_red_stage3.png"))],
+        "sunflower": simple_stages("sunflower", "_stage"),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():
@@ -227,9 +237,12 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         for n, picture in enumerate(sized, start=1):
             override = field_anchor(picture) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_stage{n}")
             out[f"plant_{crop_name}_stage{n}"] = (picture, override)
-        if crop_name in WITHER:
-            dead = wither(sized[WITHER[crop_name] - 1])
+        if crop_name in WITHERED:
+            dead = to_size(crop(load_cut(f"crop_{crop_name}_withered.png")), WITHERED[crop_name])
             out[f"plant_{crop_name}_withered"] = (dead, field_anchor(dead) if crop_name == "wheat" else None)
+    for colour in TULIP_COLOURS:
+        bloom = to_size(crop(load_cut(f"crop_tulip_{colour}_stage3.png")), STAGES["tulip"][2])
+        out[f"plant_tulip_stage3_{colour}"] = (bloom, None)
     return out
 
 

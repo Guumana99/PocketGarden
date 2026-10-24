@@ -148,16 +148,35 @@ class AssetPipelineTest {
 
     @Test
     fun `asset ids follow the object's state`() {
-        assertEquals("plant_tulip_stage1", TileSetDefinition.assetIdFor(gridObject("plant_tulip")))
-        assertEquals("plant_tulip_stage3", TileSetDefinition.assetIdFor(gridObject("plant_tulip", growth = 0.7f)))
-        assertEquals("plant_tulip_stage4", TileSetDefinition.assetIdFor(gridObject("plant_tulip", growth = 1f)))
+        assertEquals("plant_sunflower_stage1", TileSetDefinition.assetIdFor(gridObject("plant_sunflower")))
+        assertEquals("plant_sunflower_stage2", TileSetDefinition.assetIdFor(gridObject("plant_sunflower", growth = 0.7f)))
+        assertEquals("plant_sunflower_stage3", TileSetDefinition.assetIdFor(gridObject("plant_sunflower", growth = 1f)))
         assertEquals(
-            "plant_tulip_withered",
-            TileSetDefinition.assetIdFor(gridObject("plant_tulip", growth = 1f, status = PlantStatus.WITHERED)),
+            "plant_sunflower_withered",
+            TileSetDefinition.assetIdFor(gridObject("plant_sunflower", growth = 1f, status = PlantStatus.WITHERED)),
         )
+        // The tulip (#58): three stages, a colour of its own once in flower, and never withered.
+        assertEquals("plant_tulip_stage2", TileSetDefinition.assetIdFor(gridObject("plant_tulip", growth = 0.7f)))
+        val bloom = TileSetDefinition.assetIdFor(gridObject("plant_tulip", growth = 1f))
+        assertEquals(TileSetDefinition.bloomColourOf("plant_tulip", "id")?.let { "plant_tulip_stage3_$it" } ?: "plant_tulip_stage3", bloom)
+        assertEquals(bloom, TileSetDefinition.assetIdFor(gridObject("plant_tulip", growth = 1f, status = PlantStatus.WITHERED)))
         // Plants without a PlantSpecies entry still resolve, using the default stage count.
-        assertEquals("plant_new_stage4", TileSetDefinition.assetIdFor(gridObject("plant_new", growth = 1f)))
+        assertEquals("plant_new_stage3", TileSetDefinition.assetIdFor(gridObject("plant_new", growth = 1f)))
         assertEquals("deco_rock", TileSetDefinition.assetIdFor(gridObject("deco_rock", growth = 0.5f)))
+    }
+
+    @Test
+    fun `tulips bloom in six colours, each plant in one of its own for good`() {
+        val colours = (0 until 200).map { TileSetDefinition.bloomColourOf("plant_tulip", "tulip-$it") }.toSet()
+        assertEquals(setOf(null, "pink", "yellow", "white", "purple", "blue"), colours)
+        assertEquals(TileSetDefinition.bloomColourOf("plant_tulip", "a"), TileSetDefinition.bloomColourOf("plant_tulip", "a"))
+        assertNull(TileSetDefinition.bloomColourOf("plant_sunflower", "a"))
+        val sprites = TileSetDefinition.spriteIdsFor(PlantSpecies.TULIP)
+        assertEquals(
+            listOf("plant_tulip_stage1", "plant_tulip_stage2", "plant_tulip_stage3") +
+                listOf("pink", "yellow", "white", "purple", "blue").map { "plant_tulip_stage3_$it" },
+            sprites,
+        )
     }
 
     @Test

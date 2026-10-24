@@ -26,7 +26,7 @@ class CropScaleTest {
     fun `a tomato seedling is no taller than the tulip's first shoots`() {
         // The #39 one came painted at 316 px, against the tulip's 222; the #57 one is drawn small
         // already, and is held under the same cap.
-        assertTrue(height("plant_tomato_stage1") <= height("plant_tulip_stage1") * 1.1f)
+        // (#58: the tulip's own first shoots are drawn small too, and no longer the measure.)
         assertTrue(height("plant_tomato_stage1") <= CropScale.SEEDLING_HEIGHT + 1e-4f)
         // The tulip itself, the measure, is left almost as it was.
         assertEquals(1f, drawn("plant_tulip_stage1").drawScale, 0.02f)

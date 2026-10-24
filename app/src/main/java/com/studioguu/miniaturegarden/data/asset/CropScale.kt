@@ -40,6 +40,9 @@ object CropScale {
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")
     private val WITHERED = Regex("""^plant_[a-z_]+_withered$""")
 
+    /** Another colour of a crop's stage (#58: `plant_tulip_stage3_pink`), drawn at that stage's scale. */
+    private val COLOUR = Regex("""^(plant_[a-z_]+?_stage\d+)_[a-z]+$""")
+
     /** [manifest] with its crops' stages scaled as above; everything else as it was. */
     fun normalized(manifest: AtlasManifest): AtlasManifest {
         val tile = manifest.tileWidth.toFloat()
@@ -60,6 +63,10 @@ object CropScale {
             }
         manifest.assets.filter { WITHERED.matches(it.assetId) }.forEach { asset ->
             scales[asset.assetId] = capped(asset, MAX_HEIGHT * tile, MAX_WIDTH * tile)
+        }
+        manifest.assets.forEach { asset ->
+            val stage = COLOUR.find(asset.assetId)?.groupValues?.get(1) ?: return@forEach
+            scales[asset.assetId] = scales[stage] ?: capped(asset, MAX_HEIGHT * tile, MAX_WIDTH * tile)
         }
         if (scales.isEmpty()) return manifest
         return manifest.copy(assets = manifest.assets.map { asset -> scales[asset.assetId]?.let { asset.copy(drawScale = it) } ?: asset })
