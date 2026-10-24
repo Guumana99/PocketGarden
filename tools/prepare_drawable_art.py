@@ -22,6 +22,7 @@ This script:
         and stood on the middle of the field (atlas_overrides.json) instead of on a stem;
       - tulip (#58): stages 1 and 2, and stage 3 in six colours: red is plant_tulip_stage3, the
         others plant_tulip_stage3_<colour> (TULIP_COLOURS), all at the same size;
+      - mint (#62): three stages and a withered one, as they came; a low herb;
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
         each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag;
@@ -68,6 +69,7 @@ STAGES: dict[str, list] = {
     "strawberry": [0.3, 0.48, 0.58],
     "tulip": [0.3, 0.48, 0.62],
     "sunflower": [0.32, 0.7, 0.88],
+    "mint": [0.32, 0.42, 0.62],
 }
 
 #: The tulip's flowers (#58): red is its plain stage 3, the others are variants of it.
@@ -100,6 +102,7 @@ WITHERED: dict[str, object] = {
     "tomato": 0.75,
     "strawberry": 0.48,
     "sunflower": 0.72,
+    "mint": 0.62,
 }
 
 
@@ -249,6 +252,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "strawberry": simple_stages("strawberry", "_"),
         "tulip": [crop(load_cut(f"crop_tulip_stage{n}.png")) for n in (1, 2)] + [crop(load_cut("crop_tulip_red_stage3.png"))],
         "sunflower": simple_stages("sunflower", "_stage"),
+        "mint": simple_stages("mint", "_stage"),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():

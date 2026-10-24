@@ -40,7 +40,7 @@ enum class PlantSpecies(
     SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55),
 
     /** A herb that grows in any season; quick, and worth a little less for it. */
-    MINT("plant_mint", growthHours = 36, dryOutHours = 18, harvestCoins = 35, harvestXp = 35),
+    MINT("plant_mint", growthHours = 36, dryOutHours = 18, harvestCoins = 35, harvestXp = 35, growthStages = 3),
 
     /**
      * Summer's crop from the start: thirsty in the heat, like the sunflower. It goes on bearing:

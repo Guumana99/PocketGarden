@@ -2,7 +2,9 @@ package com.studioguu.miniaturegarden.data.asset
 
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.FencePart
+import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.ui.render.RiverAutotile
 import java.io.File
@@ -183,13 +185,33 @@ class BundledArtTest {
     fun `every crop page can show its plant in full bloom from the atlas`() {
         // The crops that came with the seasons are drawn in code for now (ui/render/SeasonalArt.kt).
         val drawnInCode = setOf(
-            PlantSpecies.COSMOS, PlantSpecies.SNOWDROP, PlantSpecies.MINT,
+            PlantSpecies.COSMOS, PlantSpecies.SNOWDROP,
             PlantSpecies.WATERMELON, PlantSpecies.LAVENDER, PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
         )
         for (species in PlantSpecies.entries - drawnInCode) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })
         }
+    }
+
+    @Test
+    fun `mint has its pictures in three stages, and a mint saved at its old fourth stage shows the third (#62)`() {
+        assertEquals(3, PlantSpecies.MINT.growthStages)
+        val ids = TileSetDefinition.spriteIdsFor(PlantSpecies.MINT)
+        assertEquals(listOf("plant_mint_stage1", "plant_mint_stage2", "plant_mint_stage3", "plant_mint_withered"), ids)
+        for (id in ids) assertTrue(id, manifest.assets.any { it.assetId == id })
+        assertFalse(manifest.assets.any { it.assetId == "plant_mint_stage4" })
+        // Only the growth is saved, never a stage: a mint that was at stage 4 of 4 (three quarters
+        // grown and on) is drawn at the last of three now, and nothing asks for a fourth.
+        fun mint(progress: Float, status: PlantStatus = PlantStatus.HEALTHY) =
+            GridObject("m", 1, 1, objectId = PlantSpecies.MINT.objectId, growthProgress = progress, status = status, lastUpdatedTimestamp = 0L)
+        assertEquals("plant_mint_stage1", TileSetDefinition.assetIdFor(mint(0f)))
+        assertEquals("plant_mint_stage2", TileSetDefinition.assetIdFor(mint(0.5f)))
+        for (old in listOf(0.75f, 0.9f, 0.999f)) assertEquals("plant_mint_stage2", TileSetDefinition.assetIdFor(mint(old)))
+        assertEquals("plant_mint_stage3", TileSetDefinition.assetIdFor(mint(1f)))
+        assertEquals("plant_mint_stage3", TileSetDefinition.assetIdFor(mint(1.3f)))
+        assertEquals("plant_mint_withered", TileSetDefinition.assetIdFor(mint(0.9f, PlantStatus.WITHERED)))
+        assertTrue(File(main, "res/drawable-nodpi/icon_mint.png").isFile)
     }
 
     @Test
