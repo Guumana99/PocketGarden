@@ -1,5 +1,7 @@
 package com.studioguu.miniaturegarden.data.asset
 
+import kotlin.math.min
+
 /**
  * Keeps the crops' growth stages at a natural size next to one another. The pictures come drawn
  * at whatever size they were painted, so a seedling could stand as tall as a grown tulip (tomato
@@ -10,19 +12,27 @@ package com.studioguu.miniaturegarden.data.asset
  *   [SEEDLING_WIDTH]: a bushy seedling (the rose's, painted with a full head of leaves) is held to
  *   a slim tulip shoot's breadth, which brings it to about 0.6 of the size it was painted at;
  * - no stage is taller than [MAX_HEIGHT] or wider than [MAX_WIDTH] of a tile;
- * - every stage is at most as tall as the next one: a plant only ever grows.
+ * - every stage is at most as tall as the next one: a plant only ever grows;
+ * - a crop that spreads low and wide (the daikon's leaves) is held to its own, narrower width
+ *   ([WIDTH_CAPS]), so that it stays on its own bed (#60);
+ * - a field crop ([FIELDS], the wheat) is laid out over the whole cell, rows and all, at every
+ *   stage: it keeps the size it was made at (one cell wide) and is not held under the next
+ *   stage's height, which shrank its first two stages into a patch smaller than the cell (#60).
  *
  * Sizes are in shares of the tile width, so they hold whatever resolution the art is packed at.
  */
 object CropScale {
-    /** A seedling is a small thing: about the height of the tulip's first shoots. */
-    const val SEEDLING_HEIGHT = 0.47f
+    /**
+     * A seedling is a small thing: a little lower than the tulip's first shoots. #60: 0.47 let
+     * the seedlings stand large on their beds on a phone.
+     */
+    const val SEEDLING_HEIGHT = 0.28f
 
     /**
-     * How wide a seedling spreads, at most: the tulip's first shoots (0.30 of a tile). Height
-     * alone let the rose's leafy seedling stand nearly as full as a young plant.
+     * How wide a seedling spreads, at most (#60: from 0.30). Height alone let the rose's leafy
+     * seedling stand nearly as full as a young plant.
      */
-    const val SEEDLING_WIDTH = 0.30f
+    const val SEEDLING_WIDTH = 0.22f
 
     /** The tallest any crop stands, fully grown. */
     const val MAX_HEIGHT = 0.9f
@@ -36,6 +46,19 @@ object CropScale {
      * not held to one shoot's breadth ([SEEDLING_WIDTH]), only to [MAX_WIDTH].
      */
     val CLUMPS = setOf("plant_corn", "plant_wheat")
+
+    /**
+     * Crops laid out as a whole field over their cell at every stage (#57: the wheat), made one
+     * cell wide by tools/prepare_drawable_art.py and stood on the middle of the field. Their size
+     * is the cell's, so only [MAX_WIDTH] holds them.
+     */
+    val FIELDS = setOf("plant_wheat")
+
+    /**
+     * Narrower widths, in tiles, for crops that spread low and wide (#60): the daikon's grown
+     * leaves came two tiles across and, at [MAX_WIDTH], still spilt over the beds beside it.
+     */
+    val WIDTH_CAPS = mapOf("plant_daikon" to 0.85f)
 
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")
     private val WITHERED = Regex("""^plant_[a-z_]+_withered$""")
@@ -51,18 +74,28 @@ object CropScale {
             .mapNotNull { asset -> STAGE.find(asset.assetId)?.let { Triple(it.groupValues[1], it.groupValues[2].toInt(), asset) } }
             .groupBy({ it.first }, { it.second to it.third })
             .forEach { (plant, stages) ->
+                if (plant in FIELDS) {
+                    for ((_, asset) in stages) scales[asset.assetId] = capped(asset, Float.MAX_VALUE, MAX_WIDTH * tile)
+                    return@forEach
+                }
+                val maxWidth = (WIDTH_CAPS[plant] ?: MAX_WIDTH) * tile
                 // From the grown plant down to the seedling, each one held under the next.
                 var nextHeight = Float.MAX_VALUE
                 for ((stage, asset) in stages.sortedByDescending { it.first }) {
                     val heightCap = minOf(if (stage == 1) SEEDLING_HEIGHT * tile else MAX_HEIGHT * tile, nextHeight)
-                    val widthCap = if (stage == 1 && plant !in CLUMPS) SEEDLING_WIDTH * tile else MAX_WIDTH * tile
+                    val widthCap = if (stage == 1 && plant !in CLUMPS) min(SEEDLING_WIDTH * tile, maxWidth) else maxWidth
                     val scale = capped(asset, heightCap, widthCap)
                     scales[asset.assetId] = scale
                     nextHeight = asset.height * scale
                 }
             }
         manifest.assets.filter { WITHERED.matches(it.assetId) }.forEach { asset ->
-            scales[asset.assetId] = capped(asset, MAX_HEIGHT * tile, MAX_WIDTH * tile)
+            val plant = asset.assetId.removeSuffix("_withered")
+            scales[asset.assetId] = if (plant in FIELDS) {
+                capped(asset, Float.MAX_VALUE, MAX_WIDTH * tile)
+            } else {
+                capped(asset, MAX_HEIGHT * tile, (WIDTH_CAPS[plant] ?: MAX_WIDTH) * tile)
+            }
         }
         manifest.assets.forEach { asset ->
             val stage = COLOUR.find(asset.assetId)?.groupValues?.get(1) ?: return@forEach

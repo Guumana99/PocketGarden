@@ -1,7 +1,7 @@
 {
   "version": 1,
   "atlas": "atlas.png",
-  "atlasWidth": 4024,
+  "atlasWidth": 4027,
   "atlasHeight": 2190,
   "tileWidth": 512,
   "assets": [
@@ -47,13 +47,13 @@
     },
     {
       "assetId": "plant_carrot_stage3",
-      "anchorX": 0.4973,
+      "anchorX": 0.5064,
       "anchorY": 1.0,
-      "width": 366,
-      "height": 384,
+      "width": 388,
+      "height": 317,
       "isFlippedAllowed": true,
-      "atlasX": 439,
-      "atlasY": 957
+      "atlasX": 976,
+      "atlasY": 1359
     },
     {
       "assetId": "plant_carrot_withered",
@@ -82,7 +82,7 @@
       "width": 250,
       "height": 358,
       "isFlippedAllowed": true,
-      "atlasX": 2955,
+      "atlasX": 2587,
       "atlasY": 957
     },
     {
@@ -142,8 +142,8 @@
       "width": 555,
       "height": 356,
       "isFlippedAllowed": true,
-      "atlasX": 2,
-      "atlasY": 1359
+      "atlasX": 3470,
+      "atlasY": 957
     },
     {
       "assetId": "plant_eggplant_stage1",
@@ -157,18 +157,18 @@
     },
     {
       "assetId": "plant_eggplant_stage2",
-      "anchorX": 0.6,
-      "anchorY": 1.0,
+      "anchorX": 0.5,
+      "anchorY": 0.85,
       "width": 350,
       "height": 297,
       "isFlippedAllowed": true,
-      "atlasX": 3360,
+      "atlasX": 3193,
       "atlasY": 1359
     },
     {
       "assetId": "plant_eggplant_stage3",
-      "anchorX": 0.4713,
-      "anchorY": 1.0,
+      "anchorX": 0.48,
+      "anchorY": 0.78,
       "width": 435,
       "height": 400,
       "isFlippedAllowed": true,
@@ -177,12 +177,12 @@
     },
     {
       "assetId": "plant_eggplant_withered",
-      "anchorX": 0.3866,
-      "anchorY": 1.0,
+      "anchorX": 0.5,
+      "anchorY": 0.83,
       "width": 269,
       "height": 358,
       "isFlippedAllowed": true,
-      "atlasX": 3207,
+      "atlasX": 2839,
       "atlasY": 957
     },
     {
@@ -192,7 +192,7 @@
       "width": 339,
       "height": 343,
       "isFlippedAllowed": true,
-      "atlasX": 936,
+      "atlasX": 379,
       "atlasY": 1359
     },
     {
@@ -232,7 +232,7 @@
       "width": 254,
       "height": 324,
       "isFlippedAllowed": true,
-      "atlasX": 1277,
+      "atlasX": 720,
       "atlasY": 1359
     },
     {
@@ -252,7 +252,7 @@
       "width": 375,
       "height": 356,
       "isFlippedAllowed": true,
-      "atlasX": 559,
+      "atlasX": 2,
       "atlasY": 1359
     },
     {
@@ -302,7 +302,7 @@
       "width": 235,
       "height": 297,
       "isFlippedAllowed": true,
-      "atlasX": 3712,
+      "atlasX": 3545,
       "atlasY": 1359
     },
     {
@@ -332,7 +332,7 @@
       "width": 358,
       "height": 358,
       "isFlippedAllowed": true,
-      "atlasX": 3478,
+      "atlasX": 3110,
       "atlasY": 957
     },
     {
@@ -352,7 +352,7 @@
       "width": 402,
       "height": 368,
       "isFlippedAllowed": true,
-      "atlasX": 2078,
+      "atlasX": 1710,
       "atlasY": 957
     },
     {
@@ -372,7 +372,7 @@
       "width": 380,
       "height": 379,
       "isFlippedAllowed": true,
-      "atlasX": 1223,
+      "atlasX": 855,
       "atlasY": 957
     },
     {
@@ -392,7 +392,7 @@
       "width": 414,
       "height": 384,
       "isFlippedAllowed": true,
-      "atlasX": 807,
+      "atlasX": 439,
       "atlasY": 957
     },
     {
@@ -422,7 +422,7 @@
       "width": 250,
       "height": 317,
       "isFlippedAllowed": true,
-      "atlasX": 1533,
+      "atlasX": 1366,
       "atlasY": 1359
     },
     {
@@ -432,7 +432,7 @@
       "width": 250,
       "height": 317,
       "isFlippedAllowed": true,
-      "atlasX": 1785,
+      "atlasX": 1618,
       "atlasY": 1359
     },
     {
@@ -442,7 +442,7 @@
       "width": 250,
       "height": 317,
       "isFlippedAllowed": true,
-      "atlasX": 2037,
+      "atlasX": 1870,
       "atlasY": 1359
     },
     {
@@ -452,7 +452,7 @@
       "width": 250,
       "height": 317,
       "isFlippedAllowed": true,
-      "atlasX": 2289,
+      "atlasX": 2122,
       "atlasY": 1359
     },
     {
@@ -462,7 +462,7 @@
       "width": 250,
       "height": 317,
       "isFlippedAllowed": true,
-      "atlasX": 2541,
+      "atlasX": 2374,
       "atlasY": 1359
     },
     {
@@ -472,7 +472,7 @@
       "width": 251,
       "height": 317,
       "isFlippedAllowed": true,
-      "atlasX": 2793,
+      "atlasX": 2626,
       "atlasY": 1359
     },
     {
@@ -482,7 +482,7 @@
       "width": 471,
       "height": 373,
       "isFlippedAllowed": true,
-      "atlasX": 1605,
+      "atlasX": 1237,
       "atlasY": 957
     },
     {
@@ -502,7 +502,7 @@
       "width": 471,
       "height": 368,
       "isFlippedAllowed": true,
-      "atlasX": 2482,
+      "atlasX": 2114,
       "atlasY": 957
     },
     {
@@ -576,7 +576,7 @@
       "width": 312,
       "height": 303,
       "isFlippedAllowed": true,
-      "atlasX": 3046,
+      "atlasX": 2879,
       "atlasY": 1359,
       "drawScale": 3.2802
     },

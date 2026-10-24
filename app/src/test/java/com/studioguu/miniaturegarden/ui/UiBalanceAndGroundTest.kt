@@ -342,11 +342,26 @@ class UiBalanceAndGroundTest {
     }
 
     @Test
+    fun `pebbles and wild flowers cover their cell, not a few specks (#60)`() {
+        val canvas = source("ui/components/GardenCanvas.kt")
+        assertTrue(canvas.contains("if (obj.objectId == GroundCover.PEBBLE.objectId) {\n        drawPebbles(obj, base, unit)"))
+        assertTrue(canvas.contains("drawPath(bed, PEBBLE_GRAVEL)"))
+        assertTrue(Regex("private const val PEBBLES = (\\d+)").find(canvas)!!.groupValues[1].toInt() >= 10)
+        assertTrue(Regex("private const val WILD_FLOWERS = (\\d+)").find(canvas)!!.groupValues[1].toInt() >= 12)
+    }
+
+    @Test
     fun `the garden draws a lawn by its stage, not as three green dots`() {
         val canvas = source("ui/components/GardenCanvas.kt")
         val branch = canvas.substringAfter("if (LawnGrowth.isLawn(obj)) {").substringBefore("continue")
         assertTrue(branch.contains("LawnGrowth.stageOf(obj)"))
         assertTrue(branch.contains("drawLawnPatch("))
-        assertTrue(canvas.contains("alpha = stage.cover"))
+        // #60: no longer the whole picture at the stage's strength, a thin wash of green, but
+        // solid clumps of grass ([LawnPatches]) where it has come up.
+        assertFalse(canvas.contains("alpha = stage.cover"))
+        assertTrue(canvas.contains("lawnClumpsPath(transform, x, y, stage.cover)"))
+        assertTrue(canvas.contains("clipPath(patches) { draw() }"))
+        // Tufts are tapering blades, not strokes.
+        assertTrue(canvas.contains("drawGrassBlade("))
     }
 }

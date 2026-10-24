@@ -15,7 +15,9 @@ This script:
         three stalks of stage 3 stand in. Stage 2 came with two stalks; a third, the right-hand one
         mirrored, is stood in front of them in the same place;
       - eggplant: stage 1 came as four seedlings; the front one is kept, as stages 2 and 3 are one plant;
-      - carrot: no stage 2 came; it is stage 3's leaves alone, the root still in the ground;
+      - carrot: no stage 2 came; it is stage 3's leaves alone, the root still in the ground.
+        Stage 3 (#60) is the leaves with only the shoulder of the root showing, as a carrot
+        stands in its bed; the whole root above the soil read as lying on the ground;
       - wheat: all three stages are a whole field filling the cell; they are laid out one tile wide
         and stood on the middle of the field (atlas_overrides.json) instead of on a stem;
       - tulip (#58): stages 1 and 2, and stage 3 in six colours: red is plant_tulip_stage3, the
@@ -60,7 +62,7 @@ ICON_SIZE = 256
 STAGES: dict[str, list] = {
     "corn": [0.36, 0.7, 0.9],
     "eggplant": [0.3, 0.58, 0.78],
-    "carrot": [0.38, 0.48, 0.75],
+    "carrot": [0.38, 0.48, 0.62],
     "wheat": [("w", 0.92), ("w", 0.92), ("w", 0.92)],
     "tomato": [0.34, 0.74, 0.86],
     "strawberry": [0.3, 0.48, 0.58],
@@ -74,10 +76,19 @@ TULIP_COLOURS = ["pink", "yellow", "white", "purple", "blue"]
 #: Anchors set by hand, where the foot of the picture is not the stem (asset_packer's stem_base
 #: would stand it on the tip of a hanging leaf): the tomato's main stem, behind its lower leaves.
 #: The sunflower's first stage (#58) is three seedlings: it stands on their middle, not the left one's stem.
+#: The eggplant (#60) is a bush with its fruit hanging below the leaves and no stem to be seen:
+#: stood on the foot of its picture it hovered over its bed. It stands where the bush meets the
+#: ground, the fruit hanging down in front; the withered one on its bare stem.
 ANCHORS = {
     "plant_tomato_stage3": {"anchorX": 0.47, "anchorY": 0.97, "isFlippedAllowed": True},
     "plant_sunflower_stage1": {"anchorX": 0.5, "anchorY": 1.0, "isFlippedAllowed": True},
+    "plant_eggplant_stage2": {"anchorX": 0.5, "anchorY": 0.85, "isFlippedAllowed": True},
+    "plant_eggplant_stage3": {"anchorX": 0.48, "anchorY": 0.78, "isFlippedAllowed": True},
+    "plant_eggplant_withered": {"anchorX": 0.5, "anchorY": 0.83, "isFlippedAllowed": True},
 }
+
+#: How much of the carrot's root shows above its bed at stage 3 (#60), as a share of the root.
+CARROT_SHOULDER = 0.22
 
 #: Each withered picture's size in tiles, as in STAGES (#58: drawn ones replaced those made by
 #: browning the last stage in #57, and the tomato's and strawberry's from #39).
@@ -197,7 +208,15 @@ def carrot_stages() -> list[np.ndarray]:
     orange = (rgb[:, :, 0] > 170) & (rgb[:, :, 1] < 150) & (rgb[:, :, 2] < 90) & (grown[:, :, 3] > 128)
     rows = np.where(orange.sum(axis=1) > 6)[0]
     leaves = crop(grown[:rows.min() - 6].copy())
-    return [crop(load_cut("crop_carrot_1.png")), leaves, grown]
+    # Stage 3: the leaves and the shoulder of the root, fading into the bed below it (#60).
+    cut = rows.min() + int((rows.max() - rows.min()) * CARROT_SHOULDER)
+    ready = grown[:cut].copy()
+    fade = min(10, cut - rows.min())
+    ramp = np.linspace(1.0, 0.0, fade + 2)[1:-1]
+    for i, k in enumerate(ramp):
+        row = cut - fade + i
+        ready[row, :, 3] = (ready[row, :, 3] * k).astype(ready.dtype)
+    return [crop(load_cut("crop_carrot_1.png")), leaves, crop(ready)]
 
 
 def simple_stages(name: str, suffix: str) -> list[np.ndarray]:
@@ -239,7 +258,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
             out[f"plant_{crop_name}_stage{n}"] = (picture, override)
         if crop_name in WITHERED:
             dead = to_size(crop(load_cut(f"crop_{crop_name}_withered.png")), WITHERED[crop_name])
-            out[f"plant_{crop_name}_withered"] = (dead, field_anchor(dead) if crop_name == "wheat" else None)
+            out[f"plant_{crop_name}_withered"] = (dead, field_anchor(dead) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_withered"))
     for colour in TULIP_COLOURS:
         bloom = to_size(crop(load_cut(f"crop_tulip_{colour}_stage3.png")), STAGES["tulip"][2])
         out[f"plant_tulip_stage3_{colour}"] = (bloom, None)

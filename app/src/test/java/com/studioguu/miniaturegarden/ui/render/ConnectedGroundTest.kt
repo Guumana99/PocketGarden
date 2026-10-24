@@ -110,13 +110,20 @@ class ConnectedGroundTest {
 
     // --- Crops ---
 
+    private val EGGPLANT_BUSHES = setOf("plant_eggplant_stage2", "plant_eggplant_stage3", "plant_eggplant_withered")
+
     @Test
     fun `every crop picture stands on the base of its stem, its earth taken out`() {
         val manifest = AtlasManifest.parse(File(main, "assets/atlas/assets_manifest.json").readText())
         val crops = manifest.assets.filter { it.assetId.startsWith("plant_") }
         assertTrue(crops.size >= 30)
         // The wheat is a field over the whole cell (#57): it stands on the field's middle, not on a stem.
-        val (fields, plants) = crops.partition { it.assetId.startsWith("plant_wheat_") }
+        val (fields, rest) = crops.partition { it.assetId.startsWith("plant_wheat_") }
+        // The eggplant (#60) is a bush with no stem to be seen and its fruit hanging below: it stands
+        // where the bush meets the bed, well up its picture.
+        val (bushes, plants) = rest.partition { it.assetId in EGGPLANT_BUSHES }
+        assertEquals(EGGPLANT_BUSHES, bushes.map { it.assetId }.toSet())
+        for (bush in bushes) assertTrue(bush.assetId, bush.anchorY in 0.75f..0.9f)
         assertEquals(4, fields.size)
         for (field in fields) {
             assertEquals(field.assetId, 0.5f, field.anchorX, 1e-4f)
@@ -132,12 +139,12 @@ class ConnectedGroundTest {
         // So the wind, which leans a picture about its anchor, moves the plant and not the ground.
         val tools = listOf(File("../tools"), File("tools")).first { it.isDirectory }
         val overrides = File(tools, "atlas_overrides.json").readText()
-        // Only the wheat's fields, the tomato whose foot is a hanging leaf (#57) and the sunflower's
-        // three seedlings (#58) are stood by hand.
+        // Only the wheat's fields, the tomato whose foot is a hanging leaf (#57), the sunflower's
+        // three seedlings (#58) and the eggplant's bushes (#60) are stood by hand.
         val byHand = Regex("\"(plant_[a-z_0-9]+)\"").findAll(overrides).map { it.groupValues[1] }.toSet()
         assertEquals(
             setOf("plant_wheat_stage1", "plant_wheat_stage2", "plant_wheat_stage3", "plant_wheat_withered", "plant_tomato_stage3",
-                "plant_sunflower_stage1"),
+                "plant_sunflower_stage1") + EGGPLANT_BUSHES,
             byHand,
         )
     }
