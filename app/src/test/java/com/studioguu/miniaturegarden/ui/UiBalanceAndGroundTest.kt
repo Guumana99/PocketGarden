@@ -104,8 +104,10 @@ class UiBalanceAndGroundTest {
         val app = source("PocketGardenApplication.kt")
         val onCreate = app.substringAfter("override fun onCreate()")
         assertTrue(onCreate.contains("assets.prefetch("))
-        // Started before the slower set-up (the settings are read synchronously after it).
-        assertTrue(onCreate.indexOf("assets.prefetch(") < onCreate.indexOf("runBlocking"))
+        // Started before the rest of the set-up (since #56 the settings are read off the main
+        // thread, after it; there is no runBlocking any more).
+        assertFalse(onCreate.contains("runBlocking"))
+        assertTrue(onCreate.indexOf("assets.prefetch(") < onCreate.indexOf("audio.holdUntilSettings()"))
         // The title's grown-over garden does not wait for the wasteland, the slowest to make.
         assertTrue(source("ui/title/TitleViewModel.kt").contains("loadTerrainTextures(withWasteland = false)"))
         assertTrue(source("ui/GardenViewModel.kt").contains("assetRepository.loadTerrainTextures()"))
@@ -237,13 +239,14 @@ class UiBalanceAndGroundTest {
             }
             return sum / n
         }
-        // #57: the beds are pictures of their own, tilled and composted, laid on every bed.
+        // #57: the beds are pictures of their own, laid on every bed; since #61 soil_revived is
+        // the ground the hoe has broken up on its way to a bed, darker than the wasteland too.
         val wasteland = faceLuminance("soil_wasteland", GroundSlab.WASTELAND)
         val tilled = faceLuminance("soil_tilled", GroundSlab.TILLED)
-        val composted = faceLuminance("soil_revived", GroundSlab.REVIVED)
+        val broken = faceLuminance("soil_revived", GroundSlab.REVIVED)
         assertTrue("tilled $tilled vs ground $wasteland", tilled < wasteland - 20)
-        assertTrue("composted $composted vs ground $wasteland", composted < wasteland - 20)
-        assertTrue(source("ui/components/GardenCanvas.kt").contains("face = terrain.bedFace(obj.isComposted)"))
+        assertTrue("broken $broken vs ground $wasteland", broken < wasteland - 20)
+        assertTrue(source("ui/components/GardenCanvas.kt").contains("face = terrain.tilled"))
         // Drawn without them, a bed keeps its own colours.
         val body = SoilPalette.mix(SoilPalette.DRY, SoilPalette.DARK, SoilPalette.bodyMix(0f))
         val (r, _, b) = SoilPalette.rgb(body)
@@ -351,17 +354,21 @@ class UiBalanceAndGroundTest {
     }
 
     @Test
-    fun `the garden draws a lawn by its stage, not as three green dots`() {
+    fun `the garden draws a lawn over its whole cell by how far it has grown (#61)`() {
         val canvas = source("ui/components/GardenCanvas.kt")
         val branch = canvas.substringAfter("if (LawnGrowth.isLawn(obj)) {").substringBefore("continue")
-        assertTrue(branch.contains("LawnGrowth.stageOf(obj)"))
+        assertTrue(branch.contains("LawnGrowth.growthOf(obj)"))
         assertTrue(branch.contains("drawLawnPatch("))
-        // #60: no longer the whole picture at the stage's strength, a thin wash of green, but
-        // solid clumps of grass ([LawnPatches]) where it has come up.
+        // Not the whole picture at a stage's strength (a thin wash, before #60), nor clumps on
+        // part of the cell (#60): a seedbed over the whole cell and blades cut from the picture.
         assertFalse(canvas.contains("alpha = stage.cover"))
-        assertTrue(canvas.contains("lawnClumpsPath(transform, x, y, stage.cover)"))
-        assertTrue(canvas.contains("clipPath(patches) { draw() }"))
-        // Tufts are tapering blades, not strokes.
-        assertTrue(canvas.contains("drawGrassBlade("))
+        assertFalse(canvas.contains("lawnClumpsPath("))
+        assertTrue(canvas.contains("drawPath(seedbed, LAWN_SEEDBED)"))
+        assertTrue(canvas.contains("clipPath(blades) { picture(1f) }"))
+        // The drawn, yellow-green tufts over the lawn are gone.
+        assertFalse(canvas.contains("drawGrassBlade("))
+        assertFalse(canvas.contains("GRASS_TUFT_DARK"))
+        assertEquals(0.4f, LawnGrowth.growthOf(lawn(0.4f)), 0f)
+        assertEquals(1f, LawnGrowth.growthOf(lawn(0.4f), growsInStages = false), 0f)
     }
 }

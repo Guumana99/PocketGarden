@@ -61,6 +61,16 @@ object PondJoin {
             (if (isPond(x, y + 1)) SOUTH else 0) or
             (if (isPond(x - 1, y)) WEST else 0)
 
+    /** All four neighbours ponds: [mask] of a pond in the middle of a pool. */
+    const val ALL = NORTH or EAST or SOUTH or WEST
+
+    /**
+     * Whether the pond at ([x], [y]) is the middle of a pool, with ponds on all four sides: it has
+     * no bank, and is drawn as open water alone (`pond_center.png`, #61) rather than as the
+     * pond's picture in its ring of logs.
+     */
+    fun isCentre(x: Int, y: Int, isPond: (Int, Int) -> Boolean): Boolean = mask(x, y, isPond) == ALL
+
     /**
      * The joins the pond at ([x], [y]) is the first cell of: to the east and to the south. Each
      * join between two ponds is so found exactly once, from the one to the north or west of it.

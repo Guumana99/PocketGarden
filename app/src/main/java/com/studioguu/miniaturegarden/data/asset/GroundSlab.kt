@@ -29,7 +29,10 @@ data class GroundSlab(val anchorX: Float, val anchorY: Float, val topWidth: Floa
         /** A bed of tilled soil, three furrows across it (`res/drawable/soil_tilled.png`, #57). */
         val TILLED = GroundSlab(anchorX = 0.499f, anchorY = 0.457f, topWidth = 0.979f)
 
-        /** A composted bed: dark, crumbly, enriched earth (`res/drawable/soil_revived.png`, #57). */
+        /**
+         * Ground broken up by the hoe, not yet a bed: dark, crumbly, turned earth without furrows
+         * (`res/drawable/soil_revived.png`, #57; the step between wasteland and a bed since #61).
+         */
         val REVIVED = GroundSlab(anchorX = 0.502f, anchorY = 0.478f, topWidth = 0.988f)
 
         /** A cell of open water, the middle of a pond (`res/drawable/pond_center.png`, #57). */

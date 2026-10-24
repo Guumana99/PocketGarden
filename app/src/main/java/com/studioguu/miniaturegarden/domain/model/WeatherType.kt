@@ -11,6 +11,16 @@ fun interface WeatherForecast {
     object Daily : WeatherForecast {
         override fun at(epochMillis: Long): WeatherType = WeatherType.forTime(epochMillis)
     }
+
+    companion object {
+        /**
+         * The weather a garden at [step] of its first steps runs on: a new game opens on a fine
+         * day ([WeatherType.SUNNY]) and stays fine all through its first play
+         * ([TutorialStep.isFirstPlay]), so the guided steps never start under rain that has
+         * already watered the seed; after that, [Daily]. Null (not read yet) is [Daily].
+         */
+        fun forGarden(step: TutorialStep?): WeatherForecast = if (step?.isFirstPlay == true) WeatherType.SUNNY else Daily
+    }
 }
 
 /**

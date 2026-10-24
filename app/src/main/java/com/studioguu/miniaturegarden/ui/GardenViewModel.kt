@@ -177,7 +177,14 @@ class GardenViewModel @Inject constructor(
      * Strikes the hoe has given each cell of hard ground that is not broken up yet. Kept while the
      * app is open only: a few taps in a row are what it is for, not a chore to come back to.
      */
-    private val hoeStrikes = HashMap<GridCell, Int>()
+    private val hoeStrikes = MutableStateFlow<Map<GridCell, Int>>(emptyMap())
+
+    /**
+     * The cells of hard ground the hoe has struck but not yet broken into a bed: drawn as loose,
+     * turned earth (`soil_revived.png`), the step between the dry wasteland and a furrowed bed.
+     */
+    val brokenGround: StateFlow<Set<GridCell>> = hoeStrikes.map { it.keys }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** The post, newest first: every letter that has come, read or not. */
     val letters: StateFlow<List<Letter>> = gardenRepository.observeLetters()
@@ -246,9 +253,9 @@ class GardenViewModel @Inject constructor(
     /** True for a few seconds after a blessed rain was granted, while its shower is shown. */
     val blessedRainFalling: StateFlow<Boolean> = _blessedRainFalling.asStateFlow()
 
-    /** Whether there is anything the blessed rain could speed up. */
+    /** Whether there is anything the blessed rain could speed up or water. */
     fun hasGrowingPlants(): Boolean = gridObjects.value.any {
-        it.isPlant && it.status != PlantStatus.WITHERED && it.growthProgress < 1f
+        it.isPlant && it.status != PlantStatus.WITHERED && (it.growthProgress < 1f || it.moistureLevel < 1f)
     }
 
     /**
@@ -445,6 +452,7 @@ class GardenViewModel @Inject constructor(
         watchVisitors()
         watchSeasonForMusic()
         watchToolLevels()
+        watchFirstPlayWeather()
     }
 
     /** A word, and the celebration's sound, when the hoe or the watering can gets better. */
@@ -577,7 +585,7 @@ class GardenViewModel @Inject constructor(
         // from there either way.
         viewModelScope.launch {
             initJob.join()
-            val weather: WeatherForecast = debugWeather ?: WeatherForecast.Daily
+            val weather: WeatherForecast = gardenForecast()
             withContext(Dispatchers.Default) { scheduleNotifications(System.currentTimeMillis(), weather) }
         }
     }
@@ -729,10 +737,10 @@ class GardenViewModel @Inject constructor(
                     }
                 ) { now, _ ->
                     val cell = GridCell(tile.x, tile.y)
-                    val strikes = hoeStrikes[cell] ?: 0
+                    val strikes = hoeStrikes.value[cell] ?: 0
                     hoe(tile.x, tile.y, now, strikes).also {
                         // Hard ground gives a little at each strike, and is remembered until it goes.
-                        if (it == ActionResult.HOE_STRUCK) hoeStrikes[cell] = strikes + 1 else hoeStrikes.remove(cell)
+                        hoeStrikes.update { all -> if (it == ActionResult.HOE_STRUCK) all + (cell to strikes + 1) else all - cell }
                         if (it == ActionResult.SUCCESS) followTutorial()
                     }
                 }
@@ -1095,9 +1103,24 @@ class GardenViewModel @Inject constructor(
      * weather shown on screen.
      */
     private fun currentWeather(now: Long): WeatherForecast {
-        val forecast: WeatherForecast = debugWeather ?: WeatherForecast.Daily
+        val forecast = gardenForecast()
         _weather.value = forecast.at(now)
         return forecast
+    }
+
+    /** The debug menu's weather, else the garden's own: sunny through its first play, then day by day. */
+    private fun gardenForecast(): WeatherForecast = debugWeather ?: WeatherForecast.forGarden(progress.value?.tutorialStep)
+
+    /**
+     * Keeps the weather shown in step with the first play: a new game shows sunshine from its
+     * first frame, and the day's own weather once the first steps are over.
+     */
+    private fun watchFirstPlayWeather() {
+        viewModelScope.launch {
+            tutorialStep.filterNotNull().map { it.isFirstPlay }.distinctUntilChanged().collect {
+                currentWeather(System.currentTimeMillis())
+            }
+        }
     }
 
     /** The object covering [tile]; for a structure that is any cell of its footprint. */

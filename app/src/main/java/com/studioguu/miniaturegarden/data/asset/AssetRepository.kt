@@ -66,15 +66,18 @@ class TerrainTextures(
     val pondWater: Bitmap? = null,
     /**
      * The face of a bed of tilled soil seen from straight above, one cell to a copy
-     * (`soil_tilled.png`, #57): laid on every bed, its furrows running on from bed to bed.
+     * (`soil_tilled.png`, #57): laid on every bed, its furrows running on from bed to bed. A
+     * composted bed is this one darkened and flecked with leaf and straw (#61).
      */
     val tilled: Bitmap? = null,
-    /** The same for a composted bed (`soil_revived.png`, #57). */
-    val composted: Bitmap? = null,
+    /**
+     * Ground the hoe has broken up but not yet tilled (#61): loose, turned earth with no furrows
+     * in it, the face of `soil_revived.png` seen from straight above. It is the step between the
+     * dry wasteland and a bed, shown on hard ground that has had some of the strikes it needs.
+     * (From #57 to #60 it was the face of a composted bed instead.)
+     */
+    val broken: Bitmap? = null,
 ) {
-    /** The face for a bed: [composted] for a composted one, [tilled] for any other. */
-    fun bedFace(isComposted: Boolean): Bitmap? = if (isComposted) composted ?: tilled else tilled
-
     companion object {
         val EMPTY = TerrainTextures()
     }
@@ -170,20 +173,20 @@ class AssetRepository @Inject constructor(
                         }
                     }
                     val tilled = async(Dispatchers.Default) { bedFace(R.drawable.soil_tilled, GroundSlab.TILLED) }
-                    val composted = async(Dispatchers.Default) { bedFace(R.drawable.soil_revived, GroundSlab.REVIVED) }
+                    val broken = async(Dispatchers.Default) { bedFace(R.drawable.soil_revived, GroundSlab.REVIVED) }
                     TerrainTextures(
                         riverAutotile = river.await(),
                         cobblestone = cobblestone.await(),
                         pond = pond.await(),
                         pondWater = pondWater.await(),
                         tilled = tilled.await(),
-                        composted = composted.await(),
+                        broken = broken.await(),
                     )
                 }
             }.also { cachedTerrain = it }
         }
         val ground = wasteland?.await() ?: return@coroutineScope rest
-        TerrainTextures(rest.riverAutotile, rest.cobblestone, ground, rest.pond, rest.pondWater, rest.tilled, rest.composted)
+        TerrainTextures(rest.riverAutotile, rest.cobblestone, ground, rest.pond, rest.pondWater, rest.tilled, rest.broken)
     }
 
     /**

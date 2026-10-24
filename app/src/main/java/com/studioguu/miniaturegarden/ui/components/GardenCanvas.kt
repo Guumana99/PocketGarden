@@ -65,7 +65,6 @@ import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
-import com.studioguu.miniaturegarden.domain.model.LawnStage
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
@@ -195,6 +194,11 @@ fun GardenCanvas(
     growableId: String? = null,
     onZoomChanged: ((Float) -> Unit)? = null,
     bareGround: BareGround = BareGround.WASTELAND,
+    /**
+     * Cells of hard ground the hoe has struck but not yet broken into a bed: drawn as loose,
+     * turned earth ([TerrainTextures.broken]), the step between the wasteland and a bed.
+     */
+    brokenCells: Set<GridCell> = emptySet(),
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -359,6 +363,13 @@ fun GardenCanvas(
                 val sprite = atlas[tile.assetId]
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale * groundOverlap(tile), flipped = flip)
                 sprite != null
+            }
+        }
+        // Ground the hoe has begun to break: with the beds, a step short of being one.
+        for (cell in brokenCells) {
+            if (!gardenMap.isInside(cell.x, cell.y) || grid.floorAt(cell.x, cell.y) != null) continue
+            pipeline.submit(RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(cell.x, cell.y)) {
+                drawBrokenGround(transform, cell.x, cell.y, terrain.broken)
             }
         }
         // Last of the ground, over the stream and the beds at the garden's edge too.
@@ -573,13 +584,13 @@ private fun submitObjects(
                 if (obj.isTilledSoil) {
                     // Beds side by side are one field: each knows which of its sides carry on (#47).
                     val joins = SoilJoins.at(obj.gridX, obj.gridY) { bx, by -> grid.floorAt(bx, by)?.isTilledSoil == true }
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.bedFace(obj.isComposted))
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.tilled)
                 } else if (obj.isGreenhouse && soil != null && atlasImage != null) {
                     // Compost darkens the earth.
                     val center = transform.tileCenter(obj.gridX, obj.gridY)
                     drawSprite(atlasImage, soil, center, spriteScale, tint = if (obj.isComposted) COMPOST_TINT else null)
                 } else if (obj.isGreenhouse) {
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.bedFace(obj.isComposted))
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.tilled)
                 } else if (obj.objectId == GridObject.WOOD_DECK_OBJECT_ID) {
                     drawWoodDeck(transform, obj.gridX, obj.gridY)
                 } else if (paving != null) {
@@ -629,20 +640,27 @@ private fun submitObjects(
             // Low, lying in the ground: with the ground cover, under whatever stands round it.
             val pond = terrain.pond
             // Its water moves on the garden's clock: glints and spreading rings (PondWater).
-            val water = PondWater.frameAt(ambience.windMillis ?: 0L, seed = obj.gridX * 31 + obj.gridY * 17)
+            val ripples = PondWater.frameAt(ambience.windMillis ?: 0L, seed = obj.gridX * 31 + obj.gridY * 17)
+            // The middle of a pool (a pond on all four sides, #61) has no bank of its own: it is
+            // open water, pond_center.png's, and the joins round it run into it.
+            val isPondHere: (Int, Int) -> Boolean = { px, py -> grid.occupantAt(px, py)?.let { it.isPond && !it.isWorking } == true }
+            val centre = vanish == null && PondJoin.isCentre(obj.gridX, obj.gridY, isPondHere)
             submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {
-                if (pond != null) {
+                val water = terrain.pondWater
+                if (centre && water != null) {
+                    fillWithTexture(water, transform, transform.tilePath(obj.gridX, obj.gridY), POND_WATER_CELLS)
+                } else if (pond != null) {
                     drawGroundSlab(pond, GroundSlab.POND, transform.tileCenter(obj.gridX, obj.gridY), unit, coverage = POND_COVERAGE)
                 } else {
                     drawPondInCode(transform, obj.gridX, obj.gridY)
                 }
-                drawPondWater(transform, obj.gridX, obj.gridY, water)
+                drawPondWater(transform, obj.gridX, obj.gridY, ripples)
             }
             // Ponds side by side are one pool (PondJoin): the water runs through where they meet.
             // Painted after both ponds of a join (at the later one's depth), so that neither one's
             // logs stand over it; the middle of four ponds in a square after all four.
             if (vanish == null) {
-                val isPond: (Int, Int) -> Boolean = { px, py -> grid.occupantAt(px, py)?.let { it.isPond && !it.isWorking } == true }
+                val isPond = isPondHere
                 for (bridge in PondJoin.bridgesFrom(obj.gridX, obj.gridY, isPond)) {
                     val later = if (bridge.alongX) LayerPipeline.depthOf(obj.gridX + 1, obj.gridY) else LayerPipeline.depthOf(obj.gridX, obj.gridY + 1)
                     submit(obj, RenderLayer.BOTTOM_OBJECTS, later + 0.5f) { drawPondBridge(transform, bridge, terrain.pondWater, terrain.pond) }
@@ -657,9 +675,9 @@ private fun submitObjects(
         }
         if (LawnGrowth.isLawn(obj)) {
             // A lawn lies on the ground with the ground cover, drawn by its stage of growth.
-            val stage = LawnGrowth.stageOf(obj)
+            val growth = LawnGrowth.growthOf(obj)
             submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {
-                drawLawnPatch(transform, obj.gridX, obj.gridY, stage, lawn, onBareEarth = ambience.bareGround == BareGround.WASTELAND, sway = sway)
+                drawLawnPatch(transform, obj.gridX, obj.gridY, growth, lawn, onBareEarth = ambience.bareGround == BareGround.WASTELAND, sway = sway)
             }
             continue
         }
@@ -1844,6 +1862,9 @@ private fun DrawScope.drawTilledSoil(
 
     if (face != null) {
         fillWithTexture(face, transform, bed, cellsPerCopy = 1f)
+        // Compost darkens the earth of the picture (#61: soil_revived, its own picture until
+        // then, is the broken ground before a bed now).
+        if (composted) drawPath(bed, COMPOST_TINT, blendMode = BlendMode.Multiply)
     } else {
         drawCodeEarth(transform, x, y, x0, x1, y0, y1, joins, bed, onBareEarth, earth)
     }
@@ -1872,8 +1893,8 @@ private fun DrawScope.drawTilledSoil(
         }
     }
     drawBedEdges(transform, x, y, x0, x1, y0, y1, joins, onBareEarth, strength = if (face != null) PICTURED_BED_EDGE else 1f)
-    // A composted bed's picture is the enriched earth itself; the drawn one is flecked instead.
-    if (composted && face == null) {
+    // A composted bed, pictured or drawn, is flecked with what was worked into it.
+    if (composted) {
         // Bits of leaf and straw worked into the bed.
         var seed = x * 73856093 xor y * 19349663
         repeat(7) { i ->
@@ -1886,6 +1907,44 @@ private fun DrawScope.drawTilledSoil(
         }
     }
 }
+
+/**
+ * Ground the hoe has struck but not yet broken into a bed ([TerrainTextures.broken]): the dry
+ * crust cracked open into loose, turned earth with no furrows yet, lying flat in the cell with
+ * a soft edge into the wasteland round it. Without the picture, plain loose earth with crumbs.
+ */
+private fun DrawScope.drawBrokenGround(transform: IsometricTransform, x: Int, y: Int, face: Bitmap?) {
+    val inset = BROKEN_GROUND_INSET
+    val patch = quad(
+        transform.worldToScreen(x + inset, y + inset),
+        transform.worldToScreen(x + 1 - inset, y + inset),
+        transform.worldToScreen(x + 1 - inset, y + 1 - inset),
+        transform.worldToScreen(x + inset, y + 1 - inset),
+    )
+    if (face != null) {
+        fillWithTexture(face, transform, patch, cellsPerCopy = 1f)
+    } else {
+        drawPath(patch, DIRT_DRY)
+    }
+    // Clods of the broken crust, lighter on top, lying round on it.
+    val unit = transform.tileWidth
+    var seed = x * 48271 xor y * 69621
+    fun next(): Float {
+        seed = seed * 1103515245 + 12345
+        return ((seed ushr 16) and 0x7FFF) / 32767f
+    }
+    repeat(BROKEN_GROUND_CLODS) {
+        val at = transform.worldToScreen(x + inset + 0.08f + next() * (0.84f - 2 * inset), y + inset + 0.08f + next() * (0.84f - 2 * inset))
+        val w = unit * (0.02f + next() * 0.02f)
+        drawOval(DIRT_DEEP.copy(alpha = 0.55f), Offset(at.x - w * 0.5f, at.y - w * 0.15f), Size(w, w * 0.55f))
+        drawOval(DIRT_DRY, Offset(at.x - w * 0.5f, at.y - w * 0.4f), Size(w, w * 0.55f))
+    }
+    drawPath(patch, DIRT_EDGE.copy(alpha = PICTURED_BED_EDGE), style = Stroke(width = unit * 0.01f))
+}
+
+/** How far broken ground stays in from its cell's sides: it has not been shaped into a bed yet. */
+private const val BROKEN_GROUND_INSET = 0.06f
+private const val BROKEN_GROUND_CLODS = 6
 
 /**
  * A bed's earth drawn without a picture: one colour shading smoothly over the field, with damp
@@ -2664,97 +2723,89 @@ private val PEBBLE_SHADOW = Color(0x55302A22)
 private val PEBBLE_COLOURS = listOf(Color(0xFFC9C5BE), Color(0xFFA9A49B), Color(0xFFD9CDB5), Color(0xFF8F8A82), Color(0xFFBFB3A0))
 
 /**
- * A lawn on cell ([x], [y]) at its [stage] of growth ([LawnGrowth]). On the bare earth, the
- * lawn's own feathered picture of grass, laid as the lawn of a grown garden is (a little larger
- * than its cell and fading at its edges, so that lawns side by side are one lawn) and as thick
- * as the stage covers ([LawnStage.cover]), with a few tufts standing up from it. Where the bare
- * ground is the lawn already (the title's garden, the book's pictures), only the tufts.
- * Without the picture, the green is a plain diamond.
+ * A lawn on cell ([x], [y]), [growth] of the way grown (0 sown .. 1 grown, [LawnGrowth]). On the
+ * bare earth (#61):
+ * - From the moment it is sown the whole cell is a seedbed, raked, damp earth darker than the
+ *   dry ground round it, so that a lawn just sown shows at a glance where it is.
+ * - Over all of it stand blades of grass ([LawnPatches]), cut out of the lawn's own picture: few,
+ *   short and thin when it is sown, more, longer and broader as it grows, leaning in the wind.
+ *   Near the end the grass closes in between them, and a grown lawn is the whole picture, laid as
+ *   the lawn of a grown garden is (a little larger than its cell and fading at its edges, so that
+ *   lawns side by side are one lawn).
+ * Where the bare ground is the lawn already (the title's garden, the book's pictures), nothing:
+ * the lawn is there. Without the picture, the blades are plain green.
+ *
+ * Until #60 the grass came up in clumps on part of the cell, a lawn just sown was not drawn at
+ * all, and tufts of drawn, yellow-green blades stood over it; they are gone.
  */
 private fun DrawScope.drawLawnPatch(
     transform: IsometricTransform,
     x: Int,
     y: Int,
-    stage: LawnStage,
+    growth: Float,
     lawn: FeatheredLawn?,
     onBareEarth: Boolean,
     sway: Float,
 ) {
+    if (!onBareEarth) return
     val unit = transform.tileWidth
-    if (onBareEarth && stage.cover > 0f) {
-        // Solid grass where it has come up, bare earth where it has not (#60: the whole picture
-        // at the stage's strength read as a thin wash of green paint over the earth).
-        val patches = if (stage.cover >= 1f) null else lawnClumpsPath(transform, x, y, stage.cover)
-        if (lawn != null) {
-            val scale = unit / lawn.tileWidth * LawnShade.FEATHER_OVERLAP
-            val draw: DrawScope.() -> Unit = {
-                drawSprite(lawn.image, lawn.sprite, transform.tileCenter(x, y), scale, flipped = LawnShade.mirrored(x, y))
-            }
-            if (patches == null) draw() else clipPath(patches) { draw() }
-        } else {
-            drawPath(patches ?: transform.tilePath(x, y), GRASS_LIGHT)
-        }
+    val picture: (DrawScope.(alpha: Float) -> Unit)? = lawn?.let { grass ->
+        val scale = unit / grass.tileWidth * LawnShade.FEATHER_OVERLAP
+        val centre = transform.tileCenter(x, y)
+        val flip = LawnShade.mirrored(x, y);
+        { alpha: Float -> drawSprite(grass.image, grass.sprite, centre, scale, flipped = flip, alpha = alpha) }
     }
-    // Tufts standing up all over it, short while it comes up and taller once it is grown; back to
-    // front, each a few tapering, curving blades, the one at the back in shade, so that the lawn
-    // has depth and moves in the wind rather than lying flat (#55; #60: blades, not strokes).
-    var seed = x * 92821 xor y * 68917
-    fun next(): Float {
-        seed = seed * 1103515245 + 12345
-        return ((seed ushr 16) and 0x7FFF) / 32767f
+    if (growth >= 1f) {
+        picture?.invoke(this, 1f) ?: drawPath(transform.tilePath(x, y), LAWN_BLADE_FALLBACK)
+        return
     }
-    val height = if (stage == LawnStage.FULL) 0.065f else 0.03f + 0.03f * stage.cover
-    val tufts = List(stage.blades) { Offset(0.12f + next() * 0.76f, 0.12f + next() * 0.76f) to next() }
-        .sortedBy { (cell, _) -> cell.x + cell.y }
-    for ((cell, r) in tufts) {
-        val at = transform.worldToScreen(x + cell.x, y + cell.y)
-        val blade = unit * height * (0.7f + r * 0.6f)
-        val width = unit * 0.009f
-        val bend = blade * 0.55f * sway
-        val light = if (r > 0.5f) GRASS_BLADE_LIGHT else GRASS_TUFT
-        drawGrassBlade(at, Offset(-blade * 0.2f + bend * 0.9f, -blade * 0.9f), width, GRASS_TUFT_DARK)
-        drawGrassBlade(at + Offset(-width, 0f), Offset(-blade * 0.45f + bend, -blade), width, light)
-        drawGrassBlade(at + Offset(width, 0f), Offset(blade * 0.4f + bend, -blade * 0.85f), width, GRASS_TUFT)
-        drawGrassBlade(at, Offset(bend * 1.1f, -blade * 1.15f), width, light)
-    }
+    val inset = LAWN_SEEDBED_INSET
+    val seedbed = quad(
+        transform.worldToScreen(x + inset, y + inset),
+        transform.worldToScreen(x + 1 - inset, y + inset),
+        transform.worldToScreen(x + 1 - inset, y + 1 - inset),
+        transform.worldToScreen(x + inset, y + 1 - inset),
+    )
+    drawPath(seedbed, LAWN_SEEDBED)
+    // The grass closing in between the blades as it nears full: the same picture, under them.
+    val closing = ((growth - LAWN_CLOSES_FROM) / (1f - LAWN_CLOSES_FROM)).coerceIn(0f, 1f)
+    if (closing > 0f && picture != null) clipPath(seedbed) { picture(closing) }
+    val blades = lawnBladesPath(transform, x, y, growth, sway)
+    if (picture != null) clipPath(blades) { picture(1f) } else drawPath(blades, LAWN_BLADE_FALLBACK)
 }
 
 /**
- * The clumps of a lawn [cover] of the way grown on cell ([x], [y]) ([LawnPatches]), as one shape
- * kept within the cell.
+ * The blades of a lawn [growth] of the way grown on cell ([x], [y]) ([LawnPatches]), as one shape:
+ * each a narrow spike from its root, bent over by [sway].
  */
-private fun lawnClumpsPath(transform: IsometricTransform, x: Int, y: Int, cover: Float): Path {
-    // A round clump on the ground is an ellipse on screen, half as tall as it is wide.
-    val clumps = Path()
-    for (clump in LawnPatches.clumps(x, y, cover)) {
-        val centre = transform.worldToScreen(x + clump.u, y + clump.v)
-        val rx = clump.radius * transform.tileWidth * HALF_SQRT2
-        val ry = clump.radius * transform.tileHeight * HALF_SQRT2
-        clumps.addOval(Rect(centre.x - rx, centre.y - ry, centre.x + rx, centre.y + ry))
+private fun lawnBladesPath(transform: IsometricTransform, x: Int, y: Int, growth: Float, sway: Float): Path {
+    val unit = transform.tileWidth
+    val path = Path()
+    for (blade in LawnPatches.blades(x, y, growth)) {
+        val root = transform.worldToScreen(x + blade.u, y + blade.v)
+        val height = blade.length * unit
+        val half = blade.width * unit * 0.5f
+        val tip = root + Offset(height * (0.35f * blade.lean + 0.5f * sway), -height)
+        val bow = Offset(root.x + (tip.x - root.x) * 0.3f, root.y - height * 0.55f)
+        path.moveTo(root.x - half, root.y)
+        path.quadraticTo(bow.x - half * 0.5f, bow.y, tip.x, tip.y)
+        path.quadraticTo(bow.x + half * 0.5f, bow.y, root.x + half, root.y)
+        path.close()
     }
-    return Path().apply { op(clumps, transform.tilePath(x, y), PathOperation.Intersect) }
+    return path
 }
 
-private const val HALF_SQRT2 = 0.70710677f
+/** Raked, damp earth under a lawn coming up: darker than the pale, dry wasteland, so a sown cell shows. */
+private val LAWN_SEEDBED = Color(0xE85A4630)
 
-/** One blade of grass from [root], reaching [reach]: [width] across at its foot, tapering to a point and curving as it goes. */
-private fun DrawScope.drawGrassBlade(root: Offset, reach: Offset, width: Float, color: Color) {
-    val tip = root + reach
-    // The blade leans out from its foot and comes round towards its tip.
-    val bow = Offset(root.x + reach.x * 0.25f, root.y + reach.y * 0.6f)
-    BLADE.reset()
-    BLADE.moveTo(root.x - width, root.y)
-    BLADE.quadraticTo(bow.x - width * 0.6f, bow.y, tip.x, tip.y)
-    BLADE.quadraticTo(bow.x + width * 0.6f, bow.y, root.x + width, root.y)
-    BLADE.close()
-    drawPath(BLADE, color)
-}
+/** How far the seedbed stays in from its cell's sides: none, so that lawns side by side are one bed. */
+private const val LAWN_SEEDBED_INSET = 0f
 
-/** One path for every blade, filled and reset in turn: the garden is drawn on one thread. */
-private val BLADE = Path()
+/** From how far grown the grass begins to close in between the blades. */
+private const val LAWN_CLOSES_FROM = 0.6f
 
-/** The blade at the back of a tuft of lawn, in its shade. */
-private val GRASS_TUFT_DARK = Color(0xFF3F6B2A)
+/** The blades without the lawn's picture: a deep, natural green. */
+private val LAWN_BLADE_FALLBACK = Color(0xFF4F7D33)
 
 private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {
     val withered = obj.status == PlantStatus.WITHERED

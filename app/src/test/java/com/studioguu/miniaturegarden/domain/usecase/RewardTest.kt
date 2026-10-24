@@ -80,6 +80,26 @@ class RewardTest {
     }
 
     @Test
+    fun `blessed rain waters every living plant to the full, and a thirsty one is thirsty no more (#61)`() = runBlocking {
+        repo.put(plant("dry", 0, growth = 0.4f).copy(moistureLevel = 0.1f, status = PlantStatus.THIRSTY))
+        repo.put(plant("half", 1, growth = 0.2f).copy(moistureLevel = 0.5f))
+        repo.put(plant("grown", 2, growth = 1f).copy(moistureLevel = 0.15f, status = PlantStatus.THIRSTY))
+        repo.put(plant("dead", 3, growth = 0.3f).copy(moistureLevel = 0f, status = PlantStatus.WITHERED, stressRate = 1f))
+
+        grant.blessedRain(t0, sunny, today)
+
+        for (id in listOf("dry", "half", "grown")) {
+            assertEquals(id, 1f, repo.objects.getValue(id).moistureLevel, 0f)
+            assertEquals(id, PlantStatus.HEALTHY, repo.objects.getValue(id).status)
+        }
+        assertEquals(0.7f, repo.objects.getValue("dry").growthProgress, 1e-5f)
+        assertEquals(1f, repo.objects.getValue("grown").growthProgress, 0f)
+        // A withered plant is not brought back by the rain.
+        assertEquals(0f, repo.objects.getValue("dead").moistureLevel, 0f)
+        assertEquals(PlantStatus.WITHERED, repo.objects.getValue("dead").status)
+    }
+
+    @Test
     fun `the time already passed is counted before the rain is applied`() = runBlocking {
         repo.put(plant("a", 0, growth = 0f))
 

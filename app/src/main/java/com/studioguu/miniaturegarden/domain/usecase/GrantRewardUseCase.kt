@@ -25,8 +25,13 @@ class GrantRewardUseCase @Inject constructor(
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
     /**
-     * Blessed rain: every living plant is first brought up to [now], then loses half of the
-     * growth it still has ahead of it. Fully grown and withered plants are left as they are.
+     * Blessed rain: every living plant is first brought up to [now], then watered to the full
+     * and loses half of the growth it still has ahead of it (a fully grown one is only watered).
+     * Its status is worked out again from its levels, so a thirsty plant is thirsty no more.
+     * Withered plants are left as they are: the rain does not bring them back.
+     *
+     * Before, it only shortened the growing time, and the plants' water stayed where it was: a
+     * thirsty crop was still thirsty under the rain.
      */
     suspend fun blessedRain(now: Long, weather: WeatherForecast, today: Long): RewardResult {
         if (!rewardLimits.tryConsume(RewardType.BLESSED_RAIN, today)) return RewardResult.LIMIT_REACHED
@@ -38,7 +43,17 @@ class GrantRewardUseCase @Inject constructor(
                 .map { plant ->
                     if (plant.status == PlantStatus.WITHERED) return@map plant
                     val remaining = 1f - plant.growthProgress
-                    plant.copy(growthProgress = (1f - remaining * (1f - RewardType.BLESSED_RAIN_REDUCTION)).coerceIn(0f, 1f))
+                    val rained = plant.copy(
+                        moistureLevel = 1f,
+                        growthProgress = (1f - remaining * (1f - RewardType.BLESSED_RAIN_REDUCTION)).coerceIn(0f, 1f),
+                    )
+                    rained.copy(
+                        status = CalculateOfflineProgressUseCase.statusOf(
+                            rained.moistureLevel.toDouble(),
+                            rained.nutritionLevel.toDouble(),
+                            rained.stressRate.toDouble(),
+                        ),
+                    )
                 }
             if (updated.isNotEmpty()) gardenRepository.upsertGridObjects(updated)
         }

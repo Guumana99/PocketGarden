@@ -66,6 +66,13 @@ enum class TutorialStep {
     /** Whether one of the guided steps is current: a hint sign shows and a cell sparkles. */
     val isGuiding: Boolean get() = this < FINISHED
 
+    /**
+     * Whether the garden is still in its first play: the guided steps and their closing board.
+     * The weather is fixed to sunny meanwhile ([WeatherForecast.forGarden]); the season is spring
+     * anyway, as every new garden starts in it ([GardenProgress.NEW_GARDEN]).
+     */
+    val isFirstPlay: Boolean get() = this <= FINISHED
+
     /** Whether [feature] is in the player's hands at this step. */
     fun reveals(feature: GardenFeature): Boolean = this >= feature.revealedAt
 
