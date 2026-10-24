@@ -1,6 +1,6 @@
 # ぽけっと庭園 — 作業ガイド
 
-9×9 マス（シンボル建物を建てると 13×13 まで広がる）の箱庭で作物を育て、建物や装飾を置いて眺める Android ゲーム。
+11×11 マス（シンボル建物を建てると 13×13 まで広がる。#56 より前に始めた庭は 9×9 から 9→11→13）の箱庭で作物を育て、建物や装飾を置いて眺める Android ゲーム。
 Kotlin / Jetpack Compose / Hilt / Room(SQLCipher)。パッケージは `com.studioguu.miniaturegarden`。
 
 このファイルは `docs/` にあるため、新しいスレッドで自動的には読み込まれない。作業の最初に読ませること。
@@ -12,6 +12,7 @@ Kotlin / Jetpack Compose / Hilt / Room(SQLCipher)。パッケージは `com.stud
 | 構成・描画・計算ロジック・DB | `ARCHITECTURE.md` |
 | 世界観と UX の判断基準 | `PHILOSOPHY.md` |
 | 画像・音の素材と加工手順 | `ASSETS.md` |
+| 絵と音の状態（採用・仮・未作成を 1 枠ずつ） | `ASSET_LEDGER.md` |
 | AI での進め方、環境の落とし穴 | `AI_WORKFLOW.md` |
 | 済んだこと、これからの候補 | `ROADMAP.md` |
 
@@ -34,7 +35,7 @@ timeout 560 ./gradlew testDebugUnitTest --tests "*ConstructionTest" --tests "*Po
 ```
 
 ```bash
-# 全件テスト（約 850 件。指示があったとき、または広く触ったときだけ）
+# 全件テスト（約 850 件。ユーザーから指示があったときだけ）
 timeout 560 ./gradlew testDebugUnitTest --console=plain
 ```
 
@@ -46,7 +47,9 @@ timeout 560 ./gradlew testDebugUnitTest --console=plain
 
 ## テストの方針
 
-- **触った範囲に関係するテストクラスだけ**を `--tests` で回す。全件は時間がかかるので既定では回さない。
+- **変更した箇所と、その影響を受ける箇所に関係するテストクラス**を `--tests` で回す。
+- 全件テストは**ユーザーから指示があったときだけ**回す。広く触ったときも、自分の判断では回さない（必要だと思えば報告で提案する）。
+- `docs/` だけを変えたときも、docs を読むテストを回す（`SoilPondAndFirstPlayTest` が `ASSETS.md` の「ショップの取扱一覧」を、`AssetLedgerTest` が `ASSET_LEDGER.md` を見ている）。
 - どのクラスが何を見ているかは `AI_WORKFLOW.md` の対応表を使う。
 - 仕様変更で既存テストの期待値が変わるときは、テストを直してよい。ただし**何件を、なぜ変えたか**を報告に書く。
 - 「全件は未実行」「この後の変更は再テストしていない」は、隠さず報告に書く。
@@ -58,13 +61,14 @@ timeout 560 ./gradlew testDebugUnitTest --console=plain
 - 作業ツリーはクリーンに保つ。例外は `gradle.properties` の未コミット変更
   （`org.gradle.tooling.parallel=true`。ユーザーの手元設定なので**触らない・コミットしない**）。
 - `git add` はパスを指定する（`git add app tools`）。`git add -A` は使わない。
-- コミットメッセージは英語、末尾に `Co-Authored-By:` 行。
+- コミットメッセージは日本語でよい（英語でもよい）。末尾に `Co-Authored-By:` 行。
 
 ## 基本ルール
 
-- 返答と報告は日本語。コード、コメント、コミットメッセージは英語。
+- 返答と報告は日本語。コードとコメントは英語。コミットメッセージは日本語でよい。
 - 報告は「何をしたか」より先に、**確認できていないこと・仕様として勝手に決めたこと**を書く。
 - 画像アセットを勝手に足さない。足りない絵はプログラム描画で補い、その旨を伝える。
+- 絵や音を足す・差し替える・コード描画を絵にする・使わなくするときは、同じコミットで `ASSET_LEDGER.md` を直す（作物は段階・枯れ・アイコンの枠ごと）。`AssetLedgerTest` で実物と食い違っていないか確かめる。
 - UI 文言に「動画」という語を使わない（広告まわり）。
 - 接続中の実機（USB）には触らない。確認はエミュレータ `emulator-5554` のみ（`adb -s emulator-5554`）。
 - AdMob はテスト用 ID のまま。本番 ID への差し替えは `app/build.gradle.kts` の 2 つの定数。

@@ -28,7 +28,7 @@ di/       Hilt の束ね
 
 ## グリッドと物の持ち方
 
-- 庭は 9×9。すべての物は `grid_objects` テーブルの 1 行＝ `GridObject`。
+- 新しい庭は 11×11（#56 から。下の「庭の拡張」で 13×13 まで広がる）。すべての物は `grid_objects` テーブルの 1 行＝ `GridObject`。
 - 種類は **objectId の接頭辞**で決まる。
 
 | 接頭辞 | 意味 | セルの層 |
@@ -348,7 +348,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 - `IsometricTransform`: タイル 128×64dp、高さ 1 段 16dp。`worldToScreen(x, y, z)`。
 - `GardenCamera`: ピンチとドラッグ。ピンチアウトの限界は全体が入る倍率（`FIT_MARGIN = 0.86`、木枠の分を空けている）。
-  既定の倍率 `GardenCamera.starting` は**画面だけで決まる**（#51）：`max(START_SCALE = 0.375, 13×13 が入る倍率)`。庭の大きさに左右されないので、新しい庭も広がった直後の庭も同じ倍率・中央で開く。
+  既定の倍率 `GardenCamera.starting` は **`START_SCALE = 0.55` で固定**（#59。1 マス約 70dp）。庭の大きさに左右されないので、新しい庭も続きの庭も広がった直後の庭も同じ倍率・中央で開く（#51 では `max(0.375, 13×13 が入る倍率)` だった）。
 - `LayerPipeline`: 描画命令を層（地面 → グリッド → 影 → 地表物 → 物 → 上のエフェクト → HUD）と奥行きで並べる。
 - 物の描画は `submitObjects()`。図鑑の絵 `ObjectPreview` も同じ関数を使う（絵がずれない）。
 - スプライトは `assets/atlas/atlas.png` + `assets_manifest.json`。無い物はプログラム描画。
@@ -661,7 +661,9 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
   ツールバーは ⛏️ クワ・🧪 肥料・🎒 持ち物・🛒 ショップ（#54 で 💧 水やりを外した。水やりは作物を選んだパネルの「水やり」だけ。チュートリアルの水やりの段階もパネルから）。
 - **選択パネルの見出し（#54）**：名前・作物の状態（「元気」などを薄い色の丸い札 `StatusTag` に）・「閉じる」を 12dp（`HEADER_GAP`）ずつ空けて並べる。状態の文字が「閉じる」に詰まって見えていた。全部の物に共通。
 - **木のダイアログのボタン**：「はじめる」の確認（タイトル）も、ほかの木のダイアログと同じく「やめる」「はじめる」を中央に横並び（#54。`AlertDialog` の既定のボタン列で右に寄っていた）。
-- **庭の倍率と位置は保存する**（#28）：`AppSettings.gardenView`（`GardenView`：scale と pan。DataStore の `garden_view_*`）。
+- **庭の倍率と位置は復元しない**（#59 から。庭はいつも既定の倍率 ×0.55・中央で開く）。#28〜#58 は保存して次に開いたとき戻していた。
+  保存の仕組み（下の 2 行）はコードに残っているが、`GardenScreen` が `GardenCanvas` に `savedView`・`onViewChanged` を渡していないので働かない。
+  `AppSettings.gardenView`（`GardenView`：scale と pan。DataStore の `garden_view_*`）。
   `GardenCanvas` はプレイヤーが動かした（または庭が広がった）あと 0.6 秒止まったら `onViewChanged` で返し、`GardenViewModel.saveView` が書く。
   開くときは `savedView` が読めた時点で 1 回だけ `GardenCamera.restored` で戻す（画面に合う範囲に収め直す）。最初の既定の倍率は保存しない。
   - 「はじめる」（`TitleViewModel.startOver`、保存がなくても通す）で `gardenView = null` にする。庭が広がったときは `GardenCamera.starting` に戻す（#51）。
