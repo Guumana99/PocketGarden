@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import javax.inject.Inject
 
@@ -14,16 +15,31 @@ import javax.inject.Inject
 class RecordCollectionUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
 ) {
-    /** @return the page that just became ready, or null if this was not a first time. */
-    suspend operator fun invoke(objectId: String, trigger: CollectionTrigger, now: Long): CollectionEntry? {
+    /**
+     * @param colour the colour the harvested plant bloomed in, for a crop that blooms in several
+     *   ([PlantSpecies.bloomColourOf]): noted with the page, so that the book shows the colours
+     *   the player really grew (#59).
+     * @return the page that just became ready, or null if this was not a first time.
+     */
+    suspend operator fun invoke(objectId: String, trigger: CollectionTrigger, now: Long, colour: String? = null): CollectionEntry? {
         val entry = CollectionEntry.fromObjectId(objectId)?.takeIf { it.trigger == trigger } ?: return null
 
-        val existing = gardenRepository.getCollection().firstOrNull { it.entryId == entry.objectId }
+        val records = gardenRepository.getCollection()
+        val existing = count(records, entry.objectId, now)
+        if (colour != null && colour in PlantSpecies.forObjectId(objectId).bloomColours) {
+            count(records, CollectionEntry.colourRecordId(entry.objectId, colour), now)
+        }
+        return entry.takeIf { existing == null }
+    }
+
+    /** Counts one more under [entryId]; @return the record as it was before, null for a first time. */
+    private suspend fun count(records: List<CollectionRecord>, entryId: String, now: Long): CollectionRecord? {
+        val existing = records.firstOrNull { it.entryId == entryId }
         gardenRepository.upsertCollectionRecord(
             existing?.copy(count = existing.count + 1)
-                ?: CollectionRecord(entryId = entry.objectId, count = 1, firstObtainedAt = now)
+                ?: CollectionRecord(entryId = entryId, count = 1, firstObtainedAt = now)
         )
-        return entry.takeIf { existing == null }
+        return existing
     }
 }
 

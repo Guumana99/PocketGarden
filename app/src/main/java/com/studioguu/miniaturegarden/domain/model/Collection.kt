@@ -73,6 +73,13 @@ enum class CollectionEntry(
         fun fromObjectId(objectId: String): CollectionEntry? = entries.firstOrNull { it.objectId == objectId }
 
         fun inCategory(category: CollectionCategory): List<CollectionEntry> = entries.filter { it.category == category }
+
+        /**
+         * The key a colour of a crop that blooms in several ([PlantSpecies.bloomColours]) is
+         * noted under, once one in that colour has been harvested (#59): `plant_tulip#pink`. It
+         * is no page of its own: it only says which colours the page has seen.
+         */
+        fun colourRecordId(objectId: String, colour: String): String = "$objectId#$colour"
     }
 }
 
@@ -118,6 +125,16 @@ data class CollectionProgress(private val records: List<CollectionRecord>) {
     val percent: Int get() = revealed * 100 / total
 
     fun recordOf(entry: CollectionEntry): CollectionRecord? = byId[entry.objectId]
+
+    /**
+     * The colours of [entry] the player has harvested, the first one first (#59); empty for a
+     * crop of one colour, or for harvests from before colours were noted.
+     */
+    fun coloursOf(entry: CollectionEntry): List<String> =
+        PlantSpecies.fromObjectId(entry.objectId)?.bloomColours.orEmpty()
+            .mapNotNull { colour -> byId[CollectionEntry.colourRecordId(entry.objectId, colour)]?.let { colour to it.firstObtainedAt } }
+            .sortedBy { it.second }
+            .map { it.first }
 
     fun stateOf(entry: CollectionEntry): PageState {
         val record = byId[entry.objectId] ?: return PageState.LOCKED

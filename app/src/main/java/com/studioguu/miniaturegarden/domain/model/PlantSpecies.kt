@@ -116,7 +116,25 @@ enum class PlantSpecies(
     fun harvestReward(harvestsBefore: Int): HarvestReward =
         if (isRepeatable && harvestsBefore > 0) HarvestReward(regrowCoins, regrowXp) else HarvestReward(harvestCoins, harvestXp)
 
+    /**
+     * The colours this crop blooms in (#58), its plain last stage first (red for the tulip);
+     * empty for a crop that blooms in one colour only.
+     */
+    val bloomColours: List<String> get() = BLOOM_COLOURS[this].orEmpty()
+
+    /**
+     * The colour the plant [instanceId] of this crop blooms in, picked by its id once and for
+     * good: the same one in the garden, when it is harvested and in the book (#59). Null for a
+     * crop of one colour.
+     */
+    fun bloomColourOf(instanceId: String): String? =
+        bloomColours.takeIf { it.isNotEmpty() }?.let { it[Math.floorMod(instanceId.hashCode(), it.size)] }
+
     companion object {
+        private val BLOOM_COLOURS: Map<PlantSpecies, List<String>> = mapOf(
+            TULIP to listOf("red", "pink", "yellow", "white", "purple", "blue"),
+        )
+
         /** Used for plant ids that have no entry here. */
         val DEFAULT = TULIP
 

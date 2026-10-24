@@ -1200,9 +1200,10 @@ private fun DrawScope.drawVanishing(pivot: Offset, progress: Float, tileHeight: 
  */
 private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: List<GridObject>) {
     companion object {
-        fun of(objectId: String): PreviewScene {
+        /** @param bloomColour for a crop of several colours, the one to show; its plain one when null. */
+        fun of(objectId: String, bloomColour: String? = null): PreviewScene {
             fun at(x: Int, y: Int) = GridObject(
-                instanceId = "preview_${x}_$y",
+                instanceId = TileSetDefinition.instanceIdBlooming(objectId, bloomColour, "preview_${x}_$y"),
                 gridX = x,
                 gridY = y,
                 objectId = objectId,
@@ -1307,8 +1308,9 @@ fun ObjectPreview(
     atlas: SpriteAtlas,
     terrain: TerrainTextures,
     modifier: Modifier = Modifier,
+    bloomColour: String? = null,
 ) {
-    val scene = remember(objectId) { PreviewScene.of(objectId) }
+    val scene = remember(objectId, bloomColour) { PreviewScene.of(objectId, bloomColour) }
     val map = remember(scene) { GardenMap.allGrass(scene.gridSize) }
     val grid = remember(scene) { GardenGrid(map, scene.objects) }
     val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -63,7 +64,6 @@ import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.components.BareGround
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
-import com.studioguu.miniaturegarden.ui.components.LoadingSprout
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
@@ -80,7 +80,7 @@ private const val SAMPLE_BEAT_MILLIS = 1_200L
 private const val SAMPLE_ZOOM = 1.22f
 
 /** How long the sample garden takes to fade in once its artwork has been read. */
-private const val SAMPLE_FADE_IN_MILLIS = 250
+private const val SAMPLE_FADE_IN_MILLIS = 600
 
 /**
  * The first thing the app shows: the sky and meadow behind the garden, a wooden sign with the
@@ -129,12 +129,15 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
                     .fillMaxWidth()
                     .semantics { contentDescription = sampleLabel },
             ) {
-                // Fades in once the artwork is read, rather than flashing up in stand-in shapes.
-                val sampleAlpha by animateFloatAsState(if (artLoaded) 1f else 0f, tween(SAMPLE_FADE_IN_MILLIS), label = "sampleIn")
+                // Fades softly in out of the sky once the artwork is read. Until then the sky is
+                // left empty: no stand-in shapes and no placeholder mark in the middle (#59).
+                val sampleAlpha by animateFloatAsState(
+                    if (artLoaded) 1f else 0f,
+                    tween(SAMPLE_FADE_IN_MILLIS, easing = LinearOutSlowInEasing),
+                    label = "sampleIn",
+                )
                 if (artLoaded) {
                     SampleGarden(atlas, terrain, Modifier.fillMaxSize().graphicsLayer { alpha = sampleAlpha })
-                } else {
-                    LoadingSprout(Modifier.align(Alignment.Center))
                 }
                 // Laid over the sample so that it cannot be dragged, pinched or tapped: it is
                 // only to be looked at.

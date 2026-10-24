@@ -222,6 +222,63 @@ class CollectionTest {
         assertEquals(35, CollectionProgress(allReady).ready)
     }
 
+    // --- The colours of a crop that blooms in several (#59) ---
+
+    @Test
+    fun `a harvested tulip notes the colour it bloomed in, and the book shows the ones grown`() = runBlocking {
+        // Two tulips of different colours, and a second of the first colour.
+        val ids = (0 until 200).map { "tulip-$it" }
+        val first = ids.first()
+        val firstColour = PlantSpecies.TULIP.bloomColourOf(first)!!
+        val other = ids.first { PlantSpecies.TULIP.bloomColourOf(it) != firstColour }
+        val otherColour = PlantSpecies.TULIP.bloomColourOf(other)!!
+        val again = ids.drop(1).first { PlantSpecies.TULIP.bloomColourOf(it) == firstColour }
+        repo.put(grown(first, PlantSpecies.TULIP))
+        repo.put(grown(other, PlantSpecies.TULIP, x = 1))
+        repo.put(grown(again, PlantSpecies.TULIP, x = 2))
+
+        harvest(first, t0, sunny)
+        harvest(other, t0 + 1, sunny)
+        harvest(again, t0 + 2, sunny)
+
+        // One page for the tulip, whatever its colour, counting every harvest.
+        assertEquals(3, repo.collection["plant_tulip"]?.count)
+        assertEquals(2, repo.collection[CollectionEntry.colourRecordId("plant_tulip", firstColour)]?.count)
+        assertEquals(1, repo.collection[CollectionEntry.colourRecordId("plant_tulip", otherColour)]?.count)
+        val progress = CollectionProgress(repo.getCollection())
+        assertEquals(listOf(firstColour, otherColour), progress.coloursOf(CollectionEntry.TULIP))
+        // The colour records are no pages of their own.
+        assertEquals(1, progress.ready)
+        assertEquals(CollectionEntry.entries.size, progress.total)
+    }
+
+    @Test
+    fun `a crop of one colour notes none, and the garden and the book agree on every tulip's colour`() = runBlocking {
+        repo.put(grown("s", PlantSpecies.SUNFLOWER))
+        harvest("s", t0, sunny)
+        assertEquals(setOf("plant_sunflower"), repo.collection.keys)
+        assertTrue(CollectionProgress(repo.getCollection()).coloursOf(CollectionEntry.SUNFLOWER).isEmpty())
+        // A colour that is not the crop's own is not noted.
+        record("plant_tulip", CollectionTrigger.HARVEST, t0, colour = "green")
+        assertNull(repo.collection[CollectionEntry.colourRecordId("plant_tulip", "green")])
+
+        // The sprite the garden draws a tulip with is the colour noted for it when it is harvested.
+        val tulip = PlantSpecies.TULIP
+        assertEquals(listOf("red", "pink", "yellow", "white", "purple", "blue"), tulip.bloomColours)
+        for (i in 0 until 100) {
+            val id = "t-$i"
+            val colour = tulip.bloomColourOf(id)!!
+            val sprite = com.studioguu.miniaturegarden.data.asset.TileSetDefinition.assetIdFor(grown(id, tulip))
+            assertEquals(if (colour == "red") "plant_tulip_stage3" else "plant_tulip_stage3_$colour", sprite)
+        }
+        // And a picture of a tulip in a given colour (the book's) is drawn in that colour, or in red.
+        for (colour in tulip.bloomColours + listOf<String?>(null, "green")) {
+            val id = com.studioguu.miniaturegarden.data.asset.TileSetDefinition.instanceIdBlooming("plant_tulip", colour, "preview_0_0")
+            assertEquals(colour.takeIf { it in tulip.bloomColours } ?: "red", tulip.bloomColourOf(id))
+        }
+        assertEquals("preview_0_0", com.studioguu.miniaturegarden.data.asset.TileSetDefinition.instanceIdBlooming("plant_sunflower", "red", "preview_0_0"))
+    }
+
     // --- Through the game actions ---
 
     @Test

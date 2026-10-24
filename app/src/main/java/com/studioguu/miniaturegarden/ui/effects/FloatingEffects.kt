@@ -62,6 +62,12 @@ sealed interface GardenEffect {
  * [effect] added to the effects on screen. A building's first completion also makes its page of
  * the book ready, and the two would otherwise float up in the same place at the same moment: the
  * news of the page joins the plaque of the building instead, whichever of the two comes first.
+ *
+ * Effects of one kind float up from the same spot, so a second of a kind while the first is
+ * still up is merged into it rather than laid over it (#59: several pages ready at once, or a
+ * row of crops harvested in a run, stacked into an unreadable pile). The merged effect takes the
+ * new id, so it starts afresh: a harvest's sums add up, a page's news is said once, and a tool's
+ * rank is the newest one.
  */
 fun List<GardenEffect>.plusEffect(effect: GardenEffect): List<GardenEffect> {
     val built = indexOfLast { it is GardenEffect.WorkDone && it.kind == WorkKind.BUILDING }
@@ -70,6 +76,13 @@ fun List<GardenEffect>.plusEffect(effect: GardenEffect): List<GardenEffect> {
             toMutableList().also { it[built] = (it[built] as GardenEffect.WorkDone).copy(newPage = true) }
         effect is GardenEffect.WorkDone && effect.kind == WorkKind.BUILDING && any { it is GardenEffect.Discovery } ->
             filterNot { it is GardenEffect.Discovery } + effect.copy(newPage = true)
+        effect is GardenEffect.Harvest && any { it is GardenEffect.Harvest } ->
+            filterNot { it is GardenEffect.Harvest } +
+                effect.copy(coins = effect.coins + filterIsInstance<GardenEffect.Harvest>().sumOf { it.coins })
+        effect is GardenEffect.Discovery && any { it is GardenEffect.Discovery } ->
+            filterNot { it is GardenEffect.Discovery } + effect
+        effect is GardenEffect.ToolLevelUp && any { it is GardenEffect.ToolLevelUp && it.tool == effect.tool } ->
+            filterNot { it is GardenEffect.ToolLevelUp && it.tool == effect.tool } + effect
         else -> this + effect
     }
 }

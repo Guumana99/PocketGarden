@@ -16,6 +16,7 @@ import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.SecurityRepository
+import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
@@ -100,7 +101,7 @@ class GardenActionUseCasesTest {
     }
 
     @Test
-    fun `fertilizer refills nutrition and boosts growth, capped at fully grown`() = runBlocking {
+    fun `fertilizer refills nutrition and leaves growth alone`() = runBlocking {
         repo.put(tulip(growth = 0.5f, nutrition = 0.1f, status = PlantStatus.UNNOURISHED))
         repo.put(tulip(id = "p2", x = 1, growth = 0.99f, nutrition = 0.3f))
 
@@ -108,9 +109,10 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.SUCCESS, care.fertilize("p2", t0, sunny))
 
         assertEquals(1f, stored("p1").nutritionLevel, 0f)
-        assertEquals(0.5f + 0.05f, stored("p1").growthProgress, 1e-4f)  // 5% of a tulip's 48 hours
+        // #59: no boost any more; growth is where it was.
+        assertEquals(0.5f, stored("p1").growthProgress, 1e-4f)
         assertEquals(PlantStatus.HEALTHY, stored("p1").status)
-        assertEquals(1f, stored("p2").growthProgress, 0f)
+        assertEquals(0.99f, stored("p2").growthProgress, 1e-4f)
     }
 
     @Test
@@ -218,7 +220,7 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.NOT_ENOUGH_COINS, care.fertilize("p2", t0, sunny))
 
         assertEquals(5L, repo.profile?.coins)
-        assertEquals(0.2f + 0.05f, stored().growthProgress, 1e-4f)
+        assertEquals(0.2f, stored().growthProgress, 1e-4f)
         assertEquals(6L, repo.profile?.currentXp)
     }
 
@@ -275,36 +277,28 @@ class GardenActionUseCasesTest {
     }
 
     @Test
-    fun `fertilizer brings every crop on by the same share of its growing time`() = runBlocking {
+    fun `fertilizer refills nutrition only and leaves growth where it was`() = runBlocking {
         repo.profile = UserProfile(coins = 1_000)
         PlantSpecies.entries.forEachIndexed { index, species ->
-            repo.put(tulip(id = species.name, x = index, nutrition = 0.3f).copy(objectId = species.objectId))
-            care.fertilize(species.name, t0, sunny)
-            val expected = maxOf(0.05f, 2f / species.growthHours)
-            assertEquals(species.name, expected, stored(species.name).growthProgress, 1e-5f)
-            assertEquals(species.name, expected, CareForPlantUseCase.fertilizerBoost(species), 1e-6f)
+            repo.put(tulip(id = species.name, x = index, nutrition = 0.3f).copy(objectId = species.objectId, growthProgress = 0.4f))
+            val before = calc(stored(species.name), t0, sunny)
+            assertEquals(species.name, ActionResult.SUCCESS, care.fertilize(species.name, t0, sunny))
+            val after = stored(species.name)
+            assertEquals(species.name, 1f, after.nutritionLevel, 0f)
+            // #59: growth and the other care levels are untouched by a feed.
+            assertEquals(species.name, before.growthProgress, after.growthProgress, 0f)
+            assertEquals(species.name, before.moistureLevel, after.moistureLevel, 0f)
         }
-        // A slow rose gains six hours, not two; the quickest crop, mint, still gets its two.
-        assertEquals(6f / 120f, stored("ROSE").growthProgress, 1e-5f)
-        assertEquals(2f / 36f, stored("MINT").growthProgress, 1e-5f)
     }
 
     @Test
     fun `fertilizer stays a help, never a shortcut or a money maker`() {
-        val feedEveryHours = 36f  // nutrition runs out over 72 hours and feeding waits for 50%
-        for (species in PlantSpecies.entries) {
-            // Fed every time it is allowed, a crop comes in at most a fifth sooner.
-            val feeds = kotlin.math.ceil(species.growthHours / feedEveryHours).toInt()
-            assertTrue(species.name, feeds * CareForPlantUseCase.fertilizerBoost(species) <= 0.2f)
-            // And the hours a feed saves are worth less than it costs, in what the crop pays per hour:
-            // it is bought for the refill and the time, not as an investment.
-            val hoursSaved = CareForPlantUseCase.fertilizerBoost(species) * species.growthHours
-            val coinsPerHour = species.harvestCoins.toFloat() / species.growthHours
-            assertTrue(species.name, hoursSaved * coinsPerHour < CareForPlantUseCase.FERTILIZER_COST)
-        }
         // Cheaper than before, and its experience no more per coin than it was (10 for 15).
         assertEquals(10, CareForPlantUseCase.FERTILIZER_COST)
         assertTrue(CareForPlantUseCase.FERTILIZE_XP.toFloat() / CareForPlantUseCase.FERTILIZER_COST <= 10f / 15f)
+        val care = File(listOf(File("src/main"), File("app/src/main")).first { it.isDirectory },
+            "java/com/studioguu/miniaturegarden/domain/usecase/GardenActionUseCases.kt").readText()
+        assertFalse(care.contains("fertilizerBoost"))
     }
 
     // --- Debug time skip ---

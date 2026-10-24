@@ -78,17 +78,28 @@ object TileSetDefinition {
 
     /**
      * The flowers a crop blooms in besides its plain last stage (#58): each plant takes one, or
-     * the plain one, for good, by its instance id. Drawn as `<objectId>_stage<N>_<colour>`.
+     * the plain one, for good, by its instance id ([PlantSpecies.bloomColourOf]). Drawn as
+     * `<objectId>_stage<N>_<colour>`.
      */
-    val BLOOM_COLOURS: Map<String, List<String>> = mapOf(
-        PlantSpecies.TULIP.objectId to listOf("pink", "yellow", "white", "purple", "blue"),
-    )
+    val BLOOM_COLOURS: Map<String, List<String>> =
+        PlantSpecies.entries.filter { it.bloomColours.size > 1 }.associate { it.objectId to it.bloomColours.drop(1) }
 
     /** The colour [instanceId] of [objectId] blooms in, or null for its plain last stage (red for the tulip). */
     fun bloomColourOf(objectId: String, instanceId: String): String? {
-        val colours = BLOOM_COLOURS[objectId] ?: return null
-        val pick = Math.floorMod(instanceId.hashCode(), colours.size + 1)
-        return if (pick == 0) null else colours[pick - 1]
+        val species = PlantSpecies.fromObjectId(objectId) ?: return null
+        return species.bloomColourOf(instanceId)?.takeIf { it != species.bloomColours.first() }
+    }
+
+    /**
+     * An instance id, made from [base], under which [objectId] blooms in [colour]; in its plain
+     * colour when [colour] is null or not one of its own. A picture of a crop (the book's) is
+     * drawn as a plant with this id, so that it shows the colour the player grew rather than
+     * whichever one a made-up id happens to pick (#59).
+     */
+    fun instanceIdBlooming(objectId: String, colour: String?, base: String): String {
+        val species = PlantSpecies.fromObjectId(objectId) ?: return base
+        val wanted = colour?.takeIf { it in species.bloomColours } ?: species.bloomColours.firstOrNull() ?: return base
+        return (0 until 1_000).asSequence().map { "${base}_$it" }.firstOrNull { species.bloomColourOf(it) == wanted } ?: base
     }
 
     /**

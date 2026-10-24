@@ -479,6 +479,17 @@
     <string name="nature_heading_hints">うわさ</string>
     <string name="nature_index">もくじ</string>
     <string name="nature_new">NEW</string>
+    <!-- #59: the colours of a crop that blooms in several, as the player has grown them. -->
+    <string name="collection_bloom_colours">咲かせた色：%1$s（%2$d／%3$d色）</string>
+    <string name="collection_bloom_colours_separator">・</string>
+    <string name="bloom_colour_red">赤</string>
+    <string name="bloom_colour_pink">ピンク</string>
+    <string name="bloom_colour_yellow">黄</string>
+    <string name="bloom_colour_white">白</string>
+    <string name="bloom_colour_purple">紫</string>
+    <string name="bloom_colour_blue">青</string>
+    <string name="bloom_colour_other">ほかの色</string>
+    <string name="msg_new_bloom_colour">🌷 図鑑に新しい色が書き加えられました</string>
     <string name="book_entered_on">登録日 %1$s</string>
     <string name="nature_none_yet">まだ誰にも出会っていない。\n庭を整えて、待ってみよう。</string>
     <string name="creature_flavor_butterfly">咲きそろった花から花へと渡り歩く。\n羽をたたむと、木の葉によく似ている。</string>
