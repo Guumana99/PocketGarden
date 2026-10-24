@@ -20,11 +20,20 @@ data class GroundSlab(val anchorX: Float, val anchorY: Float, val topWidth: Floa
 
     companion object {
         /**
-         * The untilled ground every cell starts as (`res/drawable/soil_wasteland.png`): cracked
-         * dark earth, its face measured from the dark soil alone, without the dry tufts at its
-         * corners.
+         * The untilled ground every cell starts as (`res/drawable/soil_wasteland.png`): pale,
+         * sun-baked earth split by cracks, a slab on white (#57; measured by
+         * tools/prepare_drawable_art.py, the white left out).
          */
-        val WASTELAND = GroundSlab(anchorX = 0.502f, anchorY = 0.519f, topWidth = 0.884f)
+        val WASTELAND = GroundSlab(anchorX = 0.498f, anchorY = 0.477f, topWidth = 0.812f)
+
+        /** A bed of tilled soil, three furrows across it (`res/drawable/soil_tilled.png`, #57). */
+        val TILLED = GroundSlab(anchorX = 0.499f, anchorY = 0.457f, topWidth = 0.979f)
+
+        /** A composted bed: dark, crumbly, enriched earth (`res/drawable/soil_revived.png`, #57). */
+        val REVIVED = GroundSlab(anchorX = 0.502f, anchorY = 0.478f, topWidth = 0.988f)
+
+        /** A cell of open water, the middle of a pond (`res/drawable/pond_center.png`, #57). */
+        val POND_CENTER = GroundSlab(anchorX = 0.5f, anchorY = 0.479f, topWidth = 0.999f)
 
         /** The pond (`res/drawable/pond.png`): its ring of stones is the face. */
         val POND = GroundSlab(anchorX = 0.502f, anchorY = 0.502f, topWidth = 0.962f)

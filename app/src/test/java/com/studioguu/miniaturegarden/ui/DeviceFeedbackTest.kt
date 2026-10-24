@@ -211,7 +211,8 @@ class DeviceFeedbackTest {
 
     @Test
     fun `a bed on the wasteland is laid over the wasteland's own earth, turned over`() {
-        val bed = source("ui/components/GardenCanvas.kt").substringAfter("private fun DrawScope.drawTilledSoil(").substringBefore("\n}\n")
+        // Where there is no picture of a bed (#57), its earth is drawn: the wasteland's own, turned over.
+        val bed = source("ui/components/GardenCanvas.kt").substringAfter("private fun DrawScope.drawCodeEarth(").substringBefore("\n}\n")
         assertTrue(bed.contains("drawFlatGround(earth, transform, bed)"))
         assertTrue(bed.indexOf("drawFlatGround(earth, transform, bed)") < bed.indexOf("SoilPalette.TURNED_OVER"))
         assertTrue(SoilPalette.TURNED_OVER in 0.3f..0.75f)

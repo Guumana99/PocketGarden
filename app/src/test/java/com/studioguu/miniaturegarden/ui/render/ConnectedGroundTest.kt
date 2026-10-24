@@ -115,16 +115,28 @@ class ConnectedGroundTest {
         val manifest = AtlasManifest.parse(File(main, "assets/atlas/assets_manifest.json").readText())
         val crops = manifest.assets.filter { it.assetId.startsWith("plant_") }
         assertTrue(crops.size >= 30)
-        for (crop in crops) {
+        // The wheat is a field over the whole cell (#57): it stands on the field's middle, not on a stem.
+        val (fields, plants) = crops.partition { it.assetId.startsWith("plant_wheat_") }
+        assertEquals(4, fields.size)
+        for (field in fields) {
+            assertEquals(field.assetId, 0.5f, field.anchorX, 1e-4f)
+            assertTrue(field.assetId, field.anchorY in 0.55f..0.8f)
+        }
+        for (crop in plants) {
             // At the foot of the picture, or a little above where a withered leaf droops lower.
             assertTrue(crop.assetId, crop.anchorY in 0.85f..1f)
             assertTrue(crop.assetId, crop.anchorX in 0.3f..0.7f)
         }
         // Healthy plants stand right at the foot of their pictures.
-        assertTrue(crops.filter { !it.assetId.endsWith("_withered") }.all { it.anchorY >= 0.97f })
+        assertTrue(plants.filter { !it.assetId.endsWith("_withered") }.all { it.anchorY >= 0.97f })
         // So the wind, which leans a picture about its anchor, moves the plant and not the ground.
         val tools = listOf(File("../tools"), File("tools")).first { it.isDirectory }
         val overrides = File(tools, "atlas_overrides.json").readText()
-        assertFalse(overrides.contains("\"plant_"))
+        // Only the wheat's fields, and the tomato whose foot is a hanging leaf, are stood by hand (#57).
+        val byHand = Regex("\"(plant_[a-z_0-9]+)\"").findAll(overrides).map { it.groupValues[1] }.toSet()
+        assertEquals(
+            setOf("plant_wheat_stage1", "plant_wheat_stage2", "plant_wheat_stage3", "plant_wheat_withered", "plant_tomato_stage3"),
+            byHand,
+        )
     }
 }

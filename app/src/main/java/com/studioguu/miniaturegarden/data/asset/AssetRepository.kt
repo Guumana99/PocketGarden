@@ -59,11 +59,22 @@ class TerrainTextures(
     /** The pond, a cell of water in a ring of stones and logs ([GroundSlab.POND]). */
     val pond: Bitmap? = null,
     /**
-     * The pond's open water alone, unprojected into a small square ([FlatGround.region]): what is
-     * laid where two ponds join, so that the water running through is the pond's own (#54).
+     * Open water seen from straight above, made to tile ([FlatGround.tileable]): what is laid
+     * where two ponds join (#54). Since #57 it is the face of `pond_center.png`, a cell of water
+     * alone, rather than the middle of the pond's own picture.
      */
     val pondWater: Bitmap? = null,
+    /**
+     * The face of a bed of tilled soil seen from straight above, one cell to a copy
+     * (`soil_tilled.png`, #57): laid on every bed, its furrows running on from bed to bed.
+     */
+    val tilled: Bitmap? = null,
+    /** The same for a composted bed (`soil_revived.png`, #57). */
+    val composted: Bitmap? = null,
 ) {
+    /** The face for a bed: [composted] for a composted one, [tilled] for any other. */
+    fun bedFace(isComposted: Boolean): Bitmap? = if (isComposted) composted ?: tilled else tilled
+
     companion object {
         val EMPTY = TerrainTextures()
     }
@@ -129,7 +140,7 @@ class AssetRepository @Inject constructor(
 
     /**
      * Returns the ground textures, loading them on first use. They are drawable resources
-     * (`res/drawable-nodpi`, and the wasteland and the pond in `res/drawable`), named here
+     * (`res/drawable-nodpi`, and the wasteland, the beds and the pond in `res/drawable`), named here
      * through `R.drawable`, so a missing or renamed file is a build error rather than a tile that
      * silently fails to appear. The pictures are decoded side by side.
      *
@@ -145,22 +156,42 @@ class AssetRepository @Inject constructor(
                     val cobblestone = async { decodeUnscaled(R.drawable.tile_path_cobblestone) }
                     val pond = async { decodeUnscaled(R.drawable.pond) }
                     val pondWater = async(Dispatchers.Default) {
-                        pond.await()?.let { picture ->
-                            val square = FlatGround.region(picture, GroundSlab.POND, POND_WATER_FROM, POND_WATER_TO, POND_WATER_SIZE)
+                        decodeUnscaled(R.drawable.pond_center)?.let { picture ->
+                            val square = FlatGround.region(picture, GroundSlab.POND_CENTER, POND_WATER_FROM, POND_WATER_TO, POND_WATER_SIZE)
+                            picture.recycle()
+                            // In the colour of the pond's own water, which it runs between (#57: as it
+                            // came, it was paler and bluer, and showed as a strip across a join).
+                            pond.await()?.let { ring ->
+                                val own = FlatGround.region(ring, GroundSlab.POND, POND_OWN_WATER_FROM, POND_OWN_WATER_TO, POND_WATER_SIZE / 4)
+                                FlatGround.matchMean(square, own)
+                                own.recycle()
+                            }
                             FlatGround.tileable(square, POND_WATER_EVEN_OUT).also { square.recycle() }
                         }
                     }
+                    val tilled = async(Dispatchers.Default) { bedFace(R.drawable.soil_tilled, GroundSlab.TILLED) }
+                    val composted = async(Dispatchers.Default) { bedFace(R.drawable.soil_revived, GroundSlab.REVIVED) }
                     TerrainTextures(
                         riverAutotile = river.await(),
                         cobblestone = cobblestone.await(),
                         pond = pond.await(),
                         pondWater = pondWater.await(),
+                        tilled = tilled.await(),
+                        composted = composted.await(),
                     )
                 }
             }.also { cachedTerrain = it }
         }
         val ground = wasteland?.await() ?: return@coroutineScope rest
-        TerrainTextures(rest.riverAutotile, rest.cobblestone, ground, rest.pond, rest.pondWater)
+        TerrainTextures(rest.riverAutotile, rest.cobblestone, ground, rest.pond, rest.pondWater, rest.tilled, rest.composted)
+    }
+
+    /**
+     * The top face of the bed picture [id] (laid out as [slab]) seen from straight above, a little
+     * in from its edges ([BED_INSET], where the slab's rim catches the light), [BED_FACE_SIZE] square.
+     */
+    private fun bedFace(@DrawableRes id: Int, slab: GroundSlab): Bitmap? = decodeUnscaled(id)?.let { picture ->
+        FlatGround.region(picture, slab, BED_INSET, 1f - BED_INSET, BED_FACE_SIZE).also { picture.recycle() }
     }
 
     /**
@@ -239,9 +270,19 @@ class AssetRepository @Inject constructor(
     }
 
     companion object {
-        /** The open water of the pond's face, inside its logs and away from them (shares of the face). */
-        const val POND_WATER_FROM = 0.25f
-        const val POND_WATER_TO = 0.62f
+        /** The open water taken from `pond_center.png`'s face: all of it but its rim (shares of the face). */
+        const val POND_WATER_FROM = 0.08f
+        const val POND_WATER_TO = 0.92f
+
+        /** The open water of `pond.png`'s face, inside its logs (shares of the face): the colour [POND_WATER_FROM] is brought to. */
+        const val POND_OWN_WATER_FROM = 0.25f
+        const val POND_OWN_WATER_TO = 0.62f
+
+        /** Share of a bed picture's face left off each side: its lit rim. */
+        const val BED_INSET = 0.04f
+
+        /** Pixels a side of a bed's face as unprojected ([TerrainTextures.tilled]). */
+        const val BED_FACE_SIZE = 256
 
         /** Pixels a side of the square the water is unprojected into, before it is made to tile. */
         const val POND_WATER_SIZE = 256

@@ -72,7 +72,22 @@ enum class PlantSpecies(
     ),
 
     /** The cold months' root at Lv.2: pulled up whole, so it is harvested once. */
-    DAIKON("plant_daikon", growthHours = 64, dryOutHours = 26, harvestCoins = 80, harvestXp = 70, growthStages = 3);
+    DAIKON("plant_daikon", growthHours = 64, dryOutHours = 26, harvestCoins = 80, harvestXp = 70, growthStages = 3),
+
+    /** A root for spring and autumn at Lv.2, a little quicker than the daikon: pulled up whole, harvested once. */
+    CARROT("plant_carrot", growthHours = 62, dryOutHours = 22, harvestCoins = 72, harvestXp = 68, growthStages = 3),
+
+    /** Summer's purple fruit at Lv.3: thirsty, and it keeps bearing, like the tomato. */
+    EGGPLANT(
+        "plant_eggplant", growthHours = 78, dryOutHours = 16, harvestCoins = 102, harvestXp = 88, growthStages = 3,
+        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 30, regrowXp = 42,
+    ),
+
+    /** Autumn's grain at Lv.4, a whole bed of it; it stands dry weather well. */
+    WHEAT("plant_wheat", growthHours = 98, dryOutHours = 32, harvestCoins = 128, harvestXp = 114, growthStages = 3),
+
+    /** Summer's tall crop at Lv.5: three stalks to a bed, slow to ripen. */
+    CORN("plant_corn", growthHours = 126, dryOutHours = 18, harvestCoins = 185, harvestXp = 155, growthStages = 3);
 
     /** Growth progress (0..1) gained per healthy hour. */
     val growthPerHour: Float get() = 1f / growthHours

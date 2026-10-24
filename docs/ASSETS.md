@@ -10,10 +10,14 @@
 
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
-| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 41 枚を 1 枚に詰めたもの（4019×2408、約 11MB、メモリ上 約 39MB、1 タイル 512px） | `tools/asset_packer.py` |
+| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 57 枚を 1 枚に詰めたもの（4046×2270、約 10MB、メモリ上 約 37MB、1 タイル 512px） | `tools/asset_packer.py` |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
-| `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。1 マス分の土の板 | 受け取ったまま（1536×768）。上面の位置は `GroundSlab.WASTELAND` |
+| `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
+| `app/src/main/res/drawable/soil_tilled.png` | 耕した土（畝 3 本）の板（#57）。上面を畑の 1 マスに敷く | 受け取ったまま（1024×1024、白背景）。`GroundSlab.TILLED` |
+| `app/src/main/res/drawable/soil_revived.png` | たい肥入りの畑の土の板（#57） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED` |
+| `app/src/main/res/drawable/pond_center.png` | 水面だけの 1 マス（#57）。池どうしのつなぎ目の水 | 受け取ったまま（1024×1024、白背景）。`GroundSlab.POND_CENTER`。色は池の絵の水にそろえて使う |
+| `app/src/main/res/drawable-nodpi/icon_{tomato,strawberry,carrot,eggplant,wheat,corn}.png` | 持ち物・ショップのアイコン（#57） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
 | `app/src/main/res/drawable/pond.png` | 池（`deco_pond`） | `tools/source_art/pond.png` をそのままコピー（1536×768）。上面の位置は `GroundSlab.POND` |
 | `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
 
@@ -21,9 +25,16 @@
 
 - 作物 3 種 × 5 枚：`plant_{tulip,sunflower,rose}_stage{1..4}.png` と `_withered.png`
 - 地面と建物（#40、`tools/prepare_building_art.py` で加工）：
-  - `tile_grass`・`tile_grass_dark`（芝生。#47 から明るさの傾きを取り除き、1 色で並べる。`tile_grass_dark` は残っているが使っていない）、`floor_tilled`（耕した土。#47 から畑はコード描画になり、ガラスの温室の床でだけ使う）
+  - `tile_grass`・`tile_grass_dark`（芝生。#57 から `tile_grass_iso.png` の上面から作る。#47 から明るさの傾きを取り除き、1 色で並べる。`tile_grass_dark` は残っているが使っていない）、`floor_tilled`（耕した土。#47 から畑はコード描画になり、ガラスの温室の床でだけ使う）
   - `struct_cottage`（コテージ）、`floor_greenhouse`（ガラスの温室）、`struct_windmill`（風車の本体）、`struct_windmill_blades`（風車の羽根）、`deco_sprinkler`（スプリンクラー）と `deco_sprinkler_spray_0`〜`_7`（動いている間の水しぶき 8 コマ。無ければコードで描く）
-- 作物 4 種 × 4 枚（#39）：`plant_{tomato,strawberry,paprika,daikon}_stage{1..3}.png` と `_withered.png`（3 段階）
+- 作物 4 種 × 4 枚（#57）：`plant_{corn,eggplant,carrot,wheat}_stage{1..3}.png` と `_withered.png`（3 段階）。トマト・イチゴの `_stage{1..3}` も #57 の絵に差し替え（`_withered` は #39 のまま）。
+  - 受け取ったのは `res/drawable/crop_*.png`（1024×1024、白背景・透過なし）。原画は `tools/source_art/` に移し、`tools/prepare_drawable_art.py` で切り抜いて `raw_assets/` に書く（下の「#57 の絵を入れるとき」）。
+  - 段階どうしの株数をそろえた：トウモロコシの 1 段階目は 16 本の苗の一覧だったので 3 本を 3 段階目の 3 本と同じ三角に並べ、2 段階目（2 本）には右の株を左右反転して手前に足して 3 本に。
+    ナスの 1 段階目は 4 本の苗だったので手前の 1 本に（2・3 段階目は 1 株）。小麦は 3 段階とも畑一面。
+  - 大きさ（タイル幅に対する高さ、`STAGES`）：トウモロコシ 0.36 / 0.7 / 0.9、ナス 0.3 / 0.58 / 0.78、ニンジン 0.38 / 0.48 / 0.75、トマト 0.34 / 0.74 / 0.86、イチゴ 0.3 / 0.48 / 0.58。小麦は 3 段階とも幅 0.92。
+  - ニンジンの 2 段階目は届いていない（`crop_carrot_1` と `_3` だけ）。3 段階目の絵から根（橙色）より上を切り出し、「根がまだ土の中」の姿にした。
+  - 枯れた絵は届いていないので、4 種とも最後の緑の段階（ニンジンは 2 段階目）を茶色く乾かし少し縮めて作った（`wither`）。描き起こした絵があれば差し替えたい。
+- 作物 4 種 × 4 枚（#39）：`plant_{tomato,strawberry,paprika,daikon}_stage{1..3}.png` と `_withered.png`（3 段階）。トマト・イチゴの `_stage{1..3}` は #57 で差し替え済み
   - 受け取ったときは `res/drawable/crop_*.png` に置かれていた。アトラスに詰めるため `tools/raw_assets/` へ移し、`plant_<作物>_…` に改名した。
     大根は受け取ったファイル名が `crop_radish_*`（`radish`）だったので `plant_daikon_*` に、枯れの 1 枚は `rop_radish_withered.png`（先頭の c が欠けていた）だったので直した。
   - どれも 1536×768、背景透明。トマトの絵には切り抜きの名残の白い筋（根のような線）が土の下に残っている。消してはいない。
@@ -59,7 +70,9 @@
 | `building_greenhouse.png` | ガラスの温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |
 | `building_windmill_body.jpg` | 風車の本体（#40）。**JPEG で透過が無く、灰色の市松模様（48px、2 トーン）が背景として描き込まれていた**。マスごとの色で抜いた |
 | `building_windmill_blades.jpg` | 風車の羽根（#40）。同じく白と灰色の市松模様（約 12px）と、白いにじみが描き込まれていた。色で抜いた |
-| `tile_lawn_flat.png` | 芝生（#53）。真上から見た不透明な 1536×768 の写真（受け取ったときは `app/src/main/assets/lawn.png`）。`flat_to_tile` で中央の正方形の半分（`share=0.5`）を 2:1 のひし形へ貼り、ぼかし 1.2px、厚み 55px の側面を足して `tile_grass` に。細かい葉のままだとスマホで約 7 分の 1 に縮んだとき砂嵐のようにちらつくため、葉を大きく柔らかくしている |
+| `tile_grass_iso.png` | 芝生（#57、受け取ったときは `res/drawable/tile_grass.png`）。白背景のアイソメの芝の板（1024×1024）。`prepare_drawable_art.flat_lawn` が上面を真上から見た正方形（720 px）に戻し、`flat_to_tile` で中央の正方形の半分（`share=0.5`）を 2:1 のひし形へ貼り、ぼかし 1.2px、厚み 55px の側面を足して `tile_grass` に。細かい葉のままだとスマホで約 7 分の 1 に縮んだとき砂嵐のようにちらつくため、葉を大きく柔らかくしている。#53 の `tile_lawn_flat.png` はこれに置き換えて削除 |
+| `crop_*.png`（17 枚） | 作物の原画（#57）。トウモロコシ・ナス・小麦は `_stage1`〜`3`、トマト・イチゴは `_1`〜`3`、ニンジンは `_1` と `_3` | `prepare_drawable_art.py` が切り抜いて `raw_assets/plant_*` に |
+| `icon_*.png`（6 枚） | アイコンの原画（#57） | `prepare_drawable_art.py` が切り抜いて `res/drawable-nodpi/` に |
 | `tile_soil_flat.png` | 耕した土（#53）。同じく真上からの写真（受け取ったときは `floor_tilled.png`）。正方形全体をひし形へ、厚み 33px で `floor_tilled` に（温室の床でだけ使う） |
 | `pond.png` | 池（#53）。透過ありのアイソメの絵（丸太の枠と石）。**未使用**：庭に池の物がまだ無い。`raw_assets/` に置くと詰められて `CodeArtTest` が落ちるので、ここに置いてある |
 | `tile_grass_default.png` | **#53 から未使用**。芝生のタイル（#40）。縁に白いにじみ。1 マス幅に縮め、上面が 2:1 のひし形になるよう縦に伸ばした（元は約 2.35:1） |
@@ -86,6 +99,20 @@ python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-w
 - `atlas_overrides.json` の追加の鍵（#40）：`scale`（描画倍率。アトラスでは拡大せず、描くときに大きくする）と
   `attachX`/`attachY`（別のスプライトを取り付ける点。風車の羽根の軸）。マニフェストには `drawScale`・`attachX`・`attachY` として出る（使うときだけ）。
 
+### #57 の絵（白背景の作物・アイコン・芝生）を入れるとき
+
+```bash
+python tools/prepare_drawable_art.py --preview <確認用フォルダ>
+python tools/prepare_building_art.py
+python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --max-width 4096 --strip-crop-soil
+```
+
+- 白の切り抜き（`cut_out`）：絵の外周につながる白と薄い灰色（影）を消し、葉に囲まれた大きな真っ白のすき間も消す。輪郭の画素は白との混ざりを戻して白いふちを残さない。
+  トウモロコシの苗の一覧だけは影が濃いので、灰色を深めに消す。どの絵からも、本体から離れた点は消す。
+- `--preview` は作物ごとに段階を並べた絵（実際の大きさの比）と、アイコンの一覧、真上から見た芝生を出す。
+- 地面の板 4 枚（荒れ地・耕した土・たい肥入り・水面）の上面の位置を表示する。`GroundSlab` の値はこれ。絵を差し替えたらこの値も直し、荒れ地は `FlatGround.FIELD_VERSION` を上げる（作った地面のキャッシュを捨てるため）。
+- 1 回 1 分ほど。
+
 ### 受け取った地面・建物の絵を入れるとき（#40）
 
 ```bash
@@ -102,7 +129,8 @@ python tools/prepare_building_art.py --preview <確認用フォルダ>
 - `--alpha-threshold 8`：ごく薄い縁を余白として切り落とす。
 - `tools/atlas_overrides.json`：スプライトごとの**接地点**（アンカー）。既定は下端中央。
   作物（`plant_*`）は #47 から、`--strip-crop-soil` で**絵の下の土の山を取り除き**、アンカーを茎の根元（絵のいちばん下）に自動で置く。
-  `atlas_overrides.json` には作物の項目を書かない（書くと自動のアンカーを上書きしてしまう）。取り除き方は `tools/crop_soil.py` の説明。
+  `atlas_overrides.json` には作物の項目を書かない（書くと自動のアンカーを上書きしてしまう）。例外は #57 の小麦 4 枚（畑の中心に立てる）とトマトの 3 段階目（主茎）で、`prepare_drawable_art.py` が書く。取り除き方は `tools/crop_soil.py` の説明。
+  #57 の白背景の絵には土の山が無いので取り除かない（`crop_soil.SOILLESS`）。
   確かめるときは `python tools/crop_soil.py tools/raw_assets preview.png plant_tulip_stage4 ...` で前後を並べた画像が出る。
   枯れた株は株自体が土色なので、暗い所だけを土の山とみなす（薄い砂色の山は横幅で判断）。枯れたバラ・ひまわりは茎のいちばん下が少し削れる。
   #55 から、下から数えた帯で取りきれない土の山（イチゴの苗のように、下の葉が山より下に垂れている絵）も取る（`_strip_clumps`）：絵の上から 35% より下で、
@@ -123,7 +151,8 @@ python tools/prepare_building_art.py --preview <確認用フォルダ>
 
 - **アイソメトリック**。タイルは横 2：縦 1 のひし形。
 - スプライトは**正面向きで直立**。斜めに傾けた絵や、変形して使う前提の絵は合わない。
-- 作物は成長 4 段階＋枯れ 1 枚。段階ごとに大きさが変わってよい（アンカーで合わせる）。
+- 作物は成長 4 段階（#39 からの作物は 3 段階）＋枯れ 1 枚。段階ごとに大きさが変わってよい（アンカーで合わせる）。
+- 1 マスに何株も描いた作物は、全段階で株数をそろえる（#57。苗だけ何十本もあると、育つと減って見える）。
 - 川の画像は「マスクの値 `N=1, E=2, S=4, W=8` → `mask % 4` 列・`mask / 4` 行」の 4×4 並び、
   コマは縦に積む。手描きに差し替える場合もこの並びが必要。さらに現在は**マスごとに 1 コマずらして再生**
   しているので、流れの継ぎ目を合わせるには `ARCHITECTURE.md` の「川」の条件を満たす必要がある。

@@ -8,5 +8,10 @@
   "struct_cottage": {"anchorX": 0.4994, "anchorY": 0.7481, "scale": 2.4971},
   "floor_greenhouse": {"anchorX": 0.4993, "anchorY": 0.7366},
   "struct_windmill": {"anchorX": 0.5299, "anchorY": 0.8295, "scale": 3.2802, "attachX": 0.8422, "attachY": 0.25},
-  "struct_windmill_blades": {"anchorX": 0.4912, "anchorY": 0.515, "scale": 3.2802}
+  "struct_windmill_blades": {"anchorX": 0.4912, "anchorY": 0.515, "scale": 3.2802},
+  "plant_wheat_stage1": {"anchorX": 0.5, "anchorY": 0.6829, "isFlippedAllowed": true},
+  "plant_wheat_stage2": {"anchorX": 0.5, "anchorY": 0.7576, "isFlippedAllowed": true},
+  "plant_wheat_stage3": {"anchorX": 0.5, "anchorY": 0.6786, "isFlippedAllowed": true},
+  "plant_wheat_withered": {"anchorX": 0.5, "anchorY": 0.6023, "isFlippedAllowed": true},
+  "plant_tomato_stage3": {"anchorX": 0.47, "anchorY": 0.97, "isFlippedAllowed": true}
 }

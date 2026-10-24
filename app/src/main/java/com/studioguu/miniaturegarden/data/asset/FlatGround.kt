@@ -12,7 +12,7 @@ import kotlin.math.sqrt
 
 /**
  * Turns the picture of one slab of ground (`soil_wasteland.png`: a diamond of earth seen from
- * above at an angle, its sides, crumbling rim and dry white tufts round it) into a flat, square
+ * above at an angle, its sides below it, on white) into a flat, square
  * texture of the earth alone, for the garden to lay as one seamless field.
  *
  * The top face is unprojected into a square ([textureToImage]) and only its middle is kept
@@ -59,7 +59,7 @@ object FlatGround {
      * The way the field is made, as a number: raised whenever [flatten] changes what it makes, so
      * that a field kept from before (AssetRepository's cache) is not read back.
      */
-    const val FIELD_VERSION = 1
+    const val FIELD_VERSION = 2
 
     /** Patches a side of the field, each taken from its own place in the tile. */
     const val FIELD_CELLS = 6
@@ -152,6 +152,32 @@ object FlatGround {
         val tileSize = tileSize(size)
         val tile = evenOut(seamless(pixels, size), tileSize, radius, colourKept = 1f)
         return Bitmap.createBitmap(tile, tileSize, tileSize, Bitmap.Config.ARGB_8888)
+    }
+
+    /**
+     * [target] (mutable) shifted, channel by channel, so that its mean colour is [reference]'s;
+     * its light and shade are kept. The water taken from one picture laid beside another's.
+     */
+    fun matchMean(target: Bitmap, reference: Bitmap) {
+        fun mean(bitmap: Bitmap): FloatArray {
+            val pixels = IntArray(bitmap.width * bitmap.height)
+            bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+            return Earth.of(pixels).mean
+        }
+        val want = mean(reference)
+        val have = mean(target)
+        val pixels = IntArray(target.width * target.height)
+        target.getPixels(pixels, 0, target.width, 0, 0, target.width, target.height)
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            var argb = p and (0xFF shl 24)
+            for (c in 0..2) {
+                val v = ((p shr (16 - 8 * c)) and 0xFF) + want[c] - have[c]
+                argb = argb or (v.roundToInt().coerceIn(0, 255) shl (16 - 8 * c))
+            }
+            pixels[i] = argb
+        }
+        target.setPixels(pixels, 0, target.width, 0, 0, target.width, target.height)
     }
 
     /** The side of the tile [seamless] makes from a face [size] across. */

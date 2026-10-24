@@ -129,11 +129,11 @@ class ProgressionTest {
             unlockedAt(1),
         )
         assertEquals(
-            unlockedAt(1) + GardenItem.SEED_SUNFLOWER + GardenItem.DECO_ROCK + GardenItem.DECO_BENCH + GardenItem.SEED_DAIKON,
+            unlockedAt(1) + GardenItem.SEED_SUNFLOWER + GardenItem.DECO_ROCK + GardenItem.DECO_BENCH + GardenItem.SEED_DAIKON + GardenItem.SEED_CARROT,
             unlockedAt(2),
         )
-        assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL + GardenItem.SEED_WATERMELON + GardenItem.SEED_LAVENDER + GardenItem.DECO_SPRINKLER, unlockedAt(3))
-        assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE + GardenItem.SEED_PAPRIKA + GardenItem.STRUCT_WINDMILL + GardenItem.DECO_POND, unlockedAt(4))
+        assertEquals(unlockedAt(2) + GardenItem.STRUCT_WELL + GardenItem.SEED_WATERMELON + GardenItem.SEED_LAVENDER + GardenItem.DECO_SPRINKLER + GardenItem.SEED_EGGPLANT, unlockedAt(3))
+        assertEquals(unlockedAt(3) + GardenItem.SEED_ROSE + GardenItem.SEED_PAPRIKA + GardenItem.STRUCT_WINDMILL + GardenItem.DECO_POND + GardenItem.SEED_WHEAT, unlockedAt(4))
         // Level opens everything but the two that the encyclopedia opens.
         val byPages = setOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN)
         // The symbol building comes at Lv.6, the greenhouse much later, at Lv.18.
@@ -146,13 +146,13 @@ class ProgressionTest {
     @Test
     fun `unlockedBetween lists what a level-up opens, including skipped levels`() {
         assertEquals(
-            setOf(GardenItem.SEED_SUNFLOWER, GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.SEED_DAIKON),
+            setOf(GardenItem.SEED_SUNFLOWER, GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.SEED_DAIKON, GardenItem.SEED_CARROT),
             GardenItem.unlockedBetween(1, 2).toSet(),
         )
         assertEquals(
             setOf(
                 GardenItem.STRUCT_WELL, GardenItem.SEED_WATERMELON, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_PAPRIKA,
-                GardenItem.STRUCT_WINDMILL, GardenItem.DECO_SPRINKLER, GardenItem.DECO_POND,
+                GardenItem.STRUCT_WINDMILL, GardenItem.DECO_SPRINKLER, GardenItem.DECO_POND, GardenItem.SEED_EGGPLANT, GardenItem.SEED_WHEAT,
             ),
             GardenItem.unlockedBetween(2, 4).toSet(),
         )
@@ -205,8 +205,9 @@ class ProgressionTest {
         fun xpPerHour(species: PlantSpecies) = species.harvestXp.toDouble() / species.growthHours
         assertEquals(
             listOf(
-                PlantSpecies.SUNFLOWER, PlantSpecies.DAIKON, PlantSpecies.WATERMELON, PlantSpecies.LAVENDER, PlantSpecies.ROSE,
-                PlantSpecies.PAPRIKA, PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
+                PlantSpecies.SUNFLOWER, PlantSpecies.DAIKON, PlantSpecies.CARROT, PlantSpecies.WATERMELON, PlantSpecies.LAVENDER,
+                PlantSpecies.EGGPLANT, PlantSpecies.ROSE, PlantSpecies.PAPRIKA, PlantSpecies.WHEAT, PlantSpecies.PUMPKIN,
+                PlantSpecies.POINSETTIA, PlantSpecies.CORN,
             ),
             PlantSpecies.entries.filter { level(it) > 1 }.sortedBy(::level),
         )
@@ -224,7 +225,7 @@ class ProgressionTest {
     fun `a crop that bears again earns at its first harvest's rate, never past a later level's`() {
         fun level(species: PlantSpecies) = (seedFor(species).unlock as? UnlockCondition.PlayerLevel)?.level ?: 1
         val repeatable = PlantSpecies.entries.filter { it.isRepeatable }
-        assertEquals(setOf(PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY, PlantSpecies.PAPRIKA), repeatable.toSet())
+        assertEquals(setOf(PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY, PlantSpecies.PAPRIKA, PlantSpecies.EGGPLANT), repeatable.toSet())
         for (crop in repeatable) {
             // Later harvests pay less, at no more per hour than the first (seed and all).
             val firstCoins = (crop.harvestCoins - seedFor(crop).price).toDouble() / crop.growthHours

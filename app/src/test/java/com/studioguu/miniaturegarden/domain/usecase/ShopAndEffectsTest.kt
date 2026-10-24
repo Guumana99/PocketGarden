@@ -55,7 +55,7 @@ class ShopAndEffectsTest {
         assertEquals(GardenItem.entries.toSet(), shelves.values.flatten().toSet())
         assertEquals(GardenItem.entries.size, shelves.values.sumOf { it.size })
 
-        assertEquals(14, shelves.getValue(ItemCategory.SEED).size)
+        assertEquals(18, shelves.getValue(ItemCategory.SEED).size)
         assertEquals(6, shelves.getValue(ItemCategory.STRUCTURE).size)
         assertEquals(11, shelves.getValue(ItemCategory.DECORATION).size)
     }
@@ -90,9 +90,9 @@ class ShopAndEffectsTest {
         assertEquals(
             listOf(
                 GardenItem.SEED_MINT, GardenItem.SEED_TULIP, GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP,
-                GardenItem.SEED_TOMATO, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_DAIKON, GardenItem.SEED_SUNFLOWER,
-                GardenItem.SEED_LAVENDER, GardenItem.SEED_WATERMELON, GardenItem.SEED_PAPRIKA, GardenItem.SEED_ROSE,
-                GardenItem.SEED_PUMPKIN, GardenItem.SEED_POINSETTIA,
+                GardenItem.SEED_TOMATO, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_CARROT, GardenItem.SEED_DAIKON, GardenItem.SEED_SUNFLOWER,
+                GardenItem.SEED_LAVENDER, GardenItem.SEED_EGGPLANT, GardenItem.SEED_WATERMELON, GardenItem.SEED_WHEAT, GardenItem.SEED_PAPRIKA,
+                GardenItem.SEED_ROSE, GardenItem.SEED_CORN, GardenItem.SEED_PUMPKIN, GardenItem.SEED_POINSETTIA,
             ),
             GardenItem.shelf(ItemCategory.SEED),
         )

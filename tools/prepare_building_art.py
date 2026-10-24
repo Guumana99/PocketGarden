@@ -319,7 +319,7 @@ def prepare_tile(name: str, halo: bool, flatten: bool = False) -> tuple[np.ndarr
 
 
 def flat_to_tile(
-    name: str, side_depth: int, flatten: bool = False, share: float = 1.0, soften: float = 0.0,
+    name: "str | Image.Image", side_depth: int, flatten: bool = False, share: float = 1.0, soften: float = 0.0,
 ) -> tuple[np.ndarray, dict]:
     """
     Turns a flat, seen-from-above texture (#53: tile_lawn_flat.png, tile_soil_flat.png, opaque
@@ -333,7 +333,7 @@ def flat_to_tile(
     seven times smaller on a phone, and fine, sharp detail (single blades of grass) then glitters
     as grain; larger, softer detail reads as a lawn.
     """
-    source = Image.open(SOURCE / name).convert("RGB")
+    source = name if isinstance(name, Image.Image) else Image.open(SOURCE / name).convert("RGB")
     if soften > 0:
         from PIL import ImageFilter
         source = source.filter(ImageFilter.GaussianBlur(soften))
@@ -454,7 +454,9 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     out: dict[str, tuple[np.ndarray, dict]] = {}
     # Since #53 the lawn and the tilled soil come from flat textures; the #40 photos
     # (tile_grass_default.png, tile_dirt_plowed.png) are kept in source_art but no longer used.
-    grass, grass_override = flat_to_tile("tile_lawn_flat.png", side_depth=55, flatten=True, share=0.5, soften=1.2)
+    # Since #57 the lawn is the top face of tile_grass_iso.png, seen from straight above.
+    from prepare_drawable_art import flat_lawn
+    grass, grass_override = flat_to_tile(flat_lawn(), side_depth=55, flatten=True, share=0.5, soften=1.2)
     # Its top face is a symmetric diamond, so the game mirrors cells at random to break the repeat.
     grass_override["isFlippedAllowed"] = True
     out["tile_grass"] = (grass, grass_override)

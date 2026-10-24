@@ -65,6 +65,7 @@ class CollectionTest {
                 CollectionEntry.TULIP, CollectionEntry.SUNFLOWER, CollectionEntry.ROSE, CollectionEntry.COSMOS, CollectionEntry.SNOWDROP, CollectionEntry.MINT,
                 CollectionEntry.TOMATO, CollectionEntry.STRAWBERRY, CollectionEntry.WATERMELON, CollectionEntry.LAVENDER,
                 CollectionEntry.PUMPKIN, CollectionEntry.POINSETTIA, CollectionEntry.PAPRIKA, CollectionEntry.DAIKON,
+                CollectionEntry.CARROT, CollectionEntry.EGGPLANT, CollectionEntry.WHEAT, CollectionEntry.CORN,
             ),
             byCategory[CollectionCategory.CROPS],
         )
@@ -186,7 +187,7 @@ class CollectionTest {
         assertEquals(0, none.revealed)
         assertEquals(0, none.ready)
         assertEquals(0, none.percent)
-        assertEquals(31, none.total)
+        assertEquals(35, none.total)
         assertEquals(PageState.LOCKED, none.stateOf(CollectionEntry.TULIP))
 
         val some = CollectionProgress(
@@ -199,7 +200,7 @@ class CollectionTest {
         )
         assertEquals(2, some.revealed)
         assertEquals(1, some.ready)
-        assertEquals(6, some.percent) // 2 of 31, rounded down; ready pages do not count yet
+        assertEquals(5, some.percent) // 2 of 35, rounded down; ready pages do not count yet
         assertEquals(PageState.REVEALED, some.stateOf(CollectionEntry.TULIP))
         assertEquals(PageState.READY, some.stateOf(CollectionEntry.WELL))
         assertEquals(PageState.LOCKED, some.stateOf(CollectionEntry.HUT))
@@ -214,11 +215,11 @@ class CollectionTest {
     fun `one hundred percent means every page filled in`() {
         val all = CollectionEntry.entries.map { CollectionRecord(it.objectId, 1, t0, revealed = true) }
         assertEquals(100, CollectionProgress(all).percent)
-        assertEquals(96, CollectionProgress(all.drop(1)).percent) // 30 of 31, rounded down
+        assertEquals(97, CollectionProgress(all.drop(1)).percent) // 34 of 35, rounded down
 
         val allReady = CollectionEntry.entries.map { CollectionRecord(it.objectId, 1, t0) }
         assertEquals(0, CollectionProgress(allReady).percent)
-        assertEquals(31, CollectionProgress(allReady).ready)
+        assertEquals(35, CollectionProgress(allReady).ready)
     }
 
     // --- Through the game actions ---

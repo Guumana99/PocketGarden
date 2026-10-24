@@ -60,23 +60,31 @@ class PondAndWastelandTest {
     }
 
     /** The middle and width of the top face, measured off the picture's solid pixels. */
-    private fun measure(name: String, darkOnly: Boolean): GroundSlab {
+    private fun measure(name: String, darkOnly: Boolean, atCorners: Boolean = false): GroundSlab {
         val image = TestPng.read(File(main, "res/drawable/$name.png"))
         var left = Int.MAX_VALUE
         var right = -1
         val leftYs = ArrayList<Int>()
         val rightYs = ArrayList<Int>()
+        // The #57 pictures ([atCorners]) are opaque, on white: the white is not the slab.
         fun solid(x: Int, y: Int): Boolean =
-            image.alpha(x, y) > 250 && (!darkOnly || image.luminance(x, y) < 140)
-        for (x in 0 until image.width) for (y in 0 until image.height) if (solid(x, y)) {
+            image.alpha(x, y) > 250 && (!atCorners || image.luminance(x, y) < 210) && (!darkOnly || image.luminance(x, y) < 140)
+        // A column is part of the slab when a good few of its pixels are: specks scattered over
+        // the white round a picture are not.
+        val least = if (atCorners) 12 else 1
+        for (x in 0 until image.width) if ((0 until image.height).count { y -> solid(x, y) } >= least) {
             if (x < left) left = x
             if (x > right) right = x
         }
+        // Only pixels at the top of a solid run down the column: a speck is alone.
+        fun body(x: Int, y: Int): Boolean = solid(x, y) && (!atCorners || (1..5).all { y + it < image.height && solid(x, y + it) })
         for (y in 0 until image.height) {
-            for (x in left..left + 3) if (solid(x, y)) leftYs += y
-            for (x in right - 3..right) if (solid(x, y)) rightYs += y
+            for (x in left..left + 3) if (body(x, y)) leftYs += y
+            for (x in right - 3..right) if (body(x, y)) rightYs += y
         }
-        val middleY = (leftYs.average() + rightYs.average()) / 2
+        // [atCorners]: the side corners themselves, the highest solid pixel at each side; for a
+        // slab whose sides stand tall under its corners (#57) an average over them falls low.
+        val middleY = if (atCorners) (leftYs.min() + rightYs.min()) / 2.0 else (leftYs.average() + rightYs.average()) / 2
         return GroundSlab(
             anchorX = ((left + right) / 2f) / image.width,
             anchorY = (middleY / image.height).toFloat(),
@@ -86,10 +94,20 @@ class PondAndWastelandTest {
 
     @Test
     fun `the face of each picture is where the slab says it is`() {
-        val wasteland = measure("soil_wasteland", darkOnly = true)
-        assertEquals(GroundSlab.WASTELAND.anchorX, wasteland.anchorX, 0.01f)
-        assertEquals(GroundSlab.WASTELAND.anchorY, wasteland.anchorY, 0.01f)
-        assertEquals(GroundSlab.WASTELAND.topWidth, wasteland.topWidth, 0.01f)
+        for ((name, slab) in listOf(
+            "soil_wasteland" to GroundSlab.WASTELAND,
+            "soil_tilled" to GroundSlab.TILLED,
+            "soil_revived" to GroundSlab.REVIVED,
+            "pond_center" to GroundSlab.POND_CENTER,
+        )) {
+            val measured = measure(name, darkOnly = false, atCorners = true)
+            assertEquals(name, slab.anchorX, measured.anchorX, 0.01f)
+            // The corners of these photographs are soft and rounded: measured here at the very
+            // last columns, by tools/prepare_drawable_art.py over a band 2% wide, which sits up to
+            // 0.02 of the picture higher.
+            assertEquals(name, slab.anchorY, measured.anchorY, 0.02f)
+            assertEquals(name, slab.topWidth, measured.topWidth, 0.015f)
+        }
         val pond = measure("pond", darkOnly = false)
         assertEquals(GroundSlab.POND.anchorX, pond.anchorX, 0.01f)
         assertEquals(GroundSlab.POND.anchorY, pond.anchorY, 0.01f)

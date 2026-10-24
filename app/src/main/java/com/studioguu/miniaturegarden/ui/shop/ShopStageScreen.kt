@@ -79,7 +79,7 @@ import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.itemDisplayName
-import com.studioguu.miniaturegarden.ui.itemEmoji
+import com.studioguu.miniaturegarden.ui.ItemIcon
 import com.studioguu.miniaturegarden.ui.seasonEmoji
 import com.studioguu.miniaturegarden.ui.seasonLabel
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
@@ -413,9 +413,9 @@ private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Lifted off the shelf while its card is up; only an outline of where it stood is left.
-        Text(
-            text = itemEmoji(thing.item),
-            fontSize = 36.sp,
+        ItemIcon(
+            thing.item,
+            36.sp,
             modifier = Modifier.alpha(
                 when {
                     picked -> 0.25f
@@ -523,7 +523,7 @@ private fun ItemCard(thing: ShelfItem, message: ShopMessage?, onBuy: (GardenItem
                 Box(
                     modifier = Modifier.size(56.dp).background(GardenColors.Cream, RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center,
-                ) { Text(itemEmoji(item), fontSize = 32.sp) }
+                ) { ItemIcon(item, 32.sp) }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(itemDisplayName(item), style = MaterialTheme.typography.titleMedium, color = GardenColors.Ink)
                     Text(

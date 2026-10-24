@@ -128,7 +128,7 @@ def load_sprites(
     for path in sorted(input_dir.glob("*.png")):
         crop = strip_crop_soil and crop_soil.is_crop(path.stem)
         with Image.open(path) as source:
-            if crop:
+            if crop and crop_soil.has_soil(path.stem):
                 source = crop_soil.strip_soil_ball(source, withered="withered" in path.stem)
             cropped = crop_to_alpha(source, alpha_threshold)
         if cropped is None:

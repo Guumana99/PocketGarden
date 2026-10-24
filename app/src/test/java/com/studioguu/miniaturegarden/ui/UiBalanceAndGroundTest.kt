@@ -223,21 +223,29 @@ class UiBalanceAndGroundTest {
     // --- 3.2 Tilled soil ---
 
     @Test
-    fun `a bed is the wasteland's own dark earth turned over, a little warmer`() {
-        val image = TestPng.read(File(main, "res/drawable/soil_wasteland.png"))
-        val cx = (GroundSlab.WASTELAND.anchorX * image.width).toInt()
-        val cy = (GroundSlab.WASTELAND.anchorY * image.height).toInt()
-        var sum = 0.0
-        var n = 0
-        for (dy in -100..100 step 5) for (dx in -200..200 step 5) {
-            if (image.alpha(cx + dx, cy + dy) < 200) continue
-            sum += image.luminance(cx + dx, cy + dy)
-            n++
+    fun `a bed is turned earth, darker than the wasteland round it`() {
+        fun faceLuminance(name: String, slab: GroundSlab): Double {
+            val image = TestPng.read(File(main, "res/drawable/$name.png"))
+            val cx = (slab.anchorX * image.width).toInt()
+            val cy = (slab.anchorY * image.height).toInt()
+            var sum = 0.0
+            var n = 0
+            for (dy in -60..60 step 5) for (dx in -120..120 step 5) {
+                if (image.alpha(cx + dx, cy + dy) < 200) continue
+                sum += image.luminance(cx + dx, cy + dy)
+                n++
+            }
+            return sum / n
         }
-        val wasteland = sum / n
+        // #57: the beds are pictures of their own, tilled and composted, laid on every bed.
+        val wasteland = faceLuminance("soil_wasteland", GroundSlab.WASTELAND)
+        val tilled = faceLuminance("soil_tilled", GroundSlab.TILLED)
+        val composted = faceLuminance("soil_revived", GroundSlab.REVIVED)
+        assertTrue("tilled $tilled vs ground $wasteland", tilled < wasteland - 20)
+        assertTrue("composted $composted vs ground $wasteland", composted < wasteland - 20)
+        assertTrue(source("ui/components/GardenCanvas.kt").contains("face = terrain.bedFace(obj.isComposted)"))
+        // Drawn without them, a bed keeps its own colours.
         val body = SoilPalette.mix(SoilPalette.DRY, SoilPalette.DARK, SoilPalette.bodyMix(0f))
-        // Close to the earth round it: no longer a pale red-brown rug on it.
-        assertTrue("bed ${SoilPalette.luma(body)} vs ground $wasteland", abs(SoilPalette.luma(body) - wasteland) < 25)
         val (r, _, b) = SoilPalette.rgb(body)
         assertTrue(r > b)
         // Furrows read: ridges lighter, hollows darker than the body.

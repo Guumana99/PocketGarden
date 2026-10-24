@@ -28,6 +28,7 @@ Used by asset_packer.py (--strip-crop-soil); run this file on its own to preview
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -38,8 +39,19 @@ from PIL import Image, ImageFilter
 CROP_PREFIX = "plant_"
 
 
+#: Crop pictures drawn with no earth under them (#57: cut out of a white background). They still
+#: stand on the base of their stem, but have nothing to take out; run on them, the colour test
+#: took their stems, leaves and fruit for earth and cleared almost all of them.
+SOILLESS = re.compile(r"^plant_(corn|eggplant|carrot|wheat)_|^plant_(tomato|strawberry)_stage\d+$")
+
+
 def is_crop(asset_id: str) -> bool:
     return asset_id.startswith(CROP_PREFIX)
+
+
+def has_soil(asset_id: str) -> bool:
+    """Whether a crop picture came with a clump of earth to take out."""
+    return is_crop(asset_id) and not SOILLESS.match(asset_id)
 
 
 def soil_mask(rgb: np.ndarray, dark_only: bool = False) -> np.ndarray:
