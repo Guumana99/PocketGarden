@@ -37,7 +37,7 @@ enum class PlantSpecies(
     COSMOS("plant_cosmos", growthHours = 60, dryOutHours = 20, harvestCoins = 64, harvestXp = 60, growthStages = 3),
 
     /** The winter flower: slow to dry out in the cold. */
-    SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55),
+    SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55, growthStages = 3),
 
     /** A herb that grows in any season; quick, and worth a little less for it. */
     MINT("plant_mint", growthHours = 36, dryOutHours = 18, harvestCoins = 35, harvestXp = 35, growthStages = 3),

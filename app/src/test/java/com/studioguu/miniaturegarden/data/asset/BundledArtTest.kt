@@ -185,13 +185,25 @@ class BundledArtTest {
     fun `every crop page can show its plant in full bloom from the atlas`() {
         // The crops that came with the seasons are drawn in code for now (ui/render/SeasonalArt.kt).
         val drawnInCode = setOf(
-            PlantSpecies.SNOWDROP,
             PlantSpecies.WATERMELON, PlantSpecies.LAVENDER, PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
         )
         for (species in PlantSpecies.entries - drawnInCode) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })
         }
+    }
+
+    @Test
+    fun `snowdrop has its pictures in three stages, standing on the foot of its leaves (#64)`() {
+        assertEquals(3, PlantSpecies.SNOWDROP.growthStages)
+        val ids = TileSetDefinition.spriteIdsFor(PlantSpecies.SNOWDROP)
+        assertEquals(listOf("plant_snowdrop_stage1", "plant_snowdrop_stage2", "plant_snowdrop_stage3", "plant_snowdrop_withered"), ids)
+        for (id in ids) assertTrue(id, manifest.assets.any { it.assetId == id })
+        assertFalse(manifest.assets.any { it.assetId == "plant_snowdrop_stage4" })
+        val stages = ids.dropLast(1).map { id -> manifest.assets.single { it.assetId == id } }
+        stages.zipWithNext { a, b -> assertTrue("${a.assetId} -> ${b.assetId}", a.width < b.width && a.height < b.height) }
+        // The icon that came was a copy of the withered picture: the seed keeps its emoji for now.
+        assertFalse(File(main, "res/drawable-nodpi/icon_snowdrop.png").exists())
     }
 
     @Test

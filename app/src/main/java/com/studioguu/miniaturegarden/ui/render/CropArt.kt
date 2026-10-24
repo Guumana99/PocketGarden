@@ -17,7 +17,6 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 
 /** How each crop with no sprites yet is drawn here: at a growth of 0 to 1, standing on a point, a tile wide. */
 private val CROP_DRAWINGS: Map<PlantSpecies, DrawScope.(base: Offset, unit: Float, growth: Float, withered: Boolean) -> Unit> = mapOf(
-    PlantSpecies.SNOWDROP to { base, unit, growth, withered -> drawSnowdrop(base, unit, growth, withered) },
     PlantSpecies.TOMATO to { base, unit, growth, withered -> drawTomato(base, unit, growth, withered) },
     PlantSpecies.STRAWBERRY to { base, unit, growth, withered -> drawStrawberry(base, unit, growth, withered) },
     PlantSpecies.WATERMELON to { base, unit, growth, withered -> drawWatermelon(base, unit, growth, withered) },
@@ -49,27 +48,6 @@ private val STEM_DRY = Color(0xFF8D6E63)
 
 /** How tall a plant stands at [growth] (0..1), as a share of its full height. */
 private fun grown(growth: Float): Float = 0.35f + 0.65f * growth.coerceIn(0f, 1f)
-
-/** Snowdrop: two strap leaves and white bells hanging from bowed stems. */
-private fun DrawScope.drawSnowdrop(base: Offset, unit: Float, growth: Float, withered: Boolean) {
-    val s = grown(growth)
-    val leaf = if (withered) STEM_DRY else Color(0xFF6E9E68)
-    drawLine(leaf, base, base + Offset(-unit * 0.06f * s, -unit * 0.32f * s), unit * 0.03f, StrokeCap.Round)
-    drawLine(leaf, base, base + Offset(unit * 0.05f * s, -unit * 0.28f * s), unit * 0.03f, StrokeCap.Round)
-    if (growth < 0.4f) return
-    val bell = if (withered) Color(0xFFBCAAA4) else Color(0xFFFFFFFF)
-    for (dx in listOf(-0.03f, 0.04f)) {
-        val crown = base + Offset(unit * dx * s, -unit * 0.42f * s)
-        val hang = crown + Offset(unit * 0.05f * s, unit * 0.04f * s)
-        val path = Path().apply {
-            moveTo(base.x + unit * dx * 0.5f * s, base.y)
-            quadraticTo(crown.x, crown.y - unit * 0.04f * s, hang.x, hang.y)
-        }
-        drawPath(path, leaf, style = Stroke(width = unit * 0.012f, cap = StrokeCap.Round))
-        drawOval(bell, hang - Offset(unit * 0.025f * s, 0f), Size(unit * 0.05f * s, unit * 0.07f * s))
-        if (!withered) drawCircle(Color(0xFF9CCC65), unit * 0.008f * s, hang + Offset(0f, unit * 0.065f * s))
-    }
-}
 
 private val FRUIT_DRY = Color(0xFFBCAAA4)
 
