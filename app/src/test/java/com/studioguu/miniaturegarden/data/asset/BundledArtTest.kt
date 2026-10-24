@@ -185,12 +185,31 @@ class BundledArtTest {
     fun `every crop page can show its plant in full bloom from the atlas`() {
         // The crops that came with the seasons are drawn in code for now (ui/render/SeasonalArt.kt).
         val drawnInCode = setOf(
-            PlantSpecies.COSMOS, PlantSpecies.SNOWDROP,
+            PlantSpecies.SNOWDROP,
             PlantSpecies.WATERMELON, PlantSpecies.LAVENDER, PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
         )
         for (species in PlantSpecies.entries - drawnInCode) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })
+        }
+    }
+
+    @Test
+    fun `cosmos has its pictures in three stages, and one saved at its old fourth stage shows the third (#63)`() {
+        assertEquals(3, PlantSpecies.COSMOS.growthStages)
+        val ids = TileSetDefinition.spriteIdsFor(PlantSpecies.COSMOS)
+        assertEquals(listOf("plant_cosmos_stage1", "plant_cosmos_stage2", "plant_cosmos_stage3", "plant_cosmos_withered"), ids)
+        for (id in ids) assertTrue(id, manifest.assets.any { it.assetId == id })
+        assertFalse(manifest.assets.any { it.assetId == "plant_cosmos_stage4" })
+        fun cosmos(progress: Float) =
+            GridObject("c", 1, 1, objectId = PlantSpecies.COSMOS.objectId, growthProgress = progress, lastUpdatedTimestamp = 0L)
+        assertEquals("plant_cosmos_stage2", TileSetDefinition.assetIdFor(cosmos(0.9f)))
+        assertEquals("plant_cosmos_stage3", TileSetDefinition.assetIdFor(cosmos(1f)))
+        assertTrue(File(main, "res/drawable-nodpi/icon_cosmos.png").isFile)
+        // Each stage stands taller and wider than the one before (#62: mint's second was wider than its third).
+        val stages = ids.dropLast(1).map { id -> manifest.assets.single { it.assetId == id } }
+        stages.zipWithNext { a, b ->
+            assertTrue("${a.assetId} -> ${b.assetId}", a.width < b.width && a.height < b.height)
         }
     }
 

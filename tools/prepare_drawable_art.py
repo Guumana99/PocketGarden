@@ -23,6 +23,7 @@ This script:
       - tulip (#58): stages 1 and 2, and stage 3 in six colours: red is plant_tulip_stage3, the
         others plant_tulip_stage3_<colour> (TULIP_COLOURS), all at the same size;
       - mint (#62): three stages and a withered one, as they came; a low herb;
+      - cosmos (#63): the same, a tall flower;
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
         each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag;
@@ -70,6 +71,14 @@ STAGES: dict[str, list] = {
     "tulip": [0.3, 0.48, 0.62],
     "sunflower": [0.32, 0.7, 0.88],
     "mint": [0.32, 0.42, 0.62],
+    "cosmos": [0.3, 0.64, 0.85],
+}
+
+#: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
+#: the cosmos' leaves (#63) are hair-fine, and the white showing through them left them in a pale
+#: haze; it is taken out of the whole picture, not only its outline (cut_out's [throughout]).
+CUT: dict[str, dict] = {
+    "cosmos": {"throughout": True, "solid": 100.0},
 }
 
 #: The tulip's flowers (#58): red is its plain stage 3, the others are variants of it.
@@ -103,6 +112,7 @@ WITHERED: dict[str, object] = {
     "strawberry": 0.48,
     "sunflower": 0.72,
     "mint": 0.62,
+    "cosmos": 0.85,
 }
 
 
@@ -112,8 +122,17 @@ def erode(mask: np.ndarray, times: int) -> np.ndarray:
     return ~dilate(~mask, times)
 
 
-def cut_out(rgb: np.ndarray, light: int = 190, tol: int = 30, pocket: int = 3) -> np.ndarray:
-    """[rgb] (opaque, on white) with the white made transparent; RGBA."""
+def cut_out(rgb: np.ndarray, light: int = 190, tol: int = 30, pocket: int = 3, edge: int = 2,
+            solid: float = 70.0, throughout: bool = False) -> np.ndarray:
+    """[rgb] (opaque, on white) with the white made transparent; RGBA.
+
+    [edge]: how deep (pixels) the outline is un-mixed from the white. Two is enough for leaves with
+    a clean outline; hair-thin foliage (the cosmos, #63) is mixed with the white much further in.
+    [solid]: how far from white (its darkest channel) a pixel of the outline must be to be opaque.
+    [throughout]: un-mix the whole picture, not only its outline: for foliage so fine that the white
+    shows through it everywhere (the cosmos' leaves). Its petals (pink, and a little round them) are
+    left solid, so that their pale parts do not turn see-through.
+    """
     v = rgb.astype(int)
     mx, mn = v.max(axis=2), v.min(axis=2)
     pale = (mn >= light) & ((mx - mn) <= tol)
@@ -125,13 +144,16 @@ def cut_out(rgb: np.ndarray, light: int = 190, tol: int = 30, pocket: int = 3) -
     alpha = np.where(background, 0.0, 1.0)
     # The outline: mixed with the white behind it. Its alpha from how far it is from white, and
     # its colour taken back out of the mix.
-    edge = ~background & dilate(background, 2)
-    a = np.clip((255.0 - mn) / 70.0, 0.0, 1.0)
-    alpha[edge] = a[edge]
+    rim = ~background & dilate(background, edge)
+    if throughout:
+        petals = (v[..., 0] - v[..., 1] > 25) & (v[..., 2] - v[..., 1] > 0)
+        rim = ~background & ~dilate(petals, 2)
+    a = np.clip((255.0 - mn) / solid, 0.0, 1.0)
+    alpha[rim] = a[rim]
     out = v.astype(float)
     safe = np.maximum(alpha, 1e-3)[..., None]
     unmixed = (out - 255.0 * (1.0 - alpha[..., None])) / safe
-    out = np.where(edge[..., None], np.clip(unmixed, 0, 255), out)
+    out = np.where(rim[..., None], np.clip(unmixed, 0, 255), out)
     # Specks and wisps not joined to anything solid go too.
     solid = alpha > 0.5
     keep = reconstruct(erode(solid, 3), solid)
@@ -223,7 +245,7 @@ def carrot_stages() -> list[np.ndarray]:
 
 
 def simple_stages(name: str, suffix: str) -> list[np.ndarray]:
-    return [crop(load_cut(f"crop_{name}{suffix}{n}.png")) for n in (1, 2, 3)]
+    return [crop(load_cut(f"crop_{name}{suffix}{n}.png", **CUT.get(name, {}))) for n in (1, 2, 3)]
 
 
 def to_size(rgba: np.ndarray, size) -> np.ndarray:
@@ -253,6 +275,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "tulip": [crop(load_cut(f"crop_tulip_stage{n}.png")) for n in (1, 2)] + [crop(load_cut("crop_tulip_red_stage3.png"))],
         "sunflower": simple_stages("sunflower", "_stage"),
         "mint": simple_stages("mint", "_stage"),
+        "cosmos": simple_stages("cosmos", "_stage"),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():
@@ -261,7 +284,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
             override = field_anchor(picture) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_stage{n}")
             out[f"plant_{crop_name}_stage{n}"] = (picture, override)
         if crop_name in WITHERED:
-            dead = to_size(crop(load_cut(f"crop_{crop_name}_withered.png")), WITHERED[crop_name])
+            dead = to_size(crop(load_cut(f"crop_{crop_name}_withered.png", **CUT.get(crop_name, {}))), WITHERED[crop_name])
             out[f"plant_{crop_name}_withered"] = (dead, field_anchor(dead) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_withered"))
     for colour in TULIP_COLOURS:
         bloom = to_size(crop(load_cut(f"crop_tulip_{colour}_stage3.png")), STAGES["tulip"][2])
@@ -274,7 +297,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
 def prepare_icons() -> dict[str, np.ndarray]:
     out = {}
     for path in sorted(SOURCE.glob("icon_*.png")):
-        rgba = crop(load_cut(path.name))
+        rgba = crop(load_cut(path.name, **CUT.get(path.stem.removeprefix("icon_"), {})))
         h, w = rgba.shape[:2]
         scale = ICON_SIZE * 0.92 / max(h, w)
         small = resize(rgba, scale, scale)

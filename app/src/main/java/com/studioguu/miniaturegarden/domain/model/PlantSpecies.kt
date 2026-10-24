@@ -34,7 +34,7 @@ enum class PlantSpecies(
     ROSE("plant_rose", growthHours = 120, dryOutHours = 36, harvestCoins = 160, harvestXp = 140),
 
     /** Autumn's own flower; light and quick to grow. */
-    COSMOS("plant_cosmos", growthHours = 60, dryOutHours = 20, harvestCoins = 64, harvestXp = 60),
+    COSMOS("plant_cosmos", growthHours = 60, dryOutHours = 20, harvestCoins = 64, harvestXp = 60, growthStages = 3),
 
     /** The winter flower: slow to dry out in the cold. */
     SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55),

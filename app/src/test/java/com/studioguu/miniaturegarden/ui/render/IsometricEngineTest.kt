@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import com.studioguu.miniaturegarden.domain.model.GridObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -64,8 +65,14 @@ class IsometricEngineTest {
     fun `points outside the grid pick nothing`() {
         assertNull(TilePicker.pick(transform.worldToScreen(-0.1f, 4f), transform))
         assertNull(TilePicker.pick(transform.worldToScreen(4f, -0.1f), transform))
-        assertNull(TilePicker.pick(transform.worldToScreen(9.1f, 4f), transform))
-        assertNull(TilePicker.pick(transform.worldToScreen(4f, 9.1f), transform))
+        // Past the far sides of a new garden (11 x 11 since #56; this assumed 9 x 9 until #63).
+        val edge = GridObject.GRID_SIZE + 0.1f
+        assertNull(TilePicker.pick(transform.worldToScreen(edge, 4f), transform))
+        assertNull(TilePicker.pick(transform.worldToScreen(4f, edge), transform))
+        // A garden still 9 x 9 (begun before #56) ends at its own size.
+        val legacy = GridObject.LEGACY_GRID_SIZE
+        assertNull(TilePicker.pick(transform.worldToScreen(legacy + 0.1f, 4f), transform, legacy))
+        assertEquals(TileCoord(legacy, 4), TilePicker.pick(transform.worldToScreen(legacy + 0.1f, 4.5f), transform))
         // Inside the grid's bounding rectangle but outside the diamond.
         assertNull(TilePicker.pick(Offset(transform.offsetX - 400f, transform.offsetY + 10f), transform))
     }

@@ -17,7 +17,6 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 
 /** How each crop with no sprites yet is drawn here: at a growth of 0 to 1, standing on a point, a tile wide. */
 private val CROP_DRAWINGS: Map<PlantSpecies, DrawScope.(base: Offset, unit: Float, growth: Float, withered: Boolean) -> Unit> = mapOf(
-    PlantSpecies.COSMOS to { base, unit, growth, withered -> drawCosmos(base, unit, growth, withered) },
     PlantSpecies.SNOWDROP to { base, unit, growth, withered -> drawSnowdrop(base, unit, growth, withered) },
     PlantSpecies.TOMATO to { base, unit, growth, withered -> drawTomato(base, unit, growth, withered) },
     PlantSpecies.STRAWBERRY to { base, unit, growth, withered -> drawStrawberry(base, unit, growth, withered) },
@@ -50,31 +49,6 @@ private val STEM_DRY = Color(0xFF8D6E63)
 
 /** How tall a plant stands at [growth] (0..1), as a share of its full height. */
 private fun grown(growth: Float): Float = 0.35f + 0.65f * growth.coerceIn(0f, 1f)
-
-/** Cosmos: a thin, branching stem with feathery leaves and pink eight-petalled flowers once grown. */
-private fun DrawScope.drawCosmos(base: Offset, unit: Float, growth: Float, withered: Boolean) {
-    val s = grown(growth)
-    val stem = if (withered) STEM_DRY else STEM
-    val top = base - Offset(0f, unit * 0.6f * s)
-    val side = base + Offset(unit * 0.08f * s, -unit * 0.42f * s)
-    drawLine(stem, base, top, unit * 0.022f, StrokeCap.Round)
-    drawLine(stem, base - Offset(0f, unit * 0.22f * s), side, unit * 0.018f, StrokeCap.Round)
-    // Feathery leaves: short strokes along the stem.
-    for (i in 1..3) {
-        val at = base - Offset(0f, unit * 0.12f * i * s)
-        drawLine(stem, at, at + Offset(-unit * 0.07f * s, -unit * 0.03f * s), unit * 0.01f, StrokeCap.Round)
-    }
-    if (growth < 0.5f) return
-    val petal = if (withered) Color(0xFFBCAAA4) else Color(0xFFF48FB1)
-    for ((center, r) in listOf(top to unit * 0.07f * s, side to unit * 0.05f * s)) {
-        for (k in 0 until 8) {
-            rotate(k * 45f, pivot = center) {
-                drawOval(petal, center + Offset(-r * 0.3f, -r * 1.1f), Size(r * 0.6f, r))
-            }
-        }
-        drawCircle(Color(0xFFFFD54F), r * 0.32f, center)
-    }
-}
 
 /** Snowdrop: two strap leaves and white bells hanging from bowed stems. */
 private fun DrawScope.drawSnowdrop(base: Offset, unit: Float, growth: Float, withered: Boolean) {
