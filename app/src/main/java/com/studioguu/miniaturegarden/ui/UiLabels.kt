@@ -1,8 +1,16 @@
 package com.studioguu.miniaturegarden.ui
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -12,7 +20,7 @@ import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 
-// Display names and emoji icons for domain values. Emoji stand in for icon artwork for now.
+// Display names and icons for domain values. Emoji stand in for icon artwork where there is none.
 
 /** The string resource naming a grid object; null for an id that has none. */
 @StringRes
@@ -26,6 +34,10 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "plant_tomato" -> R.string.object_plant_tomato
     "plant_paprika" -> R.string.object_plant_paprika
     "plant_daikon" -> R.string.object_plant_daikon
+    "plant_carrot" -> R.string.object_plant_carrot
+    "plant_eggplant" -> R.string.object_plant_eggplant
+    "plant_wheat" -> R.string.object_plant_wheat
+    "plant_corn" -> R.string.object_plant_corn
     "plant_strawberry" -> R.string.object_plant_strawberry
     "plant_watermelon" -> R.string.object_plant_watermelon
     "plant_lavender" -> R.string.object_plant_lavender
@@ -69,6 +81,10 @@ fun itemDisplayName(item: GardenItem): String = when (item) {
     GardenItem.SEED_TOMATO -> stringResource(R.string.item_seed_tomato)
     GardenItem.SEED_PAPRIKA -> stringResource(R.string.item_seed_paprika)
     GardenItem.SEED_DAIKON -> stringResource(R.string.item_seed_daikon)
+    GardenItem.SEED_CARROT -> stringResource(R.string.item_seed_carrot)
+    GardenItem.SEED_EGGPLANT -> stringResource(R.string.item_seed_eggplant)
+    GardenItem.SEED_WHEAT -> stringResource(R.string.item_seed_wheat)
+    GardenItem.SEED_CORN -> stringResource(R.string.item_seed_corn)
     GardenItem.SEED_STRAWBERRY -> stringResource(R.string.item_seed_strawberry)
     GardenItem.SEED_WATERMELON -> stringResource(R.string.item_seed_watermelon)
     GardenItem.SEED_LAVENDER -> stringResource(R.string.item_seed_lavender)
@@ -111,8 +127,45 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_LAVENDER -> "💜"
     GardenItem.SEED_PUMPKIN -> "🎃"
     GardenItem.SEED_POINSETTIA -> "🌺"
+    GardenItem.SEED_CARROT -> "🥕"
+    GardenItem.SEED_EGGPLANT -> "🍆"
+    GardenItem.SEED_WHEAT -> "🌾"
+    GardenItem.SEED_CORN -> "🌽"
     GardenItem.FLOOR_GREENHOUSE -> "🪴"
 }
+
+/**
+ * The picture standing for [item] (#57: the harvest of a crop, `res/drawable-nodpi/icon_*.png`),
+ * or null for an item that is shown by its emoji ([itemEmoji]).
+ */
+@DrawableRes
+fun itemIconRes(item: GardenItem): Int? = when (item) {
+    GardenItem.SEED_TOMATO -> R.drawable.icon_tomato
+    GardenItem.SEED_STRAWBERRY -> R.drawable.icon_strawberry
+    GardenItem.SEED_CARROT -> R.drawable.icon_carrot
+    GardenItem.SEED_EGGPLANT -> R.drawable.icon_eggplant
+    GardenItem.SEED_WHEAT -> R.drawable.icon_wheat
+    GardenItem.SEED_CORN -> R.drawable.icon_corn
+    else -> null
+}
+
+/**
+ * [item]'s icon at about the size of an emoji set in [size]: its picture where it has one
+ * ([itemIconRes]), its emoji otherwise. Decorative: the name is given by whatever holds it.
+ */
+@Composable
+fun ItemIcon(item: GardenItem, size: TextUnit, modifier: Modifier = Modifier) {
+    val picture = itemIconRes(item)
+    if (picture != null) {
+        // An emoji's glyph is about a third again as tall as its font size.
+        Image(painterResource(picture), contentDescription = null, modifier = modifier.size((size.value * ICON_PER_SP).dp))
+    } else {
+        Text(itemEmoji(item), fontSize = size, modifier = modifier)
+    }
+}
+
+/** dp of picture to an sp of emoji. */
+private const val ICON_PER_SP = 1.3f
 
 fun weatherEmoji(weather: WeatherType): String = when (weather) {
     WeatherType.SUNNY -> "☀️"

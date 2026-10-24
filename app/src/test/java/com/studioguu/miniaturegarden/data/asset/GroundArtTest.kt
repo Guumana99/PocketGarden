@@ -17,7 +17,8 @@ class GroundArtTest {
     fun `the apk's assets hold the atlas only - received pictures stay in tools`() {
         val loose = File(main, "assets").listFiles()!!.filter { it.name != "atlas" }.map { it.name }
         assertEquals(emptyList<String>(), loose)
-        for (name in listOf("tile_lawn_flat.png", "tile_soil_flat.png", "pond.png")) {
+        // #57: the lawn's slab, and the crops and icons as they came (cut out into raw_assets and res).
+        for (name in listOf("tile_grass_iso.png", "tile_soil_flat.png", "pond.png", "crop_corn_stage1.png", "icon_corn.png")) {
             assertTrue(name, File(tools, "source_art/$name").isFile)
         }
         // The pond has no object yet, so it is not packed: CodeArtTest would refuse it.

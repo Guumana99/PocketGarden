@@ -48,7 +48,7 @@ import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.ui.itemDisplayName
-import com.studioguu.miniaturegarden.ui.itemEmoji
+import com.studioguu.miniaturegarden.ui.ItemIcon
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 private const val COLUMNS = 4
@@ -232,7 +232,7 @@ private fun SlotCell(slot: InventorySlot, onClick: () -> Unit, modifier: Modifie
         contentAlignment = Alignment.Center,
     ) {
         if (item != null) {
-            Text(itemEmoji(item), fontSize = 30.sp)
+            ItemIcon(item, 30.sp)
             Text(
                 text = "×${slot.amount}",
                 style = MaterialTheme.typography.labelMedium,

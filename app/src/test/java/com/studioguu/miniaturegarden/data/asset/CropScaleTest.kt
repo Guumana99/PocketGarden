@@ -24,8 +24,8 @@ class CropScaleTest {
 
     @Test
     fun `a tomato seedling is no taller than the tulip's first shoots`() {
-        // It came painted at 316 px, against the tulip's 222.
-        assertTrue(raw.assets.first { it.assetId == "plant_tomato_stage1" }.height > 300)
+        // The #39 one came painted at 316 px, against the tulip's 222; the #57 one is drawn small
+        // already, and is held under the same cap.
         assertTrue(height("plant_tomato_stage1") <= height("plant_tulip_stage1") * 1.1f)
         assertTrue(height("plant_tomato_stage1") <= CropScale.SEEDLING_HEIGHT + 1e-4f)
         // The tulip itself, the measure, is left almost as it was.
@@ -43,8 +43,10 @@ class CropScaleTest {
 
     @Test
     fun `a bushy seedling like the rose's is held to a slim shoot's breadth`() {
-        for (stages in crops.values) {
-            assertTrue(stages.first(), width(stages.first()) <= CropScale.SEEDLING_WIDTH + 1e-4f)
+        for ((crop, stages) in crops) {
+            // The corn's three seedlings and the wheat's field of shoots are several plants (#57).
+            val cap = if (crop in CropScale.CLUMPS) CropScale.MAX_WIDTH else CropScale.SEEDLING_WIDTH
+            assertTrue(stages.first(), width(stages.first()) <= cap + 1e-4f)
         }
         // The rose's first stage is drawn at about 0.6 of its painted size (it stood as full as a young plant).
         val rose = drawn("plant_rose_stage1").drawScale

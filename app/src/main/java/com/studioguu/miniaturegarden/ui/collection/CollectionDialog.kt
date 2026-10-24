@@ -579,6 +579,10 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.TOMATO -> R.string.flavor_tomato
     CollectionEntry.PAPRIKA -> R.string.flavor_paprika
     CollectionEntry.DAIKON -> R.string.flavor_daikon
+    CollectionEntry.CARROT -> R.string.flavor_carrot
+    CollectionEntry.EGGPLANT -> R.string.flavor_eggplant
+    CollectionEntry.WHEAT -> R.string.flavor_wheat
+    CollectionEntry.CORN -> R.string.flavor_corn
     CollectionEntry.STRAWBERRY -> R.string.flavor_strawberry
     CollectionEntry.WATERMELON -> R.string.flavor_watermelon
     CollectionEntry.LAVENDER -> R.string.flavor_lavender

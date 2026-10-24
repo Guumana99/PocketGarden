@@ -44,7 +44,7 @@ import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
-import com.studioguu.miniaturegarden.ui.itemEmoji
+import com.studioguu.miniaturegarden.ui.ItemIcon
 import com.studioguu.miniaturegarden.ui.objectDisplayName
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
@@ -91,7 +91,7 @@ fun StarterCrateDialog(onReceive: () -> Unit, onDismiss: () -> Unit) {
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.bodyMedium,
                         )
-                        Text(itemEmoji(reward), fontSize = 40.sp)
+                        ItemIcon(reward, 40.sp)
                         Text(
                             text = stringResource(R.string.crate_reward, itemDisplayName(reward), StarterGarden.CRATE_REWARD_AMOUNT),
                             color = GardenColors.Ink,

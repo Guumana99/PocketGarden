@@ -1,8 +1,8 @@
 {
   "version": 1,
   "atlas": "atlas.png",
-  "atlasWidth": 3947,
-  "atlasHeight": 2003,
+  "atlasWidth": 4046,
+  "atlasHeight": 2270,
   "tileWidth": 512,
   "assets": [
     {
@@ -12,7 +12,7 @@
       "width": 513,
       "height": 439,
       "isFlippedAllowed": true,
-      "atlasX": 2420,
+      "atlasX": 3178,
       "atlasY": 2
     },
     {
@@ -22,8 +22,88 @@
       "width": 512,
       "height": 279,
       "isFlippedAllowed": false,
+      "atlasX": 2424,
+      "atlasY": 1750
+    },
+    {
+      "assetId": "plant_carrot_stage1",
+      "anchorX": 0.5247,
+      "anchorY": 1.0,
+      "width": 223,
+      "height": 195,
+      "isFlippedAllowed": true,
+      "atlasX": 511,
+      "atlasY": 2061
+    },
+    {
+      "assetId": "plant_carrot_stage2",
+      "anchorX": 0.503,
+      "anchorY": 1.0,
+      "width": 328,
+      "height": 246,
+      "isFlippedAllowed": true,
+      "atlasX": 2938,
+      "atlasY": 1750
+    },
+    {
+      "assetId": "plant_carrot_stage3",
+      "anchorX": 0.4973,
+      "anchorY": 1.0,
+      "width": 366,
+      "height": 384,
+      "isFlippedAllowed": true,
+      "atlasX": 2333,
+      "atlasY": 957
+    },
+    {
+      "assetId": "plant_carrot_withered",
+      "anchorX": 0.5044,
+      "anchorY": 1.0,
+      "width": 341,
+      "height": 207,
+      "isFlippedAllowed": true,
       "atlasX": 2,
-      "atlasY": 1722
+      "atlasY": 2061
+    },
+    {
+      "assetId": "plant_corn_stage1",
+      "anchorX": 0.4464,
+      "anchorY": 1.0,
+      "width": 289,
+      "height": 184,
+      "isFlippedAllowed": true,
+      "atlasX": 736,
+      "atlasY": 2061
+    },
+    {
+      "assetId": "plant_corn_stage2",
+      "anchorX": 0.616,
+      "anchorY": 1.0,
+      "width": 250,
+      "height": 358,
+      "isFlippedAllowed": true,
+      "atlasX": 1258,
+      "atlasY": 1375
+    },
+    {
+      "assetId": "plant_corn_stage3",
+      "anchorX": 0.5021,
+      "anchorY": 1.0,
+      "width": 476,
+      "height": 461,
+      "isFlippedAllowed": true,
+      "atlasX": 1591,
+      "atlasY": 2
+    },
+    {
+      "assetId": "plant_corn_withered",
+      "anchorX": 0.503,
+      "anchorY": 1.0,
+      "width": 495,
+      "height": 387,
+      "isFlippedAllowed": true,
+      "atlasX": 1836,
+      "atlasY": 957
     },
     {
       "assetId": "plant_daikon_stage1",
@@ -32,8 +112,8 @@
       "width": 196,
       "height": 218,
       "isFlippedAllowed": true,
-      "atlasX": 674,
-      "atlasY": 1722
+      "atlasX": 3702,
+      "atlasY": 1750
     },
     {
       "assetId": "plant_daikon_stage2",
@@ -42,7 +122,7 @@
       "width": 514,
       "height": 422,
       "isFlippedAllowed": true,
-      "atlasX": 2261,
+      "atlasX": 2685,
       "atlasY": 517
     },
     {
@@ -52,7 +132,7 @@
       "width": 1064,
       "height": 430,
       "isFlippedAllowed": true,
-      "atlasX": 2,
+      "atlasX": 426,
       "atlasY": 517
     },
     {
@@ -62,8 +142,48 @@
       "width": 555,
       "height": 356,
       "isFlippedAllowed": true,
-      "atlasX": 3390,
-      "atlasY": 949
+      "atlasX": 1510,
+      "atlasY": 1375
+    },
+    {
+      "assetId": "plant_eggplant_stage1",
+      "anchorX": 0.5613,
+      "anchorY": 1.0,
+      "width": 155,
+      "height": 154,
+      "isFlippedAllowed": true,
+      "atlasX": 1447,
+      "atlasY": 2061
+    },
+    {
+      "assetId": "plant_eggplant_stage2",
+      "anchorX": 0.6,
+      "anchorY": 1.0,
+      "width": 350,
+      "height": 297,
+      "isFlippedAllowed": true,
+      "atlasX": 807,
+      "atlasY": 1750
+    },
+    {
+      "assetId": "plant_eggplant_stage3",
+      "anchorX": 0.4713,
+      "anchorY": 1.0,
+      "width": 435,
+      "height": 400,
+      "isFlippedAllowed": true,
+      "atlasX": 1399,
+      "atlasY": 957
+    },
+    {
+      "assetId": "plant_eggplant_withered",
+      "anchorX": 0.4712,
+      "anchorY": 1.0,
+      "width": 452,
+      "height": 336,
+      "isFlippedAllowed": true,
+      "atlasX": 3072,
+      "atlasY": 1375
     },
     {
       "assetId": "plant_paprika_stage1",
@@ -72,8 +192,8 @@
       "width": 339,
       "height": 343,
       "isFlippedAllowed": true,
-      "atlasX": 379,
-      "atlasY": 1364
+      "atlasX": 2444,
+      "atlasY": 1375
     },
     {
       "assetId": "plant_paprika_stage2",
@@ -82,8 +202,8 @@
       "width": 480,
       "height": 411,
       "isFlippedAllowed": true,
-      "atlasX": 394,
-      "atlasY": 949
+      "atlasX": 917,
+      "atlasY": 957
     },
     {
       "assetId": "plant_paprika_stage3",
@@ -92,7 +212,7 @@
       "width": 469,
       "height": 417,
       "isFlippedAllowed": true,
-      "atlasX": 2777,
+      "atlasX": 3201,
       "atlasY": 517
     },
     {
@@ -102,7 +222,7 @@
       "width": 353,
       "height": 452,
       "isFlippedAllowed": true,
-      "atlasX": 1774,
+      "atlasX": 2069,
       "atlasY": 2
     },
     {
@@ -112,8 +232,8 @@
       "width": 254,
       "height": 324,
       "isFlippedAllowed": true,
-      "atlasX": 1892,
-      "atlasY": 1364
+      "atlasX": 3790,
+      "atlasY": 1375
     },
     {
       "assetId": "plant_rose_stage2",
@@ -122,7 +242,7 @@
       "width": 449,
       "height": 429,
       "isFlippedAllowed": true,
-      "atlasX": 1474,
+      "atlasX": 1898,
       "atlasY": 517
     },
     {
@@ -132,8 +252,8 @@
       "width": 375,
       "height": 356,
       "isFlippedAllowed": true,
-      "atlasX": 2,
-      "atlasY": 1364
+      "atlasX": 2067,
+      "atlasY": 1375
     },
     {
       "assetId": "plant_rose_stage4",
@@ -142,8 +262,8 @@
       "width": 422,
       "height": 438,
       "isFlippedAllowed": true,
-      "atlasX": 2935,
-      "atlasY": 2
+      "atlasX": 2,
+      "atlasY": 517
     },
     {
       "assetId": "plant_rose_withered",
@@ -152,38 +272,38 @@
       "width": 213,
       "height": 126,
       "isFlippedAllowed": true,
-      "atlasX": 1669,
-      "atlasY": 1722
+      "atlasX": 2090,
+      "atlasY": 2061
     },
     {
       "assetId": "plant_strawberry_stage1",
-      "anchorX": 0.5149,
-      "anchorY": 0.9975,
-      "width": 437,
-      "height": 404,
+      "anchorX": 0.4574,
+      "anchorY": 1.0,
+      "width": 129,
+      "height": 154,
       "isFlippedAllowed": true,
-      "atlasX": 876,
-      "atlasY": 949
+      "atlasX": 1604,
+      "atlasY": 2061
     },
     {
       "assetId": "plant_strawberry_stage2",
-      "anchorX": 0.4837,
+      "anchorX": 0.5474,
       "anchorY": 1.0,
-      "width": 461,
-      "height": 361,
+      "width": 274,
+      "height": 246,
       "isFlippedAllowed": true,
-      "atlasX": 2500,
-      "atlasY": 949
+      "atlasX": 3268,
+      "atlasY": 1750
     },
     {
       "assetId": "plant_strawberry_stage3",
-      "anchorX": 0.4893,
+      "anchorX": 0.4723,
       "anchorY": 1.0,
-      "width": 654,
-      "height": 479,
+      "width": 235,
+      "height": 297,
       "isFlippedAllowed": true,
-      "atlasX": 620,
-      "atlasY": 2
+      "atlasX": 1159,
+      "atlasY": 1750
     },
     {
       "assetId": "plant_strawberry_withered",
@@ -192,8 +312,8 @@
       "width": 390,
       "height": 413,
       "isFlippedAllowed": true,
-      "atlasX": 2,
-      "atlasY": 949
+      "atlasX": 525,
+      "atlasY": 957
     },
     {
       "assetId": "plant_sunflower_stage1",
@@ -202,8 +322,8 @@
       "width": 164,
       "height": 207,
       "isFlippedAllowed": true,
-      "atlasX": 872,
-      "atlasY": 1722
+      "atlasX": 345,
+      "atlasY": 2061
     },
     {
       "assetId": "plant_sunflower_stage2",
@@ -212,8 +332,8 @@
       "width": 285,
       "height": 339,
       "isFlippedAllowed": true,
-      "atlasX": 720,
-      "atlasY": 1364
+      "atlasX": 2785,
+      "atlasY": 1375
     },
     {
       "assetId": "plant_sunflower_stage3",
@@ -222,8 +342,8 @@
       "width": 308,
       "height": 370,
       "isFlippedAllowed": true,
-      "atlasX": 2190,
-      "atlasY": 949
+      "atlasX": 475,
+      "atlasY": 1375
     },
     {
       "assetId": "plant_sunflower_stage4",
@@ -232,7 +352,7 @@
       "width": 289,
       "height": 444,
       "isFlippedAllowed": true,
-      "atlasX": 2129,
+      "atlasX": 2424,
       "atlasY": 2
     },
     {
@@ -242,38 +362,38 @@
       "width": 262,
       "height": 326,
       "isFlippedAllowed": true,
-      "atlasX": 1007,
-      "atlasY": 1364
+      "atlasX": 3526,
+      "atlasY": 1375
     },
     {
       "assetId": "plant_tomato_stage1",
-      "anchorX": 0.5556,
+      "anchorX": 0.5704,
       "anchorY": 1.0,
-      "width": 234,
-      "height": 316,
+      "width": 142,
+      "height": 174,
       "isFlippedAllowed": true,
-      "atlasX": 2148,
-      "atlasY": 1364
+      "atlasX": 1303,
+      "atlasY": 2061
     },
     {
       "assetId": "plant_tomato_stage2",
-      "anchorX": 0.6306,
-      "anchorY": 0.9889,
-      "width": 425,
-      "height": 360,
+      "anchorX": 0.5237,
+      "anchorY": 1.0,
+      "width": 380,
+      "height": 379,
       "isFlippedAllowed": true,
-      "atlasX": 2963,
-      "atlasY": 949
+      "atlasX": 2701,
+      "atlasY": 957
     },
     {
       "assetId": "plant_tomato_stage3",
-      "anchorX": 0.525,
-      "anchorY": 0.9969,
-      "width": 619,
-      "height": 325,
+      "anchorX": 0.47,
+      "anchorY": 0.97,
+      "width": 461,
+      "height": 440,
       "isFlippedAllowed": true,
-      "atlasX": 1271,
-      "atlasY": 1364
+      "atlasX": 2715,
+      "atlasY": 2
     },
     {
       "assetId": "plant_tomato_withered",
@@ -282,7 +402,7 @@
       "width": 496,
       "height": 464,
       "isFlippedAllowed": true,
-      "atlasX": 1276,
+      "atlasX": 1093,
       "atlasY": 2
     },
     {
@@ -292,8 +412,8 @@
       "width": 156,
       "height": 222,
       "isFlippedAllowed": true,
-      "atlasX": 516,
-      "atlasY": 1722
+      "atlasX": 3544,
+      "atlasY": 1750
     },
     {
       "assetId": "plant_tulip_stage2",
@@ -302,8 +422,8 @@
       "width": 434,
       "height": 378,
       "isFlippedAllowed": true,
-      "atlasX": 1315,
-      "atlasY": 949
+      "atlasX": 3083,
+      "atlasY": 957
     },
     {
       "assetId": "plant_tulip_stage3",
@@ -312,7 +432,7 @@
       "width": 404,
       "height": 430,
       "isFlippedAllowed": true,
-      "atlasX": 1068,
+      "atlasX": 1492,
       "atlasY": 517
     },
     {
@@ -322,8 +442,8 @@
       "width": 521,
       "height": 416,
       "isFlippedAllowed": true,
-      "atlasX": 3248,
-      "atlasY": 517
+      "atlasX": 2,
+      "atlasY": 957
     },
     {
       "assetId": "plant_tulip_withered",
@@ -332,8 +452,48 @@
       "width": 437,
       "height": 377,
       "isFlippedAllowed": true,
-      "atlasX": 1751,
-      "atlasY": 949
+      "atlasX": 3519,
+      "atlasY": 957
+    },
+    {
+      "assetId": "plant_wheat_stage1",
+      "anchorX": 0.5,
+      "anchorY": 0.6829,
+      "width": 471,
+      "height": 373,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 1375
+    },
+    {
+      "assetId": "plant_wheat_stage2",
+      "anchorX": 0.5,
+      "anchorY": 0.7576,
+      "width": 471,
+      "height": 489,
+      "isFlippedAllowed": true,
+      "atlasX": 620,
+      "atlasY": 2
+    },
+    {
+      "assetId": "plant_wheat_stage3",
+      "anchorX": 0.5,
+      "anchorY": 0.6786,
+      "width": 471,
+      "height": 368,
+      "isFlippedAllowed": true,
+      "atlasX": 785,
+      "atlasY": 1375
+    },
+    {
+      "assetId": "plant_wheat_withered",
+      "anchorX": 0.5,
+      "anchorY": 0.6023,
+      "width": 489,
+      "height": 309,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 1750
     },
     {
       "assetId": "struct_cottage",
@@ -353,8 +513,8 @@
       "width": 353,
       "height": 150,
       "isFlippedAllowed": true,
-      "atlasX": 1314,
-      "atlasY": 1722
+      "atlasX": 1735,
+      "atlasY": 2061
     },
     {
       "assetId": "struct_fence_post",
@@ -363,8 +523,8 @@
       "width": 56,
       "height": 119,
       "isFlippedAllowed": true,
-      "atlasX": 1884,
-      "atlasY": 1722
+      "atlasX": 2305,
+      "atlasY": 2061
     },
     {
       "assetId": "struct_fence_rail",
@@ -373,8 +533,8 @@
       "width": 274,
       "height": 176,
       "isFlippedAllowed": true,
-      "atlasX": 1038,
-      "atlasY": 1722
+      "atlasX": 1027,
+      "atlasY": 2061
     },
     {
       "assetId": "struct_windmill",
@@ -383,7 +543,7 @@
       "width": 334,
       "height": 424,
       "isFlippedAllowed": true,
-      "atlasX": 1925,
+      "atlasX": 2349,
       "atlasY": 517,
       "drawScale": 3.2802,
       "attachX": 0.8422,
@@ -396,8 +556,8 @@
       "width": 312,
       "height": 303,
       "isFlippedAllowed": true,
-      "atlasX": 2384,
-      "atlasY": 1364,
+      "atlasX": 493,
+      "atlasY": 1750,
       "drawScale": 3.2802
     },
     {
@@ -407,8 +567,8 @@
       "width": 512,
       "height": 295,
       "isFlippedAllowed": true,
-      "atlasX": 2698,
-      "atlasY": 1364
+      "atlasX": 1396,
+      "atlasY": 1750
     },
     {
       "assetId": "tile_grass_dark",
@@ -417,8 +577,8 @@
       "width": 512,
       "height": 295,
       "isFlippedAllowed": true,
-      "atlasX": 3212,
-      "atlasY": 1364
+      "atlasX": 1910,
+      "atlasY": 1750
     }
   ]
 }

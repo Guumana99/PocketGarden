@@ -30,6 +30,13 @@ object CropScale {
     /** The widest any crop spreads: a little over its own tile. */
     const val MAX_WIDTH = 1.15f
 
+    /**
+     * Crops drawn as several plants to a cell at every stage (#57): the corn's three stalks and
+     * the wheat's whole field. Their seedlings are as many plants as they grow into, so they are
+     * not held to one shoot's breadth ([SEEDLING_WIDTH]), only to [MAX_WIDTH].
+     */
+    val CLUMPS = setOf("plant_corn", "plant_wheat")
+
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")
     private val WITHERED = Regex("""^plant_[a-z_]+_withered$""")
 
@@ -40,13 +47,12 @@ object CropScale {
         manifest.assets
             .mapNotNull { asset -> STAGE.find(asset.assetId)?.let { Triple(it.groupValues[1], it.groupValues[2].toInt(), asset) } }
             .groupBy({ it.first }, { it.second to it.third })
-            .values
-            .forEach { stages ->
+            .forEach { (plant, stages) ->
                 // From the grown plant down to the seedling, each one held under the next.
                 var nextHeight = Float.MAX_VALUE
                 for ((stage, asset) in stages.sortedByDescending { it.first }) {
                     val heightCap = minOf(if (stage == 1) SEEDLING_HEIGHT * tile else MAX_HEIGHT * tile, nextHeight)
-                    val widthCap = if (stage == 1) SEEDLING_WIDTH * tile else MAX_WIDTH * tile
+                    val widthCap = if (stage == 1 && plant !in CLUMPS) SEEDLING_WIDTH * tile else MAX_WIDTH * tile
                     val scale = capped(asset, heightCap, widthCap)
                     scales[asset.assetId] = scale
                     nextHeight = asset.height * scale

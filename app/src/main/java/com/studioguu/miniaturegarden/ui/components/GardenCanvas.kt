@@ -571,13 +571,13 @@ private fun submitObjects(
                 if (obj.isTilledSoil) {
                     // Beds side by side are one field: each knows which of its sides carry on (#47).
                     val joins = SoilJoins.at(obj.gridX, obj.gridY) { bx, by -> grid.floorAt(bx, by)?.isTilledSoil == true }
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland)
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.bedFace(obj.isComposted))
                 } else if (obj.isGreenhouse && soil != null && atlasImage != null) {
                     // Compost darkens the earth.
                     val center = transform.tileCenter(obj.gridX, obj.gridY)
                     drawSprite(atlasImage, soil, center, spriteScale, tint = if (obj.isComposted) COMPOST_TINT else null)
                 } else if (obj.isGreenhouse) {
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland)
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.bedFace(obj.isComposted))
                 } else if (obj.objectId == GridObject.WOOD_DECK_OBJECT_ID) {
                     drawWoodDeck(transform, obj.gridX, obj.gridY)
                 } else if (paving != null) {
@@ -1759,6 +1759,9 @@ private val COMPOST_LEAF = Color(0xFF8FB25A)
 private val COMPOST_STRAW = Color(0xFFE2C879)
 private const val FURROWS = 4
 
+/** How strongly the rim and clods are drawn round a bed laid with its picture (#57). */
+private const val PICTURED_BED_EDGE = 0.45f
+
 /**
  * A tile the hoe has been over: dark, damp-looking earth with furrows running across it, set a
  * little in from the tile's edge so that a strip of grass still shows between two beds.
@@ -1773,6 +1776,11 @@ private const val FURROWS = 4
  *
  * The damp patches are placed over the ground as a whole ([SoilTexture.patches]); a bed draws
  * those of the cells round it too, clipped to itself, so a patch carries across the joins.
+ *
+ * With a [face] (#57: the picture of a tilled or a composted bed, seen from above,
+ * [TerrainTextures.bedFace]) the bed's earth, furrows and grains are that picture, one copy to
+ * the cell, so that the furrows of beds side by side run on; the rim, the spilled earth and the
+ * low front face are drawn round it as before.
  */
 private fun DrawScope.drawTilledSoil(
     transform: IsometricTransform,
@@ -1782,6 +1790,7 @@ private fun DrawScope.drawTilledSoil(
     joins: SoilJoins = SoilJoins.NONE,
     onBareEarth: Boolean = false,
     earth: Bitmap? = null,
+    face: Bitmap? = null,
 ) {
     val unit = transform.tileWidth
     val inset = SoilTexture.INSET
@@ -1821,14 +1830,77 @@ private fun DrawScope.drawTilledSoil(
     for (side in listOf(1, 2)) {
         if (joins.joined(side)) continue
         val edge = sidePoints(side)
-        val face = Path().apply {
+        val front = Path().apply {
             edge.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
             edge.asReversed().forEach { p -> lineTo(p.x + lip.x, p.y + lip.y) }
             close()
         }
-        drawPath(face, if (side == 1) DIRT_DEEP else DIRT_EDGE)
+        drawPath(front, if (side == 1) DIRT_DEEP else DIRT_EDGE)
     }
 
+    if (face != null) {
+        fillWithTexture(face, transform, bed, cellsPerCopy = 1f)
+    } else {
+        drawCodeEarth(transform, x, y, x0, x1, y0, y1, joins, bed, onBareEarth, earth)
+    }
+
+    // The rim where the turf was cut, along the open sides only. Round a pictured bed, on the
+    // pale wasteland of #57, a fainter one: at full strength it outlined the bed in black.
+    val rim = unit * 0.026f
+    val rimColour = if (face != null) DIRT_EDGE.copy(alpha = PICTURED_BED_EDGE) else DIRT_EDGE
+    for (side in 0 until 4) {
+        if (joins.joined(side)) continue
+        val edge = sidePoints(side)
+        for (i in 0 until edge.size - 1) drawLine(rimColour, edge[i], edge[i + 1], rim, StrokeCap.Round)
+    }
+
+    // Grains: crumbs of dry earth and small dark hollows, out to the joined edges as well. A
+    // pictured bed has its own.
+    if (face == null) {
+        for (grain in SoilTexture.grains(x, y, joins)) {
+            val at = transform.worldToScreen(grain.x, grain.y)
+            val colour = when {
+                grain.shade < 0.4f -> DIRT_DRY
+                grain.shade < 0.75f -> DIRT_RIDGE
+                else -> DIRT_DEEP
+            }
+            drawOval(colour.copy(alpha = 0.85f), at - Offset(unit * grain.size, unit * grain.size * 0.6f), Size(unit * grain.size * 2f, unit * grain.size * 1.2f))
+        }
+    }
+    drawBedEdges(transform, x, y, x0, x1, y0, y1, joins, onBareEarth, strength = if (face != null) PICTURED_BED_EDGE else 1f)
+    // A composted bed's picture is the enriched earth itself; the drawn one is flecked instead.
+    if (composted && face == null) {
+        // Bits of leaf and straw worked into the bed.
+        var seed = x * 73856093 xor y * 19349663
+        repeat(7) { i ->
+            seed = seed * 1103515245 + 12345
+            val u = ((seed ushr 16) and 0x7FFF) / 32767f
+            seed = seed * 1103515245 + 12345
+            val v = ((seed ushr 16) and 0x7FFF) / 32767f
+            val at = transform.worldToScreen(x0 + 0.12f + u * (x1 - x0 - 0.24f), y0 + 0.12f + v * (y1 - y0 - 0.24f))
+            drawCircle(if (i % 2 == 0) COMPOST_LEAF else COMPOST_STRAW, transform.tileWidth * 0.016f, at)
+        }
+    }
+}
+
+/**
+ * A bed's earth drawn without a picture: one colour shading smoothly over the field, with damp
+ * and dry patches and furrows ruled across it.
+ */
+private fun DrawScope.drawCodeEarth(
+    transform: IsometricTransform,
+    x: Int,
+    y: Int,
+    x0: Float,
+    x1: Float,
+    y0: Float,
+    y1: Float,
+    joins: SoilJoins,
+    bed: Path,
+    onBareEarth: Boolean,
+    earth: Bitmap?,
+) {
+    val unit = transform.tileWidth
     // The earth: one colour shading smoothly over the field, ...
     val damp = SoilTexture.fieldDampness(x + 0.5f, y + 0.5f)
     val body = lerp(DIRT_DRY, DIRT_DARK, SoilPalette.bodyMix(damp))
@@ -1876,26 +1948,22 @@ private fun DrawScope.drawTilledSoil(
             drawLine(DIRT_DRY.copy(alpha = 0.55f), from + Offset(0f, stroke * 0.3f), to + Offset(0f, stroke * 0.3f), stroke * 0.35f, StrokeCap.Butt)
         }
     }
+}
 
-    // The rim where the turf was cut, along the open sides only.
-    val rim = unit * 0.026f
-    for (side in 0 until 4) {
-        if (joins.joined(side)) continue
-        val edge = sidePoints(side)
-        for (i in 0 until edge.size - 1) drawLine(DIRT_EDGE, edge[i], edge[i + 1], rim, StrokeCap.Round)
-    }
-
-    // Grains: crumbs of dry earth and small dark hollows, out to the joined edges as well.
-    for (grain in SoilTexture.grains(x, y, joins)) {
-        val at = transform.worldToScreen(grain.x, grain.y)
-        val colour = when {
-            grain.shade < 0.4f -> DIRT_DRY
-            grain.shade < 0.75f -> DIRT_RIDGE
-            else -> DIRT_DEEP
-        }
-        drawOval(colour.copy(alpha = 0.85f), at - Offset(unit * grain.size, unit * grain.size * 0.6f), Size(unit * grain.size * 2f, unit * grain.size * 1.2f))
-    }
-
+/** The open edges of a bed: not ruled with a pen, but with clods lying on them and grass growing over them. */
+private fun DrawScope.drawBedEdges(
+    transform: IsometricTransform,
+    x: Int,
+    y: Int,
+    x0: Float,
+    x1: Float,
+    y0: Float,
+    y1: Float,
+    joins: SoilJoins,
+    onBareEarth: Boolean,
+    strength: Float = 1f,
+) {
+    val unit = transform.tileWidth
     // The open edges are not ruled with a pen: clods lie on them and the grass grows over them.
     var edgeSeed = x * 19349663 xor y * 83492791
     fun nextEdge(): Float {
@@ -1923,24 +1991,12 @@ private fun DrawScope.drawTilledSoil(
         // On the wasteland no grass grows at the bed's edge: clods all the way round.
         if (i < 6 || onBareEarth) {
             val radius = unit * (0.014f + extra * 0.014f)
-            drawCircle(DIRT_DEEP, radius, at + Offset(0f, radius * 0.35f))
-            drawCircle(if (i % 2 == 0) DIRT_DARK else DIRT_RIDGE, radius, at)
+            drawCircle(DIRT_DEEP.copy(alpha = strength), radius, at + Offset(0f, radius * 0.35f))
+            drawCircle((if (i % 2 == 0) DIRT_DARK else DIRT_RIDGE).copy(alpha = strength), radius, at)
         } else {
             val blade = unit * (0.035f + extra * 0.02f)
             drawLine(GRASS_TUFT, at, at + Offset(-blade * 0.4f, -blade), unit * 0.012f, StrokeCap.Round)
             drawLine(GRASS_BLADE_LIGHT, at, at + Offset(blade * 0.45f, -blade * 0.8f), unit * 0.012f, StrokeCap.Round)
-        }
-    }
-    if (composted) {
-        // Bits of leaf and straw worked into the bed.
-        var seed = x * 73856093 xor y * 19349663
-        repeat(7) { i ->
-            seed = seed * 1103515245 + 12345
-            val u = ((seed ushr 16) and 0x7FFF) / 32767f
-            seed = seed * 1103515245 + 12345
-            val v = ((seed ushr 16) and 0x7FFF) / 32767f
-            val at = transform.worldToScreen(x0 + 0.12f + u * (x1 - x0 - 0.24f), y0 + 0.12f + v * (y1 - y0 - 0.24f))
-            drawCircle(if (i % 2 == 0) COMPOST_LEAF else COMPOST_STRAW, transform.tileWidth * 0.016f, at)
         }
     }
 }

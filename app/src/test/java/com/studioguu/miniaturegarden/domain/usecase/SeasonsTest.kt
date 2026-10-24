@@ -181,18 +181,21 @@ class SeasonsTest {
     @Test
     fun `the seed shelf holds what is in season and what grows all year`() {
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TULIP, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_ROSE),
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TULIP, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_ROSE, GardenItem.SEED_CARROT),
             GardenItem.shelf(ItemCategory.SEED, Season.SPRING).toSet(),
         )
         assertEquals(
             setOf(
                 GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TOMATO, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_WATERMELON,
-                GardenItem.SEED_PAPRIKA,
+                GardenItem.SEED_PAPRIKA, GardenItem.SEED_EGGPLANT, GardenItem.SEED_CORN,
             ),
             GardenItem.shelf(ItemCategory.SEED, Season.SUMMER).toSet(),
         )
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS, GardenItem.SEED_PUMPKIN, GardenItem.SEED_DAIKON),
+            setOf(
+                GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS, GardenItem.SEED_PUMPKIN, GardenItem.SEED_DAIKON,
+                GardenItem.SEED_CARROT, GardenItem.SEED_WHEAT,
+            ),
             GardenItem.shelf(ItemCategory.SEED, Season.AUTUMN).toSet(),
         )
         assertEquals(

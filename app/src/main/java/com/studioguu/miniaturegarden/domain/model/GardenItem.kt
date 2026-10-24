@@ -244,6 +244,30 @@ enum class GardenItem(
         unlock = UnlockCondition.PlayerLevel(2),
     ),
 
+    /** Spring's and autumn's root, a quicker one than the daikon. */
+    SEED_CARROT(
+        "seed_carrot", price = 25, objectId = PlantSpecies.CARROT.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(2),
+    ),
+
+    /** Summer's eggplant; it keeps bearing. */
+    SEED_EGGPLANT(
+        "seed_eggplant", price = 40, objectId = PlantSpecies.EGGPLANT.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(3),
+    ),
+
+    /** Autumn's wheat. */
+    SEED_WHEAT(
+        "seed_wheat", price = 45, objectId = PlantSpecies.WHEAT.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(4),
+    ),
+
+    /** Summer's corn. */
+    SEED_CORN(
+        "seed_corn", price = 60, objectId = PlantSpecies.CORN.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(5),
+    ),
+
     /**
      * A one-cell glass greenhouse over a bed of soil. Seeds go into it as into tilled soil, and
      * whatever the season. Paving-like: it lies in the cell's floor layer.
@@ -283,6 +307,10 @@ enum class GardenItem(
             SEED_POINSETTIA -> setOf(Season.WINTER)
             SEED_PAPRIKA -> setOf(Season.SUMMER)
             SEED_DAIKON -> setOf(Season.AUTUMN, Season.WINTER)
+            SEED_CARROT -> setOf(Season.SPRING, Season.AUTUMN)
+            SEED_EGGPLANT -> setOf(Season.SUMMER)
+            SEED_WHEAT -> setOf(Season.AUTUMN)
+            SEED_CORN -> setOf(Season.SUMMER)
             else -> emptySet()
         }
 

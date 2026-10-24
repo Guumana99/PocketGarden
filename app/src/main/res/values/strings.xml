@@ -55,6 +55,10 @@
     <string name="object_plant_poinsettia">ポインセチア</string>
     <string name="object_plant_paprika">パプリカ</string>
     <string name="object_plant_daikon">大根</string>
+    <string name="object_plant_carrot">ニンジン</string>
+    <string name="object_plant_eggplant">ナス</string>
+    <string name="object_plant_wheat">小麦</string>
+    <string name="object_plant_corn">トウモロコシ</string>
     <string name="object_floor_greenhouse">ガラスの温室</string>
     <string name="object_deco_rock">岩</string>
     <string name="object_struct_hut">小屋</string>
@@ -153,6 +157,10 @@
     <string name="item_seed_poinsettia">ポインセチアの苗</string>
     <string name="item_seed_paprika">パプリカの苗</string>
     <string name="item_seed_daikon">大根の種</string>
+    <string name="item_seed_carrot">ニンジンの種</string>
+    <string name="item_seed_eggplant">ナスの苗</string>
+    <string name="item_seed_wheat">小麦の種</string>
+    <string name="item_seed_corn">トウモロコシの種</string>
     <string name="item_tile_river">小川のかけら</string>
 
     <!-- Inventory -->
@@ -227,6 +235,14 @@
     <string name="flavor_poinsettia">冬を彩る、真紅の葉。\n寒い日にも、庭を温かく見せてくれる。</string>
     <string name="flavor_paprika">艶やかな赤い実。\nひとつ摘んでも、また次の実がふくらんでくる。</string>
     <string name="flavor_daikon">土の中で、白く太っていく。\n寒さが増すほど、甘みも増す。</string>
+    <string name="flavor_carrot">ふさふさの葉の下で、橙色の根が伸びていく。
+春にも秋にも、気軽に育てられる。</string>
+    <string name="flavor_eggplant">夏の畑に、つややかな紫が下がる。
+ひとつ採っても、また次の実がつく。</string>
+    <string name="flavor_wheat">ひと畝いっぱいに、穂が揃って揺れる。
+乾いた日にも、よく耐える。</string>
+    <string name="flavor_corn">背の高い茎に、黄色い粒がぎっしり。
+実るまでは、少し気長に。</string>
     <string name="flavor_mint">季節を選ばない、丈夫な葉。\n触れると、すっと涼やかな香りが立つ。</string>
     <string name="flavor_greenhouse">ガラスの中は、いつもぽかぽか。\n季節外れの花も、ここなら育つ。</string>
     <string name="flavor_tulip">春の庭の定番。\n育てやすく、初めての人にもやさしい。</string>
