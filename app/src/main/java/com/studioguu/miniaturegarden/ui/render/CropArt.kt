@@ -19,7 +19,6 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 private val CROP_DRAWINGS: Map<PlantSpecies, DrawScope.(base: Offset, unit: Float, growth: Float, withered: Boolean) -> Unit> = mapOf(
     PlantSpecies.COSMOS to { base, unit, growth, withered -> drawCosmos(base, unit, growth, withered) },
     PlantSpecies.SNOWDROP to { base, unit, growth, withered -> drawSnowdrop(base, unit, growth, withered) },
-    PlantSpecies.MINT to { base, unit, growth, withered -> drawMint(base, unit, growth, withered) },
     PlantSpecies.TOMATO to { base, unit, growth, withered -> drawTomato(base, unit, growth, withered) },
     PlantSpecies.STRAWBERRY to { base, unit, growth, withered -> drawStrawberry(base, unit, growth, withered) },
     PlantSpecies.WATERMELON to { base, unit, growth, withered -> drawWatermelon(base, unit, growth, withered) },
@@ -95,21 +94,6 @@ private fun DrawScope.drawSnowdrop(base: Offset, unit: Float, growth: Float, wit
         drawPath(path, leaf, style = Stroke(width = unit * 0.012f, cap = StrokeCap.Round))
         drawOval(bell, hang - Offset(unit * 0.025f * s, 0f), Size(unit * 0.05f * s, unit * 0.07f * s))
         if (!withered) drawCircle(Color(0xFF9CCC65), unit * 0.008f * s, hang + Offset(0f, unit * 0.065f * s))
-    }
-}
-
-/** Mint: a low, bushy clump of rounded leaves in two greens. */
-private fun DrawScope.drawMint(base: Offset, unit: Float, growth: Float, withered: Boolean) {
-    val s = grown(growth)
-    val dark = if (withered) STEM_DRY else Color(0xFF4E9A5A)
-    val light = if (withered) Color(0xFFA1887F) else Color(0xFF7CC47F)
-    val leaves = listOf(
-        Offset(-0.09f, -0.06f), Offset(0.09f, -0.07f), Offset(0f, -0.13f),
-        Offset(-0.05f, -0.2f), Offset(0.06f, -0.21f), Offset(0f, -0.28f),
-    )
-    leaves.forEachIndexed { i, (dx, dy) ->
-        val at = base + Offset(unit * dx * s, unit * dy * s)
-        drawOval(if (i % 2 == 0) dark else light, at - Offset(unit * 0.05f * s, unit * 0.03f * s), Size(unit * 0.1f * s, unit * 0.06f * s))
     }
 }
 

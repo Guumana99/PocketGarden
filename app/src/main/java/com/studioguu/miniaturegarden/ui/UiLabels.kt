@@ -146,6 +146,7 @@ fun itemIconRes(item: GardenItem): Int? = when (item) {
     GardenItem.SEED_EGGPLANT -> R.drawable.icon_eggplant
     GardenItem.SEED_WHEAT -> R.drawable.icon_wheat
     GardenItem.SEED_CORN -> R.drawable.icon_corn
+    GardenItem.SEED_MINT -> R.drawable.icon_mint
     else -> null
 }
 

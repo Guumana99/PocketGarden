@@ -39,10 +39,10 @@ from PIL import Image, ImageFilter
 CROP_PREFIX = "plant_"
 
 
-#: Crop pictures drawn with no earth under them (#57, #58: cut out of a white background). They still
+#: Crop pictures drawn with no earth under them (#57, #58, #62: cut out of a white background). They still
 #: stand on the base of their stem, but have nothing to take out; run on them, the colour test
 #: took their stems, leaves and fruit for earth and cleared almost all of them.
-SOILLESS = re.compile(r"^plant_(corn|eggplant|carrot|wheat|tulip|sunflower|tomato|strawberry)_")
+SOILLESS = re.compile(r"^plant_(corn|eggplant|carrot|wheat|tulip|sunflower|tomato|strawberry|mint)_")
 
 
 def is_crop(asset_id: str) -> bool:
