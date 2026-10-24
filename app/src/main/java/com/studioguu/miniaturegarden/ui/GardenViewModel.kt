@@ -1050,10 +1050,18 @@ class GardenViewModel @Inject constructor(
 
                 if (CollectionEntry.entries.any { it.objectId in now && it.objectId !in before }) {
                     showEffect { GardenEffect.Discovery(it) }
+                } else if (CollectionEntry.entries.any { entry -> entry.objectId in before && newColour(entry, before, now) }) {
+                    // A colour not grown before, of a crop whose page was already there (#59).
+                    _messages.trySend(R.string.msg_new_bloom_colour)
                 }
             }
         }
     }
+
+    private fun newColour(entry: CollectionEntry, before: Set<String>, now: Set<String>): Boolean =
+        PlantSpecies.fromObjectId(entry.objectId)?.bloomColours.orEmpty()
+            .map { CollectionEntry.colourRecordId(entry.objectId, it) }
+            .any { it in now && it !in before }
 
     private fun withSelectedObject(block: (GridObject) -> Unit) {
         val obj = gridObjects.value.objectAt(_selectedTile.value)

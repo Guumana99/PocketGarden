@@ -76,6 +76,21 @@ class StartupAndDialogsTest {
     }
 
     @Test
+    fun `effects of one kind merge instead of piling up in the same spot`() {
+        // #59: a run of harvests adds up on one plaque, which starts afresh with the newest id.
+        val harvests = listOf<GardenEffect>(GardenEffect.Harvest(1, coins = 10))
+            .plusEffect(GardenEffect.Harvest(2, coins = 15))
+            .plusEffect(GardenEffect.Harvest(3, coins = 5))
+        assertEquals(listOf<GardenEffect>(GardenEffect.Harvest(3, coins = 30)), harvests)
+        // Several pages ready at once are said once.
+        val pages = listOf<GardenEffect>(GardenEffect.Discovery(4)).plusEffect(GardenEffect.Discovery(5))
+        assertEquals(listOf<GardenEffect>(GardenEffect.Discovery(5)), pages)
+        // Different kinds keep their own places, one above the other.
+        val mixed = harvests.plusEffect(GardenEffect.Discovery(6)).plusEffect(GardenEffect.Harvest(7, coins = 1))
+        assertEquals(listOf(GardenEffect.Discovery(6), GardenEffect.Harvest(7, coins = 31)), mixed)
+    }
+
+    @Test
     fun `the merged plaque says both, and stays as long as a building's`() {
         val effects = source("ui/effects/FloatingEffects.kt")
         assertTrue(effects.contains("if (effect.newPage) \"\\n\" + stringResource(R.string.effect_discovery) else \"\""))

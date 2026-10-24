@@ -38,7 +38,7 @@ class PolishTest {
     // --- Toasts ---
 
     @Test
-    fun `a toast shows the latest message and each message is its own`() {
+    fun `toasts come one at a time, the same words merged into one`() {
         val toast = GardenToastState()
         assertNull(toast.current)
 
@@ -46,28 +46,47 @@ class PolishTest {
         val first = toast.current!!
         assertEquals("おひっこし完了", first.second)
 
-        // The same words again are still a new message, so that they are shown afresh.
+        // #59: the same words again while they are up are merged, not shown a second time.
         toast.show("おひっこし完了")
-        val second = toast.current!!
-        assertFalse(first.first == second.first)
+        assertEquals(first, toast.current)
+        assertEquals(0, toast.waitingCount)
 
-        // A newer message replaces the one on show rather than queueing behind it.
+        // A newer message waits for the one on show instead of cutting it off or lying over it.
         toast.show("かばんにしまいました")
+        toast.show("かばんにしまいました")
+        assertEquals("おひっこし完了", toast.current!!.second)
+        assertEquals(1, toast.waitingCount)
+
+        toast.dismiss(first.first)
+        assertNull(toast.current)
+        toast.showNext()
         assertEquals("かばんにしまいました", toast.current!!.second)
+        assertFalse(first.first == toast.current!!.first)
+        assertEquals(0, toast.waitingCount)
+
+        // Once it has gone, the same words are a new message again.
+        toast.dismiss(toast.current!!.first)
+        toast.show("おひっこし完了")
+        assertFalse(first.first == toast.current!!.first)
     }
 
     @Test
-    fun `taking down an old toast does not take down the one that replaced it`() {
+    fun `the queue stays short, the oldest waiting message giving way`() {
         val toast = GardenToastState()
         toast.show("one")
-        val old = toast.current!!.first
-        toast.show("two")
-
-        toast.dismiss(old)
-        assertEquals("two", toast.current!!.second)
+        for (text in listOf("two", "three", "four")) toast.show(text)
+        assertEquals(GardenToastState.MAX_WAITING, toast.waitingCount)
 
         toast.dismiss(toast.current!!.first)
-        assertNull(toast.current)
+        toast.showNext()
+        assertEquals("three", toast.current!!.second)
+        // An old id never takes down the message that followed it.
+        toast.dismiss(-1)
+        assertEquals("three", toast.current!!.second)
+        // Nothing comes up while a message is still on show.
+        toast.showNext()
+        assertEquals("three", toast.current!!.second)
+        assertEquals(1, toast.waitingCount)
     }
 
     @Test

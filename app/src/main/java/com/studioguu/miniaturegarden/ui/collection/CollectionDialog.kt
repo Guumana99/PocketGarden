@@ -69,6 +69,7 @@ import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.domain.model.CollectionCategory
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.PageState
@@ -323,7 +324,7 @@ private fun Chapter(
         if (page == 0) {
             ContentsPage(entries.size) { index ->
                 val entry = entries[index]
-                EntryCell(entry, progress.stateOf(entry), atlas, terrain) {
+                EntryCell(entry, progress.stateOf(entry), progress.coloursOf(entry).firstOrNull(), atlas, terrain) {
                     scope.launch { pagerState.turnTo(index + 1) }
                 }
             }
@@ -333,6 +334,7 @@ private fun Chapter(
                 entry = entry,
                 state = progress.stateOf(entry),
                 enteredAt = progress.recordOf(entry)?.firstObtainedAt,
+                colours = progress.coloursOf(entry),
                 atlas = atlas,
                 terrain = terrain,
                 onReveal = { onReveal(entry) },
@@ -343,9 +345,19 @@ private fun Chapter(
     BookFooter(pagerState, entries.size, onDismiss)
 }
 
-/** An entry on the contents page: its picture once filled in, otherwise a "？". */
+/**
+ * An entry on the contents page: its picture once filled in, otherwise a "？". A crop of several
+ * colours is drawn in [colour], the first one the player harvested (#59).
+ */
 @Composable
-private fun EntryCell(entry: CollectionEntry, state: PageState, atlas: SpriteAtlas, terrain: TerrainTextures, onClick: () -> Unit) {
+private fun EntryCell(
+    entry: CollectionEntry,
+    state: PageState,
+    colour: String?,
+    atlas: SpriteAtlas,
+    terrain: TerrainTextures,
+    onClick: () -> Unit,
+) {
     val revealed = state == PageState.REVEALED
     ContentsCell(
         label = if (revealed) objectDisplayName(entry.objectId) else stringResource(R.string.collection_unknown),
@@ -355,7 +367,7 @@ private fun EntryCell(entry: CollectionEntry, state: PageState, atlas: SpriteAtl
         mark = if (state == PageState.READY) ({ ReadyDot() }) else null,
     ) {
         if (revealed) {
-            ObjectPreview(objectId = entry.objectId, atlas = atlas, terrain = terrain, modifier = Modifier.fillMaxSize())
+            ObjectPreview(objectId = entry.objectId, atlas = atlas, terrain = terrain, modifier = Modifier.fillMaxSize(), bloomColour = colour)
         } else {
             Text(
                 text = "？",
@@ -373,6 +385,7 @@ private fun Spread(
     entry: CollectionEntry,
     state: PageState,
     enteredAt: Long?,
+    colours: List<String>,
     atlas: SpriteAtlas,
     terrain: TerrainTextures,
     onReveal: () -> Unit,
@@ -410,7 +423,7 @@ private fun Spread(
                     .padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Illustration(entry, state, reveal.value, atlas, terrain)
+                Illustration(entry, state, reveal.value, colours.firstOrNull(), atlas, terrain)
             }
         }
         // The gutter.
@@ -446,6 +459,22 @@ private fun Spread(
                         fontFamily = BookFont,
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    // A crop of several colours lists the ones the player has grown (#59).
+                    val all = PlantSpecies.fromObjectId(entry.objectId)?.bloomColours.orEmpty()
+                    if (all.size > 1) {
+                        val grown = colours.map { stringResource(bloomColourLabel(it)) }
+                        Text(
+                            text = stringResource(
+                                R.string.collection_bloom_colours,
+                                grown.joinToString(stringResource(R.string.collection_bloom_colours_separator)).ifEmpty { "―" },
+                                colours.size,
+                                all.size,
+                            ),
+                            color = Ink,
+                            fontFamily = BookFont,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
                 PageState.READY -> {
                     Text(
@@ -495,7 +524,14 @@ private fun Spread(
  *   while a ring of gold spreads from the middle and the picture pops up out of it.
  */
 @Composable
-private fun Illustration(entry: CollectionEntry, state: PageState, reveal: Float, atlas: SpriteAtlas, terrain: TerrainTextures) {
+private fun Illustration(
+    entry: CollectionEntry,
+    state: PageState,
+    reveal: Float,
+    colour: String?,
+    atlas: SpriteAtlas,
+    terrain: TerrainTextures,
+) {
     // Kept as a State and read only in the question mark's layer, so that its beat redraws that
     // one layer rather than recomposing the whole page on every frame.
     val beat: State<Float> = if (state == PageState.READY) {
@@ -528,6 +564,7 @@ private fun Illustration(entry: CollectionEntry, state: PageState, reveal: Float
                 objectId = entry.objectId,
                 atlas = atlas,
                 terrain = terrain,
+                bloomColour = colour,
                 modifier = Modifier.fillMaxSize().graphicsLayer {
                     // Up from small, a little past full size, and back.
                     val pop = if (reveal < 0.7f) 0.4f + 0.7f * (reveal / 0.7f) else 1.1f - 0.1f * ((reveal - 0.7f) / 0.3f)
@@ -566,6 +603,18 @@ private fun categoryLabel(category: CollectionCategory): Int = when (category) {
     CollectionCategory.CROPS -> R.string.collection_tab_crops
     CollectionCategory.TERRAIN -> R.string.collection_tab_terrain
     CollectionCategory.STRUCTURES -> R.string.collection_tab_structures
+}
+
+/** The name of a colour a crop blooms in ([PlantSpecies.bloomColours]). */
+@StringRes
+internal fun bloomColourLabel(colour: String): Int = when (colour) {
+    "red" -> R.string.bloom_colour_red
+    "pink" -> R.string.bloom_colour_pink
+    "yellow" -> R.string.bloom_colour_yellow
+    "white" -> R.string.bloom_colour_white
+    "purple" -> R.string.bloom_colour_purple
+    "blue" -> R.string.bloom_colour_blue
+    else -> R.string.bloom_colour_other
 }
 
 @StringRes

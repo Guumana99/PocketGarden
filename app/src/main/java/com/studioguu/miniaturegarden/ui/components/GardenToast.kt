@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,18 +40,32 @@ fun toastMillis(text: String): Long =
         .coerceAtMost(GardenToastState.MAX_MILLIS)
 
 /**
- * The one short message the garden is currently showing, if any. A new message replaces the one
- * on show at once: these are passing remarks, and a queue of them would lag behind the play.
+ * The one short message the garden is currently showing, if any, and those waiting their turn.
+ * Several messages from one moment (a few pages ready at once, a creature met as a job is done)
+ * are shown one after another, never on top of each other or cutting each other off (#59). The
+ * same words are never shown twice in a row: a message already on show or waiting is merged into
+ * that one. The queue is short, so that it does not lag behind the play: past [MAX_WAITING], the
+ * oldest waiting message gives way.
  */
 @Stable
 class GardenToastState {
     /** The message on show and a number that changes with every message, even a repeated one. */
     var current by mutableStateOf<Pair<Long, String>?>(null)
         private set
+    private val waiting = mutableStateListOf<String>()
     private var nextId = 0L
 
+    /** Messages waiting for the one on show to go. */
+    val waitingCount: Int get() = waiting.size
+
     fun show(text: String) {
-        current = nextId++ to text
+        if (current?.second == text || text in waiting) return
+        if (current == null && waiting.isEmpty()) {
+            current = nextId++ to text
+            return
+        }
+        waiting += text
+        while (waiting.size > MAX_WAITING) waiting.removeAt(0)
     }
 
     /** Takes the message with this id down, unless a newer one has replaced it already. */
@@ -58,11 +73,23 @@ class GardenToastState {
         if (current?.first == id) current = null
     }
 
+    /** Puts up the next waiting message, once the last one has gone. */
+    fun showNext() {
+        if (current != null || waiting.isEmpty()) return
+        current = nextId++ to waiting.removeAt(0)
+    }
+
     companion object {
         /** Long enough to be read at a glance, short messages included (#49: 1.6 s was too quick). */
         const val BASE_MILLIS = 2_400L
         const val MILLIS_PER_CHARACTER = 55L
         const val MAX_MILLIS = 5_000L
+
+        /** How many messages may wait behind the one on show. */
+        const val MAX_WAITING = 2
+
+        /** The pause between one message fading and the next popping in, so that each is seen as its own. */
+        const val GAP_MILLIS = 320L
     }
 }
 
@@ -81,6 +108,12 @@ fun GardenToastHost(state: GardenToastState, modifier: Modifier = Modifier) {
         val shown = current ?: return@LaunchedEffect
         delay(toastMillis(shown.second))
         state.dismiss(shown.first)
+    }
+    // Once the last message has faded, the next one in line comes up after a breath.
+    LaunchedEffect(current == null, state.waitingCount) {
+        if (current != null || state.waitingCount == 0) return@LaunchedEffect
+        delay(GardenToastState.GAP_MILLIS)
+        state.showNext()
     }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         AnimatedVisibility(

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Android 12+ draws its own splash screen first: in the title's sky colour, with the app's
-         icon, so that it leads into the title without a jump in colour. -->
+    <!-- Android 12+ draws its own splash screen first: in the title's sky colour and without an
+         icon (#59: the icon's sprout flashed up in the middle like a placeholder), so that it
+         leads into the title without a jump in colour or a mark that comes and goes. -->
     <style name="Theme.PocketGarden" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@drawable/window_background</item>
         <item name="android:windowSplashScreenBackground">@color/launch_sky</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
     </style>
 </resources>

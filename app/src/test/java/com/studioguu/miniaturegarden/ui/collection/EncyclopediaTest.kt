@@ -84,4 +84,19 @@ class EncyclopediaTest {
             assertFalse(path, source(path).contains("R.string.action_close"))
         }
     }
+
+    @Test
+    fun `a tulip's page is drawn in the colour first grown and lists the colours grown`() {
+        val book = source("ui/collection/CollectionDialog.kt")
+        // #59: the picture is the colour harvested, not one picked by the preview's own id.
+        assertTrue(book.contains("EntryCell(entry, progress.stateOf(entry), progress.coloursOf(entry).firstOrNull(), atlas, terrain)"))
+        assertTrue(book.contains("colours = progress.coloursOf(entry),"))
+        assertTrue(book.contains("Illustration(entry, state, reveal.value, colours.firstOrNull(), atlas, terrain)"))
+        assertEquals(2, Regex("bloomColour = colour").findAll(book).count())
+        assertTrue(source("ui/components/GardenCanvas.kt").contains("TileSetDefinition.instanceIdBlooming(objectId, bloomColour, \"preview_\${x}_\$y\")"))
+        assertEquals("咲かせた色：%1\$s（%2\$d／%3\$d色）", string("collection_bloom_colours"))
+        for (colour in com.studioguu.miniaturegarden.domain.model.PlantSpecies.TULIP.bloomColours) {
+            assertTrue(colour, string("bloom_colour_$colour") != null)
+        }
+    }
 }

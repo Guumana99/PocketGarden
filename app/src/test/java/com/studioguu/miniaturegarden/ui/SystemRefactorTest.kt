@@ -42,12 +42,20 @@ class SystemRefactorTest {
     }
 
     @Test
-    fun `the window starts as the title's sky, with a sprout until the garden is drawn`() {
+    fun `the window starts as the title's sky, with no placeholder mark, and the garden fades in`() {
         assertTrue(res("values/themes.xml").contains("@drawable/window_background"))
-        assertTrue(res("values-v31/themes.xml").contains("android:windowSplashScreenBackground"))
+        val splash = res("values-v31/themes.xml")
+        assertTrue(splash.contains("android:windowSplashScreenBackground"))
+        // #59: no icon in the middle of the system splash, and no sprout while the art is read.
+        assertTrue(splash.contains("<item name=\"android:windowSplashScreenAnimatedIcon\">@drawable/splash_blank</item>"))
+        assertFalse(splash.contains("@mipmap/ic_launcher"))
         assertTrue(File(main, "res/drawable/window_background.xml").isFile)
-        assertTrue(source("ui/title/TitleScreen.kt").contains("LoadingSprout(Modifier.align(Alignment.Center))"))
-        assertTrue(source("ui/GardenScreen.kt").contains("if (!gardenReady) LoadingSprout("))
+        assertTrue(File(main, "res/drawable/splash_blank.xml").isFile)
+        for (screen in listOf("ui/title/TitleScreen.kt", "ui/GardenScreen.kt", "ui/components/Polish.kt")) {
+            assertFalse(screen, source(screen).contains("LoadingSprout"))
+        }
+        assertTrue(source("ui/title/TitleScreen.kt").contains("tween(SAMPLE_FADE_IN_MILLIS, easing = LinearOutSlowInEasing)"))
+        assertTrue(source("ui/GardenScreen.kt").contains("graphicsLayer { alpha = gardenAlpha }"))
     }
 
     // --- 2. Growing the garden ---

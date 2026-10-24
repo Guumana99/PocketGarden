@@ -29,7 +29,6 @@ import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import java.util.UUID
 import javax.inject.Inject
-import kotlin.math.min
 
 /** Outcome of a player action. Anything but [SUCCESS] means nothing was changed. */
 enum class ActionResult {
@@ -124,10 +123,9 @@ class CareForPlantUseCase @Inject constructor(
         }
 
     /**
-     * Costs [FERTILIZER_COST] coins: refills nutrition to 100%, advances growth by
-     * [fertilizerBoost] and earns [FERTILIZE_XP]. The boost is a share of the crop's own growing
-     * time, so it is worth the same to a quick mint as to a slow pumpkin (before, a fixed two
-     * hours was next to nothing on the slow crops, and the coins bought little but the refill).
+     * Costs [FERTILIZER_COST] coins: refills nutrition to 100% and earns [FERTILIZE_XP]. Nutrition
+     * is all it touches; growth is left exactly where it was (#59: feeding used to bring the crop
+     * on by a share of its growing time as well, so the two parameters were tangled together).
      *
      * Only allowed once the plant has used up half its food ([FERTILIZING_THRESHOLD]); nutrition
      * runs down over three days, so a plant can be fed about once a day and a half. Before #50 it
@@ -139,15 +137,7 @@ class CareForPlantUseCase @Inject constructor(
             coinCost = FERTILIZER_COST,
             xp = FERTILIZE_XP,
             refuse = { if (it.nutritionLevel >= FERTILIZING_THRESHOLD) ActionResult.ALREADY_FED else null },
-        ) {
-            it.copy(
-                nutritionLevel = 1f,
-                growthProgress = min(
-                    1f,
-                    it.growthProgress + fertilizerBoost(PlantSpecies.forObjectId(it.objectId)),
-                ),
-            )
-        }
+        ) { it.copy(nutritionLevel = 1f) }
 
     /**
      * Brings a withered plant back for [REVIVE_COST] coins: watered, fed and free of stress, at
@@ -227,19 +217,6 @@ class CareForPlantUseCase @Inject constructor(
         const val FERTILIZE_XP = 6
         const val FERTILIZER_COST = 10
 
-        /** The share of a crop's whole growing time one feed brings forward. */
-        const val FERTILIZER_GROWTH_SHARE = 0.05f
-
-        /** And never less than this many hours' growth, for the quickest crops. */
-        const val FERTILIZER_MIN_GROWTH_HOURS = 2
-
-        /**
-         * How far one feed brings [species] on, as growth progress: [FERTILIZER_GROWTH_SHARE] of
-         * its growing time, or [FERTILIZER_MIN_GROWTH_HOURS] if that is more. Fed every time it is
-         * allowed (about every day and a half), a crop comes in at most about a sixth sooner.
-         */
-        fun fertilizerBoost(species: PlantSpecies): Float =
-            maxOf(FERTILIZER_GROWTH_SHARE, FERTILIZER_MIN_GROWTH_HOURS * species.growthPerHour)
         const val REVIVE_COST = 30
 
         /** Watering is only possible while moisture is below this. */
@@ -440,7 +417,8 @@ class HarvestPlantUseCase @Inject constructor(
             val coins = SoilQuality.harvestCoins(reward.coins, bedUnder(current, garden)?.soilQuality ?: 0)
             afterHarvest(current, species, now)?.let { gardenRepository.upsertGridObject(it) }
                 ?: gardenRepository.deleteGridObject(instanceId)
-            recordCollection(current.objectId, CollectionTrigger.HARVEST, now)
+            // With the colour it bloomed in, for the book to show the one that was grown (#59).
+            recordCollection(current.objectId, CollectionTrigger.HARVEST, now, colour = species.bloomColourOf(current.instanceId))
             gardenRepository.saveUserProfile(profile.copy(coins = profile.coins + coins).gainXp(reward.xp))
             ActionResult.SUCCESS
         }
