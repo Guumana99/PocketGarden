@@ -10,7 +10,7 @@
 
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
-| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 57 枚を 1 枚に詰めたもの（4046×2270、約 10MB、メモリ上 約 37MB、1 タイル 512px） | `tools/asset_packer.py` |
+| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 59 枚を 1 枚に詰めたもの（4024×2190、約 10MB、メモリ上 約 35MB、1 タイル 512px） | `tools/asset_packer.py` |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
@@ -23,17 +23,22 @@
 
 ### スプライトの内訳
 
-- 作物 3 種 × 5 枚：`plant_{tulip,sunflower,rose}_stage{1..4}.png` と `_withered.png`
+- バラ（5 枚）：`plant_rose_stage{1..4}.png` と `_withered.png`（手描き風のまま）
+- チューリップ（#58、8 枚）：`plant_tulip_stage{1..3}.png` と、3 段階目の色違い `plant_tulip_stage3_{pink,yellow,white,purple,blue}.png`（`plant_tulip_stage3` が赤）。
+  **枯れた絵は無い**：チューリップは枯れない（`PlantSpecies.canWither = false`）。株ごとの色は `TileSetDefinition.bloomColourOf`（インスタンス id から 6 色のどれか、ずっと同じ）。
+  1・2 段階目は数本の芽・つぼみ、3 段階目は 3 輪。原画は `crop_tulip_stage{1,2}.png` と `crop_tulip_<色>_stage3.png`。
+- ひまわり（#58、4 枚）：`plant_sunflower_stage{1..3}.png` と `_withered.png`。1 段階目は 3 本の双葉で、アンカーは 3 本の真ん中（`atlas_overrides.json`）。
+- #58 で消した旧版：`plant_tulip_stage4`・`plant_tulip_withered`・`plant_sunflower_stage4`（4 段階の手描き風）。旧 1〜3 段階は同じ名前で上書き。
 - 地面と建物（#40、`tools/prepare_building_art.py` で加工）：
   - `tile_grass`・`tile_grass_dark`（芝生。#57 から `tile_grass_iso.png` の上面から作る。#47 から明るさの傾きを取り除き、1 色で並べる。`tile_grass_dark` は残っているが使っていない）、`floor_tilled`（耕した土。#47 から畑はコード描画になり、ガラスの温室の床でだけ使う）
   - `struct_cottage`（コテージ）、`floor_greenhouse`（ガラスの温室）、`struct_windmill`（風車の本体）、`struct_windmill_blades`（風車の羽根）、`deco_sprinkler`（スプリンクラー）と `deco_sprinkler_spray_0`〜`_7`（動いている間の水しぶき 8 コマ。無ければコードで描く）
-- 作物 4 種 × 4 枚（#57）：`plant_{corn,eggplant,carrot,wheat}_stage{1..3}.png` と `_withered.png`（3 段階）。トマト・イチゴの `_stage{1..3}` も #57 の絵に差し替え（`_withered` は #39 のまま）。
+- 作物 4 種 × 4 枚（#57）：`plant_{corn,eggplant,carrot,wheat}_stage{1..3}.png` と `_withered.png`（3 段階）。トマト・イチゴの `_stage{1..3}` も #57 の絵に差し替え、`_withered` は #58 で届いた絵に差し替え。
   - 受け取ったのは `res/drawable/crop_*.png`（1024×1024、白背景・透過なし）。原画は `tools/source_art/` に移し、`tools/prepare_drawable_art.py` で切り抜いて `raw_assets/` に書く（下の「#57 の絵を入れるとき」）。
   - 段階どうしの株数をそろえた：トウモロコシの 1 段階目は 16 本の苗の一覧だったので 3 本を 3 段階目の 3 本と同じ三角に並べ、2 段階目（2 本）には右の株を左右反転して手前に足して 3 本に。
     ナスの 1 段階目は 4 本の苗だったので手前の 1 本に（2・3 段階目は 1 株）。小麦は 3 段階とも畑一面。
   - 大きさ（タイル幅に対する高さ、`STAGES`）：トウモロコシ 0.36 / 0.7 / 0.9、ナス 0.3 / 0.58 / 0.78、ニンジン 0.38 / 0.48 / 0.75、トマト 0.34 / 0.74 / 0.86、イチゴ 0.3 / 0.48 / 0.58。小麦は 3 段階とも幅 0.92。
   - ニンジンの 2 段階目は届いていない（`crop_carrot_1` と `_3` だけ）。3 段階目の絵から根（橙色）より上を切り出し、「根がまだ土の中」の姿にした。
-  - 枯れた絵は届いていないので、4 種とも最後の緑の段階（ニンジンは 2 段階目）を茶色く乾かし少し縮めて作った（`wither`）。描き起こした絵があれば差し替えたい。
+  - 枯れた絵は #57 では最後の緑の段階を茶色くした代用品だったが、#58 で届いた `crop_<作物>_withered.png` に差し替えた（大きさは `WITHERED`）。
 - 作物 4 種 × 4 枚（#39）：`plant_{tomato,strawberry,paprika,daikon}_stage{1..3}.png` と `_withered.png`（3 段階）。トマト・イチゴの `_stage{1..3}` は #57 で差し替え済み
   - 受け取ったときは `res/drawable/crop_*.png` に置かれていた。アトラスに詰めるため `tools/raw_assets/` へ移し、`plant_<作物>_…` に改名した。
     大根は受け取ったファイル名が `crop_radish_*`（`radish`）だったので `plant_daikon_*` に、枯れの 1 枚は `rop_radish_withered.png`（先頭の c が欠けていた）だったので直した。

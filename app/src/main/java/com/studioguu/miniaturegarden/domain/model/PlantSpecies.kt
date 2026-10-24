@@ -13,6 +13,8 @@ package com.studioguu.miniaturegarden.domain.model
  * @property regrowCoins what each harvest after the first pays, for a [HarvestType.REPEATABLE_HARVEST]
  *   plant; the first pays [harvestCoins]. 0 for the others.
  * @property regrowXp the same for experience.
+ * @property canWither false for a plant that never withers (#58: the tulip): neglect and full
+ *   bloom still stress it, but never all the way.
  */
 enum class PlantSpecies(
     val objectId: String,
@@ -24,9 +26,11 @@ enum class PlantSpecies(
     val harvestType: HarvestType = HarvestType.SINGLE_HARVEST,
     val regrowCoins: Int = 0,
     val regrowXp: Int = 0,
+    val canWither: Boolean = true,
 ) {
-    TULIP("plant_tulip", growthHours = 48, dryOutHours = 24, harvestCoins = 50, harvestXp = 50),
-    SUNFLOWER("plant_sunflower", growthHours = 72, dryOutHours = 16, harvestCoins = 90, harvestXp = 80),
+    /** The first flower: drawn in three stages (#58), and it never withers. */
+    TULIP("plant_tulip", growthHours = 48, dryOutHours = 24, harvestCoins = 50, harvestXp = 50, growthStages = 3, canWither = false),
+    SUNFLOWER("plant_sunflower", growthHours = 72, dryOutHours = 16, harvestCoins = 90, harvestXp = 80, growthStages = 3),
     ROSE("plant_rose", growthHours = 120, dryOutHours = 36, harvestCoins = 160, harvestXp = 140),
 
     /** Autumn's own flower; light and quick to grow. */

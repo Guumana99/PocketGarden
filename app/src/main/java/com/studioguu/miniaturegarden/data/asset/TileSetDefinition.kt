@@ -63,18 +63,42 @@ object TileSetDefinition {
      */
     fun assetIdFor(gridObject: GridObject): String {
         if (!gridObject.isPlant) return gridObject.objectId
-        if (gridObject.status == PlantStatus.WITHERED) return witheredId(gridObject.objectId)
-        val stages = PlantSpecies.forObjectId(gridObject.objectId).growthStages
-        return stageId(gridObject.objectId, growthStage(gridObject.growthProgress, stages))
+        val species = PlantSpecies.forObjectId(gridObject.objectId)
+        if (gridObject.status == PlantStatus.WITHERED && species.canWither) return witheredId(gridObject.objectId)
+        val stage = growthStage(gridObject.growthProgress, species.growthStages)
+        val plain = stageId(gridObject.objectId, stage)
+        if (stage < species.growthStages) return plain
+        val colour = bloomColourOf(gridObject.objectId, gridObject.instanceId) ?: return plain
+        return "${plain}_$colour"
     }
 
     private fun stageId(objectId: String, stage: Int) = "${objectId}_stage$stage"
 
     private fun witheredId(objectId: String) = "${objectId}_withered"
 
-    /** Every sprite a crop is drawn with: `<objectId>_stage1` to `_stage<N>`, then `<objectId>_withered`. */
+    /**
+     * The flowers a crop blooms in besides its plain last stage (#58): each plant takes one, or
+     * the plain one, for good, by its instance id. Drawn as `<objectId>_stage<N>_<colour>`.
+     */
+    val BLOOM_COLOURS: Map<String, List<String>> = mapOf(
+        PlantSpecies.TULIP.objectId to listOf("pink", "yellow", "white", "purple", "blue"),
+    )
+
+    /** The colour [instanceId] of [objectId] blooms in, or null for its plain last stage (red for the tulip). */
+    fun bloomColourOf(objectId: String, instanceId: String): String? {
+        val colours = BLOOM_COLOURS[objectId] ?: return null
+        val pick = Math.floorMod(instanceId.hashCode(), colours.size + 1)
+        return if (pick == 0) null else colours[pick - 1]
+    }
+
+    /**
+     * Every sprite a crop is drawn with: `<objectId>_stage1` to `_stage<N>`, the colours of its
+     * last stage, then `<objectId>_withered` unless it never withers.
+     */
     fun spriteIdsFor(species: PlantSpecies): List<String> =
-        (1..species.growthStages).map { stageId(species.objectId, it) } + witheredId(species.objectId)
+        (1..species.growthStages).map { stageId(species.objectId, it) } +
+            BLOOM_COLOURS[species.objectId].orEmpty().map { "${stageId(species.objectId, species.growthStages)}_$it" } +
+            listOfNotNull(witheredId(species.objectId).takeIf { species.canWither })
 
     /** The sprite of a visitor: `creature_<id>`, standing with its anchor at its feet. */
     fun assetIdFor(creature: Creature): String = "creature_${creature.id}"

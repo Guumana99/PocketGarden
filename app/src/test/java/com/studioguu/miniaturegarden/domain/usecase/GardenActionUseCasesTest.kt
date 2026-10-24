@@ -130,10 +130,11 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `care is refused for withered plants, non-plants and unknown ids`() = runBlocking {
-        repo.put(tulip(stress = 1f, status = PlantStatus.WITHERED))
+        // Sunflowers: a tulip never withers (#58).
+        repo.put(tulip(stress = 1f, status = PlantStatus.WITHERED).copy(objectId = "plant_sunflower"))
         repo.put(tulip(id = "rock").copy(objectId = "deco_rock"))
         // Alive in the database, but it dried out and withered while the app was closed.
-        repo.put(tulip(id = "p3", x = 2, moisture = 0f, stress = 0.9f, status = PlantStatus.THIRSTY))
+        repo.put(tulip(id = "p3", x = 2, moisture = 0f, stress = 0.9f, status = PlantStatus.THIRSTY).copy(objectId = "plant_sunflower"))
 
         assertEquals(ActionResult.WITHERED, care.water("p1", t0, sunny))
         assertEquals(ActionResult.NOT_A_PLANT, care.water("rock", t0, sunny))
@@ -325,13 +326,16 @@ class GardenActionUseCasesTest {
     @Test
     fun `repeated skips add up and stop at the seven day cap per skip`() = runBlocking {
         repo.put(tulip())
+        repo.put(tulip(id = "s", x = 1).copy(objectId = "plant_sunflower"))
 
         skip(hour, t0, sunny)
         skip(hour, t0, sunny)
         assertEquals(2f / 48f, stored().growthProgress, 1e-4f)
 
         skip(30 * 24 * hour, t0, sunny)
-        assertEquals(PlantStatus.WITHERED, stored().status)
+        assertEquals(PlantStatus.WITHERED, stored("s").status)
+        // The tulip is as neglected, but never withers (#58).
+        assertFalse(stored().status == PlantStatus.WITHERED)
     }
 
     // --- Placing ---

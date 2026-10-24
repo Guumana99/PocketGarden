@@ -22,9 +22,10 @@ class CalculateOfflineProgressUseCaseTest {
     private val t0 = 1_700_000_000_000L
     private val hour = 3_600_000L
 
-    // plant() below is a tulip, so its rates are the reference for the expected values.
-    private val GROWTH_PER_TICK = 1.0 / (PlantSpecies.TULIP.growthHours * 60.0)
-    private val MOISTURE_DRAIN_PER_TICK = 1.0 / (PlantSpecies.TULIP.dryOutHours * 60.0)
+    // plant() below is a sunflower (#58: the tulip no longer withers), so its rates are the
+    // reference for the expected values.
+    private val GROWTH_PER_TICK = 1.0 / (PlantSpecies.SUNFLOWER.growthHours * 60.0)
+    private val MOISTURE_DRAIN_PER_TICK = 1.0 / (PlantSpecies.SUNFLOWER.dryOutHours * 60.0)
 
     private fun plant(
         growth: Float = 0f,
@@ -32,7 +33,7 @@ class CalculateOfflineProgressUseCaseTest {
         nutrition: Float = 1f,
         stress: Float = 0f,
         status: PlantStatus = PlantStatus.HEALTHY,
-        objectId: String = "plant_tulip",
+        objectId: String = "plant_sunflower",
     ) = GridObject(
         instanceId = "id",
         gridX = 0,
@@ -73,8 +74,8 @@ class CalculateOfflineProgressUseCaseTest {
     @Test
     fun `healthy plant grows and dries`() {
         val result = useCase(plant(), t0 + 12 * hour)
-        assertEquals(0.25f, result.growthProgress, 1e-4f)
-        assertEquals(0.5f, result.moistureLevel, 1e-4f)
+        assertEquals(12f / PlantSpecies.SUNFLOWER.growthHours, result.growthProgress, 1e-4f)
+        assertEquals(1f - 12f / PlantSpecies.SUNFLOWER.dryOutHours, result.moistureLevel, 1e-4f)
         assertEquals(0f, result.stressRate, 0f)
         assertEquals(PlantStatus.HEALTHY, result.status)
     }

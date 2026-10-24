@@ -100,11 +100,13 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
             val grown = LawnGrowth.grownBy(gridObject.growthProgress, ticks * TICK_MILLIS)
             return gridObject.copy(growthProgress = grown, lastUpdatedTimestamp = newTimestamp)
         }
-        if (ticks == 0L || !gridObject.isPlant || gridObject.status == PlantStatus.WITHERED) {
+        if (ticks == 0L || !gridObject.isPlant) return gridObject.copy(lastUpdatedTimestamp = newTimestamp)
+        val species = PlantSpecies.forObjectId(gridObject.objectId)
+        // A plant that cannot wither (#58) and was saved withered comes back to life.
+        if (gridObject.status == PlantStatus.WITHERED && species.canWither) {
             return gridObject.copy(lastUpdatedTimestamp = newTimestamp)
         }
 
-        val species = PlantSpecies.forObjectId(gridObject.objectId)
         val protected = weather.isProtective
         // Rain waters the plant before anything else happens.
         val startMoisture = if (protected) 1f else gridObject.moistureLevel
@@ -138,7 +140,7 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
             STRESS_THIRSTY_PER_TICK * thirstyTicks + STRESS_UNNOURISHED_PER_TICK * starvedTicks +
                 STRESS_OVERRIPE_PER_TICK * bloomTicks
         }
-        val stress = (recovered + gained).coerceIn(0.0, 1.0)
+        val stress = (recovered + gained).coerceIn(0.0, if (species.canWither) 1.0 else NEVER_WITHERED_STRESS)
 
         val status = statusOf(moisture, nutrition, stress)
 
@@ -197,6 +199,9 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
 
         /** A plant left in full bloom withers this many hours after it finished growing. */
         const val OVERRIPE_HOURS = 72
+
+        /** The most stress a plant that cannot wither ([PlantSpecies.canWither]) is ever under. */
+        const val NEVER_WITHERED_STRESS = 0.99
         const val STRESS_OVERRIPE_PER_TICK = 1.0 / (OVERRIPE_HOURS * TICKS_PER_HOUR)
 
         /** Keeps rounding in the growth sums from adding a tick to the time left until bloom. */

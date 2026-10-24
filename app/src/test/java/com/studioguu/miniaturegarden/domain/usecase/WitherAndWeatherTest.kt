@@ -37,7 +37,7 @@ class WitherAndWeatherTest {
     private val remove = RemoveObjectUseCase(repo)
     private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, AlwaysTrusted), calc)
 
-    private fun tulip(
+    private fun flower(
         id: String = "p",
         growth: Float = 0f,
         moisture: Float = 1f,
@@ -47,7 +47,7 @@ class WitherAndWeatherTest {
         x: Int = 0,
         at: Long = t0,
     ) = GridObject(
-        instanceId = id, gridX = x, gridY = 0, objectId = PlantSpecies.TULIP.objectId,
+        instanceId = id, gridX = x, gridY = 0, objectId = PlantSpecies.SUNFLOWER.objectId,
         growthProgress = growth, moistureLevel = moisture, nutritionLevel = nutrition,
         stressRate = stress, status = status, lastUpdatedTimestamp = at,
     )
@@ -61,7 +61,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `a plant in full bloom is not gone or withered straight away`() {
-        val bloom = tulip(growth = 1f)
+        val bloom = flower(growth = 1f)
 
         val later = calc(bloom, t0 + 6 * hour, sunny)
 
@@ -73,7 +73,7 @@ class WitherAndWeatherTest {
     @Test
     fun `left standing in bloom for long enough it withers, and it is still there`() {
         // Kept watered and fed, so that nothing but the waiting is at work.
-        var plant = tulip(growth = 1f)
+        var plant = flower(growth = 1f)
         var now = t0
         repeat(OVERRIPE_HOURS / 12 - 1) {
             now += 12 * hour
@@ -90,22 +90,23 @@ class WitherAndWeatherTest {
 
     @Test
     fun `the time to go over is counted from the bloom, not from the planting`() {
-        // 0.5 grown: 24 healthy hours short of bloom for a tulip. It dries out long before that
-        // unless it is watered, so it is, here.
-        val halfway = tulip(growth = 0.5f)
+        // 0.5 grown: 36 healthy hours short of bloom for a sunflower. It dries out long before
+        // that unless it is watered, so it is, here, every 12 hours.
+        val halfway = flower(growth = 0.5f)
         val atBloom = calc(halfway, t0 + 12 * hour, sunny).copy(moistureLevel = 1f)
-            .let { calc(it, t0 + 24 * hour, sunny) }
+            .let { calc(it, t0 + 24 * hour, sunny).copy(moistureLevel = 1f) }
+            .let { calc(it, t0 + 36 * hour, sunny) }
         assertEquals(1f, atBloom.growthProgress, 1e-4f)
         assertEquals(0f, atBloom.stressRate, 1e-3f)
 
-        val twoHoursOn = calc(atBloom.copy(moistureLevel = 1f), t0 + 26 * hour, sunny)
+        val twoHoursOn = calc(atBloom.copy(moistureLevel = 1f), t0 + 38 * hour, sunny)
         assertEquals(2f / OVERRIPE_HOURS, twoHoursOn.stressRate, 1e-3f)
     }
 
     @Test
     fun `a growing plant still shakes off old hardship, one in bloom does not`() {
-        val growing = calc(tulip(growth = 0.1f, stress = 0.5f), t0 + 6 * hour, sunny)
-        val inBloom = calc(tulip(growth = 1f, stress = 0.5f), t0 + 6 * hour, sunny)
+        val growing = calc(flower(growth = 0.1f, stress = 0.5f), t0 + 6 * hour, sunny)
+        val inBloom = calc(flower(growth = 1f, stress = 0.5f), t0 + 6 * hour, sunny)
 
         assertTrue(growing.stressRate < 0.5f)
         assertTrue(inBloom.stressRate > 0.5f)
@@ -113,21 +114,21 @@ class WitherAndWeatherTest {
 
     @Test
     fun `a harvest in time is unaffected, and too late it is refused`() = runBlocking {
-        repo.put(tulip("soon", growth = 1f))
-        repo.put(tulip("late", growth = 1f, x = 1))
+        repo.put(flower("soon", growth = 1f))
+        repo.put(flower("late", growth = 1f, x = 1))
 
         assertEquals(ActionResult.SUCCESS, harvest("soon", t0 + 10 * hour, sunny))
-        assertEquals(150L, repo.profile?.coins)
+        assertEquals(100L + PlantSpecies.SUNFLOWER.harvestCoins, repo.profile?.coins)
 
         val tooLate = t0 + (OVERRIPE_HOURS + 1) * hour
         assertEquals(ActionResult.WITHERED, harvest("late", tooLate, sunny))
         assertNotNull(repo.objects["late"]) // still standing
-        assertEquals(150L, repo.profile?.coins)
+        assertEquals(100L + PlantSpecies.SUNFLOWER.harvestCoins, repo.profile?.coins)
     }
 
     @Test
     fun `a withered plant stays as it is however much time passes`() {
-        val withered = tulip(growth = 0.6f, moisture = 0f, stress = 1f, status = PlantStatus.WITHERED)
+        val withered = flower(growth = 0.6f, moisture = 0f, stress = 1f, status = PlantStatus.WITHERED)
 
         val muchLater = calc(withered, t0 + 6 * day, days(sunny, rainy, sunny, rainy, sunny, sunny, sunny))
 
@@ -139,7 +140,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `reviving costs coins and brings the plant back to health at the growth it had`() = runBlocking {
-        repo.put(tulip(growth = 0.6f, moisture = 0f, nutrition = 0.05f, stress = 1f, status = PlantStatus.WITHERED))
+        repo.put(flower(growth = 0.6f, moisture = 0f, nutrition = 0.05f, stress = 1f, status = PlantStatus.WITHERED))
 
         assertEquals(ActionResult.SUCCESS, care.revive("p", t0 + hour, sunny))
 
@@ -161,19 +162,19 @@ class WitherAndWeatherTest {
 
     @Test
     fun `a plant that went over in bloom can be revived and then harvested`() = runBlocking {
-        repo.put(tulip(growth = 1f, stress = 1f, status = PlantStatus.WITHERED))
+        repo.put(flower(growth = 1f, stress = 1f, status = PlantStatus.WITHERED))
 
         assertEquals(ActionResult.WITHERED, harvest("p", t0, sunny))
         assertEquals(ActionResult.SUCCESS, care.revive("p", t0, sunny))
         assertEquals(ActionResult.SUCCESS, harvest("p", t0 + hour, sunny))
 
-        assertEquals(100L - CareForPlantUseCase.REVIVE_COST + PlantSpecies.TULIP.harvestCoins, repo.profile?.coins)
+        assertEquals(100L - CareForPlantUseCase.REVIVE_COST + PlantSpecies.SUNFLOWER.harvestCoins, repo.profile?.coins)
     }
 
     @Test
     fun `reviving is refused without the coins, and for plants that are not withered`() = runBlocking {
-        repo.put(tulip("dead", stress = 1f, status = PlantStatus.WITHERED))
-        repo.put(tulip("fine", x = 1))
+        repo.put(flower("dead", stress = 1f, status = PlantStatus.WITHERED))
+        repo.put(flower("fine", x = 1))
         repo.put(GridObject(instanceId = "rock", gridX = 2, gridY = 0, objectId = "deco_rock", lastUpdatedTimestamp = t0))
 
         assertEquals(ActionResult.NOT_WITHERED, care.revive("fine", t0, sunny))
@@ -190,7 +191,7 @@ class WitherAndWeatherTest {
     @Test
     fun `a plant that withered while the app was away can be revived on return`() = runBlocking {
         // Stored as healthy; five dry days later it is not.
-        repo.put(tulip(growth = 0.3f))
+        repo.put(flower(growth = 0.3f))
 
         assertEquals(ActionResult.SUCCESS, care.revive("p", t0 + 5 * day, sunny))
 
@@ -199,7 +200,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `watering and fertilizing still do nothing for a withered plant`() = runBlocking {
-        repo.put(tulip(moisture = 0f, stress = 1f, status = PlantStatus.WITHERED))
+        repo.put(flower(moisture = 0f, stress = 1f, status = PlantStatus.WITHERED))
 
         assertEquals(ActionResult.WITHERED, care.water("p", t0, sunny))
         assertEquals(ActionResult.WITHERED, care.fertilize("p", t0, sunny))
@@ -211,7 +212,7 @@ class WitherAndWeatherTest {
     @Test
     fun `a withered plant that is cleared away becomes compost in its bed`() = runBlocking {
         repo.till(0, 0)
-        repo.put(tulip(stress = 1f, status = PlantStatus.WITHERED))
+        repo.put(flower(stress = 1f, status = PlantStatus.WITHERED))
         val soil = repo.objects.getValue("soil_0_0")
         assertFalse(soil.isComposted)
 
@@ -225,7 +226,7 @@ class WitherAndWeatherTest {
     @Test
     fun `the next seed in composted soil starts ahead and uses the compost up`() = runBlocking {
         repo.till(0, 0)
-        repo.put(tulip(stress = 1f, status = PlantStatus.WITHERED))
+        repo.put(flower(stress = 1f, status = PlantStatus.WITHERED))
         repo.putSlot(InventorySlot(0, GardenItem.SEED_SUNFLOWER.itemId, 2))
         remove("p")
 
@@ -246,7 +247,7 @@ class WitherAndWeatherTest {
     fun `only withered plants make compost`() = runBlocking {
         repo.till(0, 0)
         repo.till(1, 0)
-        repo.put(tulip("alive", growth = 0.4f))
+        repo.put(flower("alive", growth = 0.4f))
         repo.put(GridObject(instanceId = "rock", gridX = 1, gridY = 0, objectId = "deco_rock", lastUpdatedTimestamp = t0))
 
         remove("alive")
@@ -254,13 +255,13 @@ class WitherAndWeatherTest {
 
         assertFalse(repo.objects.getValue("soil_0_0").isComposted)
         assertFalse(repo.objects.getValue("soil_1_0").isComposted)
-        assertTrue(RemoveObjectUseCase.leavesCompost(tulip(stress = 1f, status = PlantStatus.WITHERED)))
-        assertFalse(RemoveObjectUseCase.leavesCompost(tulip()))
+        assertTrue(RemoveObjectUseCase.leavesCompost(flower(stress = 1f, status = PlantStatus.WITHERED)))
+        assertFalse(RemoveObjectUseCase.leavesCompost(flower()))
     }
 
     @Test
     fun `a withered plant with no bed under it is simply cleared away`() = runBlocking {
-        repo.put(tulip(stress = 1f, status = PlantStatus.WITHERED))
+        repo.put(flower(stress = 1f, status = PlantStatus.WITHERED))
 
         assertEquals(ActionResult.SUCCESS, remove("p"))
 
@@ -270,7 +271,7 @@ class WitherAndWeatherTest {
     @Test
     fun `compost keeps, and does nothing for things that are not seeds`() = runBlocking {
         repo.till(0, 0)
-        repo.put(tulip(stress = 1f, status = PlantStatus.WITHERED))
+        repo.put(flower(stress = 1f, status = PlantStatus.WITHERED))
         remove("p")
         repo.putSlot(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1))
 
@@ -286,7 +287,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `rain waters a dry plant`() {
-        val dry = tulip(moisture = 0.05f, status = PlantStatus.THIRSTY)
+        val dry = flower(moisture = 0.05f, status = PlantStatus.THIRSTY)
 
         val afterRain = calc(dry, t0 + 2 * hour, rainy)
 
@@ -298,9 +299,9 @@ class WitherAndWeatherTest {
 
     @Test
     fun `nothing moves closer to withering while it rains`() {
-        val thirsty = tulip("a", moisture = 0f, stress = 0.9f, status = PlantStatus.THIRSTY)
-        val hungry = tulip("b", nutrition = 0.05f, stress = 0.9f, status = PlantStatus.UNNOURISHED)
-        val inBloom = tulip("c", growth = 1f, stress = 0.9f)
+        val thirsty = flower("a", moisture = 0f, stress = 0.9f, status = PlantStatus.THIRSTY)
+        val hungry = flower("b", nutrition = 0.05f, stress = 0.9f, status = PlantStatus.UNNOURISHED)
+        val inBloom = flower("c", growth = 1f, stress = 0.9f)
 
         for (plant in listOf(thirsty, hungry, inBloom)) {
             val wet = calc(plant, t0 + 3 * day, rainy)
@@ -313,8 +314,8 @@ class WitherAndWeatherTest {
 
     @Test
     fun `rain changes how fast plants grow only a little`() {
-        val wet = calc(tulip(), t0 + 10 * hour, rainy).growthProgress
-        val dry = calc(tulip(), t0 + 10 * hour, sunny).growthProgress
+        val wet = calc(flower(), t0 + 10 * hour, rainy).growthProgress
+        val dry = calc(flower(), t0 + 10 * hour, sunny).growthProgress
 
         assertTrue(wet >= dry)
         assertTrue(wet <= dry * 1.25f)
@@ -322,7 +323,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `rain does not bring a withered plant back`() {
-        val withered = tulip(moisture = 0f, stress = 1f, status = PlantStatus.WITHERED)
+        val withered = flower(moisture = 0f, stress = 1f, status = PlantStatus.WITHERED)
 
         val afterRain = calc(withered, t0 + day, rainy)
 
@@ -334,7 +335,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `one kind of weather throughout gives the same result either way`() {
-        val start = tulip(growth = 0.2f, moisture = 0.7f)
+        val start = flower(growth = 0.2f, moisture = 0.7f)
         for (weather in WeatherType.entries) {
             val asType = calc(start, t0 + 3 * day + 7 * hour, weather)
             val asForecast = calc(start, t0 + 3 * day + 7 * hour, WeatherForecast { weather })
@@ -349,7 +350,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `time away is weighed day by day with the weather each day had`() {
-        val start = tulip(growth = 0f)
+        val start = flower(growth = 0f)
         val forecast = days(sunny, rainy, sunny)
 
         val result = calc(start, t0 + 2 * day + 12 * hour, forecast)
@@ -366,8 +367,8 @@ class WitherAndWeatherTest {
 
     @Test
     fun `a rainy day in the middle of an absence saves a plant that the sun alone would kill`() {
-        // A tulip dries out in a day and withers a day after it has gone thirsty.
-        val start = tulip(growth = 0.1f)
+        // A sunflower dries out in 16 hours and withers a day after it has gone thirsty.
+        val start = flower(growth = 0.1f)
 
         val allSun = calc(start, t0 + 3 * day, days(sunny, sunny, sunny))
         val rainOnDay2 = calc(start, t0 + 3 * day, days(sunny, rainy, sunny))
@@ -381,7 +382,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `rain that comes after the plant has withered is too late`() {
-        val start = tulip(growth = 0.1f)
+        val start = flower(growth = 0.1f)
 
         val result = calc(start, t0 + 4 * day, days(sunny, sunny, sunny, rainy))
 
@@ -391,7 +392,7 @@ class WitherAndWeatherTest {
     @Test
     fun `the part of a minute left at a change of weather is not lost`() {
         // Starts 30 s before midnight and ends 30 s after: one whole minute, across the change.
-        val start = tulip(at = t0 + day - 30_000)
+        val start = flower(at = t0 + day - 30_000)
 
         val result = calc(start, t0 + day + 30_000, days(sunny, rainy))
 
@@ -401,7 +402,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `many short visits add up to the same as one long absence`() {
-        val start = tulip(growth = 0.05f)
+        val start = flower(growth = 0.05f)
         val forecast = days(sunny, rainy, sunny, sunny)
         val end = t0 + 3 * day + 5 * hour
 
@@ -421,7 +422,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `only the last seven days of a long absence count, with their own weather`() {
-        val start = tulip(growth = 1f, at = t0)
+        val start = flower(growth = 1f, at = t0)
         // Day 0..2 would be sunny; they fall outside the window. The seven days that count are rainy.
         val forecast = days(sunny, sunny, sunny, rainy, rainy, rainy, rainy, rainy, rainy, rainy)
 
@@ -438,7 +439,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `nothing happens when no time has passed, whatever the forecast`() {
-        val start = tulip(growth = 0.4f, moisture = 0.1f)
+        val start = flower(growth = 0.4f, moisture = 0.1f)
 
         assertSame(start, calc(start, t0, WeatherForecast.Daily))
         assertSame(start, calc(start, t0 + 20_000, days(rainy)))
@@ -446,7 +447,7 @@ class WitherAndWeatherTest {
 
     @Test
     fun `a clock set back is repaired under a forecast too`() {
-        val fromTheFuture = tulip(at = t0 + 5 * hour)
+        val fromTheFuture = flower(at = t0 + 5 * hour)
 
         val result = calc(fromTheFuture, t0, WeatherForecast.Daily)
 
@@ -469,20 +470,45 @@ class WitherAndWeatherTest {
 
     @Test
     fun `coming back to the garden brings every plant up to date with the days that passed`() = runBlocking {
-        repo.put(tulip("a", growth = 0.1f))
-        repo.put(tulip("b", growth = 1f, x = 1))
+        repo.put(flower("a", growth = 0.1f))
+        repo.put(flower("b", growth = 1f, x = 1))
         val forecast = days(sunny, rainy, sunny)
 
         sync(t0 + 2 * day + 6 * hour, forecast)
 
         for (id in listOf("a", "b")) {
-            val before = if (id == "a") tulip("a", growth = 0.1f) else tulip("b", growth = 1f, x = 1)
+            val before = if (id == "a") flower("a", growth = 0.1f) else flower("b", growth = 1f, x = 1)
             assertEquals(calc(before, t0 + 2 * day + 6 * hour, forecast), repo.objects.getValue(id))
         }
         // "a" was watered by the rain on the second day and is alive; "b" has been in bloom all along.
         assertFalse(repo.objects.getValue("a").status == PlantStatus.WITHERED)
         assertTrue(repo.objects.getValue("b").stressRate > 0f)
     }
+
+    // --- The tulip never withers (#58) ---
+
+    private fun tulip(growth: Float = 0f, stress: Float = 0f, status: PlantStatus = PlantStatus.HEALTHY) =
+        flower(growth = growth, stress = stress, status = status).copy(objectId = PlantSpecies.TULIP.objectId)
+
+    @Test
+    fun `a tulip left dry, unfed or in bloom for a week does not wither`() {
+        assertFalse(PlantSpecies.TULIP.canWither)
+        assertTrue(PlantSpecies.entries.filter { it != PlantSpecies.TULIP }.all { it.canWither })
+        for (start in listOf(tulip(), tulip(growth = 1f))) {
+            val week = calc(start.copy(moistureLevel = 0f, nutritionLevel = 0f), t0 + 7 * day, sunny)
+            assertFalse(week.status == PlantStatus.WITHERED)
+            assertTrue(week.stressRate < 1f)
+        }
+    }
+
+    @Test
+    fun `a tulip saved withered comes back on the next update`() {
+        val saved = tulip(growth = 0.6f, stress = 1f, status = PlantStatus.WITHERED)
+        val later = calc(saved, t0 + hour, sunny)
+        assertFalse(later.status == PlantStatus.WITHERED)
+        assertTrue(later.stressRate < 1f)
+    }
+
 }
 
 /** A device whose clock and save data are as they should be. */

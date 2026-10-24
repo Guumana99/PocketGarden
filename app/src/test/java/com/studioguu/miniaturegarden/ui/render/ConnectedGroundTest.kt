@@ -132,10 +132,12 @@ class ConnectedGroundTest {
         // So the wind, which leans a picture about its anchor, moves the plant and not the ground.
         val tools = listOf(File("../tools"), File("tools")).first { it.isDirectory }
         val overrides = File(tools, "atlas_overrides.json").readText()
-        // Only the wheat's fields, and the tomato whose foot is a hanging leaf, are stood by hand (#57).
+        // Only the wheat's fields, the tomato whose foot is a hanging leaf (#57) and the sunflower's
+        // three seedlings (#58) are stood by hand.
         val byHand = Regex("\"(plant_[a-z_0-9]+)\"").findAll(overrides).map { it.groupValues[1] }.toSet()
         assertEquals(
-            setOf("plant_wheat_stage1", "plant_wheat_stage2", "plant_wheat_stage3", "plant_wheat_withered", "plant_tomato_stage3"),
+            setOf("plant_wheat_stage1", "plant_wheat_stage2", "plant_wheat_stage3", "plant_wheat_withered", "plant_tomato_stage3",
+                "plant_sunflower_stage1"),
             byHand,
         )
     }
