@@ -20,7 +20,7 @@ Kotlin / Jetpack Compose / Hilt / Room(SQLCipher)。パッケージは `com.stud
 Git Bash で実行する。PATH の `java` は 1.8 なので、必ず先に `JAVA_HOME` を設定する。
 
 ```bash
-export JAVA_HOME="/c/Users/noda-yo/.gradle/jdks/eclipse_adoptium-21-amd64-windows.2"
+export JAVA_HOME="$HOME/.gradle/jdks/eclipse_adoptium-21-amd64-windows.2"
 ```
 
 ```bash

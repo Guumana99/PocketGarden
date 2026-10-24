@@ -94,7 +94,7 @@
 - `python -c "..."` の中で Windows パスにバックスラッシュを書かない。`cygpath -w` で渡し、スクリプト側は `sys.argv` で受ける。
 - 待つときは `ping -n <秒> 127.0.0.1 >/dev/null`。`sleep` は使えない。
 - Bash ツールは呼び出しごとに作業ディレクトリが戻ることがある。毎回 `cd` を絶対パスで書く。
-- Python は `/c/Users/noda-yo/AppData/Local/Programs/Python/Python312/python.exe`（Pillow、numpy 入り）。
+- Python は `$HOME/AppData/Local/Programs/Python/Python312/python.exe`（Pillow、numpy 入り）。
 
 ### ファイルの編集
 
