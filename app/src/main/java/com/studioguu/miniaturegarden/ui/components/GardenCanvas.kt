@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import com.studioguu.miniaturegarden.ui.render.LawnPatches
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -2189,21 +2191,30 @@ private fun DrawScope.drawWildFlowers(obj: GridObject, base: Offset, unit: Float
         state = state * 1103515245 + 12345
         return ((state ushr 16) and 0x7FFF) / 32767f
     }
-    repeat(7) { i ->
-        // Spread over the tile's diamond: wide across, half as deep.
-        val across = (next() - 0.5f) * 0.62f
-        val deep = (next() - 0.5f) * 0.3f * (1f - kotlin.math.abs(across) * 1.4f)
-        val foot = base + Offset(unit * across, unit * deep)
-        val head = foot + Offset(0f, -unit * (0.035f + next() * 0.03f))
-        drawLine(FLOWER_STEM, foot, head, unit * 0.011f, StrokeCap.Round)
-        val petal = unit * 0.017f
+    // #60: seven small flowers were a few specks on the bare earth. Now a meadow over the whole
+    // cell: leaves at the foot of each, then the flowers, back to front, larger and more of them.
+    val flowers = List(WILD_FLOWERS) { i -> Triple((next() - 0.5f) * 0.8f, (next() - 0.5f) * 0.8f, i) }
+        .sortedBy { (u, v, _) -> u + v }
+    for ((u, v, i) in flowers) {
+        val foot = cellPoint(base, unit, u, v)
+        val leaf = unit * 0.03f
+        drawOval(FLOWER_LEAF, Offset(foot.x - leaf * 1.2f, foot.y - leaf * 0.5f), Size(leaf * 1.3f, leaf * 0.6f))
+        drawOval(FLOWER_LEAF_LIGHT, Offset(foot.x - leaf * 0.1f, foot.y - leaf * 0.6f), Size(leaf * 1.2f, leaf * 0.55f))
+        val head = foot + Offset(0f, -unit * (0.045f + next() * 0.04f))
+        drawLine(FLOWER_STEM, foot, head, unit * 0.01f, StrokeCap.Round)
+        val petal = unit * (0.019f + next() * 0.008f)
         val colour = FLOWER_PETALS[(i + obj.gridX + obj.gridY) % FLOWER_PETALS.size]
-        for ((dx, dy) in listOf(-1f to 0f, 1f to 0f, 0f to -1f, 0f to 1f)) {
-            drawCircle(colour, petal, head + Offset(dx * petal * 0.9f, dy * petal * 0.9f))
+        for (k in 0 until 5) {
+            val a = k * (2.0 * Math.PI / 5).toFloat() - (Math.PI / 2).toFloat()
+            drawCircle(colour, petal, head + Offset(kotlin.math.cos(a) * petal, kotlin.math.sin(a) * petal * 0.8f))
         }
         drawCircle(FLOWER_HEART, petal * 0.6f, head)
     }
 }
+
+private const val WILD_FLOWERS = 13
+private val FLOWER_LEAF = Color(0xFF4E7A33)
+private val FLOWER_LEAF_LIGHT = Color(0xFF6E9A45)
 
 private val BENCH_WOOD = Color(0xFFB98552)
 private val BENCH_WOOD_DARK = Color(0xFF8A5F36)
@@ -2592,12 +2603,65 @@ private fun DrawScope.drawGroundCover(obj: GridObject, base: Offset, unit: Float
         drawWildFlowers(obj, base, unit)
         return
     }
-    val color = if (obj.objectId.contains("grass")) Color(0xFF558B2F) else Color(0xFFBDBDBD)
+    if (obj.objectId == GroundCover.PEBBLE.objectId) {
+        drawPebbles(obj, base, unit)
+        return
+    }
+    val color = Color(0xFF558B2F)
     val r = unit * 0.035f
     drawCircle(color, r * 1.3f, base + Offset(-unit * 0.12f, unit * 0.01f))
     drawCircle(color, r, base + Offset(unit * 0.04f, -unit * 0.05f))
     drawCircle(color, r * 1.1f, base + Offset(unit * 0.13f, unit * 0.04f))
 }
+
+/** A point ([u], [v]) of a cell (-0.5..0.5 each way from its middle) on screen, the cell's middle at [base]. */
+private fun cellPoint(base: Offset, unit: Float, u: Float, v: Float): Offset =
+    base + Offset((u - v) * unit / 2f, (u + v) * unit / 4f)
+
+/**
+ * A bed of pebbles over the cell (#60): a pale patch of fine gravel nearly as large as the cell,
+ * and on it a scatter of rounded stones in greys and buffs, each with its shadow and a glint,
+ * back to front. Before, it was three grey dots, which all but vanished on the bare earth.
+ */
+private fun DrawScope.drawPebbles(obj: GridObject, base: Offset, unit: Float) {
+    var state = obj.gridX * 83492791 xor obj.gridY * 29348117 xor 0x2C1B3C6D
+    fun next(): Float {
+        state = state * 1103515245 + 12345
+        return ((state ushr 16) and 0x7FFF) / 32767f
+    }
+    val bed = Path().apply {
+        val inset = 0.42f
+        moveTo(cellPoint(base, unit, -inset, -inset).x, cellPoint(base, unit, -inset, -inset).y)
+        lineTo(cellPoint(base, unit, inset, -inset).x, cellPoint(base, unit, inset, -inset).y)
+        lineTo(cellPoint(base, unit, inset, inset).x, cellPoint(base, unit, inset, inset).y)
+        lineTo(cellPoint(base, unit, -inset, inset).x, cellPoint(base, unit, -inset, inset).y)
+        close()
+    }
+    drawPath(bed, PEBBLE_GRAVEL)
+    // Specks of grit over the gravel.
+    repeat(18) {
+        val at = cellPoint(base, unit, (next() - 0.5f) * 0.8f, (next() - 0.5f) * 0.8f)
+        drawCircle(if (next() > 0.5f) PEBBLE_GRIT_DARK else PEBBLE_GRIT_LIGHT, unit * 0.006f, at)
+    }
+    val stones = List(PEBBLES) { Triple((next() - 0.5f) * 0.72f, (next() - 0.5f) * 0.72f, next()) }
+        .sortedBy { (u, v, _) -> u + v }
+    for ((u, v, r) in stones) {
+        val at = cellPoint(base, unit, u, v)
+        val w = unit * (0.045f + r * 0.035f)
+        val h = w * 0.62f
+        val colour = PEBBLE_COLOURS[((r * 997).toInt()) % PEBBLE_COLOURS.size]
+        drawOval(PEBBLE_SHADOW, Offset(at.x - w * 0.5f, at.y - h * 0.25f), Size(w * 1.05f, h * 0.9f))
+        drawOval(colour, Offset(at.x - w * 0.5f, at.y - h * 0.75f), Size(w, h))
+        drawOval(Color.White.copy(alpha = 0.45f), Offset(at.x - w * 0.28f, at.y - h * 0.68f), Size(w * 0.32f, h * 0.28f))
+    }
+}
+
+private const val PEBBLES = 12
+private val PEBBLE_GRAVEL = Color(0xFFB9AE9C)
+private val PEBBLE_GRIT_DARK = Color(0xFF8C8273)
+private val PEBBLE_GRIT_LIGHT = Color(0xFFD8D0C2)
+private val PEBBLE_SHADOW = Color(0x55302A22)
+private val PEBBLE_COLOURS = listOf(Color(0xFFC9C5BE), Color(0xFFA9A49B), Color(0xFFD9CDB5), Color(0xFF8F8A82), Color(0xFFBFB3A0))
 
 /**
  * A lawn on cell ([x], [y]) at its [stage] of growth ([LawnGrowth]). On the bare earth, the
@@ -2618,16 +2682,22 @@ private fun DrawScope.drawLawnPatch(
 ) {
     val unit = transform.tileWidth
     if (onBareEarth && stage.cover > 0f) {
+        // Solid grass where it has come up, bare earth where it has not (#60: the whole picture
+        // at the stage's strength read as a thin wash of green paint over the earth).
+        val patches = if (stage.cover >= 1f) null else lawnClumpsPath(transform, x, y, stage.cover)
         if (lawn != null) {
             val scale = unit / lawn.tileWidth * LawnShade.FEATHER_OVERLAP
-            drawSprite(lawn.image, lawn.sprite, transform.tileCenter(x, y), scale, flipped = LawnShade.mirrored(x, y), alpha = stage.cover)
+            val draw: DrawScope.() -> Unit = {
+                drawSprite(lawn.image, lawn.sprite, transform.tileCenter(x, y), scale, flipped = LawnShade.mirrored(x, y))
+            }
+            if (patches == null) draw() else clipPath(patches) { draw() }
         } else {
-            drawPath(transform.tilePath(x, y), GRASS_LIGHT.copy(alpha = stage.cover))
+            drawPath(patches ?: transform.tilePath(x, y), GRASS_LIGHT)
         }
     }
     // Tufts standing up all over it, short while it comes up and taller once it is grown; back to
-    // front, each with a dark blade behind and light ones in front, so that the lawn has depth
-    // and moves in the wind rather than lying flat (#55).
+    // front, each a few tapering, curving blades, the one at the back in shade, so that the lawn
+    // has depth and moves in the wind rather than lying flat (#55; #60: blades, not strokes).
     var seed = x * 92821 xor y * 68917
     fun next(): Float {
         seed = seed * 1103515245 + 12345
@@ -2639,15 +2709,49 @@ private fun DrawScope.drawLawnPatch(
     for ((cell, r) in tufts) {
         val at = transform.worldToScreen(x + cell.x, y + cell.y)
         val blade = unit * height * (0.7f + r * 0.6f)
-        val stroke = unit * 0.011f
+        val width = unit * 0.009f
         val bend = blade * 0.55f * sway
         val light = if (r > 0.5f) GRASS_BLADE_LIGHT else GRASS_TUFT
-        drawLine(GRASS_TUFT_DARK, at, at + Offset(-blade * 0.2f + bend * 0.9f, -blade * 0.9f), stroke, StrokeCap.Round)
-        drawLine(light, at, at + Offset(-blade * 0.45f + bend, -blade), stroke, StrokeCap.Round)
-        drawLine(light, at, at + Offset(bend * 1.1f, -blade * 1.15f), stroke, StrokeCap.Round)
-        drawLine(GRASS_TUFT, at, at + Offset(blade * 0.45f + bend, -blade * 0.85f), stroke, StrokeCap.Round)
+        drawGrassBlade(at, Offset(-blade * 0.2f + bend * 0.9f, -blade * 0.9f), width, GRASS_TUFT_DARK)
+        drawGrassBlade(at + Offset(-width, 0f), Offset(-blade * 0.45f + bend, -blade), width, light)
+        drawGrassBlade(at + Offset(width, 0f), Offset(blade * 0.4f + bend, -blade * 0.85f), width, GRASS_TUFT)
+        drawGrassBlade(at, Offset(bend * 1.1f, -blade * 1.15f), width, light)
     }
 }
+
+/**
+ * The clumps of a lawn [cover] of the way grown on cell ([x], [y]) ([LawnPatches]), as one shape
+ * kept within the cell.
+ */
+private fun lawnClumpsPath(transform: IsometricTransform, x: Int, y: Int, cover: Float): Path {
+    // A round clump on the ground is an ellipse on screen, half as tall as it is wide.
+    val clumps = Path()
+    for (clump in LawnPatches.clumps(x, y, cover)) {
+        val centre = transform.worldToScreen(x + clump.u, y + clump.v)
+        val rx = clump.radius * transform.tileWidth * HALF_SQRT2
+        val ry = clump.radius * transform.tileHeight * HALF_SQRT2
+        clumps.addOval(Rect(centre.x - rx, centre.y - ry, centre.x + rx, centre.y + ry))
+    }
+    return Path().apply { op(clumps, transform.tilePath(x, y), PathOperation.Intersect) }
+}
+
+private const val HALF_SQRT2 = 0.70710677f
+
+/** One blade of grass from [root], reaching [reach]: [width] across at its foot, tapering to a point and curving as it goes. */
+private fun DrawScope.drawGrassBlade(root: Offset, reach: Offset, width: Float, color: Color) {
+    val tip = root + reach
+    // The blade leans out from its foot and comes round towards its tip.
+    val bow = Offset(root.x + reach.x * 0.25f, root.y + reach.y * 0.6f)
+    BLADE.reset()
+    BLADE.moveTo(root.x - width, root.y)
+    BLADE.quadraticTo(bow.x - width * 0.6f, bow.y, tip.x, tip.y)
+    BLADE.quadraticTo(bow.x + width * 0.6f, bow.y, root.x + width, root.y)
+    BLADE.close()
+    drawPath(BLADE, color)
+}
+
+/** One path for every blade, filled and reset in turn: the garden is drawn on one thread. */
+private val BLADE = Path()
 
 /** The blade at the back of a tuft of lawn, in its shade. */
 private val GRASS_TUFT_DARK = Color(0xFF3F6B2A)
