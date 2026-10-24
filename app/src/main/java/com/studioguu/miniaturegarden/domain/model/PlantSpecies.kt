@@ -58,7 +58,7 @@ enum class PlantSpecies(
     ),
 
     /** A big summer fruit at Lv.3; it drinks a lot. */
-    WATERMELON("plant_watermelon", growthHours = 96, dryOutHours = 16, harvestCoins = 122, harvestXp = 110),
+    WATERMELON("plant_watermelon", growthHours = 96, dryOutHours = 16, harvestCoins = 122, harvestXp = 110, growthStages = 3),
 
     /** A herb for every season at Lv.3; it keeps well between waterings. */
     LAVENDER("plant_lavender", growthHours = 84, dryOutHours = 30, harvestCoins = 108, harvestXp = 96),

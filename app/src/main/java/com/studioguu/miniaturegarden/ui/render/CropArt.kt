@@ -19,7 +19,6 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 private val CROP_DRAWINGS: Map<PlantSpecies, DrawScope.(base: Offset, unit: Float, growth: Float, withered: Boolean) -> Unit> = mapOf(
     PlantSpecies.TOMATO to { base, unit, growth, withered -> drawTomato(base, unit, growth, withered) },
     PlantSpecies.STRAWBERRY to { base, unit, growth, withered -> drawStrawberry(base, unit, growth, withered) },
-    PlantSpecies.WATERMELON to { base, unit, growth, withered -> drawWatermelon(base, unit, growth, withered) },
     PlantSpecies.LAVENDER to { base, unit, growth, withered -> drawLavender(base, unit, growth, withered) },
     PlantSpecies.PUMPKIN to { base, unit, growth, withered -> drawPumpkin(base, unit, growth, withered) },
     PlantSpecies.POINSETTIA to { base, unit, growth, withered -> drawPoinsettia(base, unit, growth, withered) },
@@ -106,33 +105,6 @@ private fun DrawScope.drawStrawberry(base: Offset, unit: Float, growth: Float, w
             drawPath(berry, if (withered) FRUIT_DRY else Color(0xFFE53950))
             drawOval(if (withered) STEM_DRY else Color(0xFF66BB6A), at - Offset(unit * 0.03f * s, unit * 0.03f * s), Size(unit * 0.06f * s, unit * 0.018f * s))
         }
-    }
-}
-
-/** Watermelon: a sprawl of vine and leaves along the ground, with a striped melon lying in it. */
-private fun DrawScope.drawWatermelon(base: Offset, unit: Float, growth: Float, withered: Boolean) {
-    val s = grown(growth)
-    val vine = if (withered) STEM_DRY else Color(0xFF558B2F)
-    val path = Path().apply {
-        moveTo(base.x - unit * 0.2f * s, base.y)
-        quadraticTo(base.x - unit * 0.05f * s, base.y - unit * 0.12f * s, base.x + unit * 0.2f * s, base.y - unit * 0.04f * s)
-    }
-    drawPath(path, vine, style = Stroke(width = unit * 0.014f, cap = StrokeCap.Round))
-    for ((dx, dy) in listOf(-0.16f to -0.04f, -0.02f to -0.1f, 0.14f to -0.07f)) {
-        val at = base + Offset(unit * dx * s, unit * dy * s)
-        drawOval(vine, at - Offset(unit * 0.045f * s, unit * 0.04f * s), Size(unit * 0.09f * s, unit * 0.06f * s))
-    }
-    if (growth < 0.4f) return
-    // The melon swells from a small green ball to a big striped one.
-    val r = unit * (0.05f + 0.07f * ((growth - 0.4f) / 0.6f).coerceIn(0f, 1f))
-    val center = base + Offset(unit * 0.02f, -r * 0.7f)
-    val rind = if (withered) FRUIT_DRY else Color(0xFF2E7D32)
-    drawOval(rind, center - Offset(r * 1.2f, r * 0.85f), Size(r * 2.4f, r * 1.7f))
-    if (!withered) {
-        for (k in -1..1) {
-            drawLine(Color(0xFF1B5E20), center + Offset(k * r * 0.6f, -r * 0.75f), center + Offset(k * r * 0.6f, r * 0.75f), r * 0.16f, StrokeCap.Round)
-        }
-        drawOval(Color(0x44FFFFFF), center - Offset(r * 0.7f, r * 0.6f), Size(r * 0.6f, r * 0.3f))
     }
 }
 

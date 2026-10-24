@@ -26,6 +26,8 @@ This script:
       - cosmos (#63): the same, a tall flower;
       - snowdrop (#64): the same, a low flower; stage 1 came with its white roots showing below the
         leaves, which are cut off, so that it stands on the foot of its leaves (snowdrop_stages);
+      - watermelon (#65): the same; stages 2, 3 and withered are a low, wide mound of leaves with no
+        stem to stand on (stage 3 with its fruit in front), sized by their width, not their height;
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
         each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag;
@@ -75,6 +77,7 @@ STAGES: dict[str, list] = {
     "mint": [0.32, 0.42, 0.62],
     "cosmos": [0.3, 0.64, 0.85],
     "snowdrop": [0.3, 0.48, 0.62],
+    "watermelon": [0.3, ("w", 0.7), ("w", 0.85)],
 }
 
 #: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
@@ -123,6 +126,7 @@ WITHERED: dict[str, object] = {
     "mint": 0.62,
     "cosmos": 0.85,
     "snowdrop": 0.62,
+    "watermelon": ("w", 0.85),
 }
 
 
@@ -326,6 +330,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "mint": simple_stages("mint", "_stage"),
         "cosmos": simple_stages("cosmos", "_stage"),
         "snowdrop": snowdrop_stages(),
+        "watermelon": simple_stages("watermelon", "_stage"),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():
