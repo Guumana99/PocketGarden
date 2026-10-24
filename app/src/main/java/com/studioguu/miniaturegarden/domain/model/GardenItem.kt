@@ -37,6 +37,11 @@ enum class ItemCategory {
  *                  poinsettia   Lv.5            70   180 coins + 150 XP after 120 h (winter only)
  *                  paprika      Lv.4            55   140 coins + 118 XP after 100 h (summer only);
  *                                                    bears again: 42 coins + 59 XP every 50 h after that
+ *                  carrot       Lv.2            25   72 coins + 68 XP after 62 h (spring and autumn)
+ *                  eggplant     Lv.3            40   102 coins + 88 XP after 78 h (summer only), dries out fast;
+ *                                                    bears again: 30 coins + 42 XP after that
+ *                  wheat        Lv.4            45   128 coins + 114 XP after 98 h (autumn only)
+ *                  corn         Lv.5            60   185 coins + 155 XP after 126 h (summer only)
  *     structures   fence        from start      15   joins its neighbours; 20 s to build
  *                  well         Lv.3            80   30 XP; soil round it dries half as fast; 30 min to build
  *                  windmill     Lv.4           120   45 XP; 2x2, its sails turn; soil within two cells dries a little slower; 45 min
@@ -52,6 +57,11 @@ enum class ItemCategory {
  *                  rock         Lv.2            30   ornament
  *                  bench        Lv.2            40   ornament
  *                  lantern      4 book pages    60   ornament
+ *                  sprinkler    Lv.3            70   while on, the soil round it hardly dries
+ *                  pond         Lv.4            75   water; ponds side by side are one pool
+ *
+ * Which of these have finished pictures and which are drawn in code for now: docs/ASSETS.md,
+ * "ショップの取扱一覧". Keep the two in step.
  *
  * Every crop but mint and lavender has its season and is only on sale then ([seasons]); every
  * season has a crop of its own open from the start (summer's is the tomato), and mint grows in all.

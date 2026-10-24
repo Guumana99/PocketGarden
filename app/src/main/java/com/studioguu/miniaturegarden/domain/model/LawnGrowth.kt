@@ -12,7 +12,8 @@ package com.studioguu.miniaturegarden.domain.model
  * - It grows with time alone ([grownBy], [HOURS_TO_FULL] from seed to full), while the garden
  *   is open and while it is away (CalculateOfflineProgressUseCase). It needs no water and does
  *   not wither.
- * - How much of its cell the grass covers at each stage ([LawnStage.cover]) is what the garden draws.
+ * - The garden draws it by how far it has grown ([growthOf]): over the whole cell from the
+ *   start, denser and longer as it grows (#61). The stages name the steps on the way.
  */
 object LawnGrowth {
     /** The lawn's object id: "芝生" in the shop. */
@@ -36,6 +37,13 @@ object LawnGrowth {
     /** The stage [obj] (a lawn) is drawn at: fully grown while lawns do not grow in stages. */
     fun stageOf(obj: GridObject, growsInStages: Boolean = GROWS_IN_STAGES): LawnStage =
         if (growsInStages) stageFor(obj.growthProgress) else LawnStage.FULL
+
+    /**
+     * How far grown [obj] (a lawn) is drawn, 0 sown to 1 grown: the blades over its cell grow
+     * denser and longer with it (LawnPatches). Fully grown while lawns do not grow in stages.
+     */
+    fun growthOf(obj: GridObject, growsInStages: Boolean = GROWS_IN_STAGES): Float =
+        if (growsInStages) obj.growthProgress.coerceIn(0f, 1f) else 1f
 
     /** How far a lawn [progress] of the way grown has come after [elapsedMillis] more. */
     fun grownBy(progress: Float, elapsedMillis: Long): Float {

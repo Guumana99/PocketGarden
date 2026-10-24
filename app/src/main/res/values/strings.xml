@@ -275,7 +275,7 @@
     <!-- Rewards. By request, none of these texts uses the word 動画. -->
     <string name="action_cancel">キャンセル</string>
     <string name="reward_rain_button">☔ 慈雨を降らせる</string>
-    <string name="reward_rain_confirm" formatted="false">慈雨（じう）を降らせますか？\n（すべての作物の成長時間を50%短縮します）</string>
+    <string name="reward_rain_confirm" formatted="false">慈雨（じう）を降らせますか？\n（すべての作物に水がたっぷり行き渡り、成長時間を50%短縮します）</string>
     <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
     <string name="reward_bonus_button">💰 臨時ボーナスを受け取る +%1$d 🪙（本日あと %2$d/%3$d回）</string>
     <string name="reward_bonus_short">💰 臨時ボーナス +%1$d 🪙</string>
@@ -285,7 +285,7 @@
     <string name="msg_reward_cancelled">途中で終了したため、特典は付与されませんでした</string>
     <string name="msg_reward_unavailable">ただいま準備中です。少し待ってからお試しください</string>
     <string name="msg_reward_limit">本日の回数上限に達しました</string>
-    <string name="msg_blessed_rain_done">☔ 慈雨が降りました。作物の成長時間が半分になりました</string>
+    <string name="msg_blessed_rain_done">☔ 慈雨が降りました。作物に水が行き渡り、成長時間が半分になりました</string>
     <string name="msg_bonus_done">💰 臨時ボーナス +%1$d 🪙 を受け取りました</string>
     <string name="msg_no_growing_plants">育てている途中の作物がありません</string>
 
@@ -367,7 +367,7 @@
     <string name="reveal_edit_text">芝生や柵、建物などを\n動かしたり持ち物に戻したりできます。\n編集中は庭に格子線が出ます。</string>
     <string name="msg_not_this_step">🌱 今は案内の手順を進めましょう</string>
     <string name="reveal_rain_name">☔ 慈雨（じう）</string>
-    <string name="reveal_rain_text">慈雨を降らせると、\n育てている作物の成長時間が半分になります。</string>
+    <string name="reveal_rain_text">慈雨を降らせると、\n作物に水が行き渡り、成長時間が半分になります。</string>
     <string name="reveal_collection_name">📖 図鑑</string>
     <string name="reveal_collection_text">育てた作物や置いたものが、\n図鑑に少しずつ記されていきます。</string>
     <string name="reveal_camera_name">📷 カメラ</string>

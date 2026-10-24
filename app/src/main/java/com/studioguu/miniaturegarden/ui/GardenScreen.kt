@@ -155,6 +155,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val blessedRainFalling by viewModel.blessedRainFalling.collectAsStateWithLifecycle()
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
+    val brokenGround by viewModel.brokenGround.collectAsStateWithLifecycle()
     val editMode by viewModel.editMode.collectAsStateWithLifecycle()
     val growableBuilding by viewModel.growableBuilding.collectAsStateWithLifecycle()
     val gardenMap by viewModel.gardenMap.collectAsStateWithLifecycle()
@@ -262,6 +263,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 showGrid = editMode && !cameraMode,
                 auraCells = if (cameraMode) emptySet() else aura,
                 hintCells = if (cameraMode) emptySet() else hintCells,
+                brokenCells = brokenGround,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
                 onZoomChanged = if (BuildConfig.DEBUG) ({ debugZoom = it }) else null,
