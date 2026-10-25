@@ -37,7 +37,7 @@ enum class PlantSpecies(
     COSMOS("plant_cosmos", growthHours = 60, dryOutHours = 20, harvestCoins = 64, harvestXp = 60, growthStages = 3),
 
     /** The winter flower: slow to dry out in the cold. */
-    SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55),
+    SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55, growthStages = 3),
 
     /** A herb that grows in any season; quick, and worth a little less for it. */
     MINT("plant_mint", growthHours = 36, dryOutHours = 18, harvestCoins = 35, harvestXp = 35, growthStages = 3),
@@ -58,7 +58,7 @@ enum class PlantSpecies(
     ),
 
     /** A big summer fruit at Lv.3; it drinks a lot. */
-    WATERMELON("plant_watermelon", growthHours = 96, dryOutHours = 16, harvestCoins = 122, harvestXp = 110),
+    WATERMELON("plant_watermelon", growthHours = 96, dryOutHours = 16, harvestCoins = 122, harvestXp = 110, growthStages = 3),
 
     /** A herb for every season at Lv.3; it keeps well between waterings. */
     LAVENDER("plant_lavender", growthHours = 84, dryOutHours = 30, harvestCoins = 108, harvestXp = 96),
