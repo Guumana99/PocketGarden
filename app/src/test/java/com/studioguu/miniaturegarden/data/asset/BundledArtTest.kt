@@ -203,6 +203,22 @@ class BundledArtTest {
     }
 
     @Test
+    fun `every crop has an icon picture, cut out of its background (#72)`() {
+        for (species in PlantSpecies.entries) {
+            val file = File(main, "res/drawable-nodpi/icon_${species.objectId.removePrefix("plant_")}.png")
+            assertTrue("${file.name} is missing", file.isFile)
+            val icon = TestPng.read(file)
+            assertEquals(file.name, 256, icon.width)
+            assertEquals(file.name, 256, icon.height)
+            for ((x, y) in listOf(0 to 0, 255 to 0, 0 to 255, 255 to 255)) assertEquals("${file.name} corner", 0, icon.alpha(x, y))
+        }
+        // The daikon's white root survives the cut (#72: the usual cut left about 470 of these).
+        val daikon = TestPng.read(File(main, "res/drawable-nodpi/icon_daikon.png"))
+        val white = (0 until 256).sumOf { y -> (0 until 256).count { x -> daikon.alpha(x, y) > 200 && daikon.luminance(x, y) > 200 } }
+        assertTrue("$white", white > 1200)
+    }
+
+    @Test
     fun `shiitake is a log as long at every stage, within its cell, standing on the foot of the log (#68)`() {
         val ids = TileSetDefinition.spriteIdsFor(PlantSpecies.SHIITAKE)
         assertEquals(listOf("plant_shiitake_stage1", "plant_shiitake_stage2", "plant_shiitake_stage3", "plant_shiitake_withered"), ids)
