@@ -63,15 +63,11 @@ class CodeArtTest {
     // --- Crops ---
 
     @Test
-    fun `a crop has all its sprites or none, and one with none is drawn in its own shape`() {
+    fun `every crop has all its sprites`() {
+        // #69: the poinsettia was the last crop drawn in code; there are no drawn stand-ins any more.
         for (species in PlantSpecies.entries) {
-            val ids = TileSetDefinition.spriteIdsFor(species)
-            val packed = ids.filter { it in sprites }
-            when {
-                packed.size == ids.size -> Unit
-                packed.isEmpty() -> assertTrue("${species.name} has no sprites and no drawing", species in CROPS_DRAWN_IN_CODE)
-                else -> throw AssertionError("${species.name} has only some of its sprites: ${ids - packed.toSet()} are missing")
-            }
+            val missing = TileSetDefinition.spriteIdsFor(species).filter { it !in sprites }
+            assertTrue("${species.name} is missing $missing", missing.isEmpty())
         }
     }
 
@@ -92,7 +88,7 @@ class CodeArtTest {
         for (id in missing) {
             val species = PlantSpecies.entries.firstOrNull { id in TileSetDefinition.spriteIdsFor(it) }
             when {
-                species != null -> assertTrue(id, species in CROPS_DRAWN_IN_CODE)
+                species != null -> throw AssertionError("$id: every crop has its pictures since #69")
                 // Every visitor has its drawing in drawCreature, an exhaustive `when`.
                 id in creatureIds -> Unit
                 // A running sprinkler's water is drawn in code from SprinklerSpray, frame by frame.
@@ -107,12 +103,11 @@ class CodeArtTest {
     }
 
     @Test
-    fun `the crop drawings live in CropArt, and nothing outside it draws one by name`() {
+    fun `no crop is drawn in code any more`() {
         val render = File(main, "java/com/studioguu/miniaturegarden/ui/render")
-        val cropArt = File(render, "CropArt.kt").readText()
-        assertTrue(cropArt.contains("private fun DrawScope.drawPoinsettia("))
+        assertFalse(File(render, "CropArt.kt").exists())
         val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
-        assertTrue(canvas.contains("drawCropInCode("))
-        assertFalse(Regex("\\bdraw(Cosmos|Poinsettia|Tomato|Lavender)\\(").containsMatchIn(canvas))
+        assertFalse(canvas.contains("drawCropInCode("))
+        assertFalse(Regex("\\bdraw(Cosmos|Poinsettia|Tomato|Strawberry|Lavender)\\(").containsMatchIn(canvas))
     }
 }

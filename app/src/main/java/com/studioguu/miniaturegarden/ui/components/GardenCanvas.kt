@@ -76,7 +76,6 @@ import com.studioguu.miniaturegarden.ui.render.Daylight
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
-import com.studioguu.miniaturegarden.ui.render.drawCropInCode
 import com.studioguu.miniaturegarden.ui.render.drawTurningSprite
 import com.studioguu.miniaturegarden.ui.render.WindmillSails
 import com.studioguu.miniaturegarden.ui.render.GustAxis
@@ -2810,9 +2809,8 @@ private val LAWN_BLADE_FALLBACK = Color(0xFF4F7D33)
 
 private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {
     val withered = obj.status == PlantStatus.WITHERED
-    // The crops with no sprites yet: each is drawn in its own shape, or else as a plain flower.
-    val species = PlantSpecies.fromObjectId(obj.objectId)
-    if (species != null && drawCropInCode(species, base, unit, obj.growthProgress, withered)) return
+    // Only while the atlas cannot be read: every crop has its pictures (#69, the last of them the
+    // poinsettia; their drawn stand-ins, CropArt.kt, are gone). A plain flower stands in.
     val scale = plantScale(obj)
     val top = base - Offset(0f, unit * 0.55f * scale)
     val stemColor = if (withered) WITHERED_BROWN else STEM_GREEN

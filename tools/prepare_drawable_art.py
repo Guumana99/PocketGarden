@@ -32,6 +32,7 @@ This script:
       - shiitake (#68): a log lying on the ground, the same at every stage but for the mushrooms on
         it: each picture is sized by its log alone ("log"), so that the log is as long in all of
         them, and stood on the foot of the log (log_anchor);
+      - poinsettia (#69): three stages and a withered one, as they came; a round bush;
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
         each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag;
@@ -85,6 +86,7 @@ STAGES: dict[str, list] = {
     "watermelon": [0.3, ("w", 0.7), ("w", 0.85)],
     "lavender": [0.3, 0.5, 0.66],
     "shiitake": [("log", 0.6), ("log", 0.6), ("log", 0.6)],
+    "poinsettia": [0.3, 0.55, 0.7],
 }
 
 #: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
@@ -150,6 +152,7 @@ WITHERED: dict[str, object] = {
     "watermelon": ("w", 0.85),
     "lavender": 0.66,
     "shiitake": ("log", 0.6),
+    "poinsettia": 0.7,
 }
 
 
@@ -399,6 +402,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "watermelon": simple_stages("watermelon", "_stage"),
         "lavender": simple_stages("lavender", "_stage"),
         "shiitake": simple_stages("shiitake", "_stage"),
+        "poinsettia": simple_stages("poinsettia", "_stage"),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():

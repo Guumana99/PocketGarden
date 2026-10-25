@@ -6,8 +6,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 
-// A drawn stand-in for what has no artwork yet: the glass greenhouse (the crops are in
-// CropArt.kt). The seasons no longer lay petals, leaves or snow over the ground: those white and
+// A drawn stand-in for what has no artwork yet: the glass greenhouse (every crop has its pictures
+// since #69). The seasons no longer lay petals, leaves or snow over the ground: those white and
 // pink specks read as noise on the earth.
 
 private val GLASS = Color(0x33CDEBF7)

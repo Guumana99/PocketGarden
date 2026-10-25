@@ -545,10 +545,10 @@ FINISHED ──タップ──▶ REVEAL_EDIT ──タップ──▶ REVEAL_RA
 Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（Lv.4）のあいだ、Lv.5 はバラより上に収めてある。
 また、育つのに時間がかかる作物ほど収穫のコインと XP が多い（`GardenActionUseCasesTest`）。乾く時間（`dryOutHours`）は 16 時間以上にする（半日で水切れになると、12 時間の成長を見るテストが落ちる）。
 もちもののタブでは、ラベンダーはミントと同じ「ハーブ・観葉」（`InventoryGroup.GREENERY`）、ほかは「作物」。
-アトラスの絵があるのはバラ（4 段階＋枯れ）と、チューリップ・ひまわり（#58 から **3 段階**、チューリップは枯れなし）、トマト・イチゴ・パプリカ・大根（#39、**3 段階**＋枯れ、`growthStages = 3`）と #57 の 4 種。
+#69 から**すべての作物にアトラスの絵がある**（バラだけ 4 段階＋枯れ、ほかは 3 段階＋枯れ、チューリップは枯れなし）。
 最後の段階に色違いがある作物（`TileSetDefinition.BLOOM_COLOURS`、#58 はチューリップの 5 色＋赤）は `<objectId>_stage<N>_<色>`。`CropScale` は色違いをその段階と同じ倍率で描く。
 色は株の instance id から一度だけ決まる（`PlantSpecies.bloomColours`・`bloomColourOf`、赤が先頭）。#59 から収穫のとき、その株の色を図鑑にも書き留める（`RecordCollectionUseCase` の `colour`、レコードの id は `plant_tulip#pink` のような `CollectionEntry.colourRecordId`。ページではなく、数にも入らない）。図鑑の絵は最初に収穫した色で描き（`CollectionProgress.coloursOf`、`ObjectPreview(bloomColour = …)` → `TileSetDefinition.instanceIdBlooming` でその色になる id を作る）、ページに「咲かせた色：赤・ピンク（2／6色）」。色の記録が無い（#59 より前の収穫）ときは赤。新しい色を収穫したときはトースト「🌷 図鑑に新しい色が書き加えられました」。以前は図鑑の絵の色が見本用の id（`preview_0_0`）で決まり、育てた色と関係なかった。
-ほかの 7 種は絵が無いので、コードで描いている（`ui/render/CropArt.kt`。種類ごとの絵は `CROP_DRAWINGS` の 1 行と private な関数 1 つで、`GardenCanvas.drawPlant` は `drawCropInCode` を呼ぶだけ）。
+作物のコード描画（`ui/render/CropArt.kt`・`CROP_DRAWINGS`・`drawCropInCode`）は #69 で削除した。アトラスが読めないときだけ、`GardenCanvas.drawPlant` が茎と花の簡単な形で代わりに描く。
 スプライト名の決まり（`<objectId>_stage<N>`・`_withered`・`creature_<id>`・風車の羽根）は `TileSetDefinition` にまとめてあり、`expectedSpriteIds` がゲームの引くスプライト名の一覧。アトラスにあってこの一覧に無い名前（綴り違い）は `CodeArtTest` が落とす。
 アトラスに絵があればそちらが優先されるので、トマト・イチゴの `drawTomato` `drawStrawberry` は今は使われない（絵が欠けたときの代わりとして残してある）。
 
