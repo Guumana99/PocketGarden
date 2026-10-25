@@ -32,8 +32,9 @@ enum class Ground {
  * @property usesSoil whether it lives in the soil of a bed: it gets the compost's head start when
  *   planted in a composted bed (and uses the compost up), and leaves compost behind when it is
  *   cleared away withered.
+ * @property leansInWind whether it stands up and bends in the wind; a log lies still.
  */
-enum class PlantGround(val grounds: Set<Ground>, val usesSoil: Boolean) {
+enum class PlantGround(val grounds: Set<Ground>, val usesSoil: Boolean, val leansInWind: Boolean = true) {
     /** Sown in a bed: tilled soil, or a greenhouse. */
     BED(setOf(Ground.TILLED_SOIL, Ground.GREENHOUSE), usesSoil = true),
 
@@ -42,7 +43,7 @@ enum class PlantGround(val grounds: Set<Ground>, val usesSoil: Boolean) {
      * lawn, ground cover or water, and not under glass. It lies on the soil rather than growing
      * in it, so a bed's compost is neither used nor added to.
      */
-    LOG(setOf(Ground.BARE_EARTH, Ground.TILLED_SOIL), usesSoil = false);
+    LOG(setOf(Ground.BARE_EARTH, Ground.TILLED_SOIL), usesSoil = false, leansInWind = false);
 
     fun allows(ground: Ground): Boolean = ground in grounds
 }

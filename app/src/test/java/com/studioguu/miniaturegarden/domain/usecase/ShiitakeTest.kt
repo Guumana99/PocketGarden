@@ -160,6 +160,16 @@ class ShiitakeTest {
         assertEquals(ActionResult.OUT_OF_SEASON, lay(GardenItem.SEED_SHIITAKE, 6, 6))
     }
 
+    @Test
+    fun `a log laid on the open earth stays there when the garden opens again`() = runBlocking {
+        assertEquals(ActionResult.SUCCESS, lay(GardenItem.SEED_SHIITAKE, 5, 5))
+        repo.put(at("tulip", 6, 6, PlantSpecies.TULIP.objectId))
+        // Run at every start, for gardens from before the hoe: it tills under the tulip only.
+        HoeUseCase(repo, GardenMap.DEFAULT).tillUnderExistingPlants(t0)
+        assertTrue(repo.objects.values.any { it.isTilledSoil && it.gridX == 6 && it.gridY == 6 })
+        assertFalse(repo.objects.values.any { it.isTilledSoil && it.gridX == 5 && it.gridY == 5 })
+    }
+
     // --- The soil ---
 
     @Test

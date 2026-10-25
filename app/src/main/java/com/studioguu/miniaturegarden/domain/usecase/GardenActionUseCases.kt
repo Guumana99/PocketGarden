@@ -382,11 +382,15 @@ class HoeUseCase @Inject constructor(
      * Gardens saved before the hoe existed have plants standing on bare ground. This puts tilled
      * soil under each of them, so they look right and the spot can be replanted after the
      * harvest. Plants on paving are left as they are. Does nothing once every plant has soil.
+     * A crop that is not grown in a bed (#68: the shiitake's log, laid on the open earth) is left
+     * on the ground it was put on: it runs at every start, and would otherwise till under it.
      */
     suspend fun tillUnderExistingPlants(now: Long) = gardenRepository.runInTransaction {
         val objects = gardenRepository.getGridObjects()
         val grid = GardenGrid(gardenMap.current(), objects)
-        val missing = objects.filter { it.isPlant && grid.floorAt(it.gridX, it.gridY) == null }
+        val missing = objects.filter {
+            it.isPlant && grid.floorAt(it.gridX, it.gridY) == null && PlantSpecies.forObjectId(it.objectId).ground.usesSoil
+        }
             .map { tilledSoil(it.gridX, it.gridY, now) }
         if (missing.isNotEmpty()) gardenRepository.upsertGridObjects(missing)
     }
