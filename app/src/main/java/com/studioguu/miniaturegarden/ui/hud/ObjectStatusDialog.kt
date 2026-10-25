@@ -131,7 +131,9 @@ fun ObjectStatusDialog(
                 LevelRow(stringResource(R.string.label_vitality), 1f - gridObject.stressRate)
             }
             val hint = when {
-                gridObject.isPlant && gridObject.status == PlantStatus.WITHERED -> R.string.hint_withered
+                // A log (#68) only lay on the soil: cleared away, it leaves no compost.
+                gridObject.isPlant && gridObject.status == PlantStatus.WITHERED ->
+                    if (PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil) R.string.hint_withered else R.string.hint_withered_log
                 gridObject.isPlant && gridObject.growthProgress >= 1f -> R.string.hint_overripe
                 gridObject.isComposted -> R.string.hint_composted
                 gridObject.isPlant && PlantSpecies.forObjectId(gridObject.objectId).isRepeatable -> R.string.hint_repeatable

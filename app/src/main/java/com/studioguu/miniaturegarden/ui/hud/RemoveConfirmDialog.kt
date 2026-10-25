@@ -14,6 +14,7 @@ import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WorkKind
+import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
@@ -40,7 +41,9 @@ fun RemoveConfirmDialog(
     val explanation = when {
         returnable -> R.string.remove_text_returnable
         gridObject.isTilledSoil -> R.string.remove_text_soil
-        gridObject.status == PlantStatus.WITHERED -> R.string.remove_text_withered
+        // What clearing it really does: a withered crop of the bed becomes compost; a log (#68) does not.
+        RemoveObjectUseCase.leavesCompost(gridObject) -> R.string.remove_text_withered
+        gridObject.status == PlantStatus.WITHERED -> R.string.remove_text_withered_log
         else -> R.string.remove_text_plant
     }
     AlertDialog(

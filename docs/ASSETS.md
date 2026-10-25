@@ -8,7 +8,7 @@
 
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
-| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 83 枚を 1 枚に詰めたもの（4022×2739、約 13.8MB、メモリ上 約 44MB、1 タイル 512px） | `tools/asset_packer.py` |
+| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 83 枚を 1 枚に詰めたもの（3892×2715、約 13.3MB、メモリ上 約 42MB、1 タイル 512px） | `tools/asset_packer.py` |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
@@ -71,7 +71,7 @@
   アイコンは花穂の束に白っぽい麻ひものリボン。ふつうの切り抜きではひもが途切れたので、アイコンだけ絵全体で真っ白だけを背景として抜く（`ICON_CUT`、`white_parts=1.0`。#64 の `white_petals` を、効かせる範囲を指定できる `white_parts` にした。スノードロップは 0.8 で結果は同じ）。
   `crop_soil.SOILLESS` に `lavender` を追加。
 - しいたけ（#68、4 枚）：`plant_shiitake_stage{1..3}.png` と `_withered.png`（3 段階。#68 でカボチャと入れ替えた新しい作物）。原画は `crop_shiitake_stage{1..3}.png` と `crop_shiitake_withered.png`（Recraft、白背景）。
-  丸太は育たず、キノコだけが増えるので、どの絵も**丸太の長さ**で大きさを決める（`STAGES` の `("log", 0.85)`、`log_width`：絵の下 4 分の 1 でいちばん広い行）。丸太は全段階・枯れとも 0.85 マス、絵全体でも 0.88 マス以内。
+  丸太は育たず、キノコだけが増えるので、どの絵も**丸太の長さ**で大きさを決める（`STAGES` の `("log", 0.6)`、`log_width`：絵の下 4 分の 1 でいちばん広い行）。丸太は全段階・枯れとも 0.6 マス、絵全体でも 0.62 マス以内（はじめ 0.85 にしたが、同じ列に並べると前の原木が後ろの原木を半分ほど隠したので縮めた）。
   接地点は丸太の下端の真ん中（`log_anchor`）。`CropScale.LOGS` に入れ、苗の大きさの決まりや次の段階の高さで縮めない（縮めると丸太が伸び縮みする）。
   枯れの丸太は樹皮が白っぽい灰色で、ふつうの切り抜きでは樹皮の上の縁が背景とみなされて欠けたので、`white_parts=0.8`（スノードロップと同じ）で切り抜く。`crop_soil.SOILLESS` に `shiitake` を追加。仮の絵（`CropArt.kt`）は描かない。
 - フェンス 3 枚：`struct_fence.png`（単体の柵）、`struct_fence_post.png`（支柱）、`struct_fence_rail.png`（現在は未使用）

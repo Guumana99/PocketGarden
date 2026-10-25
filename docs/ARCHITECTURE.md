@@ -540,7 +540,7 @@ FINISHED ──タップ──▶ REVEAL_EDIT ──タップ──▶ REVEAL_RA
 
 しいたけ：何度も収穫できる（収穫すると段階 2 の始め＝成長 0.5 に戻る。2 回目からは 57 コイン・80 XP、ほかの繰り返し収穫の作物と同じくコインは 3 割前後・XP は半分）。季節はほかの秋の作物と同じで、温室に置けないので季節外に育てる道は無い。
 旧セーブのカボチャ（`plant_pumpkin`・`seed_pumpkin`）は、起動のたびに走る `RetiredCropsUseCase` が株を取り除き（耕した土は残す）、持ち物の種は 1 個 70 コインで返金する。取り除いたものは戻らないので、2 回目以降は何もしない。図鑑のカボチャの記録は残るが、どのページにも出ない。
-丸太は土に植わるのではなく地面に置くものなので、起動時に「土の無い作物の下に耕した土を敷く」処理（`HoeUseCase.tillUnderExistingPlants`）はしいたけを飛ばす（`usesSoil`）。風で傾けない（`PlantGround.leansInWind`。傾けると丸太ごと斜めにゆがんだ）。
+丸太は土に植わるのではなく地面に置くものなので、起動時に「土の無い作物の下に耕した土を敷く」処理（`HoeUseCase.tillUnderExistingPlants`）はしいたけを飛ばす（`usesSoil`）。風で傾けない（`PlantGround.leansInWind`。傾けると丸太ごと斜めにゆがんだ）。枯れた原木の詳細パネルと撤去の確認は「たい肥になりません」の文言（`hint_withered_log`・`remove_text_withered_log`。`RemoveObjectUseCase.leavesCompost` で分ける）。丸太の長さは 0.6 マス（0.85 では同じ列の前の原木が後ろを半分隠した）。
 収益の規則（`ProgressionTest`）：解放レベルが高い作物ほど、1 時間あたりのコイン（収穫−種の値段）と XP が、それより低いレベルのすべての作物を上回る。
 Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（Lv.4）のあいだ、Lv.5 はバラより上に収めてある。
 また、育つのに時間がかかる作物ほど収穫のコインと XP が多い（`GardenActionUseCasesTest`）。乾く時間（`dryOutHours`）は 16 時間以上にする（半日で水切れになると、12 時間の成長を見るテストが落ちる）。

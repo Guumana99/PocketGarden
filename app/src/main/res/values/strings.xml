@@ -25,6 +25,7 @@
     <string name="label_vitality">元気</string>
     <string name="hint_overripe">満開です。収穫しないまま置いておくと、やがて枯れてしまいます</string>
     <string name="hint_withered">枯れています。コインで復活させるか、撤去するとたい肥になり、次に植える作物が少し育った状態で始まります</string>
+    <string name="hint_withered_log">枯れています。コインで復活させるか、撤去して片づけます（原木はたい肥になりません）</string>
     <string name="hint_repeatable">🔁 収穫しても株は残り、また実ります（2回目からの収穫は少なめ）</string>
     <string name="hint_composted">たい肥入りの土です。次に植える作物が少し育った状態で始まります</string>
     <string name="action_revive">🌱 復活 (🪙%1$d)</string>
@@ -105,6 +106,7 @@
     <string name="remove_text_returnable">持ち物に戻すと、後でまた置けます。破棄すると元に戻せません。</string>
     <string name="remove_text_plant">育てている作物は持ち物に戻せません。破棄すると元に戻せません。</string>
     <string name="remove_text_withered">枯れた作物を破棄すると、たい肥になって土に残ります。</string>
+    <string name="remove_text_withered_log">枯れた原木を片づけます。原木はたい肥にはなりません。</string>
     <string name="remove_text_soil">耕した土を芝生に戻します。</string>
     <string name="remove_store">🎒 持ち物に戻す</string>
     <string name="remove_discard">破棄する</string>

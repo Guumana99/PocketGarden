@@ -18,8 +18,8 @@
   "plant_eggplant_stage2": {"anchorX": 0.5, "anchorY": 0.85, "isFlippedAllowed": true},
   "plant_eggplant_stage3": {"anchorX": 0.48, "anchorY": 0.78, "isFlippedAllowed": true},
   "plant_eggplant_withered": {"anchorX": 0.5, "anchorY": 0.83, "isFlippedAllowed": true},
-  "plant_shiitake_stage1": {"anchorX": 0.4984, "anchorY": 0.9967, "isFlippedAllowed": true},
-  "plant_shiitake_stage2": {"anchorX": 0.4968, "anchorY": 0.9971, "isFlippedAllowed": true},
+  "plant_shiitake_stage1": {"anchorX": 0.4989, "anchorY": 1.0, "isFlippedAllowed": true},
+  "plant_shiitake_stage2": {"anchorX": 0.4955, "anchorY": 1.0, "isFlippedAllowed": true},
   "plant_shiitake_stage3": {"anchorX": 0.5, "anchorY": 1.0, "isFlippedAllowed": true},
-  "plant_shiitake_withered": {"anchorX": 0.5, "anchorY": 1.0, "isFlippedAllowed": true}
+  "plant_shiitake_withered": {"anchorX": 0.4989, "anchorY": 1.0, "isFlippedAllowed": true}
 }

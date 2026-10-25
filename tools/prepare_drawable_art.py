@@ -84,7 +84,7 @@ STAGES: dict[str, list] = {
     "snowdrop": [0.3, 0.48, 0.62],
     "watermelon": [0.3, ("w", 0.7), ("w", 0.85)],
     "lavender": [0.3, 0.5, 0.66],
-    "shiitake": [("log", 0.85), ("log", 0.85), ("log", 0.85)],
+    "shiitake": [("log", 0.6), ("log", 0.6), ("log", 0.6)],
 }
 
 #: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
@@ -149,7 +149,7 @@ WITHERED: dict[str, object] = {
     "snowdrop": 0.62,
     "watermelon": ("w", 0.85),
     "lavender": 0.66,
-    "shiitake": ("log", 0.85),
+    "shiitake": ("log", 0.6),
 }
 
 

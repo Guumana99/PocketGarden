@@ -197,6 +197,19 @@ class ShiitakeTest {
         assertTrue(repo.objects.getValue(bed.instanceId).isComposted)
     }
 
+    @Test
+    fun `a withered log's panel and its clearing do not promise compost`() {
+        val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
+        val dialog = java.io.File(main, "java/com/studioguu/miniaturegarden/ui/hud/ObjectStatusDialog.kt").readText()
+        assertTrue(dialog.contains("ground.usesSoil) R.string.hint_withered else R.string.hint_withered_log"))
+        val strings = java.io.File(main, "res/values/strings.xml").readText()
+        assertTrue(strings.contains("<string name=\"hint_withered_log\">"))
+        assertFalse(strings.substringAfter("<string name=\"hint_withered_log\">").substringBefore("</string>").contains("たい肥になり、"))
+        val remove = java.io.File(main, "java/com/studioguu/miniaturegarden/ui/hud/RemoveConfirmDialog.kt").readText()
+        assertTrue(remove.contains("RemoveObjectUseCase.leavesCompost(gridObject) -> R.string.remove_text_withered"))
+        assertTrue(remove.contains("gridObject.status == PlantStatus.WITHERED -> R.string.remove_text_withered_log"))
+    }
+
     // --- Harvests ---
 
     @Test
