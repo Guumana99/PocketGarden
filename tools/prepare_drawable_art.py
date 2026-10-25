@@ -89,9 +89,13 @@ CUT: dict[str, dict] = {
     "snowdrop": {"white_petals": True},
 }
 
-#: Icons in source_art that are not the picture they are named for, and so are not made (the item
-#: keeps its emoji): icon_snowdrop.png came as a copy of crop_snowdrop_withered.png (#64).
-WRONG_ICONS = {"icon_snowdrop"}
+#: Pictures whose leaves are brought up to the brightness of the rest of their crop, by this gain
+#: (every channel alike, so their colour stays as it is; yellow flowers are left alone). The
+#: watermelon's stage 2 (#66) came with leaves of a near-black grey-green that read as burnt on the
+#: bed: their median brightness was 51 against stage 3's 66.
+LEAF_GAIN: dict[str, float] = {
+    "plant_watermelon_stage2": 1.3,
+}
 
 #: The tulip's flowers (#58): red is its plain stage 3, the others are variants of it.
 TULIP_COLOURS = ["pink", "yellow", "white", "purple", "blue"]
@@ -301,6 +305,16 @@ def simple_stages(name: str, suffix: str) -> list[np.ndarray]:
     return [crop(load_cut(f"crop_{name}{suffix}{n}.png", **CUT.get(name, {}))) for n in (1, 2, 3)]
 
 
+def brighter_leaves(rgba: np.ndarray, gain: float) -> np.ndarray:
+    """[rgba] with all but its yellow flowers [gain] times as bright, each channel alike."""
+    rgb = rgba[:, :, :3].astype(float)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    yellow = (r > 140) & (g > 110) & (b < 100) & (r - b > 70)
+    out = rgba.copy()
+    out[:, :, :3] = np.where(yellow[..., None], rgb, np.clip(rgb * gain, 0, 255)).astype(np.uint8)
+    return out
+
+
 def to_size(rgba: np.ndarray, size) -> np.ndarray:
     h, w = rgba.shape[:2]
     if isinstance(size, tuple):
@@ -337,7 +351,10 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         sized = [to_size(p, s) for p, s in zip(pictures, STAGES[crop_name])]
         for n, picture in enumerate(sized, start=1):
             override = field_anchor(picture) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_stage{n}")
-            out[f"plant_{crop_name}_stage{n}"] = (picture, override)
+            asset_id = f"plant_{crop_name}_stage{n}"
+            if asset_id in LEAF_GAIN:
+                picture = brighter_leaves(picture, LEAF_GAIN[asset_id])
+            out[asset_id] = (picture, override)
         if crop_name in WITHERED:
             dead = to_size(crop(load_cut(f"crop_{crop_name}_withered.png", **CUT.get(crop_name, {}))), WITHERED[crop_name])
             out[f"plant_{crop_name}_withered"] = (dead, field_anchor(dead) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_withered"))
@@ -352,7 +369,8 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
 def prepare_icons() -> dict[str, np.ndarray]:
     out = {}
     for path in sorted(SOURCE.glob("icon_*.png")):
-        if path.stem in WRONG_ICONS:
+        # Only the crops prepared here: source_art also holds art for crops still to come (#66).
+        if path.stem.removeprefix("icon_") not in STAGES:
             continue
         rgba = crop(load_cut(path.name, **CUT.get(path.stem.removeprefix("icon_"), {})))
         h, w = rgba.shape[:2]
