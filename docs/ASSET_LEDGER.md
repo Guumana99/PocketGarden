@@ -105,7 +105,8 @@
 
 ## 生き物
 
-すべて ⬜ 仮（`ui/render/CreatureSprites.kt` のコード描画）。絵を入れるときの assetId は `creature_<id>`、接地点は足元（飛ぶものも足元。浮かせる高さはコードの `hoverHeight`）。
+すべて ⬜ 仮（`ui/render/CreatureSprites.kt` のコード描画）。絵を入れるときの assetId は `creature_<id>`、接地点は足元（飛ぶものも足元。浮かせる高さはコードの `CreatureRoutes.cruiseAltitude`）。
+作物のアトラスではなく、生き物用の別の画像（`creatures.png` / `creatures_manifest.json`）に入れる。✅ はその画像に入っているもの。羽・しっぽの部品の名前は `ASSETS.md` の「生き物の絵の決まり」。
 
 | 生き物 | assetId | 状態 |
 |---|---|---|

@@ -111,8 +111,38 @@ object TileSetDefinition {
             BLOOM_COLOURS[species.objectId].orEmpty().map { "${stageId(species.objectId, species.growthStages)}_$it" } +
             listOfNotNull(witheredId(species.objectId).takeIf { species.canWither })
 
-    /** The sprite of a visitor: `creature_<id>`, standing with its anchor at its feet. */
+    /**
+     * The picture of a visitor, in the creatures' atlas ([SpriteAtlas.creatures]): `creature_<id>`,
+     * facing left, standing with its anchor at its feet. For a flier, the whole of it with its
+     * wings spread (the nature notes show it).
+     */
     fun assetIdFor(creature: Creature): String = "creature_${creature.id}"
+
+    /**
+     * The picture the parts of [creature] ([creaturePartIds]) are hung on: a flier's body alone,
+     * `creature_<id>_body`; the squirrel itself, without its tail. Its attachment point is where
+     * they join it.
+     */
+    fun creatureBodyId(creature: Creature): String =
+        if (creature == Creature.BUTTERFLY || creature == Creature.DRAGONFLY) "${assetIdFor(creature)}_body" else assetIdFor(creature)
+
+    /**
+     * The parts of [creature] that move on their own, each with its anchor where it joins the
+     * body: a flier's near and far wings (`_wing_near`, `_wing_far`), opened and closed; the
+     * squirrel's tail (`_tail`), swung. None for the others.
+     */
+    fun creaturePartIds(creature: Creature): List<String> = when (creature) {
+        Creature.BUTTERFLY, Creature.DRAGONFLY -> listOf("${assetIdFor(creature)}_wing_near", "${assetIdFor(creature)}_wing_far")
+        Creature.SQUIRREL -> listOf("${assetIdFor(creature)}_tail")
+        else -> emptyList()
+    }
+
+    /**
+     * Every sprite id the creatures' atlas may have: each visitor's picture, and the bodies and
+     * parts of those that move in parts.
+     */
+    val expectedCreatureSpriteIds: List<String> =
+        Creature.entries.flatMap { listOf(assetIdFor(it), creatureBodyId(it)).distinct() + creaturePartIds(it) }
 
     /**
      * Things drawn from a picture of their own in `res/drawable` (through [TerrainTextures]),
@@ -130,8 +160,8 @@ object TileSetDefinition {
     fun sprinklerSprayId(frame: Int): String = "deco_sprinkler_spray_$frame"
 
     /**
-     * Every sprite id the garden may look up: the ground tiles, each crop's stages, every other
-     * thing that stands in a cell, the windmill's sails and the visitors, whether the atlas has
+     * Every sprite id the garden may look up in its atlas: the ground tiles, each crop's stages,
+     * every other thing that stands in a cell and the windmill's sails, whether the atlas has
      * it yet or not. Against the atlas it gives the artwork still missing; anything in the atlas
      * that is not here would never be drawn.
      */
@@ -140,8 +170,7 @@ object TileSetDefinition {
             PlantSpecies.entries.flatMap(::spriteIdsFor) +
             (objectIds - PlantSpecies.entries.map { it.objectId }.toSet() - DRAWABLE_OBJECT_IDS) +
             WINDMILL_SAILS +
-            (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId) +
-            Creature.entries.map(::assetIdFor)
+            (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId)
 
     /** 1-based stage; the last stage is reserved for a fully grown plant (progress 1.0). */
     fun growthStage(growthProgress: Float, stages: Int): Int {

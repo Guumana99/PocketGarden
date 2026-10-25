@@ -33,6 +33,41 @@ class CodeArtTest {
     }
 
     @Test
+    fun `the visitors' pictures go in an atlas of their own, named by one rule`() {
+        // The main atlas is as large as an image may be; the visitors are not packed into it.
+        assertTrue(sprites.none { it.startsWith("creature_") })
+        assertTrue(TileSetDefinition.expectedSpriteIds.none { it.startsWith("creature_") })
+        val ids = TileSetDefinition.expectedCreatureSpriteIds
+        assertEquals(ids.size, ids.toSet().size)
+        assertTrue(ids.containsAll(Creature.entries.map(TileSetDefinition::assetIdFor)))
+        for (creature in listOf(Creature.BUTTERFLY, Creature.DRAGONFLY)) {
+            val id = TileSetDefinition.assetIdFor(creature)
+            assertEquals("${id}_body", TileSetDefinition.creatureBodyId(creature))
+            assertEquals(listOf("${id}_wing_near", "${id}_wing_far"), TileSetDefinition.creaturePartIds(creature))
+        }
+        assertEquals(listOf("creature_squirrel_tail"), TileSetDefinition.creaturePartIds(Creature.SQUIRREL))
+        // Once bundled, it holds nothing the garden would not look up.
+        val file = File(main, "assets/atlas/creatures_manifest.json")
+        if (file.exists()) {
+            val packed = AtlasManifest.parse(file.readText()).assets.map { it.assetId }.toSet()
+            assertEquals(emptySet<String>(), packed - ids.toSet())
+        }
+    }
+
+    @Test
+    fun `the visitors' movements are made by moving their pictures, not by drawing them anew`() {
+        // A stand-in is drawn from the creature and its tile size alone, plus how far its wings are
+        // open or its tail swung: the parts the artwork will have. No clock reaches the drawing.
+        val source = File(main, "java/com/studioguu/miniaturegarden/ui/render/CreatureSprites.kt").readText()
+        val standIns = source.substringAfter("private fun DrawScope.drawCreature(")
+        val found = Regex("""private fun DrawScope\.draw(Butterfly|Ladybug|Bird|Squirrel|Frog|Dragonfly)\(([^)]*)\)""").findAll(standIns).toList()
+        assertEquals(6, found.size)
+        for (match in found) {
+            assertFalse(match.value, match.groupValues[2].contains("clock") || match.groupValues[2].contains("Long"))
+        }
+    }
+
+    @Test
     fun `the butterfly and the dragonfly fly, the rest keep to the ground`() {
         assertEquals(setOf(Creature.BUTTERFLY, Creature.DRAGONFLY), Creature.entries.filter { it.flies() }.toSet())
         for (creature in Creature.entries) assertEquals(creature.name, creature.flies(), creature.hoverHeight > 0f)

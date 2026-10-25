@@ -51,7 +51,7 @@ import com.studioguu.miniaturegarden.ui.combinationHint
 import com.studioguu.miniaturegarden.ui.combinationLabel
 import com.studioguu.miniaturegarden.ui.creatureFlavor
 import com.studioguu.miniaturegarden.ui.creatureName
-import com.studioguu.miniaturegarden.ui.render.STILL_CLOCK
+import com.studioguu.miniaturegarden.ui.render.VisitorLook
 import com.studioguu.miniaturegarden.ui.render.drawCreatureShadow
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
 import com.studioguu.miniaturegarden.ui.render.flies
@@ -206,7 +206,8 @@ private fun NaturePage(creature: Creature, notes: NatureNotes, isNew: Boolean, a
 private fun CreaturePicture(creature: Creature, atlas: SpriteAtlas, silhouette: Boolean = false) {
     // The shadow is the picture with its colours replaced: drawn on a layer of its own, then filled.
     val layer = if (silhouette) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier
-    val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
+    val creatures = atlas.creatures
+    val atlasImage = remember(creatures) { creatures.bitmap?.asImageBitmap() }
     Canvas(Modifier.fillMaxSize().then(layer)) {
         val unit = size.minDimension * 2.2f
         val ground = Offset(size.width / 2f, size.height * 0.72f)
@@ -215,9 +216,9 @@ private fun CreaturePicture(creature: Creature, atlas: SpriteAtlas, silhouette: 
             // It hovers well above its spot in the garden; here it is brought down into the frame,
             // with its shadow on the lawn below it.
             drawCreatureShadow(ground, unit, 0.12f)
-            drawVisitor(creature, ground + Offset(0f, unit * 0.25f), unit, STILL_CLOCK, atlas, atlasImage, shadow = false)
+            drawVisitor(creature, ground + Offset(0f, unit * 0.25f), unit, VisitorLook.still(creature), creatures, atlasImage, shadow = false)
         } else {
-            drawVisitor(creature, ground, unit, STILL_CLOCK, atlas, atlasImage)
+            drawVisitor(creature, ground, unit, VisitorLook.still(creature), creatures, atlasImage)
         }
         if (silhouette) drawRect(SHADOW, blendMode = BlendMode.SrcIn)
     }

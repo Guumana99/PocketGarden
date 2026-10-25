@@ -227,17 +227,15 @@ class CreatureVisitTest {
         assertTrue(visitsOver(200, boxedIn).none { it.creature == Creature.SQUIRREL })
     }
 
-    // --- Coming and going softly ---
+    // --- Coming and going ---
 
     @Test
-    fun `a visitor fades in on arrival and out before leaving`() {
+    fun `a visitor is in the garden from its arrival up to its leaving`() {
+        // How it comes and goes (a pop, a flight) is its route's: see CreatureMotionTest.
         val visit = CreatureVisit(VisitRule.BIRD_COTTAGE, GridCell(0, 0), null, arrivesAt = 100_000, leavesAt = 200_000)
-        assertEquals(0f, visit.opacityAt(99_999))
-        assertEquals(0f, visit.opacityAt(100_000))
-        assertEquals(0.5f, visit.opacityAt(100_000 + CreatureVisit.FADE_MILLIS / 2), 0.001f)
-        assertEquals(1f, visit.opacityAt(150_000))
-        assertEquals(0.5f, visit.opacityAt(200_000 - CreatureVisit.FADE_MILLIS / 2), 0.001f)
-        assertEquals(0f, visit.opacityAt(200_000))
+        assertFalse(visit.isPresentAt(99_999))
+        assertTrue(visit.isPresentAt(100_000))
+        assertTrue(visit.isPresentAt(199_999))
         assertFalse(visit.isPresentAt(200_000))
     }
 
