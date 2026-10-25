@@ -86,6 +86,6 @@ app/src/main/java/com/studioguu/miniaturegarden/
   ui/title/         タイトル画面と見本の庭      ui/onboarding/  木箱のポップアップ、チュートリアルの札、完了ダイアログ、機能の紹介
   ui/notifications/ 通知の権限・設定の行・招待ダイアログ   ui/post/ ポスト（お便り）
   ui/components/GardenCanvas.kt           庭の描画すべて（大きいファイル）
-  ui/render/        IsometricTransform RiverAutotile FenceAutotile Atmosphere(風・光) SoilTexture Occlusion(建物の裏) CreatureSprites(生き物の仮の絵) CropArt(作物の仮の絵)
+  ui/render/        IsometricTransform RiverAutotile FenceAutotile Atmosphere(風・光) SoilTexture Occlusion(建物の裏) CreatureSprites(生き物の仮の絵)
 tools/              アセット加工スクリプト（Python）
 ```

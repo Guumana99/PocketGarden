@@ -75,7 +75,7 @@ enum class PlantSpecies(
     ),
 
     /** Winter's red leaves at Lv.5; slow to dry out in the cold. */
-    POINSETTIA("plant_poinsettia", growthHours = 120, dryOutHours = 36, harvestCoins = 180, harvestXp = 150),
+    POINSETTIA("plant_poinsettia", growthHours = 120, dryOutHours = 36, harvestCoins = 180, harvestXp = 150, growthStages = 3),
 
     /** Summer's peppers at Lv.4: slow to come, then they keep coming. */
     PAPRIKA(

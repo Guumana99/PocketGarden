@@ -183,14 +183,23 @@ class BundledArtTest {
 
     @Test
     fun `every crop page can show its plant in full bloom from the atlas`() {
-        // The crops that came with the seasons are drawn in code for now (ui/render/SeasonalArt.kt).
-        val drawnInCode = setOf(
-            PlantSpecies.POINSETTIA,
-        )
-        for (species in PlantSpecies.entries - drawnInCode) {
+        // Every crop has its pictures since #69 (the poinsettia was the last drawn in code).
+        for (species in PlantSpecies.entries) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })
         }
+    }
+
+    @Test
+    fun `poinsettia has its pictures in three stages and its icon (#69)`() {
+        assertEquals(3, PlantSpecies.POINSETTIA.growthStages)
+        val ids = TileSetDefinition.spriteIdsFor(PlantSpecies.POINSETTIA)
+        assertEquals(listOf("plant_poinsettia_stage1", "plant_poinsettia_stage2", "plant_poinsettia_stage3", "plant_poinsettia_withered"), ids)
+        for (id in ids) assertTrue(id, manifest.assets.any { it.assetId == id })
+        assertFalse(manifest.assets.any { it.assetId == "plant_poinsettia_stage4" })
+        val stages = ids.dropLast(1).map { id -> manifest.assets.single { it.assetId == id } }
+        stages.zipWithNext { a, b -> assertTrue("${a.assetId} -> ${b.assetId}", a.width < b.width && a.height < b.height) }
+        assertTrue(File(main, "res/drawable-nodpi/icon_poinsettia.png").isFile)
     }
 
     @Test
