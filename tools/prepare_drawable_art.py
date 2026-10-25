@@ -35,7 +35,8 @@ This script:
       - poinsettia (#69): three stages and a withered one, as they came; a round bush;
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
         each is as tall (or as wide) as WITHERED says;
-  * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag;
+  * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag:
+    one for each crop here, and for the crops whose plants are made elsewhere (ICON_ONLY, #72);
   * the lawn: the top face of tile_grass_iso.png unprojected into a flat square, for
     prepare_building_art.py to make tile_grass from (flat_lawn);
   * prints where the top face lies in each ground picture (GroundSlab's values).
@@ -103,10 +104,16 @@ CUT: dict[str, dict] = {
 }
 
 #: The same for an icon, where it is cut out differently from its plant: the lavender's bunch is
-#: tied with pale twine, which the white was taken out of (#67).
+#: tied with pale twine, which the white was taken out of (#67). The daikon's root is white, and
+#: the usual cut bit its shaded side away (#72).
 ICON_CUT: dict[str, dict] = {
     "lavender": {"white_parts": 1.0},
+    "daikon": {"white_parts": 1.0},
 }
+
+#: Crops whose icon is made here though their plants are not (#72): the rose, paprika and daikon
+#: are still the #39 pictures, packed from raw_assets as they are.
+ICON_ONLY = {"rose", "paprika", "daikon"}
 
 #: Pictures whose leaves are brought up to the brightness of the rest of their crop, by this gain
 #: (every channel alike, so their colour stays as it is; yellow flowers are left alone). The
@@ -427,8 +434,8 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
 def prepare_icons() -> dict[str, np.ndarray]:
     out = {}
     for path in sorted(SOURCE.glob("icon_*.png")):
-        # Only the crops prepared here: source_art also holds art for crops still to come (#66).
-        if path.stem.removeprefix("icon_") not in STAGES:
+        # Only the crops known here: source_art also holds art for crops still to come (#66).
+        if path.stem.removeprefix("icon_") not in STAGES.keys() | ICON_ONLY:
             continue
         name = path.stem.removeprefix("icon_")
         rgba = crop(load_cut(path.name, **ICON_CUT.get(name, CUT.get(name, {}))))

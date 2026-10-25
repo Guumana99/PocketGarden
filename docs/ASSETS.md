@@ -16,7 +16,7 @@
 | `app/src/main/res/drawable/soil_tilled.png` | 耕した土（畝 3 本）の板（#57）。上面を畑の 1 マスに敷く | 受け取ったまま（1024×1024、白背景）。`GroundSlab.TILLED` |
 | `app/src/main/res/drawable/soil_revived.png` | 鍬で崩しかけた地面（畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
 | `app/src/main/res/drawable/pond_center.png` | 水面だけの 1 マス（#57）。池どうしのつなぎ目の水と、#61 から四方を池に囲まれた池（池の真ん中）の水面 | 受け取ったまま（1024×1024、白背景）。`GroundSlab.POND_CENTER`、`TerrainTextures.pondWater`。色は池の絵の水にそろえて使う |
-| `app/src/main/res/drawable-nodpi/icon_{tomato,strawberry,carrot,eggplant,wheat,corn,mint,cosmos,watermelon,snowdrop,lavender,shiitake,poinsettia}.png` | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67、しいたけは #68、ポインセチアは #69） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
+| `app/src/main/res/drawable-nodpi/icon_<作物>.png`（作物 18 種すべて） | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
 | `app/src/main/res/drawable/pond.png` | 池（`deco_pond`） | `tools/source_art/pond.png` をそのままコピー（1536×768）。上面の位置は `GroundSlab.POND` |
 | `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
 
@@ -90,13 +90,13 @@
 
 `domain/model/GardenItem.kt` の全 35 品。並びはショップの棚（種・建物・飾り）ごと。
 「確定アセット」は庭に置いたときの絵が受け取った画像素材のもの、「コード描画（仮置き）」は絵が無くプログラムで描いているもの。
-アイコンは、作物 13 種（トマト・イチゴ・ニンジン・ナス・小麦・トウモロコシ・ミント・コスモス・スイカ・スノードロップ・ラベンダー・しいたけ・ポインセチア）が画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`）、ほかは絵文字（`itemEmoji`）。
+アイコンは、作物 18 種すべてが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`。#72 から）、建物・飾りは絵文字（`itemEmoji`。作物の絵文字は絵が無いときの予備）。
 
 | 棚 | 品名（id） | 値段 | 解放 | 庭での絵 | 素材 |
 |---|---|---|---|---|---|
-| 種 | チューリップの種（`seed_tulip`） | 20 | 最初から | 確定アセット | `plant_tulip_*`（#58、6 色） |
-| 種 | ひまわりの種（`seed_sunflower`） | 35 | Lv2 | 確定アセット | `plant_sunflower_*`（#58） |
-| 種 | バラの苗（`seed_rose`） | 60 | Lv4 | 確定アセット（旧画風） | `plant_rose_*`（4 段階） |
+| 種 | チューリップの種（`seed_tulip`） | 20 | 最初から | 確定アセット | `plant_tulip_*`（#58、6 色）、アイコン画像あり（#72） |
+| 種 | ひまわりの種（`seed_sunflower`） | 35 | Lv2 | 確定アセット | `plant_sunflower_*`（#58）、アイコン画像あり（#72） |
+| 種 | バラの苗（`seed_rose`） | 60 | Lv4 | 確定アセット（旧画風） | `plant_rose_*`（4 段階）、アイコン画像あり（#72） |
 | 種 | コスモスの種（`seed_cosmos`） | 20 | 最初から | 確定アセット | `plant_cosmos_*`（#63、3 段階）、アイコン画像あり |
 | 種 | スノードロップの球根（`seed_snowdrop`） | 20 | 最初から | 確定アセット | `plant_snowdrop_*`（#64、3 段階）、アイコン画像あり（#66） |
 | 種 | ミントの苗（`seed_mint`） | 15 | 最初から | 確定アセット | `plant_mint_*`（#62、3 段階）、アイコン画像あり |
@@ -106,8 +106,8 @@
 | 種 | ラベンダーの苗（`seed_lavender`） | 40 | Lv3 | 確定アセット | `plant_lavender_*`（#67、3 段階）、アイコン画像あり |
 | 種 | しいたけの原木（`seed_shiitake`） | 70 | Lv5 | 確定アセット | `plant_shiitake_*`（#68、3 段階。カボチャと入れ替え）、アイコン画像あり |
 | 種 | ポインセチアの苗（`seed_poinsettia`） | 70 | Lv5 | 確定アセット | `plant_poinsettia_*`（#69、3 段階）、アイコン画像あり |
-| 種 | パプリカの苗（`seed_paprika`） | 55 | Lv4 | 確定アセット（旧画風） | `plant_paprika_*`（#39） |
-| 種 | 大根の種（`seed_daikon`） | 30 | Lv2 | 確定アセット（旧画風） | `plant_daikon_*`（#39） |
+| 種 | パプリカの苗（`seed_paprika`） | 55 | Lv4 | 確定アセット（旧画風） | `plant_paprika_*`（#39）、アイコン画像あり（#72） |
+| 種 | 大根の種（`seed_daikon`） | 30 | Lv2 | 確定アセット（旧画風） | `plant_daikon_*`（#39）、アイコン画像あり（#72） |
 | 種 | ニンジンの種（`seed_carrot`） | 25 | Lv2 | 確定アセット | `plant_carrot_*`（#57、2 段階目は 3 段階目から作成）、アイコン画像あり |
 | 種 | ナスの苗（`seed_eggplant`） | 40 | Lv3 | 確定アセット | `plant_eggplant_*`（#57）、アイコン画像あり |
 | 種 | 小麦の種（`seed_wheat`） | 45 | Lv4 | 確定アセット | `plant_wheat_*`（#57）、アイコン画像あり |
@@ -187,7 +187,7 @@
 | `building_windmill_blades.jpg` | 風車の羽根（#40）。同じく白と灰色の市松模様（約 12px）と、白いにじみが描き込まれていた。色で抜いた |
 | `tile_grass_iso.png` | 芝生（#57、受け取ったときは `res/drawable/tile_grass.png`）。白背景のアイソメの芝の板（1024×1024）。`prepare_drawable_art.flat_lawn` が上面を真上から見た正方形（720 px）に戻し、`flat_to_tile` で中央の正方形の半分（`share=0.5`）を 2:1 のひし形へ貼り、ぼかし 1.2px、厚み 55px の側面を足して `tile_grass` に。細かい葉のままだとスマホで約 7 分の 1 に縮んだとき砂嵐のようにちらつくため、葉を大きく柔らかくしている。#53 の `tile_lawn_flat.png` はこれに置き換えて削除 |
 | `crop_*.png`（63 枚） | 作物の原画（#57・#58・#62〜#69）。トウモロコシ・ナス・小麦・ひまわり・ミント・コスモス・スノードロップ・スイカ・ラベンダー・しいたけ・ポインセチアは `_stage1`〜`3` と `_withered`、トマト・イチゴは `_1`〜`3` と `_withered`、ニンジンは `_1`・`_3`・`_withered`、チューリップは `_stage1`・`_stage2` と 6 色の `_<色>_stage3` | `prepare_drawable_art.py` が切り抜いて `raw_assets/plant_*` に |
-| `icon_*.png`（13 枚） | アイコンの原画（#57、ミントは #62、コスモスは #63、スイカは #65、ラベンダーは #67、しいたけは #68、ポインセチアは #69）。`icon_snowdrop.png` は #64 では枯れた絵の複製だったが、#66 で正しい絵に置き直して使っている | `prepare_drawable_art.py` が切り抜いて `res/drawable-nodpi/` に |
+| `icon_*.png`（18 枚） | アイコンの原画（#57、ミントは #62、コスモスは #63、スイカは #65、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72）。バラ・パプリカ・大根は株の絵をこのスクリプトで作っていないので、アイコンだけ作る（`ICON_ONLY`）。大根は白い根が欠けたため、ラベンダーと同じく `ICON_CUT` で真っ白だけを背景として抜く。`icon_snowdrop.png` は #64 では枯れた絵の複製だったが、#66 で正しい絵に置き直して使っている | `prepare_drawable_art.py` が切り抜いて `res/drawable-nodpi/` に |
 | `tile_soil_flat.png` | 耕した土（#53）。同じく真上からの写真（受け取ったときは `floor_tilled.png`）。正方形全体をひし形へ、厚み 33px で `floor_tilled` に（温室の床でだけ使う） |
 | `pond.png` | 池（#53）。透過ありのアイソメの絵（丸太の枠と石）。#54 から `res/drawable/pond.png` にコピーして池（`deco_pond`）に使用。`raw_assets/` に置くと詰められて `CodeArtTest` が落ちるので、原画はここに置いてある |
 | `tile_grass_default.png` | **#53 から未使用**。芝生のタイル（#40）。縁に白いにじみ。1 マス幅に縮め、上面が 2:1 のひし形になるよう縦に伸ばした（元は約 2.35:1） |
