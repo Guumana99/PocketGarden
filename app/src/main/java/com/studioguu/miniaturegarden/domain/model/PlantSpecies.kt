@@ -61,7 +61,7 @@ enum class PlantSpecies(
     WATERMELON("plant_watermelon", growthHours = 96, dryOutHours = 16, harvestCoins = 122, harvestXp = 110, growthStages = 3),
 
     /** A herb for every season at Lv.3; it keeps well between waterings. */
-    LAVENDER("plant_lavender", growthHours = 84, dryOutHours = 30, harvestCoins = 108, harvestXp = 96),
+    LAVENDER("plant_lavender", growthHours = 84, dryOutHours = 30, harvestCoins = 108, harvestXp = 96, growthStages = 3),
 
     /** Autumn's big crop at Lv.5. */
     PUMPKIN("plant_pumpkin", growthHours = 132, dryOutHours = 30, harvestCoins = 190, harvestXp = 160),

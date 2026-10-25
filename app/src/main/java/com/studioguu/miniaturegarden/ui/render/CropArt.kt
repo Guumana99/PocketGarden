@@ -19,7 +19,6 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 private val CROP_DRAWINGS: Map<PlantSpecies, DrawScope.(base: Offset, unit: Float, growth: Float, withered: Boolean) -> Unit> = mapOf(
     PlantSpecies.TOMATO to { base, unit, growth, withered -> drawTomato(base, unit, growth, withered) },
     PlantSpecies.STRAWBERRY to { base, unit, growth, withered -> drawStrawberry(base, unit, growth, withered) },
-    PlantSpecies.LAVENDER to { base, unit, growth, withered -> drawLavender(base, unit, growth, withered) },
     PlantSpecies.PUMPKIN to { base, unit, growth, withered -> drawPumpkin(base, unit, growth, withered) },
     PlantSpecies.POINSETTIA to { base, unit, growth, withered -> drawPoinsettia(base, unit, growth, withered) },
 )
@@ -104,22 +103,6 @@ private fun DrawScope.drawStrawberry(base: Offset, unit: Float, growth: Float, w
             }
             drawPath(berry, if (withered) FRUIT_DRY else Color(0xFFE53950))
             drawOval(if (withered) STEM_DRY else Color(0xFF66BB6A), at - Offset(unit * 0.03f * s, unit * 0.03f * s), Size(unit * 0.06f * s, unit * 0.018f * s))
-        }
-    }
-}
-
-/** Lavender: a tuft of grey-green spikes topped with purple flower heads. */
-private fun DrawScope.drawLavender(base: Offset, unit: Float, growth: Float, withered: Boolean) {
-    val s = grown(growth)
-    val stem = if (withered) STEM_DRY else Color(0xFF7FA07A)
-    val flower = if (withered) FRUIT_DRY else Color(0xFF9575CD)
-    for (dx in listOf(-0.1f, -0.05f, 0f, 0.05f, 0.1f)) {
-        val tip = base + Offset(unit * dx * 1.4f * s, -unit * (0.42f - kotlin.math.abs(dx)) * s)
-        drawLine(stem, base, tip, unit * 0.012f, StrokeCap.Round)
-        if (growth < 0.5f) continue
-        for (j in 0..3) {
-            val at = tip + (base - tip) * (j * 0.08f)
-            drawOval(flower, at - Offset(unit * 0.016f * s, unit * 0.014f * s), Size(unit * 0.032f * s, unit * 0.028f * s))
         }
     }
 }

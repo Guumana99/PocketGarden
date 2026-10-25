@@ -28,6 +28,7 @@ This script:
         leaves, which are cut off, so that it stands on the foot of its leaves (snowdrop_stages);
       - watermelon (#65): the same; stages 2, 3 and withered are a low, wide mound of leaves with no
         stem to stand on (stage 3 with its fruit in front), sized by their width, not their height;
+      - lavender (#67): the same, a round bushy clump;
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
         each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag;
@@ -78,20 +79,33 @@ STAGES: dict[str, list] = {
     "cosmos": [0.3, 0.64, 0.85],
     "snowdrop": [0.3, 0.48, 0.62],
     "watermelon": [0.3, ("w", 0.7), ("w", 0.85)],
+    "lavender": [0.3, 0.5, 0.66],
 }
 
 #: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
 #: the cosmos' leaves (#63) are hair-fine, and the white showing through them left them in a pale
 #: haze; it is taken out of the whole picture, not only its outline (cut_out's [throughout]).
 #: The snowdrop's flowers (#64) are white, and the white is taken out more gently round them.
+#: The lavender (#67) is as fine as the cosmos.
 CUT: dict[str, dict] = {
     "cosmos": {"throughout": True, "solid": 100.0},
-    "snowdrop": {"white_petals": True},
+    "snowdrop": {"white_parts": 0.8},
+    "lavender": {"throughout": True, "solid": 100.0},
 }
 
-#: Icons in source_art that are not the picture they are named for, and so are not made (the item
-#: keeps its emoji): icon_snowdrop.png came as a copy of crop_snowdrop_withered.png (#64).
-WRONG_ICONS = {"icon_snowdrop"}
+#: The same for an icon, where it is cut out differently from its plant: the lavender's bunch is
+#: tied with pale twine, which the white was taken out of (#67).
+ICON_CUT: dict[str, dict] = {
+    "lavender": {"white_parts": 1.0},
+}
+
+#: Pictures whose leaves are brought up to the brightness of the rest of their crop, by this gain
+#: (every channel alike, so their colour stays as it is; yellow flowers are left alone). The
+#: watermelon's stage 2 (#66) came with leaves of a near-black grey-green that read as burnt on the
+#: bed: their median brightness was 51 against stage 3's 66.
+LEAF_GAIN: dict[str, float] = {
+    "plant_watermelon_stage2": 1.3,
+}
 
 #: The tulip's flowers (#58): red is its plain stage 3, the others are variants of it.
 TULIP_COLOURS = ["pink", "yellow", "white", "purple", "blue"]
@@ -127,6 +141,7 @@ WITHERED: dict[str, object] = {
     "cosmos": 0.85,
     "snowdrop": 0.62,
     "watermelon": ("w", 0.85),
+    "lavender": 0.66,
 }
 
 
@@ -137,7 +152,7 @@ def erode(mask: np.ndarray, times: int) -> np.ndarray:
 
 
 def cut_out(rgb: np.ndarray, light: int = 190, tol: int = 30, pocket: int = 3, edge: int = 2,
-            solid: float = 70.0, throughout: bool = False, white_petals: bool = False) -> np.ndarray:
+            solid: float = 70.0, throughout: bool = False, white_parts: float = 0.0) -> np.ndarray:
     """[rgb] (opaque, on white) with the white made transparent; RGBA.
 
     [edge]: how deep (pixels) the outline is un-mixed from the white. Two is enough for leaves with
@@ -146,26 +161,28 @@ def cut_out(rgb: np.ndarray, light: int = 190, tol: int = 30, pocket: int = 3, e
     [throughout]: un-mix the whole picture, not only its outline: for foliage so fine that the white
     shows through it everywhere (the cosmos' leaves). Its petals (pink, and a little round them) are
     left solid, so that their pale parts do not turn see-through.
-    [white_petals]: the flowers are white (the snowdrop, #64): round them, only the plain white of
-    the background goes, not the pale grey of their shading, which the usual test took for
-    background and bit out of them. Only in the upper four fifths of the picture: at its foot the
-    pale grey is the shadow on the ground, and goes.
+    [white_parts]: part of the picture is white or nearly (the snowdrop's flowers, #64; the twine
+    round the lavender's bunch, #67): round it, only the plain white of the background goes, not
+    the pale grey of its shading, which the usual test took for background and bit out of it. The
+    share of the picture, from the top, where this is done: 0.8 leaves out the foot of a plant,
+    where the pale grey is its shadow on the ground; 1.0 is the whole of an icon, which has none;
+    0 is not at all.
     """
     v = rgb.astype(int)
     mx, mn = v.max(axis=2), v.min(axis=2)
     pale = (mn >= light) & ((mx - mn) <= tol)
     background = reconstruct(border(pale.shape) & pale, pale)
-    if white_petals:
+    if white_parts > 0:
         plain_white = (mn >= 246) & ((mx - mn) <= 8)
         strict = reconstruct(border(pale.shape) & plain_white, plain_white)
         petals = pale & ~strict
-        petals[int(petals.shape[0] * 0.8):] = False
+        petals[int(petals.shape[0] * white_parts):] = False
         zone = dilate(petals, 3)
         background = np.where(zone, strict, background)
     # White shut in by leaves: near-white and grey-free, in patches too wide to be a highlight or
     # a petal (they survive [pocket] steps of erosion), so that small light spots stay.
     plain = (mn >= 222) & ((mx - mn) <= 16) & ~background
-    if white_petals:
+    if white_parts > 0:
         # Round the flowers, only plain white shut in between the stems goes, in wide patches.
         shut_in = plain_white & ~background & zone
         background |= reconstruct(erode(shut_in, pocket + 2), shut_in)
@@ -301,6 +318,16 @@ def simple_stages(name: str, suffix: str) -> list[np.ndarray]:
     return [crop(load_cut(f"crop_{name}{suffix}{n}.png", **CUT.get(name, {}))) for n in (1, 2, 3)]
 
 
+def brighter_leaves(rgba: np.ndarray, gain: float) -> np.ndarray:
+    """[rgba] with all but its yellow flowers [gain] times as bright, each channel alike."""
+    rgb = rgba[:, :, :3].astype(float)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    yellow = (r > 140) & (g > 110) & (b < 100) & (r - b > 70)
+    out = rgba.copy()
+    out[:, :, :3] = np.where(yellow[..., None], rgb, np.clip(rgb * gain, 0, 255)).astype(np.uint8)
+    return out
+
+
 def to_size(rgba: np.ndarray, size) -> np.ndarray:
     h, w = rgba.shape[:2]
     if isinstance(size, tuple):
@@ -331,13 +358,17 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "cosmos": simple_stages("cosmos", "_stage"),
         "snowdrop": snowdrop_stages(),
         "watermelon": simple_stages("watermelon", "_stage"),
+        "lavender": simple_stages("lavender", "_stage"),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():
         sized = [to_size(p, s) for p, s in zip(pictures, STAGES[crop_name])]
         for n, picture in enumerate(sized, start=1):
             override = field_anchor(picture) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_stage{n}")
-            out[f"plant_{crop_name}_stage{n}"] = (picture, override)
+            asset_id = f"plant_{crop_name}_stage{n}"
+            if asset_id in LEAF_GAIN:
+                picture = brighter_leaves(picture, LEAF_GAIN[asset_id])
+            out[asset_id] = (picture, override)
         if crop_name in WITHERED:
             dead = to_size(crop(load_cut(f"crop_{crop_name}_withered.png", **CUT.get(crop_name, {}))), WITHERED[crop_name])
             out[f"plant_{crop_name}_withered"] = (dead, field_anchor(dead) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_withered"))
@@ -352,9 +383,11 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
 def prepare_icons() -> dict[str, np.ndarray]:
     out = {}
     for path in sorted(SOURCE.glob("icon_*.png")):
-        if path.stem in WRONG_ICONS:
+        # Only the crops prepared here: source_art also holds art for crops still to come (#66).
+        if path.stem.removeprefix("icon_") not in STAGES:
             continue
-        rgba = crop(load_cut(path.name, **CUT.get(path.stem.removeprefix("icon_"), {})))
+        name = path.stem.removeprefix("icon_")
+        rgba = crop(load_cut(path.name, **ICON_CUT.get(name, CUT.get(name, {}))))
         h, w = rgba.shape[:2]
         scale = ICON_SIZE * 0.92 / max(h, w)
         small = resize(rgba, scale, scale)
