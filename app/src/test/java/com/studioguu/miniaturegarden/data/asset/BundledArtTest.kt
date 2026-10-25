@@ -185,12 +185,24 @@ class BundledArtTest {
     fun `every crop page can show its plant in full bloom from the atlas`() {
         // The crops that came with the seasons are drawn in code for now (ui/render/SeasonalArt.kt).
         val drawnInCode = setOf(
-            PlantSpecies.LAVENDER, PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
+            PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
         )
         for (species in PlantSpecies.entries - drawnInCode) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })
         }
+    }
+
+    @Test
+    fun `lavender has its pictures in three stages and its icon (#67)`() {
+        assertEquals(3, PlantSpecies.LAVENDER.growthStages)
+        val ids = TileSetDefinition.spriteIdsFor(PlantSpecies.LAVENDER)
+        assertEquals(listOf("plant_lavender_stage1", "plant_lavender_stage2", "plant_lavender_stage3", "plant_lavender_withered"), ids)
+        for (id in ids) assertTrue(id, manifest.assets.any { it.assetId == id })
+        assertFalse(manifest.assets.any { it.assetId == "plant_lavender_stage4" })
+        val stages = ids.dropLast(1).map { id -> manifest.assets.single { it.assetId == id } }
+        stages.zipWithNext { a, b -> assertTrue("${a.assetId} -> ${b.assetId}", a.width < b.width && a.height < b.height) }
+        assertTrue(File(main, "res/drawable-nodpi/icon_lavender.png").isFile)
     }
 
     @Test
