@@ -210,7 +210,7 @@ data class VisitorLook(
         const val CHANGE_MILLIS = 140L
 
         /** Below this height (tile widths) the bird's flying picture gives way to its standing one. */
-        const val LANDING_ALTITUDE = 0.06f
+        const val LANDING_ALTITUDE = 0.025f
     }
 }
 

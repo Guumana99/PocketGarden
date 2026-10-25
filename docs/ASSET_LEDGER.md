@@ -106,7 +106,7 @@
 ## 生き物
 
 #71 から 6 種とも ✅（Recraft の絵。原画は `tools/source_art/creature_*.png`、白背景 1024×1024、8 枚すべて C2PA に Recraft AI の記録あり、Google の記録なし）。
-作物のアトラスではなく、生き物用の別の画像 `creatures.png` / `creatures_manifest.json`（1009×464、約 480KB、1 タイル 960px）に入っている。✅ はその画像に入っているもの。
+作物のアトラスではなく、生き物用の別の画像 `creatures.png` / `creatures_manifest.json`（1009×459、約 480KB、1 タイル 960px）に入っている。✅ はその画像に入っているもの。
 作り方は `tools/prepare_creature_art.py`、絵の決まり（羽の部品・接地点・大きさ）は `ASSETS.md` の「生き物の絵の決まり」。コード描画の仮の絵は #71 で削除した。
 
 | 生き物 | assetId | 出所・メモ | 状態 |

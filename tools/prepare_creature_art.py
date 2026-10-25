@@ -156,8 +156,12 @@ def polygon_mask(shape, points) -> np.ndarray:
 
 
 def only(rgba: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """[rgba] where [mask] is, and nothing elsewhere; specks cut off from the rest of the part go too."""
     out = rgba.copy()
     out[~mask, 3] = 0
+    seen = out[:, :, 3] > 0
+    keep = reconstruct(erode(out[:, :, 3] > 128, 2), seen)
+    out[~keep, 3] = 0
     return out
 
 

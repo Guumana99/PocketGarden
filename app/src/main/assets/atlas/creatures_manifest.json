@@ -2,7 +2,7 @@
   "version": 1,
   "atlas": "creatures.png",
   "atlasWidth": 1009,
-  "atlasHeight": 464,
+  "atlasHeight": 459,
   "tileWidth": 960,
   "assets": [
     {
@@ -28,26 +28,26 @@
     {
       "assetId": "creature_bird_fly_wing_left",
       "anchorX": 0.923,
-      "anchorY": 0.4221,
+      "anchorY": 0.3353,
       "width": 187,
-      "height": 68,
+      "height": 59,
       "isFlippedAllowed": true,
-      "atlasX": 190,
+      "atlasX": 160,
       "atlasY": 348,
       "attachX": 1.0682,
-      "attachY": 0.3365
+      "attachY": 0.2367
     },
     {
       "assetId": "creature_bird_fly_wing_right",
       "anchorX": 0.1221,
-      "anchorY": 0.7962,
+      "anchorY": 0.8327,
       "width": 143,
-      "height": 114,
+      "height": 109,
       "isFlippedAllowed": true,
       "atlasX": 2,
       "atlasY": 348,
       "attachX": -0.0271,
-      "attachY": 1.0003
+      "attachY": 1.0462
     },
     {
       "assetId": "creature_butterfly",
@@ -61,10 +61,10 @@
     },
     {
       "assetId": "creature_butterfly_body",
-      "anchorX": 0.4749,
-      "anchorY": 0.4536,
-      "width": 41,
-      "height": 85,
+      "anchorX": 0.4957,
+      "anchorY": 0.2362,
+      "width": 11,
+      "height": 61,
       "isFlippedAllowed": true,
       "atlasX": 147,
       "atlasY": 348
@@ -154,7 +154,7 @@
       "width": 72,
       "height": 46,
       "isFlippedAllowed": true,
-      "atlasX": 379,
+      "atlasX": 349,
       "atlasY": 348
     },
     {

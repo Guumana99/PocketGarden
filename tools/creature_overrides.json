@@ -25,23 +25,23 @@
   },
   "creature_bird_fly_wing_left": {
     "anchorX": 0.923,
-    "anchorY": 0.4221,
+    "anchorY": 0.3353,
     "attachX": 1.0682,
-    "attachY": 0.3365
+    "attachY": 0.2367
   },
   "creature_bird_fly_wing_right": {
     "anchorX": 0.1221,
-    "anchorY": 0.7962,
+    "anchorY": 0.8327,
     "attachX": -0.0271,
-    "attachY": 1.0003
+    "attachY": 1.0462
   },
   "creature_butterfly": {
     "anchorX": 0.499,
     "anchorY": 0.4648
   },
   "creature_butterfly_body": {
-    "anchorX": 0.4749,
-    "anchorY": 0.4536
+    "anchorX": 0.4957,
+    "anchorY": 0.2362
   },
   "creature_butterfly_wing_left": {
     "anchorX": 0.998,

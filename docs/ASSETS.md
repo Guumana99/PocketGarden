@@ -9,7 +9,7 @@
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
 | `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 87 枚を 1 枚に詰めたもの（4094×2749、約 14.1MB、メモリ上 約 45MB、1 タイル 512px） | `tools/asset_packer.py` |
-| `app/src/main/assets/atlas/creatures.png` + `creatures_manifest.json` | 生き物 6 種の絵 16 枚（#71。1009×464、約 480KB、1 タイル 960px）。作物のアトラスとは別 | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
+| `app/src/main/assets/atlas/creatures.png` + `creatures_manifest.json` | 生き物 6 種の絵 16 枚（#71。1009×459、約 480KB、1 タイル 960px）。作物のアトラスとは別 | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
@@ -162,7 +162,7 @@
 - **接地点（anchor）**：地上の生き物は足元（てんとうむしは体の中ほどの下）。走るりすは体の下の中央、飛ぶことりは胴の中心、ちょうちょ・とんぼは胸（羽の付け根の高さの体の中心）。
   飛ぶことりは胴の中心が接地点なので、コードは立つことりの胴の高さ（`BIRD_BODY_HEIGHT` 0.08 マス）だけ持ち上げて描き、降り立つときに体の位置が跳ねないようにしている。
 - **2 枚の絵**：りすは座る `creature_squirrel` と走る `creature_squirrel_run`（移動中）、ことりは立つ `creature_bird` と飛ぶ `creature_bird_fly_*`（庭の外から飛んで来て降りるまでと、飛び去るとき）。
-  切り替えは一瞬で替えず、りすは 0.14 秒、ことりは地面から 0.06 マスの高さで重ねて入れ替える。
+  切り替えは一瞬で替えず、りすは 0.14 秒、ことりは地面から 0.025 マスの高さで重ねて入れ替える（約 0.25 秒）。
   走る姿・飛ぶ姿は、頭の大きさがそろうよう、座る姿・立つ姿と同じ倍率に合わせた（原画の頭の長さ：りす 190 と 123、ことり 228 と 135）。
 - **羽の部品**：ちょうちょ・とんぼ・飛ぶことりは、胴（`*_body`）と左右の羽（`*_wing_left` `*_wing_right`）に切り分けてある。
   羽の **anchor は付け根**、**attachX/attachY は胴の接地点の位置**（羽の絵の外にはみ出してよい）。コードは付け根を胴に合わせて吊り、付け根を軸に動かす。
