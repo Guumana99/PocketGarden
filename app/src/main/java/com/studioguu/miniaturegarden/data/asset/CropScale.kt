@@ -15,6 +15,7 @@ import kotlin.math.min
  * - every stage is at most as tall as the next one: a plant only ever grows;
  * - a crop that spreads low and wide (the daikon's leaves) is held to its own, narrower width
  *   ([WIDTH_CAPS]), so that it stays on its own bed (#60);
+ * - a log ([LOGS], the shiitake's) keeps the size it was made at, so it is as long at every stage;
  * - a field crop ([FIELDS], the wheat) is laid out over the whole cell, rows and all, at every
  *   stage: it keeps the size it was made at (one cell wide) and is not held under the next
  *   stage's height, which shrank its first two stages into a patch smaller than the cell (#60).
@@ -55,6 +56,14 @@ object CropScale {
     val FIELDS = setOf("plant_wheat")
 
     /**
+     * Crops that are a log lying on the ground (#68: the shiitake), the same log at every stage
+     * with more or fewer mushrooms on it. tools/prepare_drawable_art.py makes every stage's log
+     * the same length; held to a seedling's size, or under the next stage's height, the log would
+     * shrink and grow again. Like [FIELDS], only [MAX_WIDTH] holds them.
+     */
+    val LOGS = setOf("plant_shiitake")
+
+    /**
      * Narrower widths, in tiles, for crops that spread low and wide (#60): the daikon's grown
      * leaves came two tiles across and, at [MAX_WIDTH], still spilt over the beds beside it.
      */
@@ -74,7 +83,7 @@ object CropScale {
             .mapNotNull { asset -> STAGE.find(asset.assetId)?.let { Triple(it.groupValues[1], it.groupValues[2].toInt(), asset) } }
             .groupBy({ it.first }, { it.second to it.third })
             .forEach { (plant, stages) ->
-                if (plant in FIELDS) {
+                if (plant in FIELDS || plant in LOGS) {
                     for ((_, asset) in stages) scales[asset.assetId] = capped(asset, Float.MAX_VALUE, MAX_WIDTH * tile)
                     return@forEach
                 }
@@ -91,7 +100,7 @@ object CropScale {
             }
         manifest.assets.filter { WITHERED.matches(it.assetId) }.forEach { asset ->
             val plant = asset.assetId.removeSuffix("_withered")
-            scales[asset.assetId] = if (plant in FIELDS) {
+            scales[asset.assetId] = if (plant in FIELDS || plant in LOGS) {
                 capped(asset, Float.MAX_VALUE, MAX_WIDTH * tile)
             } else {
                 capped(asset, MAX_HEIGHT * tile, (WIDTH_CAPS[plant] ?: MAX_WIDTH) * tile)

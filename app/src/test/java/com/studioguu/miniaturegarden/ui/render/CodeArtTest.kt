@@ -110,9 +110,9 @@ class CodeArtTest {
     fun `the crop drawings live in CropArt, and nothing outside it draws one by name`() {
         val render = File(main, "java/com/studioguu/miniaturegarden/ui/render")
         val cropArt = File(render, "CropArt.kt").readText()
-        assertTrue(cropArt.contains("private fun DrawScope.drawPumpkin("))
+        assertTrue(cropArt.contains("private fun DrawScope.drawPoinsettia("))
         val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
         assertTrue(canvas.contains("drawCropInCode("))
-        assertFalse(Regex("\\bdraw(Cosmos|Pumpkin|Tomato|Lavender)\\(").containsMatchIn(canvas))
+        assertFalse(Regex("\\bdraw(Cosmos|Poinsettia|Tomato|Lavender)\\(").containsMatchIn(canvas))
     }
 }

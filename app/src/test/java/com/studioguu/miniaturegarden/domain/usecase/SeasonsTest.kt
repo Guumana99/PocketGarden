@@ -4,6 +4,7 @@ import com.studioguu.miniaturegarden.data.local.AppDatabase
 import com.studioguu.miniaturegarden.data.local.mapper.toDomain
 import com.studioguu.miniaturegarden.data.local.mapper.toEntity
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.Ground
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
@@ -169,7 +170,7 @@ class SeasonsTest {
         assertEquals(UnlockCondition.None, GardenItem.SEED_TOMATO.unlock)
         assertEquals(setOf(Season.SPRING), GardenItem.SEED_STRAWBERRY.seasons)
         assertEquals(setOf(Season.SUMMER), GardenItem.SEED_WATERMELON.seasons)
-        assertEquals(setOf(Season.AUTUMN), GardenItem.SEED_PUMPKIN.seasons)
+        assertEquals(setOf(Season.AUTUMN), GardenItem.SEED_SHIITAKE.seasons)
         assertEquals(setOf(Season.WINTER), GardenItem.SEED_POINSETTIA.seasons)
         assertTrue(GardenItem.SEED_LAVENDER.isAllSeasons)
         // Everything that is not a crop is good all year.
@@ -193,7 +194,7 @@ class SeasonsTest {
         )
         assertEquals(
             setOf(
-                GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS, GardenItem.SEED_PUMPKIN, GardenItem.SEED_DAIKON,
+                GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS, GardenItem.SEED_SHIITAKE, GardenItem.SEED_DAIKON,
                 GardenItem.SEED_CARROT, GardenItem.SEED_WHEAT,
             ),
             GardenItem.shelf(ItemCategory.SEED, Season.AUTUMN).toSet(),
@@ -253,7 +254,10 @@ class SeasonsTest {
     fun `under glass anything can be sown in any season`() = runBlocking {
         for ((i, s) in Season.entries.withIndex()) {
             repo.progress = repo.progress!!.copy(season = s)
-            for ((j, seed) in GardenItem.entries.filter { it.category == ItemCategory.SEED }.withIndex()) {
+            // Anything sown in a bed, that is: the shiitake's log goes on the open earth, never under glass (#68).
+            val sown = GardenItem.entries.filter { it.category == ItemCategory.SEED && PlantSpecies.forObjectId(it.objectId).ground.allows(Ground.GREENHOUSE) }
+            assertFalse(GardenItem.SEED_SHIITAKE in sown)
+            for ((j, seed) in sown.withIndex()) {
                 assertEquals("$seed in $s", ActionResult.SUCCESS, sow(seed, j % 9, i + 4 * (j / 9), inGreenhouse = true))
                 repo.objects.values.removeIf { it.isPlant }
             }

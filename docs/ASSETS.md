@@ -8,14 +8,14 @@
 
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
-| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 79 枚を 1 枚に詰めたもの（3892×2563、約 12.8MB、メモリ上 約 40MB、1 タイル 512px） | `tools/asset_packer.py` |
+| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 83 枚を 1 枚に詰めたもの（3892×2715、約 13.3MB、メモリ上 約 42MB、1 タイル 512px） | `tools/asset_packer.py` |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
 | `app/src/main/res/drawable/soil_tilled.png` | 耕した土（畝 3 本）の板（#57）。上面を畑の 1 マスに敷く | 受け取ったまま（1024×1024、白背景）。`GroundSlab.TILLED` |
 | `app/src/main/res/drawable/soil_revived.png` | 鍬で崩しかけた地面（畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
 | `app/src/main/res/drawable/pond_center.png` | 水面だけの 1 マス（#57）。池どうしのつなぎ目の水と、#61 から四方を池に囲まれた池（池の真ん中）の水面 | 受け取ったまま（1024×1024、白背景）。`GroundSlab.POND_CENTER`、`TerrainTextures.pondWater`。色は池の絵の水にそろえて使う |
-| `app/src/main/res/drawable-nodpi/icon_{tomato,strawberry,carrot,eggplant,wheat,corn,mint,cosmos,watermelon,snowdrop,lavender}.png` | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
+| `app/src/main/res/drawable-nodpi/icon_{tomato,strawberry,carrot,eggplant,wheat,corn,mint,cosmos,watermelon,snowdrop,lavender,shiitake}.png` | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67、しいたけは #68） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
 | `app/src/main/res/drawable/pond.png` | 池（`deco_pond`） | `tools/source_art/pond.png` をそのままコピー（1536×768）。上面の位置は `GroundSlab.POND` |
 | `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
 
@@ -70,6 +70,10 @@
   葉が細かく、コスモスと同じく白いもやが残ったので、絵全体で白との混ざりを戻す（`CUT`、`throughout`・`solid=100`。紫の花穂は桃色と同じく不透明のまま）。
   アイコンは花穂の束に白っぽい麻ひものリボン。ふつうの切り抜きではひもが途切れたので、アイコンだけ絵全体で真っ白だけを背景として抜く（`ICON_CUT`、`white_parts=1.0`。#64 の `white_petals` を、効かせる範囲を指定できる `white_parts` にした。スノードロップは 0.8 で結果は同じ）。
   `crop_soil.SOILLESS` に `lavender` を追加。
+- しいたけ（#68、4 枚）：`plant_shiitake_stage{1..3}.png` と `_withered.png`（3 段階。#68 でカボチャと入れ替えた新しい作物）。原画は `crop_shiitake_stage{1..3}.png` と `crop_shiitake_withered.png`（Recraft、白背景）。
+  丸太は育たず、キノコだけが増えるので、どの絵も**丸太の長さ**で大きさを決める（`STAGES` の `("log", 0.6)`、`log_width`：絵の下 4 分の 1 でいちばん広い行）。丸太は全段階・枯れとも 0.6 マス、絵全体でも 0.62 マス以内（はじめ 0.85 にしたが、同じ列に並べると前の原木が後ろの原木を半分ほど隠したので縮めた）。
+  接地点は丸太の下端の真ん中（`log_anchor`）。`CropScale.LOGS` に入れ、苗の大きさの決まりや次の段階の高さで縮めない（縮めると丸太が伸び縮みする）。
+  枯れの丸太は樹皮が白っぽい灰色で、ふつうの切り抜きでは樹皮の上の縁が背景とみなされて欠けたので、`white_parts=0.8`（スノードロップと同じ）で切り抜く。`crop_soil.SOILLESS` に `shiitake` を追加。仮の絵（`CropArt.kt`）は描かない。
 - フェンス 3 枚：`struct_fence.png`（単体の柵）、`struct_fence_post.png`（支柱）、`struct_fence_rail.png`（現在は未使用）
 
 原画は `tools/raw_assets/`。ファイル名（拡張子なし）がそのまま assetId になる。
@@ -82,7 +86,7 @@
 
 `domain/model/GardenItem.kt` の全 35 品。並びはショップの棚（種・建物・飾り）ごと。
 「確定アセット」は庭に置いたときの絵が受け取った画像素材のもの、「コード描画（仮置き）」は絵が無くプログラムで描いているもの。
-アイコンは、作物 11 種（トマト・イチゴ・ニンジン・ナス・小麦・トウモロコシ・ミント・コスモス・スイカ・スノードロップ・ラベンダー）だけが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`）、ほかは絵文字（`itemEmoji`）。
+アイコンは、作物 12 種（トマト・イチゴ・ニンジン・ナス・小麦・トウモロコシ・ミント・コスモス・スイカ・スノードロップ・ラベンダー・しいたけ）だけが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`）、ほかは絵文字（`itemEmoji`）。
 
 | 棚 | 品名（id） | 値段 | 解放 | 庭での絵 | 素材 |
 |---|---|---|---|---|---|
@@ -96,7 +100,7 @@
 | 種 | イチゴの苗（`seed_strawberry`） | 20 | 最初から | 確定アセット | `plant_strawberry_*`（#57）、アイコン画像あり |
 | 種 | スイカの種（`seed_watermelon`） | 45 | Lv3 | 確定アセット | `plant_watermelon_*`（#65、3 段階）、アイコン画像あり |
 | 種 | ラベンダーの苗（`seed_lavender`） | 40 | Lv3 | 確定アセット | `plant_lavender_*`（#67、3 段階）、アイコン画像あり |
-| 種 | カボチャの種（`seed_pumpkin`） | 70 | Lv5 | コード描画（仮置き） | `CropArt.kt` |
+| 種 | しいたけの原木（`seed_shiitake`） | 70 | Lv5 | 確定アセット | `plant_shiitake_*`（#68、3 段階。カボチャと入れ替え）、アイコン画像あり |
 | 種 | ポインセチアの苗（`seed_poinsettia`） | 70 | Lv5 | コード描画（仮置き） | `CropArt.kt` |
 | 種 | パプリカの苗（`seed_paprika`） | 55 | Lv4 | 確定アセット（旧画風） | `plant_paprika_*`（#39） |
 | 種 | 大根の種（`seed_daikon`） | 30 | Lv2 | 確定アセット（旧画風） | `plant_daikon_*`（#39） |
@@ -122,7 +126,7 @@
 | 飾り | スプリンクラー（`deco_sprinkler`） | 70 | Lv3 | コード描画（仮置き） | `drawSprinkler`、水しぶきも `SprinklerSpray` のコード |
 | 飾り | 池（`deco_pond`） | 75 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |
 
-集計：確定アセット 23（うちコード併用 2、旧画風 3）、生成アセット 1、コード描画（仮置き） 11。
+集計：確定アセット 24（うちコード併用 2、旧画風 3）、生成アセット 1、コード描画（仮置き） 10。
 ショップに出ないもの：耕した土（鍬で作る。`soil_tilled.png`）、崩しかけた地面（`soil_revived.png`）、最初の木箱（コード描画）。
 品を足したり絵を入れたりしたら、この表と `GardenItem.kt` 冒頭の一覧と `ASSET_LEDGER.md` を直すこと。
 
@@ -135,7 +139,7 @@
 
 絵が無く、仮の絵を描いている作物と生き物の assetId:
 
-- 作物（カボチャ・ポインセチア）：`<objectId>_stage1`〜`_stage<N>` と `<objectId>_withered`
+- 作物（ポインセチア）：`<objectId>_stage1`〜`_stage<N>` と `<objectId>_withered`
   （N は `PlantSpecies.growthStages`、既定 4）。**全部そろえて入れる**こと。一部だけだと `CodeArtTest` が落ちる。仮の絵は `ui/render/CropArt.kt`（絵が入ったら、その作物の `CROP_DRAWINGS` の行と描画関数を消してよい）
 - 名前の決まりは `TileSetDefinition`（`spriteIdsFor` `assetIdFor` `expectedSpriteIds`）。アトラスに入れた名前が一覧に無いと `CodeArtTest` が落ちる
 - 生き物：`creature_<id>`（`creature_butterfly` `creature_ladybug` `creature_bird` `creature_squirrel` `creature_frog` `creature_dragonfly`）。接地点は足元。
@@ -154,8 +158,8 @@
 | `building_windmill_body.jpg` | 風車の本体（#40）。**JPEG で透過が無く、灰色の市松模様（48px、2 トーン）が背景として描き込まれていた**。マスごとの色で抜いた |
 | `building_windmill_blades.jpg` | 風車の羽根（#40）。同じく白と灰色の市松模様（約 12px）と、白いにじみが描き込まれていた。色で抜いた |
 | `tile_grass_iso.png` | 芝生（#57、受け取ったときは `res/drawable/tile_grass.png`）。白背景のアイソメの芝の板（1024×1024）。`prepare_drawable_art.flat_lawn` が上面を真上から見た正方形（720 px）に戻し、`flat_to_tile` で中央の正方形の半分（`share=0.5`）を 2:1 のひし形へ貼り、ぼかし 1.2px、厚み 55px の側面を足して `tile_grass` に。細かい葉のままだとスマホで約 7 分の 1 に縮んだとき砂嵐のようにちらつくため、葉を大きく柔らかくしている。#53 の `tile_lawn_flat.png` はこれに置き換えて削除 |
-| `crop_*.png`（55 枚） | 作物の原画（#57・#58・#62〜#67）。トウモロコシ・ナス・小麦・ひまわり・ミント・コスモス・スノードロップ・スイカ・ラベンダーは `_stage1`〜`3` と `_withered`、トマト・イチゴは `_1`〜`3` と `_withered`、ニンジンは `_1`・`_3`・`_withered`、チューリップは `_stage1`・`_stage2` と 6 色の `_<色>_stage3` | `prepare_drawable_art.py` が切り抜いて `raw_assets/plant_*` に |
-| `icon_*.png`（11 枚） | アイコンの原画（#57、ミントは #62、コスモスは #63、スイカは #65、ラベンダーは #67）。`icon_snowdrop.png` は #64 では枯れた絵の複製だったが、#66 で正しい絵に置き直して使っている | `prepare_drawable_art.py` が切り抜いて `res/drawable-nodpi/` に |
+| `crop_*.png`（59 枚） | 作物の原画（#57・#58・#62〜#68）。トウモロコシ・ナス・小麦・ひまわり・ミント・コスモス・スノードロップ・スイカ・ラベンダー・しいたけは `_stage1`〜`3` と `_withered`、トマト・イチゴは `_1`〜`3` と `_withered`、ニンジンは `_1`・`_3`・`_withered`、チューリップは `_stage1`・`_stage2` と 6 色の `_<色>_stage3` | `prepare_drawable_art.py` が切り抜いて `raw_assets/plant_*` に |
+| `icon_*.png`（12 枚） | アイコンの原画（#57、ミントは #62、コスモスは #63、スイカは #65、ラベンダーは #67、しいたけは #68）。`icon_snowdrop.png` は #64 では枯れた絵の複製だったが、#66 で正しい絵に置き直して使っている | `prepare_drawable_art.py` が切り抜いて `res/drawable-nodpi/` に |
 | `tile_soil_flat.png` | 耕した土（#53）。同じく真上からの写真（受け取ったときは `floor_tilled.png`）。正方形全体をひし形へ、厚み 33px で `floor_tilled` に（温室の床でだけ使う） |
 | `pond.png` | 池（#53）。透過ありのアイソメの絵（丸太の枠と石）。#54 から `res/drawable/pond.png` にコピーして池（`deco_pond`）に使用。`raw_assets/` に置くと詰められて `CodeArtTest` が落ちるので、原画はここに置いてある |
 | `tile_grass_default.png` | **#53 から未使用**。芝生のタイル（#40）。縁に白いにじみ。1 マス幅に縮め、上面が 2:1 のひし形になるよう縦に伸ばした（元は約 2.35:1） |

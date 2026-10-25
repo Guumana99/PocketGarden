@@ -25,6 +25,7 @@
     <string name="label_vitality">元気</string>
     <string name="hint_overripe">満開です。収穫しないまま置いておくと、やがて枯れてしまいます</string>
     <string name="hint_withered">枯れています。コインで復活させるか、撤去するとたい肥になり、次に植える作物が少し育った状態で始まります</string>
+    <string name="hint_withered_log">枯れています。コインで復活させるか、撤去して片づけます（原木はたい肥になりません）</string>
     <string name="hint_repeatable">🔁 収穫しても株は残り、また実ります（2回目からの収穫は少なめ）</string>
     <string name="hint_composted">たい肥入りの土です。次に植える作物が少し育った状態で始まります</string>
     <string name="action_revive">🌱 復活 (🪙%1$d)</string>
@@ -51,7 +52,7 @@
     <string name="object_plant_strawberry">イチゴ</string>
     <string name="object_plant_watermelon">スイカ</string>
     <string name="object_plant_lavender">ラベンダー</string>
-    <string name="object_plant_pumpkin">カボチャ</string>
+    <string name="object_plant_shiitake">しいたけ</string>
     <string name="object_plant_poinsettia">ポインセチア</string>
     <string name="object_plant_paprika">パプリカ</string>
     <string name="object_plant_daikon">大根</string>
@@ -105,6 +106,7 @@
     <string name="remove_text_returnable">持ち物に戻すと、後でまた置けます。破棄すると元に戻せません。</string>
     <string name="remove_text_plant">育てている作物は持ち物に戻せません。破棄すると元に戻せません。</string>
     <string name="remove_text_withered">枯れた作物を破棄すると、たい肥になって土に残ります。</string>
+    <string name="remove_text_withered_log">枯れた原木を片づけます。原木はたい肥にはなりません。</string>
     <string name="remove_text_soil">耕した土を芝生に戻します。</string>
     <string name="remove_store">🎒 持ち物に戻す</string>
     <string name="remove_discard">破棄する</string>
@@ -153,7 +155,7 @@
     <string name="item_seed_strawberry">イチゴの苗</string>
     <string name="item_seed_watermelon">スイカの種</string>
     <string name="item_seed_lavender">ラベンダーの苗</string>
-    <string name="item_seed_pumpkin">カボチャの種</string>
+    <string name="item_seed_shiitake">しいたけの原木</string>
     <string name="item_seed_poinsettia">ポインセチアの苗</string>
     <string name="item_seed_paprika">パプリカの苗</string>
     <string name="item_seed_daikon">大根の種</string>
@@ -200,6 +202,7 @@
     <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やりできます）</string>
     <string name="msg_tile_occupied">他の物があるため置けません</string>
     <string name="msg_needs_tilled_soil">種や苗は、クワで耕した土にだけ植えられます</string>
+    <string name="msg_needs_open_ground">しいたけの原木は、土の地面（荒れ地・耕した土）に置けます。芝生や石畳、水辺、温室には置けません</string>
     <string name="msg_tile_not_buildable">川の上には置けません</string>
     <string name="msg_out_of_bounds">庭の外には置けません</string>
     <string name="msg_slot_empty">アイテムがありません</string>
@@ -231,7 +234,7 @@
     <string name="flavor_strawberry">春の陽だまりで、赤くふくらむ。\n小粒ながら、甘い香りに満ちている。</string>
     <string name="flavor_watermelon">蔓を伸ばして、まん丸に育つ。\n夏の太陽と、たっぷりの水を好む。</string>
     <string name="flavor_lavender">紫の穂が、風にそよぐ。\n季節を問わず、やさしい香りを届けてくれる。</string>
-    <string name="flavor_pumpkin">秋の畑の大物。\nじっくり育てれば、ずっしりと重く実る。</string>
+    <string name="flavor_shiitake">秋の木陰で、原木からぽこりと顔を出す。\n摘んでも、また次のかさが育ってくる。</string>
     <string name="flavor_poinsettia">冬を彩る、真紅の葉。\n寒い日にも、庭を温かく見せてくれる。</string>
     <string name="flavor_paprika">艶やかな赤い実。\nひとつ摘んでも、また次の実がふくらんでくる。</string>
     <string name="flavor_daikon">土の中で、白く太っていく。\n寒さが増すほど、甘みも増す。</string>
@@ -511,7 +514,7 @@
     <string name="combo_ladybug_strawberry">春のイチゴ</string>
     <string name="combo_bird_hut">小屋の屋根</string>
     <string name="combo_bird_winter_well">冬の井戸</string>
-    <string name="combo_squirrel_pumpkin">実ったカボチャ</string>
+    <string name="combo_squirrel_shiitake">収穫どきのしいたけ</string>
     <string name="combo_frog_well">雨の日の井戸</string>
     <string name="hint_butterfly_blooms">花がいくつも咲くころ、ひらひらとやって来るようだ</string>
     <string name="hint_ladybug_tulips">チューリップの葉と、草むらの近くを好むようだ</string>
@@ -526,7 +529,7 @@
     <string name="hint_ladybug_strawberry">春のイチゴの葉の上を、散歩しているという</string>
     <string name="hint_bird_hut">小さな小屋の屋根で、さえずる声がするらしい</string>
     <string name="hint_bird_winter_well">冬のあいだ、井戸の水を飲みに来るようだ</string>
-    <string name="hint_squirrel_pumpkin">大きな実がずっしりと実ると、そばで見かけるという</string>
+    <string name="hint_squirrel_shiitake">原木にかさがふっくら開くと、そばで見かけるという</string>
     <string name="hint_frog_well">川のない庭でも、雨の日は井戸のそばにいるらしい</string>
 
     <!-- Level-up board -->

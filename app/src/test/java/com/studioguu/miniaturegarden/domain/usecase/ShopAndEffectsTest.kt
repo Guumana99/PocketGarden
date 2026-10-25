@@ -92,7 +92,7 @@ class ShopAndEffectsTest {
                 GardenItem.SEED_MINT, GardenItem.SEED_TULIP, GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP,
                 GardenItem.SEED_TOMATO, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_CARROT, GardenItem.SEED_DAIKON, GardenItem.SEED_SUNFLOWER,
                 GardenItem.SEED_LAVENDER, GardenItem.SEED_EGGPLANT, GardenItem.SEED_WATERMELON, GardenItem.SEED_WHEAT, GardenItem.SEED_PAPRIKA,
-                GardenItem.SEED_ROSE, GardenItem.SEED_CORN, GardenItem.SEED_PUMPKIN, GardenItem.SEED_POINSETTIA,
+                GardenItem.SEED_ROSE, GardenItem.SEED_CORN, GardenItem.SEED_SHIITAKE, GardenItem.SEED_POINSETTIA,
             ),
             GardenItem.shelf(ItemCategory.SEED),
         )

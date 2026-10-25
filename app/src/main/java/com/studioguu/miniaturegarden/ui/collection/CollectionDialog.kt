@@ -635,7 +635,7 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.STRAWBERRY -> R.string.flavor_strawberry
     CollectionEntry.WATERMELON -> R.string.flavor_watermelon
     CollectionEntry.LAVENDER -> R.string.flavor_lavender
-    CollectionEntry.PUMPKIN -> R.string.flavor_pumpkin
+    CollectionEntry.SHIITAKE -> R.string.flavor_shiitake
     CollectionEntry.POINSETTIA -> R.string.flavor_poinsettia
     CollectionEntry.GREENHOUSE -> R.string.flavor_greenhouse
     CollectionEntry.GRASS -> R.string.flavor_grass

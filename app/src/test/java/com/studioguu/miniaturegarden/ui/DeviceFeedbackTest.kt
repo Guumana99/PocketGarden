@@ -170,7 +170,7 @@ class DeviceFeedbackTest {
 
     @Test
     fun `placing and moving tell the grid what is being put down`() {
-        assertTrue(source("domain/usecase/GardenActionUseCases.kt").contains("gridX, gridY, kind, item.objectId)) {"))
+        assertTrue(source("domain/usecase/GardenActionUseCases.kt").contains("gridX, gridY, kind, item.objectId)"))
         assertTrue(source("domain/usecase/ConstructionUseCases.kt").contains("PlacementKind.forObjectId(target.objectId), target.objectId)) {"))
     }
 

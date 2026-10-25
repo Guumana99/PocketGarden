@@ -74,6 +74,27 @@ class GardenGrid(
     /** Whether (x, y) is soil a seed can go into: tilled, or a greenhouse bed. */
     fun isTilled(x: Int, y: Int): Boolean = floorAt(x, y)?.let { it.isTilledSoil || it.isGreenhouse } == true
 
+    /**
+     * What the ground of (x, y) is, for what may be planted there ([PlantGround]): water, then
+     * whatever is laid on the cell (a bed, a greenhouse, paving, a lawn, ground cover), and
+     * open earth where nothing is (the wasteland, or ground the hoe has begun to break). Whatever
+     * stands there otherwise (a plant, a bench) does not change it.
+     */
+    fun groundAt(x: Int, y: Int): Ground {
+        val cell = GridCell(x, y)
+        val floor = floors[cell]
+        val thing = standing[cell]
+        return when {
+            !map.isBuildable(x, y) || thing?.isTerrain == true || thing?.isPond == true -> Ground.WATER
+            floor?.isGreenhouse == true -> Ground.GREENHOUSE
+            floor?.isTilledSoil == true -> Ground.TILLED_SOIL
+            floor != null -> Ground.PAVING
+            cell in lawns -> Ground.LAWN
+            thing?.isGroundCover == true -> Ground.GROUND_COVER
+            else -> Ground.BARE_EARTH
+        }
+    }
+
     /** Whether (x, y) is under glass, where anything grows whatever the season. */
     fun isUnderGlass(x: Int, y: Int): Boolean = floorAt(x, y)?.isGreenhouse == true
 

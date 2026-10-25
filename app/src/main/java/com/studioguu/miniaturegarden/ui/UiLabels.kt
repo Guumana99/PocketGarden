@@ -41,7 +41,7 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "plant_strawberry" -> R.string.object_plant_strawberry
     "plant_watermelon" -> R.string.object_plant_watermelon
     "plant_lavender" -> R.string.object_plant_lavender
-    "plant_pumpkin" -> R.string.object_plant_pumpkin
+    "plant_shiitake" -> R.string.object_plant_shiitake
     "plant_poinsettia" -> R.string.object_plant_poinsettia
     "floor_greenhouse" -> R.string.object_floor_greenhouse
     "deco_rock" -> R.string.object_deco_rock
@@ -88,7 +88,7 @@ fun itemDisplayName(item: GardenItem): String = when (item) {
     GardenItem.SEED_STRAWBERRY -> stringResource(R.string.item_seed_strawberry)
     GardenItem.SEED_WATERMELON -> stringResource(R.string.item_seed_watermelon)
     GardenItem.SEED_LAVENDER -> stringResource(R.string.item_seed_lavender)
-    GardenItem.SEED_PUMPKIN -> stringResource(R.string.item_seed_pumpkin)
+    GardenItem.SEED_SHIITAKE -> stringResource(R.string.item_seed_shiitake)
     GardenItem.SEED_POINSETTIA -> stringResource(R.string.item_seed_poinsettia)
     GardenItem.TILE_RIVER -> stringResource(R.string.item_tile_river)
     else -> objectDisplayName(item.objectId)
@@ -125,7 +125,7 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_STRAWBERRY -> "🍓"
     GardenItem.SEED_WATERMELON -> "🍉"
     GardenItem.SEED_LAVENDER -> "💜"
-    GardenItem.SEED_PUMPKIN -> "🎃"
+    GardenItem.SEED_SHIITAKE -> "🍄"
     GardenItem.SEED_POINSETTIA -> "🌺"
     GardenItem.SEED_CARROT -> "🥕"
     GardenItem.SEED_EGGPLANT -> "🍆"
@@ -151,6 +151,7 @@ fun itemIconRes(item: GardenItem): Int? = when (item) {
     GardenItem.SEED_WATERMELON -> R.drawable.icon_watermelon
     GardenItem.SEED_SNOWDROP -> R.drawable.icon_snowdrop
     GardenItem.SEED_LAVENDER -> R.drawable.icon_lavender
+    GardenItem.SEED_SHIITAKE -> R.drawable.icon_shiitake
     else -> null
 }
 
@@ -225,6 +226,7 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.INVENTORY_FULL -> R.string.msg_inventory_full
     ActionResult.ITEM_LOCKED -> R.string.msg_item_locked
     ActionResult.NEEDS_TILLED_SOIL -> R.string.msg_needs_tilled_soil
+    ActionResult.NEEDS_OPEN_GROUND -> R.string.msg_needs_open_ground
     ActionResult.NOT_WITHERED -> R.string.msg_not_withered
     ActionResult.NOT_RETURNABLE -> R.string.msg_not_returnable
     ActionResult.NOT_MOVABLE -> R.string.msg_not_movable
@@ -302,7 +304,7 @@ fun combinationLabel(rule: VisitRule): Int = when (rule) {
     VisitRule.LADYBUG_STRAWBERRY -> R.string.combo_ladybug_strawberry
     VisitRule.BIRD_HUT -> R.string.combo_bird_hut
     VisitRule.BIRD_WINTER_WELL -> R.string.combo_bird_winter_well
-    VisitRule.SQUIRREL_PUMPKIN -> R.string.combo_squirrel_pumpkin
+    VisitRule.SQUIRREL_SHIITAKE -> R.string.combo_squirrel_shiitake
     VisitRule.FROG_WELL -> R.string.combo_frog_well
 }
 
@@ -322,6 +324,6 @@ fun combinationHint(rule: VisitRule): Int = when (rule) {
     VisitRule.LADYBUG_STRAWBERRY -> R.string.hint_ladybug_strawberry
     VisitRule.BIRD_HUT -> R.string.hint_bird_hut
     VisitRule.BIRD_WINTER_WELL -> R.string.hint_bird_winter_well
-    VisitRule.SQUIRREL_PUMPKIN -> R.string.hint_squirrel_pumpkin
+    VisitRule.SQUIRREL_SHIITAKE -> R.string.hint_squirrel_shiitake
     VisitRule.FROG_WELL -> R.string.hint_frog_well
 }

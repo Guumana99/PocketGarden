@@ -206,7 +206,7 @@ class ProgressionTest {
         assertEquals(
             listOf(
                 PlantSpecies.SUNFLOWER, PlantSpecies.DAIKON, PlantSpecies.CARROT, PlantSpecies.WATERMELON, PlantSpecies.LAVENDER,
-                PlantSpecies.EGGPLANT, PlantSpecies.ROSE, PlantSpecies.PAPRIKA, PlantSpecies.WHEAT, PlantSpecies.PUMPKIN,
+                PlantSpecies.EGGPLANT, PlantSpecies.ROSE, PlantSpecies.PAPRIKA, PlantSpecies.WHEAT, PlantSpecies.SHIITAKE,
                 PlantSpecies.POINSETTIA, PlantSpecies.CORN,
             ),
             PlantSpecies.entries.filter { level(it) > 1 }.sortedBy(::level),
@@ -225,7 +225,7 @@ class ProgressionTest {
     fun `a crop that bears again earns at its first harvest's rate, never past a later level's`() {
         fun level(species: PlantSpecies) = (seedFor(species).unlock as? UnlockCondition.PlayerLevel)?.level ?: 1
         val repeatable = PlantSpecies.entries.filter { it.isRepeatable }
-        assertEquals(setOf(PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY, PlantSpecies.PAPRIKA, PlantSpecies.EGGPLANT), repeatable.toSet())
+        assertEquals(setOf(PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY, PlantSpecies.PAPRIKA, PlantSpecies.EGGPLANT, PlantSpecies.SHIITAKE), repeatable.toSet())
         for (crop in repeatable) {
             // Later harvests pay less, at no more per hour than the first (seed and all).
             val firstCoins = (crop.harvestCoins - seedFor(crop).price).toDouble() / crop.growthHours

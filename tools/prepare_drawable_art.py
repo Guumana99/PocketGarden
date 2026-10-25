@@ -29,6 +29,9 @@ This script:
       - watermelon (#65): the same; stages 2, 3 and withered are a low, wide mound of leaves with no
         stem to stand on (stage 3 with its fruit in front), sized by their width, not their height;
       - lavender (#67): the same, a round bushy clump;
+      - shiitake (#68): a log lying on the ground, the same at every stage but for the mushrooms on
+        it: each picture is sized by its log alone ("log"), so that the log is as long in all of
+        them, and stood on the foot of the log (log_anchor);
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
         each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag;
@@ -65,7 +68,8 @@ GROUND = ROOT / "app" / "src" / "main" / "res" / "drawable"
 #: Pixels a side of an icon in the bag: about three times its size on a phone.
 ICON_SIZE = 256
 
-#: Each stage's size in tiles: its height, or ("w", width) for a field laid over the whole cell.
+#: Each stage's size in tiles: its height, ("w", width) for a field laid over the whole cell, or
+#: ("log", width) for the shiitake's log, whose length alone is set (log_width).
 STAGES: dict[str, list] = {
     "corn": [0.36, 0.7, 0.9],
     "eggplant": [0.3, 0.58, 0.78],
@@ -80,17 +84,20 @@ STAGES: dict[str, list] = {
     "snowdrop": [0.3, 0.48, 0.62],
     "watermelon": [0.3, ("w", 0.7), ("w", 0.85)],
     "lavender": [0.3, 0.5, 0.66],
+    "shiitake": [("log", 0.6), ("log", 0.6), ("log", 0.6)],
 }
 
 #: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
 #: the cosmos' leaves (#63) are hair-fine, and the white showing through them left them in a pale
 #: haze; it is taken out of the whole picture, not only its outline (cut_out's [throughout]).
 #: The snowdrop's flowers (#64) are white, and the white is taken out more gently round them.
-#: The lavender (#67) is as fine as the cosmos.
+#: The lavender (#67) is as fine as the cosmos. The shiitake's withered log (#68) has pale grey
+#: bark, the top of which the usual cut took for background, as with the snowdrop's flowers.
 CUT: dict[str, dict] = {
     "cosmos": {"throughout": True, "solid": 100.0},
     "snowdrop": {"white_parts": 0.8},
     "lavender": {"throughout": True, "solid": 100.0},
+    "shiitake": {"white_parts": 0.8},
 }
 
 #: The same for an icon, where it is cut out differently from its plant: the lavender's bunch is
@@ -142,6 +149,7 @@ WITHERED: dict[str, object] = {
     "snowdrop": 0.62,
     "watermelon": ("w", 0.85),
     "lavender": 0.66,
+    "shiitake": ("log", 0.6),
 }
 
 
@@ -328,9 +336,30 @@ def brighter_leaves(rgba: np.ndarray, gain: float) -> np.ndarray:
     return out
 
 
+def log_width(rgba: np.ndarray) -> int:
+    """How long the log in [rgba] is, in pixels: its widest row in the lowest quarter of the
+    picture, below the mushrooms, which stand on its top and may reach past its ends."""
+    solid = rgba[:, :, 3] > 128
+    rows = np.where(solid.any(axis=1))[0]
+    widths = [np.ptp(np.where(solid[y])[0]) + 1 for y in range(rows.max() - (rows.max() - rows.min()) // 4, rows.max() + 1) if solid[y].any()]
+    return int(max(widths))
+
+
+def log_anchor(rgba: np.ndarray) -> dict:
+    """A log stands on its foot: the middle of the log, at its lowest point."""
+    h, w = rgba.shape[:2]
+    solid = rgba[:, :, 3] > 128
+    ys = np.where(solid.any(axis=1))[0]
+    low = ys.max() - (ys.max() - ys.min()) // 4
+    xs = np.where(solid[low:].any(axis=0))[0]
+    return {"anchorX": round(float((xs.min() + xs.max() + 1) / 2 / w), 4), "anchorY": round(float((ys.max() + 1) / h), 4), "isFlippedAllowed": True}
+
+
 def to_size(rgba: np.ndarray, size) -> np.ndarray:
     h, w = rgba.shape[:2]
-    if isinstance(size, tuple):
+    if isinstance(size, tuple) and size[0] == "log":
+        scale = size[1] * TILE / log_width(rgba)
+    elif isinstance(size, tuple):
         scale = size[1] * TILE / w
     else:
         scale = size * TILE / h
@@ -342,6 +371,16 @@ def field_anchor(rgba: np.ndarray) -> dict:
     h, w = rgba.shape[:2]
     ys = np.where(rgba[:, :, 3] > ALPHA_MIN)[0]
     return {"anchorX": 0.5, "anchorY": round(float((ys.max() - w / 4) / h), 4), "isFlippedAllowed": True}
+
+
+def anchor_for(crop_name: str, picture: np.ndarray, asset_id: str) -> dict | None:
+    """Where [picture] stands: a field on its middle, a log on its foot, others as ANCHORS says
+    (or on the foot of their stem, found by asset_packer, when it says nothing)."""
+    if crop_name == "wheat":
+        return field_anchor(picture)
+    if all(isinstance(s, tuple) and s[0] == "log" for s in STAGES[crop_name]):
+        return log_anchor(picture)
+    return ANCHORS.get(asset_id)
 
 
 def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
@@ -359,19 +398,20 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "snowdrop": snowdrop_stages(),
         "watermelon": simple_stages("watermelon", "_stage"),
         "lavender": simple_stages("lavender", "_stage"),
+        "shiitake": simple_stages("shiitake", "_stage"),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():
         sized = [to_size(p, s) for p, s in zip(pictures, STAGES[crop_name])]
         for n, picture in enumerate(sized, start=1):
-            override = field_anchor(picture) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_stage{n}")
+            override = anchor_for(crop_name, picture, f"plant_{crop_name}_stage{n}")
             asset_id = f"plant_{crop_name}_stage{n}"
             if asset_id in LEAF_GAIN:
                 picture = brighter_leaves(picture, LEAF_GAIN[asset_id])
             out[asset_id] = (picture, override)
         if crop_name in WITHERED:
             dead = to_size(crop(load_cut(f"crop_{crop_name}_withered.png", **CUT.get(crop_name, {}))), WITHERED[crop_name])
-            out[f"plant_{crop_name}_withered"] = (dead, field_anchor(dead) if crop_name == "wheat" else ANCHORS.get(f"plant_{crop_name}_withered"))
+            out[f"plant_{crop_name}_withered"] = (dead, anchor_for(crop_name, dead, f"plant_{crop_name}_withered"))
     for colour in TULIP_COLOURS:
         bloom = to_size(crop(load_cut(f"crop_tulip_{colour}_stage3.png")), STAGES["tulip"][2])
         out[f"plant_tulip_stage3_{colour}"] = (bloom, None)

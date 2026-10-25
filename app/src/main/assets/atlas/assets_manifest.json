@@ -2,7 +2,7 @@
   "version": 1,
   "atlas": "atlas.png",
   "atlasWidth": 3892,
-  "atlasHeight": 2563,
+  "atlasHeight": 2715,
   "tileWidth": 512,
   "assets": [
     {
@@ -112,7 +112,7 @@
       "width": 160,
       "height": 154,
       "isFlippedAllowed": true,
-      "atlasX": 1497,
+      "atlasX": 2446,
       "atlasY": 2346
     },
     {
@@ -192,7 +192,7 @@
       "width": 155,
       "height": 154,
       "isFlippedAllowed": true,
-      "atlasX": 1659,
+      "atlasX": 2608,
       "atlasY": 2346
     },
     {
@@ -232,7 +232,7 @@
       "width": 103,
       "height": 154,
       "isFlippedAllowed": true,
-      "atlasX": 1816,
+      "atlasX": 2765,
       "atlasY": 2346
     },
     {
@@ -272,7 +272,7 @@
       "width": 150,
       "height": 164,
       "isFlippedAllowed": true,
-      "atlasX": 1168,
+      "atlasX": 2117,
       "atlasY": 2346
     },
     {
@@ -392,7 +392,47 @@
       "width": 213,
       "height": 126,
       "isFlippedAllowed": true,
-      "atlasX": 2893,
+      "atlasX": 357,
+      "atlasY": 2563
+    },
+    {
+      "assetId": "plant_shiitake_stage1",
+      "anchorX": 0.4989,
+      "anchorY": 1.0,
+      "width": 315,
+      "height": 152,
+      "isFlippedAllowed": true,
+      "atlasX": 3487,
+      "atlasY": 2346
+    },
+    {
+      "assetId": "plant_shiitake_stage2",
+      "anchorX": 0.4955,
+      "anchorY": 1.0,
+      "width": 314,
+      "height": 175,
+      "isFlippedAllowed": true,
+      "atlasX": 1024,
+      "atlasY": 2346
+    },
+    {
+      "assetId": "plant_shiitake_stage3",
+      "anchorX": 0.5,
+      "anchorY": 1.0,
+      "width": 313,
+      "height": 166,
+      "isFlippedAllowed": true,
+      "atlasX": 1484,
+      "atlasY": 2346
+    },
+    {
+      "assetId": "plant_shiitake_withered",
+      "anchorX": 0.4989,
+      "anchorY": 1.0,
+      "width": 316,
+      "height": 165,
+      "isFlippedAllowed": true,
+      "atlasX": 1799,
       "atlasY": 2346
     },
     {
@@ -402,7 +442,7 @@
       "width": 137,
       "height": 154,
       "isFlippedAllowed": true,
-      "atlasX": 1921,
+      "atlasX": 2870,
       "atlasY": 2346
     },
     {
@@ -442,7 +482,7 @@
       "width": 129,
       "height": 154,
       "isFlippedAllowed": true,
-      "atlasX": 2060,
+      "atlasX": 3009,
       "atlasY": 2346
     },
     {
@@ -482,7 +522,7 @@
       "width": 175,
       "height": 164,
       "isFlippedAllowed": true,
-      "atlasX": 1320,
+      "atlasX": 2269,
       "atlasY": 2346
     },
     {
@@ -522,7 +562,7 @@
       "width": 142,
       "height": 174,
       "isFlippedAllowed": true,
-      "atlasX": 1024,
+      "atlasX": 1340,
       "atlasY": 2346
     },
     {
@@ -562,7 +602,7 @@
       "width": 119,
       "height": 154,
       "isFlippedAllowed": true,
-      "atlasX": 2191,
+      "atlasX": 3140,
       "atlasY": 2346
     },
     {
@@ -642,7 +682,7 @@
       "width": 224,
       "height": 154,
       "isFlippedAllowed": true,
-      "atlasX": 2312,
+      "atlasX": 3261,
       "atlasY": 2346
     },
     {
@@ -733,8 +773,8 @@
       "width": 353,
       "height": 150,
       "isFlippedAllowed": true,
-      "atlasX": 2538,
-      "atlasY": 2346
+      "atlasX": 2,
+      "atlasY": 2563
     },
     {
       "assetId": "struct_fence_post",
@@ -743,8 +783,8 @@
       "width": 56,
       "height": 119,
       "isFlippedAllowed": true,
-      "atlasX": 3108,
-      "atlasY": 2346
+      "atlasX": 572,
+      "atlasY": 2563
     },
     {
       "assetId": "struct_fence_rail",

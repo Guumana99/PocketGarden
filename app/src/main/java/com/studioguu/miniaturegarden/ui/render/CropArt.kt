@@ -19,7 +19,6 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 private val CROP_DRAWINGS: Map<PlantSpecies, DrawScope.(base: Offset, unit: Float, growth: Float, withered: Boolean) -> Unit> = mapOf(
     PlantSpecies.TOMATO to { base, unit, growth, withered -> drawTomato(base, unit, growth, withered) },
     PlantSpecies.STRAWBERRY to { base, unit, growth, withered -> drawStrawberry(base, unit, growth, withered) },
-    PlantSpecies.PUMPKIN to { base, unit, growth, withered -> drawPumpkin(base, unit, growth, withered) },
     PlantSpecies.POINSETTIA to { base, unit, growth, withered -> drawPoinsettia(base, unit, growth, withered) },
 )
 
@@ -105,30 +104,6 @@ private fun DrawScope.drawStrawberry(base: Offset, unit: Float, growth: Float, w
             drawOval(if (withered) STEM_DRY else Color(0xFF66BB6A), at - Offset(unit * 0.03f * s, unit * 0.03f * s), Size(unit * 0.06f * s, unit * 0.018f * s))
         }
     }
-}
-
-/** Pumpkin: big round leaves on a vine and an orange pumpkin, ribbed, with a curly stalk. */
-private fun DrawScope.drawPumpkin(base: Offset, unit: Float, growth: Float, withered: Boolean) {
-    val s = grown(growth)
-    val leaf = if (withered) STEM_DRY else Color(0xFF689F38)
-    for ((dx, dy) in listOf(-0.15f to -0.06f, 0.15f to -0.08f, 0f to -0.16f)) {
-        val at = base + Offset(unit * dx * s, unit * dy * s)
-        drawCircle(leaf, unit * 0.06f * s, at)
-    }
-    if (growth < 0.4f) return
-    val r = unit * (0.05f + 0.08f * ((growth - 0.4f) / 0.6f).coerceIn(0f, 1f))
-    val center = base + Offset(0f, -r * 0.75f)
-    val skin = when {
-        withered -> FRUIT_DRY
-        growth >= 1f -> Color(0xFFF57C00)
-        else -> Color(0xFFC0CA33)
-    }
-    val rib = if (withered) Color(0xFFA1887F) else skin.copy(red = skin.red * 0.85f, green = skin.green * 0.8f)
-    // Three overlapping lobes make the ribs.
-    drawOval(rib, center - Offset(r * 1.3f, r * 0.85f), Size(r * 1.4f, r * 1.7f))
-    drawOval(rib, center - Offset(-r * 0.1f, r * 0.85f), Size(r * 1.2f, r * 1.7f))
-    drawOval(skin, center - Offset(r * 0.6f, r * 0.9f), Size(r * 1.2f, r * 1.8f))
-    drawLine(if (withered) STEM_DRY else Color(0xFF6D4C41), center - Offset(0f, r * 0.85f), center - Offset(-r * 0.2f, r * 1.2f), r * 0.2f, StrokeCap.Round)
 }
 
 /** Poinsettia: a bushy plant whose top leaves turn red in a star round little yellow flowers. */

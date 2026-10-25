@@ -22,7 +22,7 @@ enum class InventoryGroup {
         fun of(item: GardenItem): InventoryGroup = when (item) {
             GardenItem.SEED_TULIP, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_ROSE,
             GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP, GardenItem.SEED_TOMATO, GardenItem.SEED_STRAWBERRY,
-            GardenItem.SEED_WATERMELON, GardenItem.SEED_PUMPKIN, GardenItem.SEED_POINSETTIA,
+            GardenItem.SEED_WATERMELON, GardenItem.SEED_SHIITAKE, GardenItem.SEED_POINSETTIA,
             GardenItem.SEED_PAPRIKA, GardenItem.SEED_DAIKON, GardenItem.SEED_CARROT, GardenItem.SEED_EGGPLANT,
             GardenItem.SEED_WHEAT, GardenItem.SEED_CORN -> CROPS
             GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WINDMILL,

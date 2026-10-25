@@ -739,9 +739,10 @@ private fun submitObjects(
         }
         submit(obj, if (isGroundCover) RenderLayer.BOTTOM_OBJECTS else RenderLayer.GRID_OBJECTS, depth) {
             if (sprite != null && atlasImage != null) {
-                // Plants lean with the wind; a withered one is stiff and barely moves.
+                // Plants lean with the wind; a withered one is stiff and barely moves, and a log
+                // (the shiitake's, #68) lies still: leaning, the whole log was sheared.
                 val lean = when {
-                    !obj.isPlant -> 0f
+                    !obj.isPlant || !PlantSpecies.forObjectId(obj.objectId).ground.leansInWind -> 0f
                     obj.status == PlantStatus.WITHERED -> sway * PLANT_LEAN * 0.3f
                     else -> sway * PLANT_LEAN
                 }
