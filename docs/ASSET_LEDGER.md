@@ -114,7 +114,7 @@
 | ちょうちょ | `creature_butterfly` | Recraft（#71）。真上から見た姿。胴（`_body`）と左右の羽（`_wing_left` `_wing_right`）に切り分けて羽ばたかせる | ✅ |
 | てんとうむし | `creature_ladybug` | Recraft（#71）。0.075 マス | ✅ |
 | ことり | `creature_bird` | Recraft（#71）。立つ姿と飛ぶ姿（`creature_bird_fly.png` を胴 `_fly_body` と左右の翼 `_fly_wing_left` `_fly_wing_right` に切り分け）。白い尾・頬・お腹を残すため、白の抜き方を弱くした | ✅ |
-| りす | `creature_squirrel` | Recraft（#71）。座る姿と走る姿（`creature_squirrel_run`）。しっぽの毛先は白いもやが残らないよう深めに白と分けた | ✅ |
+| りす | `creature_squirrel` | Recraft（#71）。座る姿と走る姿（`creature_squirrel_run`）。しっぽの毛先は白いもやが残らないよう深めに白と分けた。走る姿のお腹の白っぽい毛は、白いギザギザが残らないよう、お腹の下だけ柔らかく消した | ✅ |
 | かえる | `creature_frog` | Recraft（#71） | ✅ |
 | とんぼ | `creature_dragonfly` | Recraft（#71）。真上から見た姿。透明な羽は半透明（不透明度 0.3〜）で残し、脈と縁は不透明。胴と左右の羽に切り分け | ✅ |
 

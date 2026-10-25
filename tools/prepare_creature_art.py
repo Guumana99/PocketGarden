@@ -6,7 +6,8 @@ The originals are the eight Recraft pictures in tools/source_art/ (creature_*.pn
 
   * cuts each out of its white (cut_out from prepare_drawable_art.py), with what each needs:
       - the squirrel: its fur is mixed with the white far into the outline (the fine hairs of the
-        tail); the outline is un-mixed deeper, so that no pale haze is left round the tail;
+        tail); the outline is un-mixed deeper, so that no pale haze is left round the tail. The
+        running one's cream belly fades into the white: it is let go softly (soft_underside);
       - the bird: its tail, cheeks and belly are white or nearly; only plain white goes, and no
         white pockets are taken out of it;
       - the bird: also the plain white shut in between its legs (without_white_pockets);
@@ -136,8 +137,46 @@ def without_white_pockets(rgb: np.ndarray, cut: np.ndarray, pocket: int = 4) -> 
     return out.astype(np.uint8)
 
 
+def soft_underside(rgb: np.ndarray, cut: np.ndarray, box, dark: int = 150, full: int = 1, gone: int = 6) -> np.ndarray:
+    """[cut] with the pale fur of the underside, inside [box] (pixels on the original), let go softly.
+
+    The running squirrel's belly is a light cream (its darkest channel 180 to 210) that fades into
+    the white behind it: the usual cut took part of it for background and left a ragged white band.
+    Here the pale fur is faded by its distance from the darker fur above it, whole up to [full]
+    pixels from it and gone by [gone], so that the outline follows the smooth edge of the orange fur.
+    Nothing that was background comes back.
+    """
+    v = rgb.astype(float)
+    mn = v.min(axis=2)
+    x0, y0, x1, y1 = box
+    zone = np.zeros(mn.shape, bool)
+    zone[y0:y1, x0:x1] = True
+    body = (mn < dark) & (cut[:, :, 3] > 0)
+    distance = np.full(mn.shape, float(gone + 1))
+    distance[body] = 0.0
+    reach = body.copy()
+    for step in range(1, gone + 1):
+        grown = dilate(reach, 1)
+        distance[grown & ~reach] = step
+        reach = grown
+    pale = zone & ~body & (cut[:, :, 3] > 0)
+    fade = np.clip(1.0 - (distance - full) / (gone - full), 0.0, 1.0)
+    out = cut.astype(float)
+    out[pale, 3] = np.minimum(out[pale, 3], 255.0 * fade[pale])
+    # A shade darker, so that what is left of it does not glow against a dark ground.
+    out[pale, :3] = v[pale] * 0.92
+    return out.astype(np.uint8)
+
+
+#: The running squirrel's underside, from its chest to its hind leg, on the original (pixels).
+RUN_UNDERSIDE = (230, 520, 650, 615)
+
+
 def cut(name: str) -> np.ndarray:
     rgb = source(name)
+    if name == "squirrel_run":
+        # No white pockets in the fur: its bright highlights are not background (#71).
+        return soft_underside(rgb, cut_out(rgb, edge=14, solid=120.0, pocket=60), RUN_UNDERSIDE)
     if name.startswith("squirrel"):
         return cut_out(rgb, edge=14, solid=120.0)
     if name.startswith("bird"):
