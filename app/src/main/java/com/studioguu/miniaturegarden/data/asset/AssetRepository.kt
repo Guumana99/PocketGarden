@@ -23,29 +23,32 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * A decoded atlas image together with its manifest. [EMPTY] (no image, no sprites) is what the
- * app runs with until real artwork is bundled; lookups then return null and callers fall back
- * to their placeholder drawing.
+ * An atlas' decoded page images together with its manifest, one bitmap a page in the order of
+ * [AtlasManifest.pages]. [EMPTY] (no images, no sprites) is what the app runs with until real
+ * artwork is bundled; lookups then return null and callers fall back to their placeholder drawing.
  */
 class SpriteAtlas(
     val manifest: AtlasManifest,
-    val bitmap: Bitmap?,
+    val pages: List<Bitmap>,
     private val creatureAtlas: SpriteAtlas? = null,
 ) {
     private val byId: Map<String, AssetManifest> = manifest.assets.associateBy { it.assetId }
 
     /**
      * The visitors' pictures, packed in a small atlas of their own (`assets/atlas/creatures_manifest.json`,
-     * see [TileSetDefinition.expectedCreatureSpriteIds]) rather than in this one, which is as large
-     * as an image may be. [EMPTY] until they are bundled.
+     * see [TileSetDefinition.expectedCreatureSpriteIds]) rather than in this one: they are drawn
+     * at a scale of their own ([AtlasManifest.tileWidth]). [EMPTY] until they are bundled.
      */
     val creatures: SpriteAtlas get() = creatureAtlas ?: EMPTY
 
     /** Metadata for [assetId], or null if the sprite is not in the atlas (or no image is loaded). */
-    operator fun get(assetId: String): AssetManifest? = if (bitmap == null) null else byId[assetId]
+    operator fun get(assetId: String): AssetManifest? = if (pages.isEmpty()) null else byId[assetId]
+
+    /** The page image [asset] is packed on. */
+    fun pageOf(asset: AssetManifest): Bitmap = pages[asset.page]
 
     companion object {
-        val EMPTY = SpriteAtlas(AtlasManifest(), bitmap = null)
+        val EMPTY = SpriteAtlas(AtlasManifest(), pages = emptyList())
     }
 }
 
@@ -139,10 +142,18 @@ class AssetRepository @Inject constructor(
 
     /**
      * Returns the atlas, loading it on first use. Yields [SpriteAtlas.EMPTY] when no atlas is
-     * bundled; throws if one is bundled but its manifest or image cannot be read.
+     * bundled; throws if one is bundled but its manifest or images cannot be read. Its pages and
+     * the visitors' atlas are decoded side by side.
      */
     suspend fun loadAtlas(): SpriteAtlas = atlasMutex.withLock {
-        cached ?: withContext(Dispatchers.IO) { readAtlas() }.also { cached = it }
+        cached ?: withContext(Dispatchers.IO) {
+            coroutineScope {
+                val creatures = async { readAtlas(CREATURE_MANIFEST_FILE) }
+                // The crops' stages are brought to a natural size next to one another (CropScale).
+                val main = readAtlas(MANIFEST_FILE, CropScale::normalized)
+                if (main === SpriteAtlas.EMPTY) main else SpriteAtlas(main.manifest, main.pages, creatureAtlas = creatures.await())
+            }
+        }.also { cached = it }
     }
 
     private var cachedTerrain: TerrainTextures? = null
@@ -260,38 +271,34 @@ class AssetRepository @Inject constructor(
     private fun decodeUnscaled(@DrawableRes id: Int): Bitmap? =
         BitmapFactory.decodeResource(context.resources, id, BitmapFactory.Options().apply { inScaled = false })
 
-    private fun readAtlas(): SpriteAtlas {
+    /**
+     * The atlas described by [manifestFile] in `assets/atlas/`, its manifest passed through
+     * [adjust], with every page decoded, side by side; an empty one while none is bundled.
+     */
+    private suspend fun readAtlas(manifestFile: String, adjust: (AtlasManifest) -> AtlasManifest = { it }): SpriteAtlas {
         val manifestText = try {
-            context.assets.open("$ATLAS_DIR/$MANIFEST_FILE").use { it.readBytes().decodeToString() }
+            context.assets.open("$ATLAS_DIR/$manifestFile").use { it.readBytes().decodeToString() }
         } catch (_: FileNotFoundException) {
             return SpriteAtlas.EMPTY
         }
-        // The crops' stages are brought to a natural size next to one another (CropScale).
-        val manifest = CropScale.normalized(AtlasManifest.parse(manifestText))
-        val bitmap = context.assets.open("$ATLAS_DIR/${manifest.atlas}").use(BitmapFactory::decodeStream)
-            ?: error("Atlas image '${manifest.atlas}' could not be decoded")
-        check(bitmap.width == manifest.atlasWidth && bitmap.height == manifest.atlasHeight) {
-            "Atlas image is ${bitmap.width}x${bitmap.height} but the manifest says " +
-                "${manifest.atlasWidth}x${manifest.atlasHeight}; re-run tools/asset_packer.py"
+        val manifest = adjust(AtlasManifest.parse(manifestText))
+        val pages = coroutineScope {
+            manifest.pages.map { page -> async { readPage(page) } }.map { it.await() }
         }
-        // Starts its upload to the graphics memory now, off the main thread, instead of on the
-        // first frame that draws the title's garden: it is one large picture (#55).
-        bitmap.prepareToDraw()
-        return SpriteAtlas(manifest, bitmap, creatureAtlas = readCreatureAtlas())
+        return SpriteAtlas(manifest, pages)
     }
 
-    /** The visitors' own atlas ([SpriteAtlas.creatures]), or an empty one while none is bundled. */
-    private fun readCreatureAtlas(): SpriteAtlas {
-        val manifestText = try {
-            context.assets.open("$ATLAS_DIR/$CREATURE_MANIFEST_FILE").use { it.readBytes().decodeToString() }
-        } catch (_: FileNotFoundException) {
-            return SpriteAtlas.EMPTY
+    private fun readPage(page: AtlasPage): Bitmap {
+        val bitmap = context.assets.open("$ATLAS_DIR/${page.file}").use(BitmapFactory::decodeStream)
+            ?: error("Atlas page '${page.file}' could not be decoded")
+        check(bitmap.width == page.width && bitmap.height == page.height) {
+            "Atlas page '${page.file}' is ${bitmap.width}x${bitmap.height} but the manifest says " +
+                "${page.width}x${page.height}; re-run tools/asset_packer.py"
         }
-        val manifest = AtlasManifest.parse(manifestText)
-        val bitmap = context.assets.open("$ATLAS_DIR/${manifest.atlas}").use(BitmapFactory::decodeStream)
-            ?: error("Creature atlas image '${manifest.atlas}' could not be decoded")
+        // Starts its upload to the graphics memory now, off the main thread, instead of on the
+        // first frame that draws the title's garden (#55).
         bitmap.prepareToDraw()
-        return SpriteAtlas(manifest, bitmap)
+        return bitmap
     }
 
     companion object {

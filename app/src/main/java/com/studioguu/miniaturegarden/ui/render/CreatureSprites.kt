@@ -3,7 +3,6 @@ package com.studioguu.miniaturegarden.ui.render
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -227,7 +226,7 @@ fun DrawScope.drawVisitor(
     unit: Float,
     look: VisitorLook,
     atlas: SpriteAtlas,
-    atlasImage: ImageBitmap?,
+    atlasImage: AtlasPages?,
     shadow: Boolean = true,
 ) {
     val image = atlasImage ?: return
@@ -260,7 +259,7 @@ fun DrawScope.drawVisitor(
  * Draws [creature]'s pictures with its anchor at the origin: its own, and its second one
  * ([VisitorLook.moving]) over it as much as it shows; a flier in parts, its wings moving.
  */
-private fun DrawScope.drawPictures(creature: Creature, look: VisitorLook, atlas: SpriteAtlas, image: ImageBitmap, scale: Float, unit: Float) {
+private fun DrawScope.drawPictures(creature: Creature, look: VisitorLook, atlas: SpriteAtlas, image: AtlasPages, scale: Float, unit: Float) {
     val own = atlas[TileSetDefinition.assetIdFor(creature)]
     when (creature) {
         Creature.SQUIRREL -> {
@@ -288,7 +287,7 @@ private fun DrawScope.drawPictures(creature: Creature, look: VisitorLook, atlas:
  * dragonfly's (seen from above) fold towards the body; the bird's (seen from the side) beat
  * down about their roots. The wings go behind the body.
  */
-private fun DrawScope.drawWinged(creature: Creature, look: VisitorLook, atlas: SpriteAtlas, image: ImageBitmap, scale: Float, alpha: Float) {
+private fun DrawScope.drawWinged(creature: Creature, look: VisitorLook, atlas: SpriteAtlas, image: AtlasPages, scale: Float, alpha: Float) {
     val body = atlas[TileSetDefinition.wingedBodyId(creature) ?: return] ?: return
     val wings = TileSetDefinition.wingIds(creature).map { atlas[it] }
     for ((index, wing) in wings.withIndex()) {

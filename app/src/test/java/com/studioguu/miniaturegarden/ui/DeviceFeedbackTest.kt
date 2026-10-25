@@ -107,11 +107,10 @@ class DeviceFeedbackTest {
     // --- 2.1 Seedlings ---
 
     private val manifest: AtlasManifest by lazy { AtlasManifest.parse(File(main, "assets/atlas/assets_manifest.json").readText()) }
-    private val atlas: TestPng by lazy { TestPng.read(File(main, "assets/atlas/atlas.png")) }
-
     /** The share of the opaque pixels in the lower part of [id]'s picture that are as dark as earth. */
     private fun darkShareLow(id: String): Float {
         val sprite = manifest.assets.single { it.assetId == id }
+        val atlas = TestPng.read(File(main, "assets/atlas/${manifest.pages[sprite.page].file}"))
         var dark = 0
         var opaque = 0
         for (y in (sprite.height * 0.55f).toInt() until sprite.height) for (x in 0 until sprite.width) {

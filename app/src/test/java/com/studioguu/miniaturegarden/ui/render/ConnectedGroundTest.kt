@@ -134,17 +134,21 @@ class ConnectedGroundTest {
             assertTrue(crop.assetId, crop.anchorY in 0.85f..1f)
             assertTrue(crop.assetId, crop.anchorX in 0.3f..0.7f)
         }
-        // Healthy plants stand right at the foot of their pictures.
-        assertTrue(plants.filter { !it.assetId.endsWith("_withered") }.all { it.anchorY >= 0.97f })
+        // Healthy plants stand right at the foot of their pictures. The watermelon's stage 3 (#65) is
+        // a low mound of leaves with its fruit lying in front, below where the mound meets the bed.
+        val healthy = plants.filter { !it.assetId.endsWith("_withered") && it.assetId != "plant_watermelon_stage3" }
+        assertTrue(healthy.filter { it.anchorY < 0.97f }.joinToString { it.assetId }, healthy.all { it.anchorY >= 0.97f })
         // So the wind, which leans a picture about its anchor, moves the plant and not the ground.
         val tools = listOf(File("../tools"), File("tools")).first { it.isDirectory }
         val overrides = File(tools, "atlas_overrides.json").readText()
         // Only the wheat's fields, the tomato whose foot is a hanging leaf (#57), the sunflower's
-        // three seedlings (#58) and the eggplant's bushes (#60) are stood by hand.
+        // three seedlings (#58), the eggplant's bushes (#60) and the shiitake's logs, stood on the
+        // foot of the log (#68), are stood by hand.
         val byHand = Regex("\"(plant_[a-z_0-9]+)\"").findAll(overrides).map { it.groupValues[1] }.toSet()
         assertEquals(
             setOf("plant_wheat_stage1", "plant_wheat_stage2", "plant_wheat_stage3", "plant_wheat_withered", "plant_tomato_stage3",
-                "plant_sunflower_stage1") + EGGPLANT_BUSHES,
+                "plant_sunflower_stage1", "plant_shiitake_stage1", "plant_shiitake_stage2", "plant_shiitake_stage3",
+                "plant_shiitake_withered") + EGGPLANT_BUSHES,
             byHand,
         )
     }

@@ -127,9 +127,10 @@ class BuildingArtTest {
     }
 
     @Test
-    fun `the atlas stays within the texture size every device can take`() {
-        assertTrue(manifest.atlasWidth <= 4096)
-        assertTrue(manifest.atlasHeight <= 4096)
+    fun `every atlas page stays within the texture size every device can take`() {
+        // #73: pages of at most 2048 px, so that adding pictures adds a page rather than outgrowing
+        // the 4096 px that the single atlas had come up against.
+        for (page in manifest.pages) assertTrue("$page", page.width <= 2048 && page.height <= 2048)
     }
 
     @Test
@@ -150,7 +151,7 @@ class BuildingArtTest {
     @Test
     fun `a draw scale and an attachment point are read from the manifest, and are optional`() {
         val parsed = AtlasManifest.parse(
-            """{"atlasWidth": 100, "atlasHeight": 100, "tileWidth": 50, "assets": [
+            """{"pages": [{"file": "world_0.png", "width": 100, "height": 100}], "tileWidth": 50, "assets": [
                 {"assetId": "a", "width": 10, "height": 20, "anchorX": 0.5, "anchorY": 0.5, "drawScale": 3.0, "attachX": 0.9, "attachY": 0.1},
                 {"assetId": "b", "width": 10, "height": 20}
             ]}""",

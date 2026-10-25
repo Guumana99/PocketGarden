@@ -62,9 +62,9 @@ class CodeArtTest {
 
     @Test
     fun `the creature atlas is small, and drawn as large as the garden's closest zoom shows it`() {
-        val image = File(main, "assets/atlas/${creatureManifest.atlas}")
-        assertEquals("creatures.png", image.name)
-        assertTrue("${image.length()} bytes", image.length() < 700 * 1024)
+        val pages = creatureManifest.pages.map { File(main, "assets/atlas/${it.file}") }
+        assertEquals(listOf("creatures_0.png"), pages.map { it.name })
+        assertTrue("${pages.sumOf { it.length() }} bytes", pages.sumOf { it.length() } < 700 * 1024)
         // A tile is 128 dp, 336 px on a 420 dpi screen, and 2.5 times that at the closest zoom.
         assertTrue(creatureManifest.tileWidth >= 128 * 2.625 * GardenCamera.MAX_SCALE)
     }

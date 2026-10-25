@@ -1,19 +1,29 @@
 #!/usr/bin/env python3
-"""Crop transparent PNG sprites and pack them into one texture atlas.
+"""Crop transparent PNG sprites and pack them into texture atlas pages.
 
 Takes a folder of PNGs with transparent margins (e.g. exported from Recraft.ai) and writes:
 
-  <out>/atlas.png             all sprites, trimmed, packed into one image
-  <out>/assets_manifest.json  where each sprite sits in the atlas, plus its anchor point
+  <out>/<sheet>_<n>.png       the sprites, trimmed, packed into pages of at most --page-size square
+  <out>/assets_manifest.json  every page, and where each sprite sits on which page, plus its anchor
 
-The manifest is what the app's AssetManifest.kt / AtlasManifest reads. Copy both files to
-app/src/main/assets/atlas/ to use them in the app.
+The manifest is what the app's AssetManifest.kt / AtlasManifest reads; the app finds a sprite by
+its assetId whatever page it is on. Write straight into app/src/main/assets/atlas/: page files of
+the previous manifest that are no longer written are deleted.
 
 Usage:
   python tools/asset_packer.py raw_assets/ app/src/main/assets/atlas/
   python tools/asset_packer.py raw_assets/ out/ --tile-width 256 --overrides raw_assets/overrides.json
 
 The file name (without .png) becomes the assetId, e.g. plant_tulip_stage3.png -> "plant_tulip_stage3".
+
+Sheets and pages
+  A sprite's sheet follows from the start of its assetId (SHEETS): the crops (plant_*) on
+  "crops", everything else (buildings, ground, decorations) on "world". There is nothing to
+  choose when adding a picture: its name decides. Each sheet is packed tallest first onto pages
+  of at most --page-size pixels a side (2048 by default, which every device can take as one
+  texture); when one is full the next is started, crops_0.png, crops_1.png and so on. A page is
+  cut to what is used on it. --sheet puts every sprite on one sheet of that name instead (the
+  visitors' own atlas, "creatures").
 
 Scaling
   --tile-width is how many atlas pixels one grid tile spans. If the source art is drawn larger
@@ -59,9 +69,16 @@ from PIL import Image
 
 import crop_soil
 
-MANIFEST_VERSION = 1
+MANIFEST_VERSION = 2
 MANIFEST_NAME = "assets_manifest.json"
-ATLAS_NAME = "atlas.png"
+
+#: Largest page, in pixels a side: a texture every device can take.
+PAGE_SIZE = 2048
+
+#: (sheet, assetId prefix): a sprite whose assetId starts with the prefix goes on that sheet...
+SHEETS = (("crops", "plant_"),)
+#: ...and any other on this one.
+DEFAULT_SHEET = "world"
 
 DEFAULT_ANCHOR_X = 0.5
 DEFAULT_ANCHOR_Y = 1.0
@@ -81,6 +98,8 @@ class Sprite:
     # A point on the sprite where another one is hung (the hub a windmill's sails turn on).
     attach_x: float | None = None
     attach_y: float | None = None
+    sheet: str = DEFAULT_SHEET
+    page: int = 0
     atlas_x: int = 0
     atlas_y: int = 0
 
@@ -91,6 +110,11 @@ class Sprite:
     @property
     def height(self) -> int:
         return self.image.height
+
+
+def sheet_of(asset_id: str) -> str:
+    """The sheet a sprite named [asset_id] is packed on (SHEETS)."""
+    return next((sheet for sheet, prefix in SHEETS if asset_id.startswith(prefix)), DEFAULT_SHEET)
 
 
 def crop_to_alpha(image: Image.Image, alpha_threshold: int = 0) -> Image.Image | None:
@@ -134,7 +158,7 @@ def load_sprites(
         if cropped is None:
             print(f"warning: {path.name} is fully transparent, skipped", file=sys.stderr)
             continue
-        sprite = Sprite(asset_id=path.stem, image=scale_image(cropped, scale))
+        sprite = Sprite(asset_id=path.stem, image=scale_image(cropped, scale), sheet=sheet_of(path.stem))
         if crop:
             sprite.anchor_x, sprite.anchor_y = crop_soil.stem_base(sprite.image)
         sprites.append(sprite)
@@ -170,47 +194,72 @@ def apply_overrides(sprites: list[Sprite], overrides: dict) -> None:
             sprite.attach_x, sprite.attach_y = float(values["attachX"]), float(values["attachY"])
 
 
-def pack(sprites: list[Sprite], max_width: int = 2048, padding: int = 2) -> tuple[int, int]:
-    """Assign atlas positions with shelf packing (tallest first). Returns the atlas size.
+@dataclass
+class Page:
+    sheet: str
+    width: int
+    height: int
+    file: str = ""
+    # The shelf being filled: where the next sprite goes on it, and how tall it is.
+    x: int = 0
+    y: int = 0
+    shelf_height: int = 0
 
+
+def pack(sprites: list[Sprite], page_size: int = PAGE_SIZE, padding: int = 2) -> list[Page]:
+    """Assign each sprite a page and a place on it, with shelf packing (tallest first), sheet by
+    sheet. Returns the pages in the order of their index, each cut to what is used on it.
+
+    A sprite goes on the first page of its sheet with room for it, so that the shorter ones fill
+    what is left at the foot of a page before the next is started.
     Every sprite keeps `padding` transparent pixels on all sides so that filtered sampling
     never bleeds a neighbour into it.
     """
-    widest = max((sprite.width for sprite in sprites), default=0)
-    if widest + 2 * padding > max_width:
-        raise ValueError(f"a sprite is {widest}px wide and does not fit in --max-width {max_width}")
-
-    x = y = padding
-    shelf_height = 0
-    used_width = 0
-    for sprite in sorted(sprites, key=lambda s: (-s.height, s.asset_id)):
-        if x + sprite.width + padding > max_width:
-            x = padding
-            y += shelf_height + padding
-            shelf_height = 0
-        sprite.atlas_x, sprite.atlas_y = x, y
-        x += sprite.width + padding
-        shelf_height = max(shelf_height, sprite.height)
-        used_width = max(used_width, x)
-    if not sprites:
-        return 0, 0
-    return used_width, y + shelf_height + padding
-
-
-def build_atlas(sprites: list[Sprite], size: tuple[int, int]) -> Image.Image:
-    atlas = Image.new("RGBA", size, (0, 0, 0, 0))
     for sprite in sprites:
-        atlas.paste(sprite.image, (sprite.atlas_x, sprite.atlas_y))
-    return atlas
+        if max(sprite.width, sprite.height) + 2 * padding > page_size:
+            raise ValueError(f"'{sprite.asset_id}' is {sprite.width}x{sprite.height} and does not fit on a {page_size} px page")
+    order = [sheet for sheet, _ in SHEETS] + [DEFAULT_SHEET]
+    sheets = sorted({sprite.sheet for sprite in sprites}, key=lambda sheet: (order.index(sheet) if sheet in order else len(order), sheet))
+    pages: list[Page] = []
+    for sheet in sheets:
+        first = len(pages)
+        for sprite in sorted((s for s in sprites if s.sheet == sheet), key=lambda s: (-s.height, s.asset_id)):
+            w, h = sprite.width, sprite.height
+            for index in range(first, len(pages)):
+                page = pages[index]
+                if page.x + w + padding <= page_size and page.y + h + padding <= page_size:
+                    break  # on the shelf being filled (never taller than it, tallest first)
+                below = page.y + page.shelf_height + padding
+                if padding + w + padding <= page_size and below + h + padding <= page_size:
+                    page.x, page.y, page.shelf_height = padding, below, 0
+                    break  # on a new shelf below it
+            else:
+                index = len(pages)
+                page = Page(sheet, 0, 0, f"{sheet}_{index - first}.png", x=padding, y=padding)
+                pages.append(page)
+            sprite.page = index
+            sprite.atlas_x, sprite.atlas_y = page.x, page.y
+            page.x += w + padding
+            page.shelf_height = max(page.shelf_height, h)
+            page.width = max(page.width, page.x)
+            page.height = max(page.height, page.y + page.shelf_height + padding)
+    return pages
 
 
-def build_manifest(sprites: list[Sprite], size: tuple[int, int], tile_width: int, atlas_name: str = ATLAS_NAME) -> dict:
+def build_page(sprites: list[Sprite], pages: list[Page], index: int) -> Image.Image:
+    page = pages[index]
+    image = Image.new("RGBA", (page.width, page.height), (0, 0, 0, 0))
+    for sprite in sprites:
+        if sprite.page == index:
+            image.paste(sprite.image, (sprite.atlas_x, sprite.atlas_y))
+    return image
+
+
+def build_manifest(sprites: list[Sprite], pages: list[Page], tile_width: int) -> dict:
     return {
         "version": MANIFEST_VERSION,
-        "atlas": atlas_name,
-        "atlasWidth": size[0],
-        "atlasHeight": size[1],
         "tileWidth": tile_width,
+        "pages": [{"file": page.file, "width": page.width, "height": page.height} for page in pages],
         "assets": [
             sprite_entry(sprite)
             for sprite in sorted(sprites, key=lambda s: s.asset_id)
@@ -226,6 +275,7 @@ def sprite_entry(sprite: Sprite) -> dict:
         "width": sprite.width,
         "height": sprite.height,
         "isFlippedAllowed": sprite.is_flipped_allowed,
+        "page": sprite.page,
         "atlasX": sprite.atlas_x,
         "atlasY": sprite.atlas_y,
     }
@@ -238,26 +288,35 @@ def sprite_entry(sprite: Sprite) -> dict:
     return entry
 
 
+def written_pages(manifest_path: Path) -> list[str]:
+    """The page files a manifest written before names (version 1 had a single "atlas")."""
+    if not manifest_path.is_file():
+        return []
+    old = json.loads(manifest_path.read_text(encoding="utf-8"))
+    return [page["file"] for page in old.get("pages", [])] + ([old["atlas"]] if old.get("atlas") else [])
+
+
 def run(
     input_dir: Path,
     output_dir: Path,
     *,
     tile_width: int = 256,
     source_tile_width: int | None = None,
-    max_width: int = 2048,
+    page_size: int = PAGE_SIZE,
     padding: int = 2,
     alpha_threshold: int = 0,
     overrides_path: Path | None = None,
     strip_crop_soil: bool = False,
-    atlas_name: str = ATLAS_NAME,
+    sheet: str | None = None,
     manifest_name: str = MANIFEST_NAME,
 ) -> dict:
     """Run the whole pipeline and return the manifest that was written.
 
     tile_width is how wide one grid tile is in the atlas. When the source art was drawn at a
     different size (source_tile_width), every sprite is resampled by tile_width / source_tile_width.
-    atlas_name and manifest_name are the files written: the visitors have an atlas of their own
-    (creatures.png, creatures_manifest.json; see prepare_creature_art.py).
+    sheet puts every sprite on that one sheet rather than the one its name gives (sheet_of), and
+    manifest_name is the manifest written: the visitors have an atlas of their own
+    (creatures_<n>.png, creatures_manifest.json; see prepare_creature_art.py).
     """
     if tile_width <= 0 or (source_tile_width is not None and source_tile_width <= 0):
         raise ValueError("tile widths must be positive")
@@ -268,11 +327,19 @@ def run(
     if overrides_path is not None:
         apply_overrides(sprites, json.loads(overrides_path.read_text(encoding="utf-8")))
 
-    size = pack(sprites, max_width, padding)
-    manifest = build_manifest(sprites, size, tile_width, atlas_name)
+    if sheet is not None:
+        for sprite in sprites:
+            sprite.sheet = sheet
+
+    pages = pack(sprites, page_size, padding)
+    manifest = build_manifest(sprites, pages, tile_width)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    build_atlas(sprites, size).save(output_dir / atlas_name, optimize=True)
+    stale = set(written_pages(output_dir / manifest_name)) - {page.file for page in pages}
+    for index, page in enumerate(pages):
+        build_page(sprites, pages, index).save(output_dir / page.file, optimize=True)
+    for name in sorted(stale):
+        (output_dir / name).unlink(missing_ok=True)
     (output_dir / manifest_name).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest
 
@@ -280,13 +347,14 @@ def run(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Crop sprites and pack them into a texture atlas.")
     parser.add_argument("input_dir", type=Path, help="folder of transparent .png files")
-    parser.add_argument("output_dir", type=Path, help=f"where {ATLAS_NAME} and {MANIFEST_NAME} are written")
+    parser.add_argument("output_dir", type=Path, help=f"where the pages and {MANIFEST_NAME} are written")
     parser.add_argument("--tile-width", type=int, default=256,
                         help="pixel width of one grid tile in the atlas (default: 256)")
     parser.add_argument("--source-tile-width", type=int, default=None,
                         help="pixel width of one grid tile in the source art, if different from "
                              "--tile-width; sprites are resampled by tile-width / source-tile-width")
-    parser.add_argument("--max-width", type=int, default=2048, help="maximum atlas width in pixels (default: 2048)")
+    parser.add_argument("--page-size", type=int, default=PAGE_SIZE,
+                        help=f"largest page, in pixels a side (default: {PAGE_SIZE})")
     parser.add_argument("--padding", type=int, default=2, help="transparent pixels around each sprite (default: 2)")
     parser.add_argument("--alpha-threshold", type=int, default=0,
                         help="pixels with alpha at or below this (0-255) count as empty when cropping (default: 0)")
@@ -294,7 +362,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="take the clump of earth out from under crop pictures (plant_*), see crop_soil.py")
     parser.add_argument("--overrides", type=Path, default=None,
                         help="JSON file with per-asset anchorX / anchorY / isFlippedAllowed")
-    parser.add_argument("--atlas-name", default=ATLAS_NAME, help=f"atlas image file name (default: {ATLAS_NAME})")
+    parser.add_argument("--sheet", default=None,
+                        help="put every sprite on this one sheet, rather than by its name (e.g. creatures)")
     parser.add_argument("--manifest-name", default=MANIFEST_NAME, help=f"manifest file name (default: {MANIFEST_NAME})")
     args = parser.parse_args(argv)
 
@@ -304,20 +373,20 @@ def main(argv: list[str] | None = None) -> int:
             args.output_dir,
             tile_width=args.tile_width,
             source_tile_width=args.source_tile_width,
-            max_width=args.max_width,
+            page_size=args.page_size,
             padding=args.padding,
             alpha_threshold=args.alpha_threshold,
             overrides_path=args.overrides,
             strip_crop_soil=args.strip_crop_soil,
-            atlas_name=args.atlas_name,
+            sheet=args.sheet,
             manifest_name=args.manifest_name,
         )
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
 
-    print(f"packed {len(manifest['assets'])} sprites into "
-          f"{manifest['atlasWidth']}x{manifest['atlasHeight']} -> {args.output_dir / args.atlas_name}")
+    pages = ", ".join(f"{page['file']} {page['width']}x{page['height']}" for page in manifest["pages"])
+    print(f"packed {len(manifest['assets'])} sprites into {len(manifest['pages'])} pages: {pages}")
     return 0
 
 

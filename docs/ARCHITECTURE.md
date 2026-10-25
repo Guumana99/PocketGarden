@@ -206,7 +206,7 @@ di/       Hilt の束ね
 - 区切りの始まりから 20〜70 秒後に現れ、終わりの 20〜70 秒前に去る。続けて来るときも、いったん去ってまた来るように見える。
 - 一度に最大 2 匹、同じ種類は 1 匹。表の上の行ほど優先。
 - 評価は `GardenViewModel.watchVisitors()`：区切りが変わったとき、庭・天気・広さ・季節が変わったときに計算し直す。アプリを開いているあいだだけ。
-- 描画は `GardenCanvas` の `visitors`。足もとの位置は `visitorBase`（ベンチは座面、建物は屋根の高さ、作物は葉の高さ）。絵は Recraft の絵（`creatures.png`、#71）、描き方は `ui/render/CreatureSprites.kt`。
+- 描画は `GardenCanvas` の `visitors`。足もとの位置は `visitorBase`（ベンチは座面、建物は屋根の高さ、作物は葉の高さ）。絵は Recraft の絵（`creatures_0.png`、#71）、描き方は `ui/render/CreatureSprites.kt`。
   生き物は物と同じ奥行きの順で、**そのときいるマス**で描く（建物の上にいるものは建物の手前のマス）。タップは受けない。
 
 ### 動き（`CreatureRoutes`、#70）
@@ -369,7 +369,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
   既定の倍率 `GardenCamera.starting` は **`START_SCALE = 0.55` で固定**（#59。1 マス約 70dp）。庭の大きさに左右されないので、新しい庭も続きの庭も広がった直後の庭も同じ倍率・中央で開く（#51 では `max(0.375, 13×13 が入る倍率)` だった）。
 - `LayerPipeline`: 描画命令を層（地面 → グリッド → 影 → 地表物 → 物 → 上のエフェクト → HUD）と奥行きで並べる。
 - 物の描画は `submitObjects()`。図鑑の絵 `ObjectPreview` も同じ関数を使う（絵がずれない）。
-- スプライトは `assets/atlas/atlas.png` + `assets_manifest.json`。無い物はプログラム描画。
+- スプライトは `assets/atlas/` のページ（`crops_<n>.png` `world_<n>.png`、1 辺 2048px 以内）+ `assets_manifest.json`（#73）。絵は `assetId` で引き、`AssetManifest.page` のページから描く（`AtlasPages`）。無い物はプログラム描画。
 - 地面の絵（川・石畳）は `res/drawable-nodpi/` から `R.drawable` で読む。
 - **川の岸**（#51）：絵は真上から見た平らなもの。`drawRiverTile` が絵と同じ空間で、奥の岸（北・西、`RiverAutotile.shadedSides`）の内側の水に影、手前の岸（南・東、`litSides`）に細い光を `SRC_ATOP` で重ねる（絵の上だけ。芝には出ない）。水は芝より一段低く見える。
 - **庭の木枠の内縁**（`drawFrameLip`）：地面の層の最後（`Float.MAX_VALUE`）に描く。奥の 2 枚の板の影と、木と土の境の線が、川・石畳・畑の上にかかり、地面が枠の下に収まって見える。

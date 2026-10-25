@@ -19,7 +19,9 @@ data class AssetManifest(
     val height: Int,
     /** Whether the sprite may be drawn mirrored to create a left/right variation. */
     val isFlippedAllowed: Boolean = true,
-    /** Top-left corner of the sprite inside the atlas image. */
+    /** Which of the atlas' pages ([AtlasManifest.pages]) the sprite is packed on. */
+    val page: Int = 0,
+    /** Top-left corner of the sprite inside its page. */
     val atlasX: Int = 0,
     val atlasY: Int = 0,
     /**
@@ -60,17 +62,20 @@ data class AssetManifest(
     }
 }
 
+/** One image of an atlas: its file, relative to the manifest, and its size. */
+@Serializable
+data class AtlasPage(val file: String, val width: Int, val height: Int)
+
 /**
- * Contents of `assets_manifest.json` as written by `tools/asset_packer.py`: one atlas image
- * plus the sprites packed into it.
+ * Contents of `assets_manifest.json` as written by `tools/asset_packer.py`: the atlas' page
+ * images plus the sprites packed onto them. A sprite is looked up by its assetId, whatever page
+ * it is on: the packer chooses the page (the crops on their own sheet, everything else on
+ * another, each sheet over as many pages of at most 2048 px as it needs).
  */
 @Serializable
 data class AtlasManifest(
-    val version: Int = 1,
-    /** Atlas image file name, relative to the manifest. */
-    val atlas: String = "",
-    val atlasWidth: Int = 0,
-    val atlasHeight: Int = 0,
+    val version: Int = 2,
+    val pages: List<AtlasPage> = emptyList(),
     /** How many source pixels one grid tile spans; sets the sprite-to-screen scale. */
     val tileWidth: Int = DEFAULT_TILE_WIDTH,
     val assets: List<AssetManifest> = emptyList(),
@@ -86,6 +91,7 @@ data class AtlasManifest(
 
     private fun validate() {
         require(tileWidth > 0) { "tileWidth must be positive, was $tileWidth" }
+        for (page in pages) require(page.width > 0 && page.height > 0) { "page '${page.file}' has an empty size ${page.width}x${page.height}" }
         val seen = HashSet<String>()
         for (asset in assets) {
             val id = asset.assetId
@@ -96,10 +102,11 @@ data class AtlasManifest(
             }
             require(asset.drawScale > 0f && asset.drawScale.isFinite()) { "'$id' has a draw scale of ${asset.drawScale}" }
             require((asset.attachX == null) == (asset.attachY == null)) { "'$id' has only half an attachment point" }
+            val page = requireNotNull(pages.getOrNull(asset.page)) { "'$id' is on page ${asset.page}, which the manifest does not list" }
             require(
                 asset.atlasX >= 0 && asset.atlasY >= 0 &&
-                    asset.atlasX + asset.width <= atlasWidth && asset.atlasY + asset.height <= atlasHeight
-            ) { "'$id' does not fit inside the ${atlasWidth}x$atlasHeight atlas" }
+                    asset.atlasX + asset.width <= page.width && asset.atlasY + asset.height <= page.height
+            ) { "'$id' does not fit inside the ${page.width}x${page.height} page '${page.file}'" }
         }
     }
 }

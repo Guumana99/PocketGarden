@@ -16,11 +16,12 @@ class AssetPipelineTest {
     /** Same shape as the output of tools/asset_packer.py. */
     private val packerOutput = """
         {
-          "version": 1,
-          "atlas": "atlas.png",
-          "atlasWidth": 146,
-          "atlasHeight": 164,
+          "version": 2,
           "tileWidth": 128,
+          "pages": [
+            {"file": "crops_0.png", "width": 64, "height": 164},
+            {"file": "world_0.png", "width": 84, "height": 54}
+          ],
           "assets": [
             {
               "assetId": "deco_rock",
@@ -29,7 +30,8 @@ class AssetPipelineTest {
               "width": 80,
               "height": 50,
               "isFlippedAllowed": false,
-              "atlasX": 64,
+              "page": 1,
+              "atlasX": 2,
               "atlasY": 2
             },
             {
@@ -39,6 +41,7 @@ class AssetPipelineTest {
               "width": 60,
               "height": 160,
               "isFlippedAllowed": true,
+              "page": 0,
               "atlasX": 2,
               "atlasY": 2
             }
@@ -52,9 +55,9 @@ class AssetPipelineTest {
     fun `parses the packer's manifest`() {
         val manifest = AtlasManifest.parse(packerOutput)
 
-        assertEquals("atlas.png", manifest.atlas)
-        assertEquals(146, manifest.atlasWidth)
+        assertEquals(listOf(AtlasPage("crops_0.png", 64, 164), AtlasPage("world_0.png", 84, 54)), manifest.pages)
         assertEquals(128, manifest.tileWidth)
+        assertEquals(1, manifest.assets[0].page)
         assertEquals(
             AssetManifest(
                 assetId = "plant_tulip_stage3",
@@ -74,27 +77,30 @@ class AssetPipelineTest {
     @Test
     fun `omitted fields take the documented defaults and unknown fields are ignored`() {
         val manifest = AtlasManifest.parse(
-            """{"atlasWidth": 10, "atlasHeight": 10, "futureField": 1,
+            """{"pages": [{"file": "a_0.png", "width": 10, "height": 10}], "futureField": 1,
                 "assets": [{"assetId": "a", "width": 10, "height": 10, "futureField": true}]}"""
         )
         val asset = manifest.assets.single()
         assertEquals(0.5f, asset.anchorX, 0f)
         assertEquals(0.8f, asset.anchorY, 0f)
         assertTrue(asset.isFlippedAllowed)
+        assertEquals(0, asset.page)
         assertEquals(AtlasManifest.DEFAULT_TILE_WIDTH, manifest.tileWidth)
     }
 
     @Test
     fun `invalid manifests are rejected`() {
         fun manifestWith(asset: String, extra: String = "") =
-            """{"atlasWidth": 100, "atlasHeight": 100, $extra "assets": [$asset]}"""
+            """{"pages": [{"file": "a_0.png", "width": 100, "height": 100}, {"file": "a_1.png", "width": 20, "height": 20}], $extra "assets": [$asset]}"""
 
         val invalid = listOf(
             "not json",
             manifestWith("""{"assetId": "a", "width": 10}"""), // height missing
             manifestWith("""{"assetId": "a", "width": 0, "height": 10}"""),
             manifestWith("""{"assetId": "a", "width": 10, "height": 10, "anchorY": 1.2}"""),
-            manifestWith("""{"assetId": "a", "width": 10, "height": 10, "atlasX": 95}"""), // overflows atlas
+            manifestWith("""{"assetId": "a", "width": 10, "height": 10, "atlasX": 95}"""), // overflows its page
+            manifestWith("""{"assetId": "a", "width": 10, "height": 10, "page": 1, "atlasX": 15}"""), // overflows the smaller page
+            manifestWith("""{"assetId": "a", "width": 10, "height": 10, "page": 2}"""), // no such page
             manifestWith(
                 """{"assetId": "a", "width": 10, "height": 10}, {"assetId": "a", "width": 10, "height": 10}"""
             ),
@@ -122,7 +128,7 @@ class AssetPipelineTest {
     fun `atlas without an image resolves no sprites`() {
         assertNull(SpriteAtlas.EMPTY["plant_tulip_stage3"])
         // A manifest alone is not drawable either.
-        assertNull(SpriteAtlas(AtlasManifest.parse(packerOutput), bitmap = null)["plant_tulip_stage3"])
+        assertNull(SpriteAtlas(AtlasManifest.parse(packerOutput), pages = emptyList())["plant_tulip_stage3"])
     }
 
     // --- TileSetDefinition ---

@@ -80,16 +80,18 @@ class AssetPackerTest(unittest.TestCase):
         make_png(self.src / "real.png", (10, 10), (2, 2, 6, 6))
         self.assertEqual(["real"], [s.asset_id for s in asset_packer.load_sprites(self.src)])
 
-    def test_run_writes_atlas_and_manifest(self):
+    def test_run_writes_pages_and_manifest(self):
         make_png(self.src / "plant_tulip_stage3.png", (200, 200), (50, 20, 110, 180), (255, 0, 0, 255))
         make_png(self.src / "deco_rock.png", (200, 200), (80, 120, 160, 170), (0, 0, 255, 255))
 
         asset_packer.run(self.src, self.out, tile_width=128)
 
         manifest = json.loads((self.out / "assets_manifest.json").read_text(encoding="utf-8"))
-        atlas = Image.open(self.out / "atlas.png")
-        self.assertEqual((manifest["atlasWidth"], manifest["atlasHeight"]), atlas.size)
-        self.assertEqual("atlas.png", manifest["atlas"])
+        self.assertEqual(2, manifest["version"])
+        self.assertEqual(["crops_0.png", "world_0.png"], [page["file"] for page in manifest["pages"]])
+        pages = [Image.open(self.out / page["file"]) for page in manifest["pages"]]
+        for page, image in zip(manifest["pages"], pages):
+            self.assertEqual((page["width"], page["height"]), image.size)
         self.assertEqual(128, manifest["tileWidth"])
 
         assets = {a["assetId"]: a for a in manifest["assets"]}
@@ -101,28 +103,69 @@ class AssetPackerTest(unittest.TestCase):
         self.assertEqual((0.5, 1.0), (tulip["anchorX"], tulip["anchorY"]))
         self.assertTrue(tulip["isFlippedAllowed"])
 
+        # The crop is on the crops' sheet, the rock on the other.
+        self.assertEqual((0, 1), (tulip["page"], rock["page"]))
         # The pixels at each recorded rectangle are that sprite's pixels.
         for asset, color in ((tulip, (255, 0, 0, 255)), (rock, (0, 0, 255, 255))):
+            page = pages[asset["page"]]
             x, y, w, h = asset["atlasX"], asset["atlasY"], asset["width"], asset["height"]
-            self.assertEqual(color, atlas.getpixel((x, y)))
-            self.assertEqual(color, atlas.getpixel((x + w - 1, y + h - 1)))
+            self.assertEqual(color, page.getpixel((x, y)))
+            self.assertEqual(color, page.getpixel((x + w - 1, y + h - 1)))
+
+    def test_the_sheet_comes_from_the_name_unless_one_is_given(self):
+        self.assertEqual("crops", asset_packer.sheet_of("plant_rose_stage1"))
+        for name in ("struct_well", "deco_bench", "tile_grass", "floor_greenhouse"):
+            self.assertEqual("world", asset_packer.sheet_of(name))
+        make_png(self.src / "plant_a.png", (20, 20), (0, 0, 10, 10))
+        make_png(self.src / "creature_b.png", (20, 20), (0, 0, 10, 10))
+        manifest = asset_packer.run(self.src, self.out, sheet="creatures", manifest_name="creatures_manifest.json")
+        self.assertEqual(["creatures_0.png"], [page["file"] for page in manifest["pages"]])
+
+    def test_a_full_page_starts_the_next_and_the_short_fill_what_is_left(self):
+        # Four 60 x 56 blocks fill a 128 px page but for a few rows at its foot; the fifth starts a
+        # second page of the same sheet. A thin strip, packed last, fits in those rows.
+        for i in range(5):
+            make_png(self.src / f"plant_{i}.png", (64, 64), (0, 0, 60, 56))
+        make_png(self.src / "plant_strip.png", (64, 64), (0, 0, 60, 2))
+        sprites = asset_packer.load_sprites(self.src)
+        pages = asset_packer.pack(sprites, page_size=128, padding=2)
+        self.assertEqual(["crops_0.png", "crops_1.png"], [page.file for page in pages])
+        by_id = {s.asset_id: s for s in sprites}
+        self.assertEqual([0, 0, 0, 0, 1], [by_id[f"plant_{i}"].page for i in range(5)])
+        # The strip went to the first page, below its squares, not after the fifth on the second.
+        self.assertEqual(0, by_id["plant_strip"].page)
+        for page in pages:
+            self.assertLessEqual(max(page.width, page.height), 128)
+
+    def test_pages_no_longer_written_are_removed(self):
+        (self.out).mkdir()
+        (self.out / "atlas.png").write_bytes(b"old")
+        (self.out / "keep.png").write_bytes(b"not ours")
+        (self.out / "assets_manifest.json").write_text(json.dumps({"version": 1, "atlas": "atlas.png"}))
+        make_png(self.src / "deco_rock.png", (20, 20), (0, 0, 10, 10))
+        asset_packer.run(self.src, self.out)
+        self.assertFalse((self.out / "atlas.png").exists())
+        self.assertTrue((self.out / "keep.png").exists())
+        self.assertTrue((self.out / "world_0.png").exists())
 
     def test_packed_sprites_do_not_overlap_and_keep_padding(self):
         for i in range(12):
             make_png(self.src / f"s{i:02}.png", (64, 64), (0, 0, 20 + i * 3, 30 + i * 2))
         sprites = asset_packer.load_sprites(self.src)
-        width, height = asset_packer.pack(sprites, max_width=128, padding=2)
+        pages = asset_packer.pack(sprites, page_size=128, padding=2)
 
-        self.assertLessEqual(width, 128)
-        rects = [(s.atlas_x - 2, s.atlas_y - 2, s.atlas_x + s.width + 2, s.atlas_y + s.height + 2) for s in sprites]
-        for left, top, right, bottom in rects:
-            self.assertGreaterEqual(left, 0)
-            self.assertGreaterEqual(top, 0)
-            self.assertLessEqual(right, width)
-            self.assertLessEqual(bottom, height)
+        for s in sprites:
+            page = pages[s.page]
+            self.assertLessEqual(page.width, 128)
+            self.assertGreaterEqual(s.atlas_x - 2, 0)
+            self.assertGreaterEqual(s.atlas_y - 2, 0)
+            self.assertLessEqual(s.atlas_x + s.width + 2, page.width)
+            self.assertLessEqual(s.atlas_y + s.height + 2, page.height)
         # Padded rectangles may share the padding strip but the sprites themselves stay 2px apart.
         for i, a in enumerate(sprites):
             for b in sprites[i + 1:]:
+                if a.page != b.page:
+                    continue
                 apart_x = a.atlas_x + a.width + 2 <= b.atlas_x or b.atlas_x + b.width + 2 <= a.atlas_x
                 apart_y = a.atlas_y + a.height + 2 <= b.atlas_y or b.atlas_y + b.height + 2 <= a.atlas_y
                 self.assertTrue(apart_x or apart_y, f"{a.asset_id} and {b.asset_id} are too close")
@@ -159,8 +202,9 @@ class AssetPackerTest(unittest.TestCase):
         self.assertEqual(128, manifest["tileWidth"])
         self.assertEqual((100, 160), (plant["width"], plant["height"]))
         self.assertEqual((0.4, 0.9), (plant["anchorX"], plant["anchorY"]))
-        with Image.open(self.out / "atlas.png") as atlas:
-            self.assertEqual((manifest["atlasWidth"], manifest["atlasHeight"]), atlas.size)
+        page = manifest["pages"][0]
+        with Image.open(self.out / page["file"]) as image:
+            self.assertEqual((page["width"], page["height"]), image.size)
 
     def test_tile_width_alone_does_not_resize(self):
         make_png(self.src / "plant.png", (400, 400), (100, 40, 300, 360))
@@ -182,10 +226,10 @@ class AssetPackerTest(unittest.TestCase):
                     self.assertLess(g, 40, f"green leaked in at {(x, y)}: {(r, g, b, a)}")
                     self.assertLess(b, 40, f"blue leaked in at {(x, y)}: {(r, g, b, a)}")
 
-    def test_sprite_wider_than_atlas_is_an_error(self):
+    def test_sprite_larger_than_a_page_is_an_error(self):
         make_png(self.src / "wide.png", (300, 10), (0, 0, 300, 10))
         with self.assertRaises(ValueError):
-            asset_packer.pack(asset_packer.load_sprites(self.src), max_width=256)
+            asset_packer.pack(asset_packer.load_sprites(self.src), page_size=256)
 
 
 if __name__ == "__main__":
