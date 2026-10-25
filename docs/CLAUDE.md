@@ -79,7 +79,7 @@ timeout 560 ./gradlew testDebugUnitTest --console=plain
 app/src/main/java/com/studioguu/miniaturegarden/
   domain/model/     GardenItem(ショップのマスター) GridObject GardenGrid Collection StructureData StructureEffect GardenExpansion WeatherType
                     InventorySort(もちものの並び替え・タブ) Seasons(季節の時計・お便り) Post(ヒントと入荷のお便り)
-                    CreatureTable(生き物の組み合わせ表 VisitRule) CreatureVisits(来訪の判定・自然メモ)
+                    CreatureTable(生き物の組み合わせ表 VisitRule) CreatureVisits(来訪の判定・自然メモ) CreatureMotion(生き物の経路 CreatureRoutes)
   domain/usecase/   GardenActionUseCases ConstructionUseCases CalculateOfflineProgressUseCase OnboardingUseCases ほか
   data/             Room(local) DataStore(settings, reward) security asset audio ads notifications(WorkManager)
   ui/GardenScreen.kt GardenViewModel.kt   画面と状態

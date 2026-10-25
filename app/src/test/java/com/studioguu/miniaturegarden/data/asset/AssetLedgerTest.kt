@@ -25,6 +25,12 @@ class AssetLedgerTest {
         AtlasManifest.parse(File(main, "assets/atlas/assets_manifest.json").readText()).assets.map { it.assetId }.toSet()
     }
 
+    /** The visitors' own atlas (`creatures_manifest.json`), empty while none is bundled. */
+    private val creatureAtlasIds: Set<String> by lazy {
+        val file = File(main, "assets/atlas/creatures_manifest.json")
+        if (!file.exists()) emptySet() else AtlasManifest.parse(file.readText()).assets.map { it.assetId }.toSet()
+    }
+
     /** The marks the ledger uses, in the order they are looked for. */
     private val marks = listOf(ADOPTED, OLD_STYLE, STAND_IN, GENERATED, CODE, NONE, STORED)
 
@@ -153,7 +159,7 @@ class AssetLedgerTest {
             val assetId = "creature_${creature.id}"
             val row = section.lines().singleOrNull { it.startsWith("| ") && it.contains("`$assetId`") }
             assertNotNull("$assetId has no row", row)
-            val expected = if (assetId in atlasIds) ADOPTED else CODE
+            val expected = if (assetId in creatureAtlasIds) ADOPTED else CODE
             assertEquals(assetId, expected, markOf(cells(row!!).last()))
         }
     }

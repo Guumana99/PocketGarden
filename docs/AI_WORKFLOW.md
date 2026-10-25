@@ -49,6 +49,7 @@
 | 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` `TapTargetsTest`（吹き出し・建物のタップ） |
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | 生き物の来訪・組み合わせ表 | `CreatureVisitTest` |
+| 生き物の動き（経路・入れないマス・ポン・飛来）、`CreatureSprites` | `CreatureMotionTest` `CodeArtTest` |
 | 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |
 | 生き物の季節の条件・自然メモの「あたらしい」・DB v11 | `NatureNotesEngineTest`（＋表の網羅 `CreatureVisitTest`） |
 | リワード・1 日の回数 | `RewardTest` |
@@ -128,6 +129,8 @@
 - 1 秒未満の演出（フェード、弾ける演出、風）は、スクリーンショットでは確認できない。
   連続撮影の差分で「動いている」ことまでは言えるが、見た目の良し悪しは実機で見てもらう。
 - 動画解析の道具（ffmpeg、OpenCV）は入っていない。
+- `-no-window` で起動したエミュレータは描画がとても遅い（#70：3.2 倍に拡大したタイトルの庭で 1 フレーム約 0.6〜0.7 秒、`dumpsys gfxinfo`）。
+  フレームの重さの比較や、動きの滑らかさの確認には使えない。短い動き（0.4 秒のポンなど）は、確認用の一時パッチで時計を遅くして連続スクリーンショットで見た。
 - 生き物の確認：スターターガーデンに柵は無くなった（#28）。「ことり」の条件（ベンチと柵 3 本）は自分で柵を置いてそろえる。
   来るかどうかは 5 分ごとの抽選（50%）なので、長いと 10 分以上待つ。来たかどうかは図鑑の「いきもの」タブで確かめるのが確実（トーストは数秒で消える）。
 - 画面の操作は座標より文字で探す方が確実：`uiautomator dump` で text / content-desc の bounds を取り、その中心をタップ。

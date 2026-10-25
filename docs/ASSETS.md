@@ -144,8 +144,28 @@
 
 - 作物：#69 からすべての作物に絵がある。作物の仮の絵（`CropArt.kt`）は削除したので、新しい作物は絵（`<objectId>_stage1`〜`_stage<N>` と `<objectId>_withered`）を全部そろえて入れる。一部でも欠けると `CodeArtTest` が落ちる。
 - 名前の決まりは `TileSetDefinition`（`spriteIdsFor` `assetIdFor` `expectedSpriteIds`）。アトラスに入れた名前が一覧に無いと `CodeArtTest` が落ちる
-- 生き物：`creature_<id>`（`creature_butterfly` `creature_ladybug` `creature_bird` `creature_squirrel` `creature_frog` `creature_dragonfly`）。接地点は足元。
-  飛ぶものも足元を接地点にする（浮かせる高さはコードの `hoverHeight`）。仮の絵は `ui/render/CreatureSprites.kt`
+- 生き物：`creature_<id>`（`creature_butterfly` `creature_ladybug` `creature_bird` `creature_squirrel` `creature_frog` `creature_dragonfly`）。仮の絵は `ui/render/CreatureSprites.kt`。
+  絵の決まりは次の「生き物の絵の決まり」。
+
+### 生き物の絵の決まり（#70）
+
+生き物の動きはすべて、絵を**動かす**だけで作る（左右反転・伸縮・傾き・上下の移動・部品ごとの開閉と回転）。コマごとの描き分けは無いので、絵は次のとおり用意する。
+
+- **別の画像にまとめる**：作物のアトラス（`atlas.png`、4094×2749 で上限ぎりぎり）には入れない。
+  `app/src/main/assets/atlas/creatures.png` と `creatures_manifest.json`（形は `assets_manifest.json` と同じ。`atlas` に `creatures.png`）を作る。
+  読み込みは `AssetRepository.readCreatureAtlas` → `SpriteAtlas.creatures`。ファイルが無いあいだは仮の絵で描く。
+  名前の一覧は `TileSetDefinition.expectedCreatureSpriteIds`。一覧に無い名前を入れると `CodeArtTest` が落ちる。
+- **向き**：全種、**左向き・斜め前**で描く。右へ動くときはコードが左右反転する。
+- **接地点（anchor）は足元**。飛ぶもの（ちょうちょ・とんぼ）は胴の下端（とんぼは尾の先）。浮かせる高さはコード（`CreatureRoutes.cruiseAltitude`、空から来るときは `SKY_ALTITUDE`）。
+- **1 種 1 枚**：`creature_<id>`。図鑑の「いきもの」の章はこの 1 枚を静止して出す。
+- **ちょうちょ・とんぼ**：羽を広げた姿 1 枚（`creature_<id>`、図鑑用）を、取り込み時に切り分けて次の 3 枚も入れる。
+  - `creature_<id>_body`：胴だけ。**attachX/attachY** に羽の付け根（羽の開閉の軸）。
+  - `creature_<id>_wing_near`：手前（左）の羽。**anchor が羽の付け根**。
+  - `creature_<id>_wing_far`：奥（右）の羽。**anchor が羽の付け根**。
+  羽は付け根を軸に横方向に縮めて閉じる（`VisitorLook.wingOpen`）。3 枚のどれかが欠けると、庭でも 1 枚の絵のまま（羽ばたかない）。
+- **りす**：1 枚でもよい。しっぽを揺らすなら 2 枚にする：`creature_squirrel` をしっぽの無い体（**attachX/attachY** にしっぽの付け根）、
+  `creature_squirrel_tail` をしっぽ（**anchor が付け根**）。しっぽは付け根を軸に回す（`VisitorLook.tail`）。2 枚のときは図鑑も 2 枚を重ねて出す。
+- 大きさの目安：1 マスの幅（`tileWidth`、256px）に対して、りす 0.2、ことり 0.15、かえる 0.15、てんとうむし 0.08、ちょうちょ 0.22（羽を広げて）、とんぼ 0.25 くらい。
 
 ## 原画（`tools/source_art/`）
 

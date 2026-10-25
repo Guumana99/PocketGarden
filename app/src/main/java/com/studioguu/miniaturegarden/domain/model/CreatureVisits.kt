@@ -3,12 +3,14 @@ package com.studioguu.miniaturegarden.domain.model
 /**
  * A creature staying in the garden for a while.
  *
- * @property cell where it is. For one sitting on a building, the building's front cell, which is
+ * @property cell where it comes to. For one sitting on a building, the building's front cell, which is
  *   where it is drawn in depth order.
  * @property host what it sits on, when it sits on something ([VisitPlacement.ON_ANCHOR]); null
  *   for one on the lawn.
- * @property arrivesAt when it comes into view (epoch millis); it fades in from then.
- * @property leavesAt when it has gone again; it fades out up to then.
+ * @property arrivesAt when it comes into the garden (epoch millis): one that walks pops up then,
+ *   one that flies sets off from outside the garden.
+ * @property leavesAt when it has gone again. How it gets about in between is its route
+ *   ([CreatureRoutes.plan]).
  */
 data class CreatureVisit(
     val rule: VisitRule,
@@ -20,21 +22,6 @@ data class CreatureVisit(
     val creature: Creature get() = rule.creature
 
     fun isPresentAt(now: Long): Boolean = now in arrivesAt until leavesAt
-
-    /**
-     * How much of it shows at [now], 0 to 1: it fades in over [FADE_MILLIS] after arriving and
-     * out over the same before leaving, so it never pops in or out.
-     */
-    fun opacityAt(now: Long): Float {
-        if (!isPresentAt(now)) return 0f
-        val fadeIn = (now - arrivesAt).toFloat() / FADE_MILLIS
-        val fadeOut = (leavesAt - now).toFloat() / FADE_MILLIS
-        return minOf(fadeIn, fadeOut, 1f).coerceAtLeast(0f)
-    }
-
-    companion object {
-        const val FADE_MILLIS = 1_500L
-    }
 }
 
 /**

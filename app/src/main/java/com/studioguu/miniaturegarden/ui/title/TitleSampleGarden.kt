@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.ui.title
 
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
+import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -101,10 +102,11 @@ object TitleSampleGarden {
 
     /**
      * Who is visiting: birds on the cottage roof and the bench, butterflies over the beds. They
-     * stay for good (from the beginning of time to its end), so they are always fully there.
+     * stay for good (from the beginning of time to its end), going round and round the same way.
      */
     val visitors: List<CreatureVisit> = listOf(
-        CreatureVisit(VisitRule.BIRD_COTTAGE, GridCell(cottage.gridX, cottage.gridY), cottage, 0L, Long.MAX_VALUE),
+        // Drawn in depth order by the cottage's front cell, as in a real garden: on the roof, not behind it.
+        CreatureVisit(VisitRule.BIRD_COTTAGE, CreatureVisits.frontCell(cottage), cottage, 0L, Long.MAX_VALUE),
         CreatureVisit(VisitRule.BIRD_BENCH, GridCell(bench.gridX, bench.gridY), bench, 0L, Long.MAX_VALUE),
         CreatureVisit(VisitRule.BUTTERFLY_BLOOMS, GridCell(6, 1), null, 0L, Long.MAX_VALUE),
         CreatureVisit(VisitRule.BUTTERFLY_BLOOMS, GridCell(2, 8), null, 0L, Long.MAX_VALUE),

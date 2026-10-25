@@ -57,6 +57,8 @@ import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.asset.AssetManifest
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.CreaturePose
+import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
@@ -103,6 +105,8 @@ import com.studioguu.miniaturegarden.ui.render.drawFlatGround
 import com.studioguu.miniaturegarden.ui.render.drawGroundSlab
 import com.studioguu.miniaturegarden.ui.render.Wind
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
+import com.studioguu.miniaturegarden.ui.render.flies
+import com.studioguu.miniaturegarden.ui.render.VisitorLook
 import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
 import com.studioguu.miniaturegarden.ui.render.drawFenceArms
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
@@ -147,7 +151,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param weather decides how hard the wind blows and how strong the shadows are.
  * @param auraCells cells to mark softly on the ground: the reach of the selected building's effect.
  * @param hintCells cells the first steps point at: a few small stars twinkle quietly over each.
- * @param visitors creatures staying in the garden; each fades in and out on its own clock.
+ * @param visitors creatures staying in the garden; each goes about it on its own route ([CreatureRoutes]).
  * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
  *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid. A tap on a
@@ -256,6 +260,11 @@ fun GardenCanvas(
     val pipeline = remember { LayerPipeline() }
     val waterTick by rememberWaterTick(running = !paused && gridObjects.any { it.isTerrain })
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
+    // Each visitor's way about the garden, worked out once as it comes (and again only if the
+    // garden changes under it); every frame then only looks up where it has got to.
+    val routes = remember(visitors, grid) { visitors.map { CreatureRoutes.plan(it, grid) } }
+    val currentRoutes by rememberUpdatedState(routes)
+    val creatureImage = remember(atlas) { atlas.creatures.bitmap?.asImageBitmap() }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
     val currentGrid by rememberUpdatedState(grid)
     val currentObjects by rememberUpdatedState(gridObjects)
@@ -265,10 +274,13 @@ fun GardenCanvas(
     // recomposing anything. A breeze is slow: a modest frame rate is plenty and saves battery.
     // Held still while something covers the garden, so that a sheet sliding up over it has the
     // frames to itself.
+    // While a visitor is about, the frames come faster: something moving across the garden shows
+    // every missed frame, where a swaying leaf does not.
     val windMillis by produceState(0L, paused) {
         while (!paused) {
             withFrameMillis { value = it }
-            delay(WIND_FRAME_MILLIS)
+            val now = System.currentTimeMillis()
+            delay(if (currentRoutes.any { it.visit.isPresentAt(now) }) VISITOR_FRAME_MILLIS else WIND_FRAME_MILLIS)
         }
     }
     // The time of day, for the direction of the light; looked at again every minute.
@@ -412,13 +424,20 @@ fun GardenCanvas(
                 vanish = ghost.progress.value, lawn = lawn,
             )
         }
-        for (visit in visitors) {
-            val opacity = visit.opacityAt(ambience.epochMillis)
-            if (opacity <= 0f) continue
-            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = LayerPipeline.depthOf(visit.cell.x, visit.cell.y, 0) + 0.6f) {
-                val base = visitorBase(transform, visit)
-                val draw: DrawScope.() -> Unit = { drawVisitor(visit.creature, base, transform.tileWidth, windMillis, atlas, atlasImage) }
-                if (opacity < 1f) drawFaded(opacity, draw) else draw()
+        for (route in routes) {
+            val now = ambience.epochMillis
+            val pose = route.poseAt(now) ?: continue
+            val visit = route.visit
+            // A butterfly settles on the bloom of its flower: near the top of the flower's picture.
+            val flowerTop = visit.host?.takeIf { it.isPlant && visit.creature.flies() }?.let { flower ->
+                atlas[TileSetDefinition.assetIdFor(flower)]?.let { it.anchorY * it.drawnHeight(spriteScale) / transform.tileWidth * BLOOM_SHARE }
+            }
+            val look = VisitorLook.of(visit.creature, pose, now, flowerTop)
+            // In depth order by the cell it is in now, so that it goes behind what stands in front of it.
+            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = LayerPipeline.depthOf(pose.cell.x, pose.cell.y, 0) + 0.6f) {
+                // Its shadow only falls on the garden, not on the air round it.
+                val overGarden = gardenMap.isInside(pose.cell.x, pose.cell.y)
+                drawVisitor(visit.creature, visitorBase(transform, visit, pose), transform.tileWidth, look, atlas.creatures, creatureImage, shadow = overGarden)
             }
         }
         for (cell in hintCells) {
@@ -448,6 +467,9 @@ private val AURA_EDGE = Color(0x994FC3F7)
 
 /** How long the garden waits between two frames of wind. */
 private const val WIND_FRAME_MILLIS = 50L
+
+/** How long it waits between two frames while a visitor is about. */
+private const val VISITOR_FRAME_MILLIS = 16L
 
 /** How long the view must rest before it is handed back to be kept. */
 private const val VIEW_SAVE_DELAY_MILLIS = 600L
@@ -1164,21 +1186,31 @@ private class Ghost(val gridObject: GridObject) {
  * @param progress 0 (still whole) to 1 (gone).
  */
 /**
- * Where a visitor's feet are: on the ground in the middle of its cell, or up on what it sits on
- * (the seat of a bench, the ridge of a roof).
+ * Where a visitor's feet are, at [pose]: on the ground, or up on what it sits on (the seat of a
+ * bench, the ridge of a roof, the leaves of a crop). A flier's height is its own ([VisitorLook.altitude]).
  */
-private fun visitorBase(transform: IsometricTransform, visit: CreatureVisit): Offset {
-    val host = visit.host ?: return transform.tileCenter(visit.cell.x, visit.cell.y)
-    val footprint = host.footprint
-    val centreX = host.gridX + footprint.width / 2f
-    val centreY = host.gridY + footprint.height / 2f
+private fun visitorBase(transform: IsometricTransform, visit: CreatureVisit, pose: CreaturePose): Offset {
+    val host = visit.host
     val lift = when {
+        host == null || visit.creature.flies() -> 0f
+        // The cottage's picture stands its chimney well above its ridge: the bird sits on the ridge.
+        host.objectId == StructureData.COTTAGE.objectId -> COTTAGE_RIDGE_LIFT
         StructureData.fromObjectId(host.objectId) != null -> StructureData.fromObjectId(host.objectId)!!.heightSteps - 0.8f
         host.objectId == Decoration.BENCH.objectId -> 0.8f
+        host.isPlant -> ON_LEAVES_LIFT
         else -> 0f
     }
-    return transform.worldToScreen(centreX, centreY, lift)
+    return transform.worldToScreen(pose.x, pose.y, lift)
 }
+
+/** How far up its flower's picture a butterfly settles: on the bloom, just below the top. */
+private const val BLOOM_SHARE = 0.8f
+
+/** How high the ridge of the cottage's picture is over the middle of its footprint, in height steps (#70, on the emulator). */
+private const val COTTAGE_RIDGE_LIFT = 12.2f
+
+/** How high a ladybird on a crop is, up among its leaves, in height steps. */
+private const val ON_LEAVES_LIFT = 0.35f
 
 /** Draws [draw] at [alpha] as a whole, so overlapping parts do not show through one another. */
 private fun DrawScope.drawFaded(alpha: Float, draw: DrawScope.() -> Unit) {

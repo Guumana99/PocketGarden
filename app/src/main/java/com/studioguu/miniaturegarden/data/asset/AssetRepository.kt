@@ -30,8 +30,16 @@ import kotlinx.coroutines.withContext
 class SpriteAtlas(
     val manifest: AtlasManifest,
     val bitmap: Bitmap?,
+    private val creatureAtlas: SpriteAtlas? = null,
 ) {
     private val byId: Map<String, AssetManifest> = manifest.assets.associateBy { it.assetId }
+
+    /**
+     * The visitors' pictures, packed in a small atlas of their own (`assets/atlas/creatures_manifest.json`,
+     * see [TileSetDefinition.expectedCreatureSpriteIds]) rather than in this one, which is as large
+     * as an image may be. [EMPTY] until they are bundled.
+     */
+    val creatures: SpriteAtlas get() = creatureAtlas ?: EMPTY
 
     /** Metadata for [assetId], or null if the sprite is not in the atlas (or no image is loaded). */
     operator fun get(assetId: String): AssetManifest? = if (bitmap == null) null else byId[assetId]
@@ -269,6 +277,20 @@ class AssetRepository @Inject constructor(
         // Starts its upload to the graphics memory now, off the main thread, instead of on the
         // first frame that draws the title's garden: it is one large picture (#55).
         bitmap.prepareToDraw()
+        return SpriteAtlas(manifest, bitmap, creatureAtlas = readCreatureAtlas())
+    }
+
+    /** The visitors' own atlas ([SpriteAtlas.creatures]), or an empty one while none is bundled. */
+    private fun readCreatureAtlas(): SpriteAtlas {
+        val manifestText = try {
+            context.assets.open("$ATLAS_DIR/$CREATURE_MANIFEST_FILE").use { it.readBytes().decodeToString() }
+        } catch (_: FileNotFoundException) {
+            return SpriteAtlas.EMPTY
+        }
+        val manifest = AtlasManifest.parse(manifestText)
+        val bitmap = context.assets.open("$ATLAS_DIR/${manifest.atlas}").use(BitmapFactory::decodeStream)
+            ?: error("Creature atlas image '${manifest.atlas}' could not be decoded")
+        bitmap.prepareToDraw()
         return SpriteAtlas(manifest, bitmap)
     }
 
@@ -301,5 +323,6 @@ class AssetRepository @Inject constructor(
 
         const val ATLAS_DIR = "atlas"
         const val MANIFEST_FILE = "assets_manifest.json"
+        const val CREATURE_MANIFEST_FILE = "creatures_manifest.json"
     }
 }
