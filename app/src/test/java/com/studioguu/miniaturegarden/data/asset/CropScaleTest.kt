@@ -121,6 +121,6 @@ class CropScaleTest {
     @Test
     fun `the garden draws the atlas through the crop scale`() {
         val repository = File(main, "java/com/studioguu/miniaturegarden/data/asset/AssetRepository.kt").readText()
-        assertTrue(repository.contains("CropScale.normalized(AtlasManifest.parse(manifestText))"))
+        assertTrue(repository.contains("readAtlas(MANIFEST_FILE, CropScale::normalized)"))
     }
 }

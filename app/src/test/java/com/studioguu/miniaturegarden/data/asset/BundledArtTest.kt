@@ -169,14 +169,28 @@ class BundledArtTest {
     }
 
     @Test
-    fun `the atlas image is the size its manifest says, with every sprite inside it`() {
-        val image = Picture.read(File(main, "assets/atlas/${manifest.atlas}"))
-        assertEquals(manifest.atlasWidth, image.width)
-        assertEquals(manifest.atlasHeight, image.height)
+    fun `each atlas page is the size its manifest says, with every sprite inside its page`() {
+        val images = manifest.pages.map { page -> Picture.read(File(main, "assets/atlas/${page.file}")).also {
+            assertEquals(page.file, page.width, it.width)
+            assertEquals(page.file, page.height, it.height)
+        } }
         for (sprite in manifest.assets) {
+            val image = images[sprite.page]
             assertTrue(sprite.assetId, sprite.atlasX >= 0 && sprite.atlasX + sprite.width <= image.width)
             assertTrue(sprite.assetId, sprite.atlasY >= 0 && sprite.atlasY + sprite.height <= image.height)
         }
+    }
+
+    @Test
+    fun `the crops are on pages of their own, and only the pages in a manifest are bundled (#73)`() {
+        for (sprite in manifest.assets) {
+            val sheet = manifest.pages[sprite.page].file.substringBeforeLast('_')
+            assertEquals(sprite.assetId, if (sprite.assetId.startsWith("plant_")) "crops" else "world", sheet)
+        }
+        val creatures = AtlasManifest.parse(File(main, "assets/atlas/creatures_manifest.json").readText())
+        val listed = (manifest.pages + creatures.pages).map { it.file }.toSet()
+        val bundled = File(main, "assets/atlas").listFiles()!!.filter { it.extension == "png" }.map { it.name }.toSet()
+        assertEquals(listed, bundled)
     }
 
     // --- Encyclopedia ---

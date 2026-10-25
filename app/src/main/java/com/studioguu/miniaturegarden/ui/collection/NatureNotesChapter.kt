@@ -35,7 +35,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +50,7 @@ import com.studioguu.miniaturegarden.ui.combinationHint
 import com.studioguu.miniaturegarden.ui.combinationLabel
 import com.studioguu.miniaturegarden.ui.creatureFlavor
 import com.studioguu.miniaturegarden.ui.creatureName
+import com.studioguu.miniaturegarden.ui.render.AtlasPages
 import com.studioguu.miniaturegarden.ui.render.VisitorLook
 import com.studioguu.miniaturegarden.ui.render.drawCreatureShadow
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
@@ -207,7 +207,7 @@ private fun CreaturePicture(creature: Creature, atlas: SpriteAtlas, silhouette: 
     // The shadow is the picture with its colours replaced: drawn on a layer of its own, then filled.
     val layer = if (silhouette) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier
     val creatures = atlas.creatures
-    val atlasImage = remember(creatures) { creatures.bitmap?.asImageBitmap() }
+    val atlasImage = remember(creatures) { AtlasPages.of(creatures) }
     Canvas(Modifier.fillMaxSize().then(layer)) {
         val unit = size.minDimension * 2.2f
         val ground = Offset(size.width / 2f, size.height * 0.72f)

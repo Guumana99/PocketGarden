@@ -1,9 +1,13 @@
 {
-  "version": 1,
-  "atlas": "creatures.png",
-  "atlasWidth": 1009,
-  "atlasHeight": 459,
+  "version": 2,
   "tileWidth": 960,
+  "pages": [
+    {
+      "file": "creatures_0.png",
+      "width": 1009,
+      "height": 459
+    }
+  ],
   "assets": [
     {
       "assetId": "creature_bird",
@@ -12,6 +16,7 @@
       "width": 192,
       "height": 175,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 568,
       "atlasY": 2
     },
@@ -22,6 +27,7 @@
       "width": 168,
       "height": 120,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 741,
       "atlasY": 196
     },
@@ -32,6 +38,7 @@
       "width": 187,
       "height": 59,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 160,
       "atlasY": 348,
       "attachX": 1.0682,
@@ -44,6 +51,7 @@
       "width": 143,
       "height": 109,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 2,
       "atlasY": 348,
       "attachX": -0.0271,
@@ -56,6 +64,7 @@
       "width": 192,
       "height": 186,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 178,
       "atlasY": 2
     },
@@ -66,6 +75,7 @@
       "width": 11,
       "height": 61,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 147,
       "atlasY": 348
     },
@@ -76,6 +86,7 @@
       "width": 96,
       "height": 186,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 372,
       "atlasY": 2,
       "attachX": 0.998,
@@ -88,6 +99,7 @@
       "width": 96,
       "height": 186,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 470,
       "atlasY": 2,
       "attachX": 0.0,
@@ -100,6 +112,7 @@
       "width": 192,
       "height": 156,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 762,
       "atlasY": 2
     },
@@ -110,6 +123,7 @@
       "width": 51,
       "height": 156,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 956,
       "atlasY": 2
     },
@@ -120,6 +134,7 @@
       "width": 96,
       "height": 150,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 2,
       "atlasY": 196,
       "attachX": 0.9988,
@@ -132,6 +147,7 @@
       "width": 96,
       "height": 150,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 100,
       "atlasY": 196,
       "attachX": 0.0,
@@ -144,6 +160,7 @@
       "width": 192,
       "height": 150,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 198,
       "atlasY": 196
     },
@@ -154,6 +171,7 @@
       "width": 72,
       "height": 46,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 349,
       "atlasY": 348
     },
@@ -164,6 +182,7 @@
       "width": 174,
       "height": 192,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 2,
       "atlasY": 2
     },
@@ -174,6 +193,7 @@
       "width": 347,
       "height": 145,
       "isFlippedAllowed": true,
+      "page": 0,
       "atlasX": 392,
       "atlasY": 196
     }

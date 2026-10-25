@@ -8,8 +8,8 @@
 
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
-| `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 87 枚を 1 枚に詰めたもの（4094×2749、約 14.1MB、メモリ上 約 45MB、1 タイル 512px） | `tools/asset_packer.py` |
-| `app/src/main/assets/atlas/creatures.png` + `creatures_manifest.json` | 生き物 6 種の絵 16 枚（#71。1009×459、約 480KB、1 タイル 960px）。作物のアトラスとは別 | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
+| `app/src/main/assets/atlas/{crops,world}_<n>.png` + `assets_manifest.json` | スプライト 87 枚を 1 辺 2048px 以内のページに詰めたもの（#73）。作物（`plant_*`）は `crops_0`〜`2`（2035×2045・1952×2023・1925×467）、それ以外（建物・地面・柵）は `world_0`（1820×966）。合計 約 13.8MB、メモリ上 約 43MB、1 タイル 512px | `tools/asset_packer.py` |
+| `app/src/main/assets/atlas/creatures_0.png` + `creatures_manifest.json` | 生き物 6 種の絵 16 枚（#71。1009×459、約 480KB、1 タイル 960px）。作物のアトラスとは別（形は同じ。#73 で `creatures.png` から改名） | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
@@ -145,17 +145,17 @@
 
 - 作物：#69 からすべての作物に絵がある。作物の仮の絵（`CropArt.kt`）は削除したので、新しい作物は絵（`<objectId>_stage1`〜`_stage<N>` と `<objectId>_withered`）を全部そろえて入れる。一部でも欠けると `CodeArtTest` が落ちる。
 - 名前の決まりは `TileSetDefinition`（`spriteIdsFor` `assetIdFor` `expectedSpriteIds`）。アトラスに入れた名前が一覧に無いと `CodeArtTest` が落ちる
-- 生き物：#71 から 6 種とも Recraft の絵（`creatures.png`）。仮の絵（コード描画）は削除した。絵の決まりは次の「生き物の絵の決まり」。
+- 生き物：#71 から 6 種とも Recraft の絵（`creatures_0.png`）。仮の絵（コード描画）は削除した。絵の決まりは次の「生き物の絵の決まり」。
 
 ### 生き物の絵の決まり（#70、#71 で絵が入った）
 
 生き物の動きはすべて、絵を**動かす**だけで作る（左右反転・伸縮・傾き・上下の移動・羽の開閉と回転・2 枚の絵の切り替え）。コマごとの描き分けは無い。
 
-- **別の画像にまとめる**：作物のアトラス（`atlas.png`、4094×2749 で上限ぎりぎり）には入れない。
-  `app/src/main/assets/atlas/creatures.png` と `creatures_manifest.json`（形は `assets_manifest.json` と同じ）。
-  読み込みは `AssetRepository.readCreatureAtlas` → `SpriteAtlas.creatures`。名前の一覧は `TileSetDefinition.expectedCreatureSpriteIds`（アトラスと食い違うと `CodeArtTest` が落ちる）。
+- **別の画像にまとめる**：作物・建物のアトラスには入れない（描く縮尺 `tileWidth` が 960px と別のため）。
+  `app/src/main/assets/atlas/creatures_0.png` と `creatures_manifest.json`（形は `assets_manifest.json` と同じ）。
+  読み込みは `AssetRepository.readAtlas(CREATURE_MANIFEST_FILE)` → `SpriteAtlas.creatures`。名前の一覧は `TileSetDefinition.expectedCreatureSpriteIds`（アトラスと食い違うと `CodeArtTest` が落ちる）。
 - **作り方**：`python tools/prepare_creature_art.py --preview <フォルダ>`。原画（`tools/source_art/creature_*.png`）を切り抜いて `tools/raw_creatures/` に書き、
-  接地点を `tools/creature_overrides.json` に書き、`asset_packer.py`（`--atlas-name creatures.png --manifest-name creatures_manifest.json`）で詰める。
+  接地点を `tools/creature_overrides.json` に書き、`asset_packer.py`（`--page-size 1024 --sheet creatures --manifest-name creatures_manifest.json`）で詰める。
   `--preview` は濃い背景に全部並べた確認用の 1 枚（赤い丸が接地点）。
 - **解像度**：1 タイル 960px（`TILE`）。いちばん寄せたとき（`GardenCamera.MAX_SCALE` 2.5、420dpi で 1 タイル約 840px）に 1:1 より細かい。
 - **向き**：地上の生き物と飛ぶことりは**左向き・斜め前**。ちょうちょ・とんぼは**真上から見て頭が上**。右へ進むときはコードが左右反転する。
@@ -179,7 +179,7 @@
 | ファイル | 状態 |
 |---|---|
 | `item_fence_wood.png` | 正面向きのパーツ集。柵・支柱・横木を切り出して使用 |
-| `creature_{squirrel,squirrel_run,bird,bird_fly,frog,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures.png` に |
+| `creature_{squirrel,squirrel_run,bird,bird_fly,frog,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures_0.png` に |
 | `tile_path_cobblestone.png` | 石畳。そのまま使用 |
 | `building_cottage.png` | コテージ（#40）。透過はきれいだった。切り抜いて 3 マス分の幅で描く（描画倍率 約 2.5）。土台が 2:1 より平たい。#41 では土台の左右の角を 3×3 の左右の角にそろえていた（anchorY 0.7975）が、前の列が空いて奥に寄って見えたので、#55 から他の建物と同じく左右の角と前の角のずれを半分ずつにする（`ground_centre_y`、anchorY 0.7481、約 0.2 マス手前へ） |
 | `building_greenhouse.png` | ガラスの温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |
@@ -205,12 +205,15 @@ python tools/build_terrain_assets.py
 
 ```bash
 # スプライトをアトラスに詰め直す（この引数の組み合わせを変えないこと）
-python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --max-width 4096 --strip-crop-soil
+python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --strip-crop-soil
 ```
 
 - 原画は **1 タイル 720px** の縮尺で描かれている。アトラスは 512px に縮めて軽くしている。
-- `--max-width 4096`（#40 から）：アトラスの縦横どちらも 4096px 以内に収めるため。幅 2048 のままだと縦が 4733px になり、
-  4096px までしか扱えない端末で描けなくなるおそれがあった（`BuildingArtTest` が 4096 以内を見ている）。
+- **ページとシート**（#73）：1 枚のアトラスが 4094×2749 で 4096px の上限に迫ったので、1 辺 2048px 以内のページに分けた（`--page-size`、既定 2048。`BuildingArtTest` が 2048 以内を見ている）。
+  どのページに入るかは**名前で決まる**：`plant_*` は作物のシート（`crops_<n>.png`）、それ以外はすべて `world_<n>.png`（`asset_packer.SHEETS`）。絵を足す人が選ぶことは無い。
+  シートごとに背の高い順に棚に並べ、空きのある最初のページに入れる（背の低い絵がページの下の余りを埋める）。ページがいっぱいになれば次のページ（`crops_3.png` など）が自動でできる。
+  前のマニフェストにあって今回書かないページのファイルは消される。アプリは何ページでも `assetId` で絵を引く（`AssetManifest.page`、`SpriteAtlas.pageOf`、描画は `AtlasPages`）。
+  ページは読み込み時に並べて同時にデコードする。#73 の時点の空き：`crops_2` に約 330 万画素、`world_0` に約 240 万画素（建物 1 枚が 30 万画素前後）。
 - `atlas_overrides.json` の追加の鍵（#40）：`scale`（描画倍率。アトラスでは拡大せず、描くときに大きくする）と
   `attachX`/`attachY`（別のスプライトを取り付ける点。風車の羽根の軸）。マニフェストには `drawScale`・`attachX`・`attachY` として出る（使うときだけ）。
 
@@ -219,11 +222,12 @@ python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-w
 ```bash
 python tools/prepare_drawable_art.py --preview <確認用フォルダ>
 python tools/prepare_building_art.py
-python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --max-width 4096 --strip-crop-soil
+python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --strip-crop-soil
 ```
 
 - 白の切り抜き（`cut_out`）：絵の外周につながる白と薄い灰色（影）を消し、葉に囲まれた大きな真っ白のすき間も消す。輪郭の画素は白との混ざりを戻して白いふちを残さない。
   トウモロコシの苗の一覧だけは影が濃いので、灰色を深めに消す。どの絵からも、本体から離れた点は消す。
+  アイコンだけ切り抜き方を変えるものは `ICON_CUT`：ナス（#73）は下に落ちた灰色の影を、絵の上から 7 割より下で、背景につながるほぼ無彩色（3 色の差 7 以内）ならどれだけ濃くても消す（`shadow`。ナスの陰は差が 8 以上で残る）。スイカ（#73）は明るい側の縁が背景とみなされて欠け、白い粒が残っていたので、真っ白だけを抜く（`white_parts`）。
 - `--preview` は作物ごとに段階を並べた絵（実際の大きさの比）と、アイコンの一覧、真上から見た芝生を出す。
 - 地面の板 4 枚（荒れ地・耕した土・崩しかけた地面・水面）の上面の位置を表示する。`GroundSlab` の値はこれ。絵を差し替えたらこの値も直し、荒れ地は `FlatGround.FIELD_VERSION` を上げる（作った地面のキャッシュを捨てるため）。
 - 1 回 1 分ほど。
@@ -256,10 +260,10 @@ python tools/prepare_building_art.py --preview <確認用フォルダ>
 
 ### 新しいスプライトを入れるとき
 
-1. 背景が透明な PNG を `tools/raw_assets/<assetId>.png` として置く。
+1. 背景が透明な PNG を `tools/raw_assets/<assetId>.png` として置く（作物は `plant_`、建物は `struct_`、飾りは `deco_` で始める。入るページは名前で決まる）。
 2. 必要なら `atlas_overrides.json` にアンカーを足す。
 3. `asset_packer.py` を上の引数で実行する。
-4. `BundledArtTest` と `AssetPipelineTest` を回す。
+4. `BundledArtTest` と `AssetPipelineTest`（ページの上限は `BuildingArtTest`）を回す。
 5. エミュレータで接地と大きさを見る。
 
 ## 絵の決まりごと（実装から分かっている範囲）

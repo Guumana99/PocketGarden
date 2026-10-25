@@ -30,12 +30,10 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import com.studioguu.miniaturegarden.ui.render.LawnPatches
 import androidx.compose.ui.graphics.PathOperation
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -86,6 +84,7 @@ import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
+import com.studioguu.miniaturegarden.ui.render.AtlasPages
 import com.studioguu.miniaturegarden.ui.render.FeatheredLawn
 import com.studioguu.miniaturegarden.ui.render.RiverAutotile
 import com.studioguu.miniaturegarden.ui.render.SoilTexture
@@ -255,7 +254,7 @@ fun GardenCanvas(
     var fadingIds by remember { mutableStateOf(emptySet<String>()) }
     if (fadedObjectIds.isNotEmpty()) fadingIds = fadedObjectIds
     val fadeAlpha = 1f - (1f - FADED_ALPHA) * fade
-    val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
+    val atlasImage = remember(atlas) { AtlasPages.of(atlas) }
     val lawn = remember(atlas) { FeatheredLawn.from(atlas, GroundTile.GRASS.assetId) }
     val pipeline = remember { LayerPipeline() }
     val waterTick by rememberWaterTick(running = !paused && gridObjects.any { it.isTerrain })
@@ -264,7 +263,7 @@ fun GardenCanvas(
     // garden changes under it); every frame then only looks up where it has got to.
     val routes = remember(visitors, grid) { visitors.map { CreatureRoutes.plan(it, grid) } }
     val currentRoutes by rememberUpdatedState(routes)
-    val creatureImage = remember(atlas) { atlas.creatures.bitmap?.asImageBitmap() }
+    val creatureImage = remember(atlas) { AtlasPages.of(atlas.creatures) }
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
     val currentGrid by rememberUpdatedState(grid)
     val currentObjects by rememberUpdatedState(gridObjects)
@@ -529,7 +528,7 @@ private fun submitObjects(
     grid: GardenGrid,
     transform: IsometricTransform,
     atlas: SpriteAtlas,
-    atlasImage: ImageBitmap?,
+    atlasImage: AtlasPages?,
     terrain: TerrainTextures,
     waterTick: Int,
     ambience: Ambience,
@@ -1365,7 +1364,7 @@ fun ObjectPreview(
     val scene = remember(objectId, bloomColour) { PreviewScene.of(objectId, bloomColour) }
     val map = remember(scene) { GardenMap.allGrass(scene.gridSize) }
     val grid = remember(scene) { GardenGrid(map, scene.objects) }
-    val atlasImage = remember(atlas) { atlas.bitmap?.asImageBitmap() }
+    val atlasImage = remember(atlas) { AtlasPages.of(atlas) }
     val lawn = remember(atlas) { FeatheredLawn.from(atlas, GroundTile.GRASS.assetId) }
     val pipeline = remember { LayerPipeline() }
     val waterTick by rememberWaterTick(running = scene.objects.any { it.isTerrain })

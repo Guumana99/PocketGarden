@@ -20,8 +20,8 @@ class FeatheredLawn(val image: ImageBitmap, val sprite: AssetManifest, val base:
     companion object {
         /** Made from [atlas]'s picture of [assetId]; null when the atlas does not have it. */
         fun from(atlas: SpriteAtlas, assetId: String): FeatheredLawn? {
-            val bitmap = atlas.bitmap ?: return null
             val sprite = atlas[assetId] ?: return null
+            val bitmap = atlas.pageOf(sprite)
             val width = sprite.width
             val height = sprite.height
             if (sprite.atlasX + width > bitmap.width || sprite.atlasY + height > bitmap.height) return null
@@ -41,7 +41,7 @@ class FeatheredLawn(val image: ImageBitmap, val sprite: AssetManifest, val base:
             // mipmaps the blades blend into a soft lawn instead of glittering as grain (#53).
             out.setHasMipMap(true)
             val base = Color(LawnShade.meanColour(pixels, width, centerX, centerY, halfWidth, halfHeight))
-            return FeatheredLawn(out.asImageBitmap(), sprite.copy(atlasX = 0, atlasY = 0), base, atlas.manifest.tileWidth)
+            return FeatheredLawn(out.asImageBitmap(), sprite.copy(page = 0, atlasX = 0, atlasY = 0), base, atlas.manifest.tileWidth)
         }
     }
 }

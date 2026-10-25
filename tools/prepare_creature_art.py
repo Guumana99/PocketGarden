@@ -29,7 +29,7 @@ The originals are the eight Recraft pictures in tools/source_art/ (creature_*.pn
     the middle of the body of the flying bird; the middle of the thorax of the butterfly and the
     dragonfly (the point they fly about by);
   * writes them to tools/raw_creatures/ with their anchors in tools/creature_overrides.json, and
-    packs them (asset_packer.py) into app/src/main/assets/atlas/creatures.png and
+    packs them (asset_packer.py) into app/src/main/assets/atlas/creatures_<n>.png and
     creatures_manifest.json: not into the crops' atlas, which is as large as an image may be.
 
 Usage:
@@ -342,11 +342,12 @@ def write(pictures: dict[str, np.ndarray], overrides: dict[str, dict]) -> dict:
         print(f"{asset_id:32s} {rgba.shape[1]}x{rgba.shape[0]}  {overrides[asset_id]}")
     OVERRIDES.write_text(json.dumps(overrides, indent=2) + "\n", encoding="utf-8")
     manifest = asset_packer.run(
-        RAW, ATLAS_DIR, tile_width=TILE, max_width=1024, padding=2, overrides_path=OVERRIDES,
-        atlas_name="creatures.png", manifest_name="creatures_manifest.json",
+        RAW, ATLAS_DIR, tile_width=TILE, page_size=1024, padding=2, overrides_path=OVERRIDES,
+        sheet="creatures", manifest_name="creatures_manifest.json",
     )
-    size = (ATLAS_DIR / "creatures.png").stat().st_size
-    print(f"packed {len(manifest['assets'])} into {manifest['atlasWidth']}x{manifest['atlasHeight']}, {size / 1024:.0f} KiB")
+    for page in manifest["pages"]:
+        size = (ATLAS_DIR / page["file"]).stat().st_size
+        print(f"packed into {page['file']} {page['width']}x{page['height']}, {size / 1024:.0f} KiB")
     return manifest
 
 

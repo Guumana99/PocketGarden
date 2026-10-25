@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -14,7 +15,46 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.studioguu.miniaturegarden.data.asset.AssetManifest
+import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import kotlin.math.roundToInt
+
+/**
+ * An atlas' pages as images to draw: each sprite is drawn from the page it is packed on. The
+ * functions below that take one draw [AssetManifest]s from any page; those that take a single
+ * [ImageBitmap] draw from that image (a picture made from a sprite, such as the lawn).
+ */
+class AtlasPages(private val images: List<ImageBitmap>) {
+    operator fun get(asset: AssetManifest): ImageBitmap = images[asset.page]
+
+    companion object {
+        /** [atlas]'s pages; null while it has none. */
+        fun of(atlas: SpriteAtlas): AtlasPages? =
+            atlas.pages.takeIf { it.isNotEmpty() }?.let { pages -> AtlasPages(pages.map { it.asImageBitmap() }) }
+    }
+}
+
+/** [drawSprite] from the page of [pages] that [asset] is on. */
+fun DrawScope.drawSprite(
+    pages: AtlasPages,
+    asset: AssetManifest,
+    anchor: Offset,
+    scale: Float,
+    flipped: Boolean = false,
+    alpha: Float = 1f,
+    tint: Color? = null,
+) = drawSprite(pages[asset], asset, anchor, scale, flipped, alpha, tint)
+
+/** [drawTurningSprite] from the page of [pages] that [asset] is on. */
+fun DrawScope.drawTurningSprite(pages: AtlasPages, asset: AssetManifest, pivot: Offset, scale: Float, degrees: Float, flipped: Boolean = false) =
+    drawTurningSprite(pages[asset], asset, pivot, scale, degrees, flipped)
+
+/** [drawSwayingSprite] from the page of [pages] that [asset] is on. */
+fun DrawScope.drawSwayingSprite(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, lean: Float, flipped: Boolean = false) =
+    drawSwayingSprite(pages[asset], asset, anchor, scale, lean, flipped)
+
+/** [drawSpriteShadow] from the page of [pages] that [asset] is on. */
+fun DrawScope.drawSpriteShadow(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, light: SunLight) =
+    drawSpriteShadow(pages[asset], asset, anchor, scale, light)
 
 /**
  * Draws one atlas sprite so that its anchor point lands on [anchor].

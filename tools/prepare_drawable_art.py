@@ -105,10 +105,13 @@ CUT: dict[str, dict] = {
 
 #: The same for an icon, where it is cut out differently from its plant: the lavender's bunch is
 #: tied with pale twine, which the white was taken out of (#67). The daikon's root is white, and
-#: the usual cut bit its shaded side away (#72).
+#: the usual cut bit its shaded side away (#72). The eggplants (#73) lay on a grey shadow that was
+#: left under them, and the watermelon's pale, lit side was bitten into, leaving white flecks.
 ICON_CUT: dict[str, dict] = {
     "lavender": {"white_parts": 1.0},
     "daikon": {"white_parts": 1.0},
+    "eggplant": {"shadow": 0.7},
+    "watermelon": {"white_parts": 1.0},
 }
 
 #: Crops whose icon is made here though their plants are not (#72): the rose, paprika and daikon
@@ -165,12 +168,19 @@ WITHERED: dict[str, object] = {
 
 # --- Cutting out -------------------------------------------------------------------------------
 
+#: How grey a shadow is (cut_out's [shadow]): its channels at most this far apart, none below the
+#: darkest, so that the dark, purplish shading of a fruit that meets it is not taken as shadow.
+SHADOW_TOL = 7
+SHADOW_DARKEST = 40
+
+
 def erode(mask: np.ndarray, times: int) -> np.ndarray:
     return ~dilate(~mask, times)
 
 
 def cut_out(rgb: np.ndarray, light: int = 190, tol: int = 30, pocket: int = 3, edge: int = 2,
-            solid: float = 70.0, throughout: bool = False, white_parts: float = 0.0) -> np.ndarray:
+            solid: float = 70.0, throughout: bool = False, white_parts: float = 0.0,
+            shadow: float = 0.0) -> np.ndarray:
     """[rgb] (opaque, on white) with the white made transparent; RGBA.
 
     [edge]: how deep (pixels) the outline is un-mixed from the white. Two is enough for leaves with
@@ -185,11 +195,18 @@ def cut_out(rgb: np.ndarray, light: int = 190, tol: int = 30, pocket: int = 3, e
     share of the picture, from the top, where this is done: 0.8 leaves out the foot of a plant,
     where the pale grey is its shadow on the ground; 1.0 is the whole of an icon, which has none;
     0 is not at all.
+    [shadow]: the share of the picture, from the top, below which a grey shadow cast on the ground
+    goes too, however dark: grey (its channels within [SHADOW_TOL] of one another) and reached
+    from the background (the eggplants' shadow under the icon, #73). 0 is not at all.
     """
     v = rgb.astype(int)
     mx, mn = v.max(axis=2), v.min(axis=2)
     pale = (mn >= light) & ((mx - mn) <= tol)
     background = reconstruct(border(pale.shape) & pale, pale)
+    if shadow > 0:
+        grey = ((mx - mn) <= SHADOW_TOL) & (mn >= SHADOW_DARKEST)
+        grey[:int(grey.shape[0] * shadow)] = False
+        background = reconstruct(background, background | grey)
     if white_parts > 0:
         plain_white = (mn >= 246) & ((mx - mn) <= 8)
         strict = reconstruct(border(pale.shape) & plain_white, plain_white)
