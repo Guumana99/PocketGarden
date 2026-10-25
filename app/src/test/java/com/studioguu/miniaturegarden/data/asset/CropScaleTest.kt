@@ -36,8 +36,9 @@ class CropScaleTest {
     fun `every seedling is small, and every crop only grows from stage to stage`() {
         assertTrue(crops.keys.containsAll(listOf("plant_tomato", "plant_tulip", "plant_rose", "plant_strawberry", "plant_daikon")))
         for ((crop, stages) in crops) {
-            // A field (the wheat) is the cell's size at every stage, not a plant that grows taller.
-            if (crop in CropScale.FIELDS) continue
+            // A field (the wheat) is the cell's size at every stage, not a plant that grows taller;
+            // a log (the shiitake's, #68) is as long at every stage.
+            if (crop in CropScale.FIELDS || crop in CropScale.LOGS) continue
             assertTrue(crop, height(stages.first()) <= CropScale.SEEDLING_HEIGHT + 1e-4f)
             stages.zipWithNext { a, b -> assertTrue("$a is taller than $b", height(a) <= height(b) + 1e-4f) }
         }
@@ -47,7 +48,7 @@ class CropScaleTest {
     fun `a bushy seedling like the rose's is held to a slim shoot's breadth`() {
         for ((crop, stages) in crops) {
             // The corn's three seedlings and the wheat's field of shoots are several plants (#57).
-            val cap = if (crop in CropScale.CLUMPS) CropScale.MAX_WIDTH else CropScale.SEEDLING_WIDTH
+            val cap = if (crop in CropScale.CLUMPS || crop in CropScale.LOGS) CropScale.MAX_WIDTH else CropScale.SEEDLING_WIDTH
             assertTrue(stages.first(), width(stages.first()) <= cap + 1e-4f)
         }
         // The rose's first stage is drawn at under half its painted size (it stood as full as a
@@ -73,7 +74,7 @@ class CropScaleTest {
         assertTrue(CropScale.SEEDLING_HEIGHT <= 0.3f)
         assertTrue(CropScale.SEEDLING_WIDTH <= 0.25f)
         for ((crop, stages) in crops) {
-            if (crop in CropScale.FIELDS) continue
+            if (crop in CropScale.FIELDS || crop in CropScale.LOGS) continue
             assertTrue(stages.first(), height(stages.first()) <= 0.3f)
         }
     }

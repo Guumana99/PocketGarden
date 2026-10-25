@@ -54,7 +54,10 @@ data class GridObject(
     /** Paving. It lies under whatever stands on the cell and does not take the cell up. */
     val isFloor: Boolean get() = objectId.startsWith(FLOOR_ID_PREFIX)
 
-    /** Ground the player has broken up with the hoe. The only place a seed can go. */
+    /** Laid on the earth as cover: pebbles, wild flowers, a lawn ([GROUND_COVER_ID_PREFIX]). */
+    val isGroundCover: Boolean get() = objectId.startsWith(GROUND_COVER_ID_PREFIX)
+
+    /** Ground the player has broken up with the hoe, where most seeds go ([PlantGround]). */
     val isTilledSoil: Boolean get() = objectId == TILLED_SOIL_OBJECT_ID
 
     /**
@@ -103,6 +106,7 @@ data class GridObject(
         const val TERRAIN_ID_PREFIX = "terrain_"
         const val RIVER_OBJECT_ID = "terrain_river"
         const val FLOOR_ID_PREFIX = "floor_"
+        const val GROUND_COVER_ID_PREFIX = "ground_"
         const val COBBLESTONE_OBJECT_ID = "floor_cobblestone"
         const val WOOD_DECK_OBJECT_ID = "floor_wood"
 

@@ -64,7 +64,7 @@ class CollectionTest {
             listOf(
                 CollectionEntry.TULIP, CollectionEntry.SUNFLOWER, CollectionEntry.ROSE, CollectionEntry.COSMOS, CollectionEntry.SNOWDROP, CollectionEntry.MINT,
                 CollectionEntry.TOMATO, CollectionEntry.STRAWBERRY, CollectionEntry.WATERMELON, CollectionEntry.LAVENDER,
-                CollectionEntry.PUMPKIN, CollectionEntry.POINSETTIA, CollectionEntry.PAPRIKA, CollectionEntry.DAIKON,
+                CollectionEntry.SHIITAKE, CollectionEntry.POINSETTIA, CollectionEntry.PAPRIKA, CollectionEntry.DAIKON,
                 CollectionEntry.CARROT, CollectionEntry.EGGPLANT, CollectionEntry.WHEAT, CollectionEntry.CORN,
             ),
             byCategory[CollectionCategory.CROPS],

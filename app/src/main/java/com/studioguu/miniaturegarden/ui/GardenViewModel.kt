@@ -66,6 +66,7 @@ import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HoeUseCase
+import com.studioguu.miniaturegarden.domain.usecase.RetiredCropsUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ToggleSprinklerUseCase
 import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.OpenStarterCrateUseCase
@@ -123,6 +124,7 @@ class GardenViewModel @Inject constructor(
     private val unveilBuilding: UnveilBuildingUseCase,
     private val skipTime: SkipTimeUseCase,
     private val hoe: HoeUseCase,
+    private val retiredCrops: RetiredCropsUseCase,
     private val toggleSprinkler: ToggleSprinklerUseCase,
     private val openStarterCrate: OpenStarterCrateUseCase,
     private val followTutorial: FollowTutorialUseCase,
@@ -432,6 +434,8 @@ class GardenViewModel @Inject constructor(
     private val initialized: StateFlow<Boolean> = _initialized.asStateFlow()
     private val initJob = viewModelScope.launch {
         gardenRepository.ensureInitialized()
+        // Crops taken out of the game leave the garden, their seeds paid back (#68).
+        retiredCrops()
         hoe.tillUnderExistingPlants(System.currentTimeMillis())
         followTutorial()
         _initialized.value = true

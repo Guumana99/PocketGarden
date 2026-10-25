@@ -43,7 +43,7 @@ enum class CollectionEntry(
     STRAWBERRY(PlantSpecies.STRAWBERRY.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 30),
     WATERMELON(PlantSpecies.WATERMELON.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 50),
     LAVENDER(PlantSpecies.LAVENDER.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 50),
-    PUMPKIN(PlantSpecies.PUMPKIN.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 90),
+    SHIITAKE(PlantSpecies.SHIITAKE.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 90),
     POINSETTIA(PlantSpecies.POINSETTIA.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 90),
     PAPRIKA(PlantSpecies.PAPRIKA.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 70),
     DAIKON(PlantSpecies.DAIKON.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 40),

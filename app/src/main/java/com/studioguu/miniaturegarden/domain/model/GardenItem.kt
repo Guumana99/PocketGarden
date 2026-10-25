@@ -33,7 +33,8 @@ enum class ItemCategory {
  *                  daikon       Lv.2            30   80 coins + 70 XP after 64 h (autumn and winter)
  *                  watermelon   Lv.3            45   122 coins + 110 XP after 96 h (summer only), dries out fast
  *                  lavender     Lv.3            40   108 coins + 96 XP after 84 h (any season)
- *                  pumpkin      Lv.5            70   190 coins + 160 XP after 132 h (autumn only)
+ *                  shiitake     Lv.5            70   190 coins + 160 XP after 132 h (autumn only), on a log laid on
+ *                                                    open earth or a bed; bears again: 57 coins + 80 XP after that
  *                  poinsettia   Lv.5            70   180 coins + 150 XP after 120 h (winter only)
  *                  paprika      Lv.4            55   140 coins + 118 XP after 100 h (summer only);
  *                                                    bears again: 42 coins + 59 XP every 50 h after that
@@ -230,9 +231,9 @@ enum class GardenItem(
         unlock = UnlockCondition.PlayerLevel(3),
     ),
 
-    /** Autumn's big crop. */
-    SEED_PUMPKIN(
-        "seed_pumpkin", price = 70, objectId = PlantSpecies.PUMPKIN.objectId, category = ItemCategory.SEED,
+    /** Autumn's log of shiitake (#68): laid on open earth or a bed, not under glass. */
+    SEED_SHIITAKE(
+        "seed_shiitake", price = 70, objectId = PlantSpecies.SHIITAKE.objectId, category = ItemCategory.SEED,
         unlock = UnlockCondition.PlayerLevel(5),
     ),
 
@@ -313,7 +314,7 @@ enum class GardenItem(
             SEED_TOMATO -> setOf(Season.SUMMER)
             SEED_STRAWBERRY -> setOf(Season.SPRING)
             SEED_WATERMELON -> setOf(Season.SUMMER)
-            SEED_PUMPKIN -> setOf(Season.AUTUMN)
+            SEED_SHIITAKE -> setOf(Season.AUTUMN)
             SEED_POINSETTIA -> setOf(Season.WINTER)
             SEED_PAPRIKA -> setOf(Season.SUMMER)
             SEED_DAIKON -> setOf(Season.AUTUMN, Season.WINTER)

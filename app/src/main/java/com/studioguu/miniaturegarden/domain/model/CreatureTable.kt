@@ -22,7 +22,7 @@ package com.studioguu.miniaturegarden.domain.model
  *     LADYBUG_STRAWBERRY  ladybug    2 strawberries (any size), in spring           on a strawberry
  *     BIRD_HUT            bird       a finished hut                                 on its roof
  *     BIRD_WINTER_WELL    bird       a well, in winter                              beside the well
- *     SQUIRREL_PUMPKIN    squirrel   a pumpkin in full bloom                        beside the pumpkin
+ *     SQUIRREL_SHIITAKE   squirrel   a shiitake log ready to pick (stage 3)         beside the log
  *     FROG_WELL           frog       a well, on a rainy day                         beside the well
  *
  * Only finished things count: a work site is no place to sit.
@@ -115,7 +115,7 @@ enum class VisitRule(
         chance = 0.5f,
     ),
 
-    // Added together: the lavender, strawberry and pumpkin, the hut and the well draw visitors
+    // Added together: the lavender, strawberry and pumpkin (the shiitake since #68), the hut and the well draw visitors
     // too, a garden without a river can have a frog, and winter has a visitor of its own.
     // The lavender draws butterflies by its scent, before it flowers: in full bloom two of them
     // would already make BUTTERFLY_BLOOMS, which is tried first, and this would seldom be found.
@@ -150,10 +150,10 @@ enum class VisitRule(
         placement = VisitPlacement.BESIDE_ANCHOR,
         chance = 0.4f,
     ),
-    SQUIRREL_PUMPKIN(
+    SQUIRREL_SHIITAKE(
         Creature.SQUIRREL,
-        conditions = listOf(VisitCondition.Crops(atLeast = 1, species = PlantSpecies.PUMPKIN, minGrowth = 1f)),
-        anchor = Anchor(setOf(PlantSpecies.PUMPKIN.objectId), minGrowth = 1f),
+        conditions = listOf(VisitCondition.Crops(atLeast = 1, species = PlantSpecies.SHIITAKE, minGrowth = 1f)),
+        anchor = Anchor(setOf(PlantSpecies.SHIITAKE.objectId), minGrowth = 1f),
         placement = VisitPlacement.BESIDE_ANCHOR,
         chance = 0.4f,
     ),

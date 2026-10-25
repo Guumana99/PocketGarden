@@ -9,6 +9,7 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
+import com.studioguu.miniaturegarden.domain.model.PlantGround
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -105,8 +106,9 @@ class HoeTest {
 
     @Test
     fun `seeds and seedlings go into tilled soil and nowhere else`() = runBlocking {
-        val seeds = GardenItem.entries.filter { it.category == ItemCategory.SEED }
-        assertEquals(18, seeds.size)
+        // Every crop sown in a bed: the shiitake's log goes on open earth as well (#68, ShiitakeTest).
+        val seeds = GardenItem.entries.filter { it.category == ItemCategory.SEED && PlantSpecies.forObjectId(it.objectId).ground == PlantGround.BED }
+        assertEquals(17, seeds.size)
         seeds.forEachIndexed { slot, seed -> repo.putSlot(InventorySlot(slot, seed.itemId, 2)) }
         // Two rows of tilled soil along the top, nine to a row.
         seeds.indices.forEach { hoe.till(it % 9, it / 9, t0) }
@@ -118,7 +120,7 @@ class HoeTest {
             assertEquals(1, repo.slots.getValue(slot).amount)
         }
 
-        assertEquals(PlantSpecies.entries.map { it.objectId }.toSet(), repo.plants.map { it.objectId }.toSet())
+        assertEquals(PlantSpecies.entries.filter { it.ground == PlantGround.BED }.map { it.objectId }.toSet(), repo.plants.map { it.objectId }.toSet())
         assertTrue(repo.plants.all { it.gridY <= 1 })
     }
 

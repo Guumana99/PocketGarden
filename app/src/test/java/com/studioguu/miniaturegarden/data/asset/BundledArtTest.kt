@@ -185,12 +185,24 @@ class BundledArtTest {
     fun `every crop page can show its plant in full bloom from the atlas`() {
         // The crops that came with the seasons are drawn in code for now (ui/render/SeasonalArt.kt).
         val drawnInCode = setOf(
-            PlantSpecies.PUMPKIN, PlantSpecies.POINSETTIA,
+            PlantSpecies.POINSETTIA,
         )
         for (species in PlantSpecies.entries - drawnInCode) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })
         }
+    }
+
+    @Test
+    fun `shiitake is a log as long at every stage, within its cell, standing on the foot of the log (#68)`() {
+        val ids = TileSetDefinition.spriteIdsFor(PlantSpecies.SHIITAKE)
+        assertEquals(listOf("plant_shiitake_stage1", "plant_shiitake_stage2", "plant_shiitake_stage3", "plant_shiitake_withered"), ids)
+        val normalized = CropScale.normalized(manifest)
+        val widths = ids.map { id -> normalized.assets.single { it.assetId == id }.let { it.width * it.drawScale / manifest.tileWidth } }
+        for (w in widths) assertTrue("$w", w in 0.84f..1f)
+        assertTrue("$widths", widths.max() - widths.min() < 0.02f)
+        for (id in ids) assertTrue(id, manifest.assets.single { it.assetId == id }.anchorY >= 0.99f)
+        assertTrue(File(main, "res/drawable-nodpi/icon_shiitake.png").isFile)
     }
 
     @Test

@@ -22,6 +22,7 @@ import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.nextAcquisition
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
+import com.studioguu.miniaturegarden.domain.model.PlantGround
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
@@ -48,6 +49,9 @@ enum class ActionResult {
 
     /** A seed was put on ground that has not been tilled with the hoe. */
     NEEDS_TILLED_SOIL,
+
+    /** A log (the shiitake's, [PlantGround.LOG]) was put on paving, a lawn, ground cover, water or glass. */
+    NEEDS_OPEN_GROUND,
 
     /** Reviving was asked for a plant that has not withered. */
     NOT_WITHERED,
@@ -263,15 +267,23 @@ class PlaceItemUseCase @Inject constructor(
             // The symbol building is one of a kind: a second one never goes up.
             if (item.isSymbol && grid.hasSymbol) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
             val kind = PlacementKind.forObjectId(item.objectId)
-            when (grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY, kind, item.objectId)) {
+            val check = grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY, kind, item.objectId)
+            when (check) {
                 PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
                 PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
-                PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED
-                PlacementCheck.OK -> Unit
+                else -> Unit
             }
-            if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX) && !grid.isTilled(gridX, gridY)) {
-                return@runInTransaction ActionResult.NEEDS_TILLED_SOIL
+            // Something standing in the way is in the way. What only lies on the ground (a lawn,
+            // pebbles, flowers, a pond) is the ground, and a crop is told where it can go instead.
+            val inTheWay = check == PlacementCheck.OCCUPIED &&
+                grid.occupantAt(gridX, gridY)?.let { it.isGroundCover || it.isPond } != true
+            if (inTheWay) return@runInTransaction ActionResult.TILE_OCCUPIED
+            // A crop goes only on the ground it grows on ([PlantGround]).
+            val species = if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(item.objectId) else null
+            if (species != null && !species.ground.allows(grid.groundAt(gridX, gridY))) {
+                return@runInTransaction wrongGround(species.ground)
             }
+            if (check == PlacementCheck.OCCUPIED) return@runInTransaction ActionResult.TILE_OCCUPIED
             // Out of its season a crop only grows under glass. Seeds bought earlier stay in the
             // bag for when their season comes round again.
             val season = gardenRepository.getProgress()?.season
@@ -279,9 +291,10 @@ class PlaceItemUseCase @Inject constructor(
                 return@runInTransaction ActionResult.OUT_OF_SEASON
             }
 
-            // A seed planted in composted soil starts off ahead, and that uses the compost up.
+            // A seed planted in composted soil starts off ahead, and that uses the compost up. A
+            // log only lies on the bed, and leaves its compost be.
             val compost = grid.floorAt(gridX, gridY)
-                ?.takeIf { it.isComposted && item.objectId.startsWith(GridObject.PLANT_ID_PREFIX) }
+                ?.takeIf { it.isComposted && species?.ground?.usesSoil == true }
             gardenRepository.upsertGridObject(
                 GridObject(
                     instanceId = UUID.randomUUID().toString(),
@@ -311,6 +324,12 @@ class PlaceItemUseCase @Inject constructor(
             }
             ActionResult.SUCCESS
         }
+
+    /** What to tell the player who put a crop that grows on [ground] somewhere else. */
+    private fun wrongGround(ground: PlantGround): ActionResult = when (ground) {
+        PlantGround.BED -> ActionResult.NEEDS_TILLED_SOIL
+        PlantGround.LOG -> ActionResult.NEEDS_OPEN_GROUND
+    }
 }
 
 /**
@@ -510,9 +529,13 @@ class RemoveObjectUseCase @Inject constructor(
     }
 
     companion object {
-        /** Whether clearing [gridObject] away turns it into compost, given soil to dig it into. */
+        /**
+         * Whether clearing [gridObject] away turns it into compost, given soil to dig it into: a
+         * withered plant that grew in the soil ([PlantGround.usesSoil]; a log only lay on it).
+         */
         fun leavesCompost(gridObject: GridObject): Boolean =
-            gridObject.isPlant && gridObject.status == PlantStatus.WITHERED
+            gridObject.isPlant && gridObject.status == PlantStatus.WITHERED &&
+                PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil
     }
 }
 

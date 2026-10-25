@@ -47,7 +47,7 @@ class CreatureVisitTest {
         VisitRule.LADYBUG_STRAWBERRY -> listOf(at(1, 1, "plant_strawberry"), at(2, 1, "plant_strawberry"))
         VisitRule.BIRD_HUT -> listOf(at(3, 3, StructureData.HUT.objectId))
         VisitRule.BIRD_WINTER_WELL, VisitRule.FROG_WELL -> listOf(at(4, 4, StructureData.WELL.objectId))
-        VisitRule.SQUIRREL_PUMPKIN -> listOf(at(4, 4, "plant_pumpkin", 1f))
+        VisitRule.SQUIRREL_SHIITAKE -> listOf(at(4, 4, "plant_shiitake", 1f))
     }
 
     private fun weatherFor(rule: VisitRule) = if (rule == VisitRule.FROG_RAIN || rule == VisitRule.FROG_WELL) WeatherType.RAINY else sunny
@@ -241,11 +241,11 @@ class CreatureVisitTest {
         assertFalse(visit.isPresentAt(200_000))
     }
 
-    // --- The combinations added with the lavender, strawberry, pumpkin, hut and well ---
+    // --- The combinations added with the lavender, strawberry, pumpkin (now the shiitake), hut and well ---
 
     private val added = listOf(
         VisitRule.BUTTERFLY_LAVENDER, VisitRule.LADYBUG_STRAWBERRY, VisitRule.BIRD_HUT,
-        VisitRule.BIRD_WINTER_WELL, VisitRule.SQUIRREL_PUMPKIN, VisitRule.FROG_WELL,
+        VisitRule.BIRD_WINTER_WELL, VisitRule.SQUIRREL_SHIITAKE, VisitRule.FROG_WELL,
     )
 
     @Test
@@ -306,14 +306,14 @@ class CreatureVisitTest {
     }
 
     @Test
-    fun `a squirrel waits beside a pumpkin once it is fully grown, in any season`() {
-        val young = listOf(at(4, 4, "plant_pumpkin", 0.9f))
-        assertFalse(VisitRule.SQUIRREL_PUMPKIN.isMetBy(GardenSnapshot(young, sunny)))
-        val ripe = gardenFor(VisitRule.SQUIRREL_PUMPKIN)
-        for (season in Season.entries) assertTrue(VisitRule.SQUIRREL_PUMPKIN.isMetBy(GardenSnapshot(ripe, sunny, season)))
+    fun `a squirrel waits beside a shiitake log once it is ready to pick, in any season`() {
+        val young = listOf(at(4, 4, "plant_shiitake", 0.9f))
+        assertFalse(VisitRule.SQUIRREL_SHIITAKE.isMetBy(GardenSnapshot(young, sunny)))
+        val ripe = gardenFor(VisitRule.SQUIRREL_SHIITAKE)
+        for (season in Season.entries) assertTrue(VisitRule.SQUIRREL_SHIITAKE.isMetBy(GardenSnapshot(ripe, sunny, season)))
         // A withered one draws nobody.
         val withered = listOf(ripe.single().copy(status = PlantStatus.WITHERED))
-        assertFalse(VisitRule.SQUIRREL_PUMPKIN.isMetBy(GardenSnapshot(withered, sunny)))
+        assertFalse(VisitRule.SQUIRREL_SHIITAKE.isMetBy(GardenSnapshot(withered, sunny)))
     }
 
     @Test

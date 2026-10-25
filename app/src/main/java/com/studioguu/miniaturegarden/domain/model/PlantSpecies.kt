@@ -15,6 +15,7 @@ package com.studioguu.miniaturegarden.domain.model
  * @property regrowXp the same for experience.
  * @property canWither false for a plant that never withers (#58: the tulip): neglect and full
  *   bloom still stress it, but never all the way.
+ * @property ground where it can be put down and whether it lives in a bed's soil ([PlantGround]).
  */
 enum class PlantSpecies(
     val objectId: String,
@@ -27,6 +28,7 @@ enum class PlantSpecies(
     val regrowCoins: Int = 0,
     val regrowXp: Int = 0,
     val canWither: Boolean = true,
+    val ground: PlantGround = PlantGround.BED,
 ) {
     /** The first flower: drawn in three stages (#58), and it never withers. */
     TULIP("plant_tulip", growthHours = 48, dryOutHours = 24, harvestCoins = 50, harvestXp = 50, growthStages = 3, canWither = false),
@@ -63,8 +65,14 @@ enum class PlantSpecies(
     /** A herb for every season at Lv.3; it keeps well between waterings. */
     LAVENDER("plant_lavender", growthHours = 84, dryOutHours = 30, harvestCoins = 108, harvestXp = 96, growthStages = 3),
 
-    /** Autumn's big crop at Lv.5. */
-    PUMPKIN("plant_pumpkin", growthHours = 132, dryOutHours = 30, harvestCoins = 190, harvestXp = 160),
+    /**
+     * Autumn's crop at Lv.5 (#68, in the pumpkin's place, with its numbers for now): a log laid on
+     * the earth or on a bed, on which shiitake come up again and again. Not under glass.
+     */
+    SHIITAKE(
+        "plant_shiitake", growthHours = 132, dryOutHours = 30, harvestCoins = 190, harvestXp = 160, growthStages = 3,
+        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 57, regrowXp = 80, ground = PlantGround.LOG,
+    ),
 
     /** Winter's red leaves at Lv.5; slow to dry out in the cold. */
     POINSETTIA("plant_poinsettia", growthHours = 120, dryOutHours = 36, harvestCoins = 180, harvestXp = 150),
