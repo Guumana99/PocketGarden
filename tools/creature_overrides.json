@@ -1,0 +1,78 @@
+{
+  "creature_squirrel": {
+    "anchorX": 0.1951,
+    "anchorY": 1.0
+  },
+  "creature_bird": {
+    "anchorX": 0.2937,
+    "anchorY": 1.0
+  },
+  "creature_frog": {
+    "anchorX": 0.3978,
+    "anchorY": 0.9977
+  },
+  "creature_ladybug": {
+    "anchorX": 0.4933,
+    "anchorY": 0.9999
+  },
+  "creature_squirrel_run": {
+    "anchorX": 0.2995,
+    "anchorY": 0.7576
+  },
+  "creature_bird_fly_body": {
+    "anchorX": 0.3579,
+    "anchorY": 0.4137
+  },
+  "creature_bird_fly_wing_left": {
+    "anchorX": 0.923,
+    "anchorY": 0.4221,
+    "attachX": 1.0682,
+    "attachY": 0.3365
+  },
+  "creature_bird_fly_wing_right": {
+    "anchorX": 0.1221,
+    "anchorY": 0.7962,
+    "attachX": -0.0271,
+    "attachY": 1.0003
+  },
+  "creature_butterfly": {
+    "anchorX": 0.499,
+    "anchorY": 0.4648
+  },
+  "creature_butterfly_body": {
+    "anchorX": 0.4749,
+    "anchorY": 0.4536
+  },
+  "creature_butterfly_wing_left": {
+    "anchorX": 0.998,
+    "anchorY": 0.4648,
+    "attachX": 0.998,
+    "attachY": 0.4648
+  },
+  "creature_butterfly_wing_right": {
+    "anchorX": 0.0,
+    "anchorY": 0.4648,
+    "attachX": 0.0,
+    "attachY": 0.4648
+  },
+  "creature_dragonfly": {
+    "anchorX": 0.4994,
+    "anchorY": 0.2309
+  },
+  "creature_dragonfly_body": {
+    "anchorX": 0.4998,
+    "anchorY": 0.2309
+  },
+  "creature_dragonfly_wing_left": {
+    "anchorX": 0.9988,
+    "anchorY": 0.2011,
+    "attachX": 0.9988,
+    "attachY": 0.2011
+  },
+  "creature_dragonfly_wing_right": {
+    "anchorX": 0.0,
+    "anchorY": 0.2027,
+    "attachX": 0.0,
+    "attachY": 0.2027
+  }
+}

@@ -51,6 +51,8 @@ enum class CreatureAction {
  * @property cell the cell it is drawn in, in depth order: the one it is over, or the front cell of
  *   what it sits on.
  * @property inPond a frog in a pond: half under the water.
+ * @property setsOff a [CreatureAction.STEP] that starts a move of a few steps (the squirrel breaks
+ *   into a run), and [stops] one that ends it (it sits up again).
  */
 data class CreaturePose(
     val x: Float,
@@ -62,6 +64,8 @@ data class CreaturePose(
     val duration: Long,
     val cell: GridCell,
     val inPond: Boolean = false,
+    val setsOff: Boolean = false,
+    val stops: Boolean = false,
 ) {
     /** How far through [action] it is, 0 to 1. */
     val progress: Float get() = if (duration <= 0L) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
@@ -130,6 +134,8 @@ class CreatureRoute internal constructor(
             duration = leg.duration,
             cell = cell,
             inPond = cell in ponds,
+            setsOff = leg.setsOff,
+            stops = leg.stops,
         )
     }
 }
@@ -153,6 +159,9 @@ internal class Leg(
     val facing: Facing,
     val lookFrom: Long = -1L,
     val lookUntil: Long = -1L,
+    /** The first step of a move on foot, and the last: see [CreaturePose.setsOff]. */
+    val setsOff: Boolean = false,
+    val stops: Boolean = false,
 ) {
     val end: Long get() = start + duration
 }
@@ -161,7 +170,8 @@ internal class Leg(
  * How visitors get about the garden ([CreatureRoute]).
  *
  * Those that walk pop up next to what they came for (or on it), wander a few cells round it,
- * stopping now and then to look about, and pop away again where they are. Those that fly come in
+ * stopping now and then to look about, and pop away again where they are; the bird flies in from
+ * outside the garden instead, lands, and flies off out of it at the end (#71). Those that fly come in
  * from outside the garden, flit round what they came for, settling on its flowers now and then,
  * and fly away out of the garden at the end.
  */
@@ -216,7 +226,7 @@ object CreatureRoutes {
         val length = visit.leavesAt - visit.arrivesAt
         return when {
             flies(creature) -> planFlight(visit, grid, random, length)
-            visit.host != null -> planOnHost(visit, random, length)
+            visit.host != null -> planOnHost(visit, grid.map.size, random, length)
             else -> planOnGround(visit, grid, random, length)
         }
     }
@@ -228,8 +238,9 @@ object CreatureRoutes {
         val home = visit.cell
         val region = regionAround(visit.creature, grid, home, manner.roam)
         val ponds = region.filterTo(HashSet()) { grid.occupantAt(it.x, it.y)?.isPond == true }
-        val (span, cyclic) = spanOf(length - 2 * POP_MILLIS)
-        val plan = Planner(random, manner, span, cyclic, home.x + 0.5f, home.y + 0.5f)
+        val landing = landingOf(visit.creature, home.x + 0.5f, home.y + 0.5f, grid.map.size, random)
+        val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
+        val plan = planner(random, manner, span, cyclic, home.x + 0.5f, home.y + 0.5f, landing)
         var at = home
         val reserve = if (cyclic) manner.stepMillis * manner.roam * 2 + manner.rest.first else 0L
         plan.standFor(plan.between(manner.firstRest))
@@ -239,13 +250,13 @@ object CreatureRoutes {
             val path = pathBetween(at, choices[random.nextInt(choices.size)], region)
             val rest = plan.between(manner.rest)
             if (plan.t + path.size * manner.stepMillis + rest + reserve > span) break
-            for (cell in path) plan.stepTo(cell.x + 0.5f, cell.y + 0.5f, manner.stepMillis)
+            plan.walk(path, manner.stepMillis)
             at = path.last()
             plan.standFor(rest)
         }
-        if (cyclic && at != home) for (cell in pathBetween(at, home, region)) plan.stepTo(cell.x + 0.5f, cell.y + 0.5f, manner.stepMillis)
+        if (cyclic && at != home) plan.walk(pathBetween(at, home, region), manner.stepMillis)
         plan.standUntil(span)
-        return popping(visit, plan, home.x + 0.5f, home.y + 0.5f, depthCell = null, ponds = ponds)
+        return arriving(visit, plan, landing, home.x + 0.5f, home.y + 0.5f, grid.map.size, depthCell = null, ponds = ponds)
     }
 
     /** Cells [creature] can reach on foot from [home] without going more than [roam] cells from it. */
@@ -290,13 +301,14 @@ object CreatureRoutes {
 
     // --- Those that walk on what they came for: a bird on a roof, a ladybird on a crop ---
 
-    private fun planOnHost(visit: CreatureVisit, random: Random, length: Long): CreatureRoute {
+    private fun planOnHost(visit: CreatureVisit, size: Int, random: Random, length: Long): CreatureRoute {
         val manner = Manner.of(visit.creature)
         val host = visit.host!!
         val homeX = host.gridX + host.footprint.width / 2f
         val homeY = host.gridY + host.footprint.height / 2f
-        val (span, cyclic) = spanOf(length - 2 * POP_MILLIS)
-        val plan = Planner(random, manner, span, cyclic, homeX, homeY)
+        val landing = landingOf(visit.creature, homeX, homeY, size, random)
+        val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
+        val plan = planner(random, manner, span, cyclic, homeX, homeY, landing)
         val reserve = if (cyclic) manner.hostStepMillis + manner.rest.first else 0L
         plan.standFor(plan.between(manner.firstRest))
         while (true) {
@@ -308,14 +320,43 @@ object CreatureRoutes {
         }
         if (cyclic) plan.stepTo(homeX, homeY, manner.hostStepMillis)
         plan.standUntil(span)
-        return popping(visit, plan, homeX, homeY, depthCell = visit.cell, ponds = emptySet())
+        return arriving(visit, plan, landing, homeX, homeY, size, depthCell = visit.cell, ponds = emptySet())
     }
 
-    /** A route that pops up at (homeX, homeY), follows [plan], and pops away where it has got to. */
-    private fun popping(visit: CreatureVisit, plan: Planner, homeX: Float, homeY: Float, depthCell: GridCell?, ponds: Set<GridCell>): CreatureRoute {
+    /**
+     * How one that walks comes down: the bird flies in from outside the garden ([flightIn]) and
+     * lands on (homeX, homeY); the others pop up there (null).
+     */
+    private fun landingOf(creature: Creature, homeX: Float, homeY: Float, size: Int, random: Random): Leg? =
+        if (creature == Creature.BIRD) flightIn(homeX, homeY, 0f, size, Manner.of(creature).flySpeed, random) else null
+
+    /** The planner of a route starting at (homeX, homeY): facing the way it landed, if it flew in. */
+    private fun planner(random: Random, manner: Manner, span: Long, cyclic: Boolean, homeX: Float, homeY: Float, landing: Leg?): Planner =
+        if (landing == null) Planner(random, manner, span, cyclic, homeX, homeY) else Planner(random, manner, span, cyclic, homeX, homeY, facing = landing.facing)
+
+    /**
+     * A route that comes as [landing] says (or pops up at (homeX, homeY)), follows [plan], and goes
+     * from where it has got to: flying off out of the garden after a landing, or popping away.
+     */
+    private fun arriving(
+        visit: CreatureVisit,
+        plan: Planner,
+        landing: Leg?,
+        homeX: Float,
+        homeY: Float,
+        size: Int,
+        depthCell: GridCell?,
+        ponds: Set<GridCell>,
+    ): CreatureRoute {
+        val span = maxOf(plan.span, plan.t)
+        if (landing != null) {
+            val cameFrom = atan2((landing.fromY - landing.toY).toDouble(), (landing.fromX - landing.toX).toDouble())
+            val closing = flightOut(size, landing.duration, cameFrom, plan.random.nextDouble() * 1.2 - 0.6)
+            return CreatureRoute(visit, landing, plan.legs, span, plan.cyclic, landing.duration, closing, depthCell, ponds)
+        }
         val opening = Leg(0L, POP_MILLIS, CreatureAction.APPEAR, homeX, homeY, 0f, facing = plan.firstFacing)
         return CreatureRoute(
-            visit, opening, plan.legs, maxOf(plan.span, plan.t), plan.cyclic, POP_MILLIS,
+            visit, opening, plan.legs, span, plan.cyclic, POP_MILLIS,
             closing = { from -> Leg(0L, POP_MILLIS, CreatureAction.VANISH, from.x, from.y, 0f, facing = from.facing) },
             depthCell = depthCell, ponds = ponds,
         )
@@ -331,18 +372,8 @@ object CreatureRoutes {
         val homeY = host?.let { it.gridY + it.footprint.height / 2f } ?: (visit.cell.y + 0.5f)
         val cruise = cruiseAltitude(creature)
         val size = grid.map.size
-        val away = size * 0.8f + 3f
-
-        // Coming in: from a point well outside the garden on the side nearest where it is going,
-        // high up, down to there.
-        val angle = outwards(homeX, homeY, size, otherwise = random.nextDouble() * 2 * PI) + random.nextDouble() * 1.2 - 0.6
-        val startX = homeX + cos(angle).toFloat() * away
-        val startY = homeY + sin(angle).toFloat() * away
-        val inMillis = (away / manner.flySpeed * 1000).toLong()
-        val opening = Leg(
-            0L, inMillis, CreatureAction.FLY, startX, startY, SKY_ALTITUDE, homeX, homeY, cruise,
-            facing = facingOf(homeX - startX, homeY - startY, Facing.LEFT),
-        )
+        val opening = flightIn(homeX, homeY, cruise, size, manner.flySpeed, random)
+        val inMillis = opening.duration
         val outMillis = inMillis
         val (span, cyclic) = spanOf(length - inMillis - outMillis)
         val plan = Planner(random, manner, span, cyclic, homeX, homeY, cruise, opening.facing)
@@ -380,15 +411,39 @@ object CreatureRoutes {
         if (cyclic) plan.flyTo(homeX, homeY, cruise, maxOf(manner.stepMillis, (hypot(homeX - plan.x, homeY - plan.y) / manner.flySpeed * 1000).toLong()))
         plan.holdUntil(span)
 
-        // Going away: from wherever it is, outwards from the middle of the garden, up and out of it.
-        val leaveAngle = random.nextDouble() * 1.2 - 0.6
-        val closing = { from: CreaturePose ->
-            val out = outwards(from.x, from.y, size, otherwise = angle)
-            val endX = from.x + cos(out + leaveAngle).toFloat() * away
-            val endY = from.y + sin(out + leaveAngle).toFloat() * away
-            Leg(0L, outMillis, CreatureAction.FLY, from.x, from.y, from.altitude, endX, endY, SKY_ALTITUDE, facing = facingOf(endX - from.x, endY - from.y, from.facing))
-        }
+        val cameFrom = atan2((opening.fromY - opening.toY).toDouble(), (opening.fromX - opening.toX).toDouble())
+        val closing = flightOut(size, outMillis, cameFrom, random.nextDouble() * 1.2 - 0.6)
         return CreatureRoute(visit, opening, plan.legs, maxOf(plan.span, plan.t), plan.cyclic, outMillis, closing, depthCell = null, ponds = emptySet())
+    }
+
+    /** How far outside a garden [size] cells across a flier comes from and goes to, in cells. */
+    private fun awayFrom(size: Int): Float = size * 0.8f + 3f
+
+    /**
+     * Coming in: from a point well outside the garden on the side nearest (homeX, homeY), high up
+     * in the sky, down to there at [toAlt], at [speed] cells a second.
+     */
+    private fun flightIn(homeX: Float, homeY: Float, toAlt: Float, size: Int, speed: Float, random: Random): Leg {
+        val away = awayFrom(size)
+        val angle = outwards(homeX, homeY, size, otherwise = random.nextDouble() * 2 * PI) + random.nextDouble() * 1.2 - 0.6
+        val startX = homeX + cos(angle).toFloat() * away
+        val startY = homeY + sin(angle).toFloat() * away
+        return Leg(
+            0L, (away / speed * 1000).toLong(), CreatureAction.FLY, startX, startY, SKY_ALTITUDE, homeX, homeY, toAlt,
+            facing = facingOf(homeX - startX, homeY - startY, Facing.LEFT),
+        )
+    }
+
+    /**
+     * Going away, over [millis]: from wherever it is, outwards from the middle of the garden (the
+     * way it came, [cameFrom], from the very middle) turned by [turn], up and out of it.
+     */
+    private fun flightOut(size: Int, millis: Long, cameFrom: Double, turn: Double): (CreaturePose) -> Leg = { from ->
+        val away = awayFrom(size)
+        val out = outwards(from.x, from.y, size, otherwise = cameFrom) + turn
+        val endX = from.x + cos(out).toFloat() * away
+        val endY = from.y + sin(out).toFloat() * away
+        Leg(0L, millis, CreatureAction.FLY, from.x, from.y, from.altitude, endX, endY, SKY_ALTITUDE, facing = facingOf(endX - from.x, endY - from.y, from.facing))
     }
 
     /**
@@ -479,7 +534,7 @@ internal class Manner(
         private val SQUIRREL = Manner(stepMillis = 380L, rest = 1800L..4200L, roam = 3, stride = 3, lookChance = 0.6f, turnChance = 0.3f)
         private val BIRD = Manner(
             stepMillis = 560L, rest = 1500L..3500L, stride = 2, lookChance = 0.5f, turnChance = 0.4f,
-            hostStepMillis = 520L, hostReach = 0.22f,
+            hostStepMillis = 520L, hostReach = 0.22f, flySpeed = 3f,
         )
         private val FROG = Manner(stepMillis = 620L, rest = 2500L..6000L, stride = 2, lookChance = 0.2f, turnChance = 0.35f)
         private val LADYBUG = Manner(
@@ -519,10 +574,23 @@ private class Planner(
 
     fun stepTo(toX: Float, toY: Float, millis: Long) {
         facing = CreatureRoutes.facingOf(toX - x, toY - y, facing)
-        legs += Leg(t, millis, CreatureAction.STEP, x, y, alt, toX, toY, alt, facing = facing)
+        legs += Leg(t, millis, CreatureAction.STEP, x, y, alt, toX, toY, alt, facing = facing, setsOff = true, stops = true)
         x = toX
         y = toY
         t += millis
+    }
+
+    /** Goes cell by cell through [path], [millis] a cell, marking where it sets off and where it stops. */
+    fun walk(path: List<GridCell>, millis: Long) {
+        for ((i, cell) in path.withIndex()) {
+            val toX = cell.x + 0.5f
+            val toY = cell.y + 0.5f
+            facing = CreatureRoutes.facingOf(toX - x, toY - y, facing)
+            legs += Leg(t, millis, CreatureAction.STEP, x, y, alt, toX, toY, alt, facing = facing, setsOff = i == 0, stops = i == path.lastIndex)
+            x = toX
+            y = toY
+            t += millis
+        }
     }
 
     fun flyTo(toX: Float, toY: Float, toAlt: Float, millis: Long) {

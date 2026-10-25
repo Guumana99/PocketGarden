@@ -8,11 +8,12 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * What is still drawn in code (the visitors and some crops) is set up so that its artwork can be
+ * What was drawn in code until its artwork came (the crops, then the visitors in #71) is set up so that its artwork can be
  * packed into the atlas later without touching any drawing code: everything has the sprite id it
  * will have, and the garden looks for that sprite first.
  */
@@ -21,6 +22,7 @@ class CodeArtTest {
     private val main: File = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
     private val manifest: AtlasManifest by lazy { AtlasManifest.parse(File(main, "assets/atlas/assets_manifest.json").readText()) }
     private val sprites: Set<String> by lazy { manifest.assets.map { it.assetId }.toSet() }
+    private val creatureManifest: AtlasManifest by lazy { AtlasManifest.parse(File(main, "assets/atlas/creatures_manifest.json").readText()) }
 
     // --- Visitors ---
 
@@ -42,29 +44,49 @@ class CodeArtTest {
         assertTrue(ids.containsAll(Creature.entries.map(TileSetDefinition::assetIdFor)))
         for (creature in listOf(Creature.BUTTERFLY, Creature.DRAGONFLY)) {
             val id = TileSetDefinition.assetIdFor(creature)
-            assertEquals("${id}_body", TileSetDefinition.creatureBodyId(creature))
-            assertEquals(listOf("${id}_wing_near", "${id}_wing_far"), TileSetDefinition.creaturePartIds(creature))
+            assertEquals("${id}_body", TileSetDefinition.wingedBodyId(creature))
+            assertEquals(listOf("${id}_wing_left", "${id}_wing_right"), TileSetDefinition.wingIds(creature))
         }
-        assertEquals(listOf("creature_squirrel_tail"), TileSetDefinition.creaturePartIds(Creature.SQUIRREL))
-        // Once bundled, it holds nothing the garden would not look up.
-        val file = File(main, "assets/atlas/creatures_manifest.json")
-        if (file.exists()) {
-            val packed = AtlasManifest.parse(file.readText()).assets.map { it.assetId }.toSet()
-            assertEquals(emptySet<String>(), packed - ids.toSet())
+        assertEquals("creature_bird_fly_body", TileSetDefinition.wingedBodyId(Creature.BIRD))
+        assertEquals(listOf("creature_bird_fly_wing_left", "creature_bird_fly_wing_right"), TileSetDefinition.wingIds(Creature.BIRD))
+        for (creature in listOf(Creature.SQUIRREL, Creature.FROG, Creature.LADYBUG)) assertTrue(TileSetDefinition.wingIds(creature).isEmpty())
+        assertEquals("creature_squirrel_run", TileSetDefinition.SQUIRREL_RUNNING)
+    }
+
+    @Test
+    fun `every visitor's picture is in its atlas, and nothing the garden would not look up (#71)`() {
+        // #71: the Recraft pictures came for all six; the stand-ins drawn in code are gone.
+        val packed = creatureManifest.assets.map { it.assetId }.toSet()
+        assertEquals(TileSetDefinition.expectedCreatureSpriteIds.toSet(), packed)
+    }
+
+    @Test
+    fun `the creature atlas is small, and drawn as large as the garden's closest zoom shows it`() {
+        val image = File(main, "assets/atlas/${creatureManifest.atlas}")
+        assertEquals("creatures.png", image.name)
+        assertTrue("${image.length()} bytes", image.length() < 700 * 1024)
+        // A tile is 128 dp, 336 px on a 420 dpi screen, and 2.5 times that at the closest zoom.
+        assertTrue(creatureManifest.tileWidth >= 128 * 2.625 * GardenCamera.MAX_SCALE)
+    }
+
+    @Test
+    fun `each wing hangs on its body by its root`() {
+        for (creature in Creature.entries) {
+            for (id in TileSetDefinition.wingIds(creature)) {
+                val wing = creatureManifest.assets.single { it.assetId == id }
+                assertNotNull("$id has no attachment point", wing.attachX)
+                assertNotNull(wing.attachY)
+            }
         }
     }
 
     @Test
-    fun `the visitors' movements are made by moving their pictures, not by drawing them anew`() {
-        // A stand-in is drawn from the creature and its tile size alone, plus how far its wings are
-        // open or its tail swung: the parts the artwork will have. No clock reaches the drawing.
-        val source = File(main, "java/com/studioguu/miniaturegarden/ui/render/CreatureSprites.kt").readText()
-        val standIns = source.substringAfter("private fun DrawScope.drawCreature(")
-        val found = Regex("""private fun DrawScope\.draw(Butterfly|Ladybug|Bird|Squirrel|Frog|Dragonfly)\(([^)]*)\)""").findAll(standIns).toList()
-        assertEquals(6, found.size)
-        for (match in found) {
-            assertFalse(match.value, match.groupValues[2].contains("clock") || match.groupValues[2].contains("Long"))
-        }
+    fun `the visitors are about the size they should be`() {
+        fun widthOf(id: String) = creatureManifest.assets.single { it.assetId == id }.width.toFloat() / creatureManifest.tileWidth
+        fun heightOf(id: String) = creatureManifest.assets.single { it.assetId == id }.height.toFloat() / creatureManifest.tileWidth
+        assertEquals(0.2f, heightOf("creature_squirrel"), 0.01f)
+        for (id in listOf("creature_bird", "creature_frog", "creature_butterfly", "creature_dragonfly")) assertEquals(id, 0.2f, widthOf(id), 0.01f)
+        assertTrue(widthOf("creature_ladybug") in 0.06f..0.08f)
     }
 
     @Test
@@ -118,14 +140,11 @@ class CodeArtTest {
     @Test
     fun `every sprite still missing is drawn in code meanwhile`() {
         val missing = TileSetDefinition.expectedSpriteIds.filter { it !in sprites }
-        val creatureIds = Creature.entries.map(TileSetDefinition::assetIdFor).toSet()
         val sprayFrames = (0 until TileSetDefinition.SPRINKLER_SPRAY_FRAMES).map(TileSetDefinition::sprinklerSprayId).toSet()
         for (id in missing) {
             val species = PlantSpecies.entries.firstOrNull { id in TileSetDefinition.spriteIdsFor(it) }
             when {
                 species != null -> throw AssertionError("$id: every crop has its pictures since #69")
-                // Every visitor has its drawing in drawCreature, an exhaustive `when`.
-                id in creatureIds -> Unit
                 // A running sprinkler's water is drawn in code from SprinklerSpray, frame by frame.
                 id in sprayFrames -> Unit
                 // Everything else in a cell has a placeholder shape (drawPlaceholder, drawStructure).

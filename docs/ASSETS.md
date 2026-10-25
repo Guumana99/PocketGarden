@@ -9,6 +9,7 @@
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
 | `app/src/main/assets/atlas/atlas.png` + `assets_manifest.json` | スプライト 87 枚を 1 枚に詰めたもの（4094×2749、約 14.1MB、メモリ上 約 45MB、1 タイル 512px） | `tools/asset_packer.py` |
+| `app/src/main/assets/atlas/creatures.png` + `creatures_manifest.json` | 生き物 6 種の絵 16 枚（#71。1009×464、約 480KB、1 タイル 960px）。作物のアトラスとは別 | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
@@ -140,32 +141,36 @@
 すべて `ui/components/GardenCanvas.kt` と `ui/effects/GardenBackdrop.kt` にある。
 絵を用意できれば、同じ assetId でアトラスに入れるだけで差し替わる（スプライトがあればそちらを優先して描く）。
 
-絵が無く、仮の絵を描いている作物と生き物の assetId:
+作物と生き物の仮の絵（コード描画）について:
 
 - 作物：#69 からすべての作物に絵がある。作物の仮の絵（`CropArt.kt`）は削除したので、新しい作物は絵（`<objectId>_stage1`〜`_stage<N>` と `<objectId>_withered`）を全部そろえて入れる。一部でも欠けると `CodeArtTest` が落ちる。
 - 名前の決まりは `TileSetDefinition`（`spriteIdsFor` `assetIdFor` `expectedSpriteIds`）。アトラスに入れた名前が一覧に無いと `CodeArtTest` が落ちる
-- 生き物：`creature_<id>`（`creature_butterfly` `creature_ladybug` `creature_bird` `creature_squirrel` `creature_frog` `creature_dragonfly`）。仮の絵は `ui/render/CreatureSprites.kt`。
-  絵の決まりは次の「生き物の絵の決まり」。
+- 生き物：#71 から 6 種とも Recraft の絵（`creatures.png`）。仮の絵（コード描画）は削除した。絵の決まりは次の「生き物の絵の決まり」。
 
-### 生き物の絵の決まり（#70）
+### 生き物の絵の決まり（#70、#71 で絵が入った）
 
-生き物の動きはすべて、絵を**動かす**だけで作る（左右反転・伸縮・傾き・上下の移動・部品ごとの開閉と回転）。コマごとの描き分けは無いので、絵は次のとおり用意する。
+生き物の動きはすべて、絵を**動かす**だけで作る（左右反転・伸縮・傾き・上下の移動・羽の開閉と回転・2 枚の絵の切り替え）。コマごとの描き分けは無い。
 
 - **別の画像にまとめる**：作物のアトラス（`atlas.png`、4094×2749 で上限ぎりぎり）には入れない。
-  `app/src/main/assets/atlas/creatures.png` と `creatures_manifest.json`（形は `assets_manifest.json` と同じ。`atlas` に `creatures.png`）を作る。
-  読み込みは `AssetRepository.readCreatureAtlas` → `SpriteAtlas.creatures`。ファイルが無いあいだは仮の絵で描く。
-  名前の一覧は `TileSetDefinition.expectedCreatureSpriteIds`。一覧に無い名前を入れると `CodeArtTest` が落ちる。
-- **向き**：全種、**左向き・斜め前**で描く。右へ動くときはコードが左右反転する。
-- **接地点（anchor）は足元**。飛ぶもの（ちょうちょ・とんぼ）は胴の下端（とんぼは尾の先）。浮かせる高さはコード（`CreatureRoutes.cruiseAltitude`、空から来るときは `SKY_ALTITUDE`）。
-- **1 種 1 枚**：`creature_<id>`。図鑑の「いきもの」の章はこの 1 枚を静止して出す。
-- **ちょうちょ・とんぼ**：羽を広げた姿 1 枚（`creature_<id>`、図鑑用）を、取り込み時に切り分けて次の 3 枚も入れる。
-  - `creature_<id>_body`：胴だけ。**attachX/attachY** に羽の付け根（羽の開閉の軸）。
-  - `creature_<id>_wing_near`：手前（左）の羽。**anchor が羽の付け根**。
-  - `creature_<id>_wing_far`：奥（右）の羽。**anchor が羽の付け根**。
-  羽は付け根を軸に横方向に縮めて閉じる（`VisitorLook.wingOpen`）。3 枚のどれかが欠けると、庭でも 1 枚の絵のまま（羽ばたかない）。
-- **りす**：1 枚でもよい。しっぽを揺らすなら 2 枚にする：`creature_squirrel` をしっぽの無い体（**attachX/attachY** にしっぽの付け根）、
-  `creature_squirrel_tail` をしっぽ（**anchor が付け根**）。しっぽは付け根を軸に回す（`VisitorLook.tail`）。2 枚のときは図鑑も 2 枚を重ねて出す。
-- 大きさの目安：1 マスの幅（`tileWidth`、256px）に対して、りす 0.2、ことり 0.15、かえる 0.15、てんとうむし 0.08、ちょうちょ 0.22（羽を広げて）、とんぼ 0.25 くらい。
+  `app/src/main/assets/atlas/creatures.png` と `creatures_manifest.json`（形は `assets_manifest.json` と同じ）。
+  読み込みは `AssetRepository.readCreatureAtlas` → `SpriteAtlas.creatures`。名前の一覧は `TileSetDefinition.expectedCreatureSpriteIds`（アトラスと食い違うと `CodeArtTest` が落ちる）。
+- **作り方**：`python tools/prepare_creature_art.py --preview <フォルダ>`。原画（`tools/source_art/creature_*.png`）を切り抜いて `tools/raw_creatures/` に書き、
+  接地点を `tools/creature_overrides.json` に書き、`asset_packer.py`（`--atlas-name creatures.png --manifest-name creatures_manifest.json`）で詰める。
+  `--preview` は濃い背景に全部並べた確認用の 1 枚（赤い丸が接地点）。
+- **解像度**：1 タイル 960px（`TILE`）。いちばん寄せたとき（`GardenCamera.MAX_SCALE` 2.5、420dpi で 1 タイル約 840px）に 1:1 より細かい。
+- **向き**：地上の生き物と飛ぶことりは**左向き・斜め前**。ちょうちょ・とんぼは**真上から見て頭が上**。右へ進むときはコードが左右反転する。
+- **接地点（anchor）**：地上の生き物は足元（てんとうむしは体の中ほどの下）。走るりすは体の下の中央、飛ぶことりは胴の中心、ちょうちょ・とんぼは胸（羽の付け根の高さの体の中心）。
+  飛ぶことりは胴の中心が接地点なので、コードは立つことりの胴の高さ（`BIRD_BODY_HEIGHT` 0.08 マス）だけ持ち上げて描き、降り立つときに体の位置が跳ねないようにしている。
+- **2 枚の絵**：りすは座る `creature_squirrel` と走る `creature_squirrel_run`（移動中）、ことりは立つ `creature_bird` と飛ぶ `creature_bird_fly_*`（庭の外から飛んで来て降りるまでと、飛び去るとき）。
+  切り替えは一瞬で替えず、りすは 0.14 秒、ことりは地面から 0.06 マスの高さで重ねて入れ替える。
+  走る姿・飛ぶ姿は、頭の大きさがそろうよう、座る姿・立つ姿と同じ倍率に合わせた（原画の頭の長さ：りす 190 と 123、ことり 228 と 135）。
+- **羽の部品**：ちょうちょ・とんぼ・飛ぶことりは、胴（`*_body`）と左右の羽（`*_wing_left` `*_wing_right`）に切り分けてある。
+  羽の **anchor は付け根**、**attachX/attachY は胴の接地点の位置**（羽の絵の外にはみ出してよい）。コードは付け根を胴に合わせて吊り、付け根を軸に動かす。
+  ちょうちょ・とんぼは胴の中心線で切り、羽は胴の下の部分も持つ（羽をたたむと胴の下に寄り、すき間が開かない）。横方向に縮めて開閉する（`VisitorLook.wingOpen`）。
+  飛ぶことりは胴の輪郭を手で決めて（`BIRD_BODY`）翼を切り出し、付け根を軸に下へ回して羽ばたく。羽は胴の後ろに描く。図鑑のちょうちょ・とんぼは切り分ける前の 1 枚を出す。
+- **大きさ**：りす（座る姿の高さ）・ことり・かえる・ちょうちょ・とんぼ（幅）0.2 マス、てんとうむし（幅）0.075 マス（`SIZES`）。
+- **切り抜きで気をつけたところ**：りすの毛先は輪郭から 14px まで白と分けた（白いもやを残さない）。ことりは白い尾・頬・お腹を残すため、真っ白（244 以上）だけを背景にし、足のあいだの白は別に抜いた。
+  とんぼの羽の膜は青みのある白（228〜251）で、背景（253 以上）と分けて不透明度 0.3 以上の半透明で残した。かえるの淡い指先とてんとうむしの細い脚はふつうの抜き方で残る。
 
 ## 原画（`tools/source_art/`）
 
@@ -174,6 +179,7 @@
 | ファイル | 状態 |
 |---|---|
 | `item_fence_wood.png` | 正面向きのパーツ集。柵・支柱・横木を切り出して使用 |
+| `creature_{squirrel,squirrel_run,bird,bird_fly,frog,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures.png` に |
 | `tile_path_cobblestone.png` | 石畳。そのまま使用 |
 | `building_cottage.png` | コテージ（#40）。透過はきれいだった。切り抜いて 3 マス分の幅で描く（描画倍率 約 2.5）。土台が 2:1 より平たい。#41 では土台の左右の角を 3×3 の左右の角にそろえていた（anchorY 0.7975）が、前の列が空いて奥に寄って見えたので、#55 から他の建物と同じく左右の角と前の角のずれを半分ずつにする（`ground_centre_y`、anchorY 0.7481、約 0.2 マス手前へ） |
 | `building_greenhouse.png` | ガラスの温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |

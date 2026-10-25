@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "atlas": "creatures.png",
+  "atlasWidth": 1009,
+  "atlasHeight": 464,
+  "tileWidth": 960,
+  "assets": [
+    {
+      "assetId": "creature_bird",
+      "anchorX": 0.2937,
+      "anchorY": 1.0,
+      "width": 192,
+      "height": 175,
+      "isFlippedAllowed": true,
+      "atlasX": 568,
+      "atlasY": 2
+    },
+    {
+      "assetId": "creature_bird_fly_body",
+      "anchorX": 0.3579,
+      "anchorY": 0.4137,
+      "width": 168,
+      "height": 120,
+      "isFlippedAllowed": true,
+      "atlasX": 741,
+      "atlasY": 196
+    },
+    {
+      "assetId": "creature_bird_fly_wing_left",
+      "anchorX": 0.923,
+      "anchorY": 0.4221,
+      "width": 187,
+      "height": 68,
+      "isFlippedAllowed": true,
+      "atlasX": 190,
+      "atlasY": 348,
+      "attachX": 1.0682,
+      "attachY": 0.3365
+    },
+    {
+      "assetId": "creature_bird_fly_wing_right",
+      "anchorX": 0.1221,
+      "anchorY": 0.7962,
+      "width": 143,
+      "height": 114,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 348,
+      "attachX": -0.0271,
+      "attachY": 1.0003
+    },
+    {
+      "assetId": "creature_butterfly",
+      "anchorX": 0.499,
+      "anchorY": 0.4648,
+      "width": 192,
+      "height": 186,
+      "isFlippedAllowed": true,
+      "atlasX": 178,
+      "atlasY": 2
+    },
+    {
+      "assetId": "creature_butterfly_body",
+      "anchorX": 0.4749,
+      "anchorY": 0.4536,
+      "width": 41,
+      "height": 85,
+      "isFlippedAllowed": true,
+      "atlasX": 147,
+      "atlasY": 348
+    },
+    {
+      "assetId": "creature_butterfly_wing_left",
+      "anchorX": 0.998,
+      "anchorY": 0.4648,
+      "width": 96,
+      "height": 186,
+      "isFlippedAllowed": true,
+      "atlasX": 372,
+      "atlasY": 2,
+      "attachX": 0.998,
+      "attachY": 0.4648
+    },
+    {
+      "assetId": "creature_butterfly_wing_right",
+      "anchorX": 0.0,
+      "anchorY": 0.4648,
+      "width": 96,
+      "height": 186,
+      "isFlippedAllowed": true,
+      "atlasX": 470,
+      "atlasY": 2,
+      "attachX": 0.0,
+      "attachY": 0.4648
+    },
+    {
+      "assetId": "creature_dragonfly",
+      "anchorX": 0.4994,
+      "anchorY": 0.2309,
+      "width": 192,
+      "height": 156,
+      "isFlippedAllowed": true,
+      "atlasX": 762,
+      "atlasY": 2
+    },
+    {
+      "assetId": "creature_dragonfly_body",
+      "anchorX": 0.4998,
+      "anchorY": 0.2309,
+      "width": 51,
+      "height": 156,
+      "isFlippedAllowed": true,
+      "atlasX": 956,
+      "atlasY": 2
+    },
+    {
+      "assetId": "creature_dragonfly_wing_left",
+      "anchorX": 0.9988,
+      "anchorY": 0.2011,
+      "width": 96,
+      "height": 150,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 196,
+      "attachX": 0.9988,
+      "attachY": 0.2011
+    },
+    {
+      "assetId": "creature_dragonfly_wing_right",
+      "anchorX": 0.0,
+      "anchorY": 0.2027,
+      "width": 96,
+      "height": 150,
+      "isFlippedAllowed": true,
+      "atlasX": 100,
+      "atlasY": 196,
+      "attachX": 0.0,
+      "attachY": 0.2027
+    },
+    {
+      "assetId": "creature_frog",
+      "anchorX": 0.3978,
+      "anchorY": 0.9977,
+      "width": 192,
+      "height": 150,
+      "isFlippedAllowed": true,
+      "atlasX": 198,
+      "atlasY": 196
+    },
+    {
+      "assetId": "creature_ladybug",
+      "anchorX": 0.4933,
+      "anchorY": 0.9999,
+      "width": 72,
+      "height": 46,
+      "isFlippedAllowed": true,
+      "atlasX": 379,
+      "atlasY": 348
+    },
+    {
+      "assetId": "creature_squirrel",
+      "anchorX": 0.1951,
+      "anchorY": 1.0,
+      "width": 174,
+      "height": 192,
+      "isFlippedAllowed": true,
+      "atlasX": 2,
+      "atlasY": 2
+    },
+    {
+      "assetId": "creature_squirrel_run",
+      "anchorX": 0.2995,
+      "anchorY": 0.7576,
+      "width": 347,
+      "height": 145,
+      "isFlippedAllowed": true,
+      "atlasX": 392,
+      "atlasY": 196
+    }
+  ]
+}

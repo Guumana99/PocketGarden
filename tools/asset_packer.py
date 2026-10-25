@@ -204,10 +204,10 @@ def build_atlas(sprites: list[Sprite], size: tuple[int, int]) -> Image.Image:
     return atlas
 
 
-def build_manifest(sprites: list[Sprite], size: tuple[int, int], tile_width: int) -> dict:
+def build_manifest(sprites: list[Sprite], size: tuple[int, int], tile_width: int, atlas_name: str = ATLAS_NAME) -> dict:
     return {
         "version": MANIFEST_VERSION,
-        "atlas": ATLAS_NAME,
+        "atlas": atlas_name,
         "atlasWidth": size[0],
         "atlasHeight": size[1],
         "tileWidth": tile_width,
@@ -249,11 +249,15 @@ def run(
     alpha_threshold: int = 0,
     overrides_path: Path | None = None,
     strip_crop_soil: bool = False,
+    atlas_name: str = ATLAS_NAME,
+    manifest_name: str = MANIFEST_NAME,
 ) -> dict:
     """Run the whole pipeline and return the manifest that was written.
 
     tile_width is how wide one grid tile is in the atlas. When the source art was drawn at a
     different size (source_tile_width), every sprite is resampled by tile_width / source_tile_width.
+    atlas_name and manifest_name are the files written: the visitors have an atlas of their own
+    (creatures.png, creatures_manifest.json; see prepare_creature_art.py).
     """
     if tile_width <= 0 or (source_tile_width is not None and source_tile_width <= 0):
         raise ValueError("tile widths must be positive")
@@ -265,11 +269,11 @@ def run(
         apply_overrides(sprites, json.loads(overrides_path.read_text(encoding="utf-8")))
 
     size = pack(sprites, max_width, padding)
-    manifest = build_manifest(sprites, size, tile_width)
+    manifest = build_manifest(sprites, size, tile_width, atlas_name)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    build_atlas(sprites, size).save(output_dir / ATLAS_NAME)
-    (output_dir / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    build_atlas(sprites, size).save(output_dir / atlas_name, optimize=True)
+    (output_dir / manifest_name).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return manifest
 
 
@@ -290,6 +294,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="take the clump of earth out from under crop pictures (plant_*), see crop_soil.py")
     parser.add_argument("--overrides", type=Path, default=None,
                         help="JSON file with per-asset anchorX / anchorY / isFlippedAllowed")
+    parser.add_argument("--atlas-name", default=ATLAS_NAME, help=f"atlas image file name (default: {ATLAS_NAME})")
+    parser.add_argument("--manifest-name", default=MANIFEST_NAME, help=f"manifest file name (default: {MANIFEST_NAME})")
     args = parser.parse_args(argv)
 
     try:
@@ -303,13 +309,15 @@ def main(argv: list[str] | None = None) -> int:
             alpha_threshold=args.alpha_threshold,
             overrides_path=args.overrides,
             strip_crop_soil=args.strip_crop_soil,
+            atlas_name=args.atlas_name,
+            manifest_name=args.manifest_name,
         )
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
 
     print(f"packed {len(manifest['assets'])} sprites into "
-          f"{manifest['atlasWidth']}x{manifest['atlasHeight']} -> {args.output_dir / ATLAS_NAME}")
+          f"{manifest['atlasWidth']}x{manifest['atlasHeight']} -> {args.output_dir / args.atlas_name}")
     return 0
 
 

@@ -132,6 +132,8 @@ class CreatureMotionTest {
             for (start in starts) for (arrival in 0 until 12L) {
                 val route = CreatureRoutes.plan(visit(rule, start, arrivesAt = 7_000_000L + arrival * 333_331L), grid)
                 for ((now, pose) in posesOf(route)) {
+                    // The bird flies in and away (#71): over anything, from outside the garden.
+                    if (pose.action == CreatureAction.FLY) continue
                     assertTrue("$rule at $now in ${pose.cell}", isInside(pose))
                     val cell = GridCell(floor(pose.x).toInt(), floor(pose.y).toInt())
                     assertEquals(cell, pose.cell)
@@ -213,6 +215,7 @@ class CreatureMotionTest {
             assertTrue(poses.any { it.second.action == CreatureAction.STEP })
             for ((_, pose) in poses) {
                 assertEquals(v.cell, pose.cell)
+                if (pose.action == CreatureAction.FLY) continue
                 assertTrue(abs(pose.x - cx) <= 0.25f && abs(pose.y - cy) <= 0.25f)
                 assertEquals(0f, pose.altitude)
             }
@@ -224,15 +227,18 @@ class CreatureMotionTest {
     @Test
     fun `one that walks pops up where it comes and pops away where it is, quickly`() {
         assertTrue(CreatureRoutes.POP_MILLIS in 300L..500L)
-        for (rule in listOf(VisitRule.SQUIRREL_AUTUMN, VisitRule.FROG_WELL, VisitRule.BIRD_WINTER_WELL)) {
-            val v = visit(rule, GridCell(5, 6))
+        for (rule in listOf(VisitRule.SQUIRREL_AUTUMN, VisitRule.FROG_WELL, VisitRule.LADYBUG_TULIPS)) {
+            val tulip = objects.first { it.objectId == "plant_tulip" }
+            val v = if (rule == VisitRule.LADYBUG_TULIPS) visit(rule, GridCell(8, 8), tulip) else visit(rule, GridCell(5, 6))
             val route = CreatureRoutes.plan(v, grid)
             val first = route.poseAt(v.arrivesAt)!!
             assertEquals(CreatureAction.APPEAR, first.action)
             assertEquals(0f, first.progress)
             assertEquals(v.cell, first.cell)
-            assertEquals(5.5f, first.x)
-            assertEquals(6.5f, first.y)
+            if (rule != VisitRule.LADYBUG_TULIPS) {
+                assertEquals(5.5f, first.x)
+                assertEquals(6.5f, first.y)
+            }
             assertEquals(CreatureAction.APPEAR, route.poseAt(v.arrivesAt + CreatureRoutes.POP_MILLIS - 1)!!.action)
             assertTrue(route.poseAt(v.arrivesAt + CreatureRoutes.POP_MILLIS)!!.action != CreatureAction.APPEAR)
             val going = route.poseAt(v.leavesAt - CreatureRoutes.POP_MILLIS)!!
@@ -254,14 +260,56 @@ class CreatureMotionTest {
     fun `a pop grows a little past its size and settles, and shrinks away to nothing`() {
         val v = visit(VisitRule.SQUIRREL_AUTUMN, GridCell(5, 6))
         val route = CreatureRoutes.plan(v, grid)
-        val sizes = (0..CreatureRoutes.POP_MILLIS step 20L).map { VisitorLook.of(Creature.SQUIRREL, route.poseAt(v.arrivesAt + it.coerceAtMost(CreatureRoutes.POP_MILLIS - 1))!!, 0L).scaleY }
+        val sizes = (0..CreatureRoutes.POP_MILLIS step 20L).map { VisitorLook.of(Creature.SQUIRREL, route.poseAt(v.arrivesAt + it.coerceAtMost(CreatureRoutes.POP_MILLIS - 1))!!, 0L).scaleX }
         assertEquals(0f, sizes.first(), 0.001f)
         assertTrue(sizes.max() > 1.05f)
         assertEquals(1f, sizes.last(), 0.05f)
-        val away = ((0 until CreatureRoutes.POP_MILLIS step 20L) + (CreatureRoutes.POP_MILLIS - 1)).map { VisitorLook.of(Creature.SQUIRREL, route.poseAt(v.leavesAt - CreatureRoutes.POP_MILLIS + it)!!, 0L).scaleY }
+        val away = ((0 until CreatureRoutes.POP_MILLIS step 20L) + (CreatureRoutes.POP_MILLIS - 1)).map { VisitorLook.of(Creature.SQUIRREL, route.poseAt(v.leavesAt - CreatureRoutes.POP_MILLIS + it)!!, 0L).scaleX }
         assertEquals(1f, away.first(), 0.001f)
         assertTrue(away.max() > 1.05f)
         assertTrue(away.last() < 0.05f)
+    }
+
+    @Test
+    fun `the bird flies in from outside the garden, lands where it comes, and flies away out of it (#71)`() {
+        val cottage = objects.first { it.objectId == StructureData.COTTAGE.objectId }
+        for (arrival in 0 until 10L) {
+            for (v in listOf(
+                visit(VisitRule.BIRD_WINTER_WELL, GridCell(5, 6), arrivesAt = 9_000_000L + arrival * 77_777L),
+                visit(VisitRule.BIRD_COTTAGE, CreatureVisits.frontCell(cottage), cottage, arrivesAt = 9_000_000L + arrival * 77_777L),
+            )) {
+                val route = CreatureRoutes.plan(v, grid)
+                val poses = posesOf(route)
+                assertTrue(poses.none { it.second.action == CreatureAction.APPEAR || it.second.action == CreatureAction.VANISH })
+                val first = poses.first().second
+                val last = route.poseAt(v.leavesAt - 1)!!
+                assertEquals(CreatureAction.FLY, first.action)
+                assertFalse("${v.rule} came from inside the garden", isInside(first))
+                assertEquals(CreatureRoutes.SKY_ALTITUDE, first.altitude, 0.01f)
+                assertEquals(CreatureAction.FLY, last.action)
+                assertFalse("${v.rule} left inside the garden", isInside(last))
+                // Down on its spot once it has landed, and on its feet from then until it takes off.
+                val landed = poses.first { it.second.action != CreatureAction.FLY }.second
+                val (homeX, homeY) = if (v.host == null) 5.5f to 6.5f else (cottage.gridX + 1.5f) to (cottage.gridY + 1.5f)
+                assertEquals(homeX, landed.x, 0.001f)
+                assertEquals(homeY, landed.y, 0.001f)
+                for ((_, pose) in poses) if (pose.action != CreatureAction.FLY) assertEquals(0f, pose.altitude)
+                for ((a, b) in poses.zipWithNext()) assertTrue("jumped at ${b.first}", hypot(b.second.x - a.second.x, b.second.y - a.second.y) < 0.5f)
+            }
+        }
+    }
+
+    @Test
+    fun `a move on foot is marked where it sets off and where it stops`() {
+        val route = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_AUTUMN, GridCell(5, 4)), grid)
+        val poses = posesOf(route, 10L).map { it.second }
+        assertTrue(poses.any { it.setsOff } && poses.any { it.stops })
+        // Every move on foot starts with a step that sets off, and ends with one that stops.
+        for ((a, b) in poses.zipWithNext()) {
+            if (a.action != CreatureAction.STEP && b.action == CreatureAction.STEP) assertTrue(b.setsOff)
+            if (a.action == CreatureAction.STEP && b.action != CreatureAction.STEP) assertTrue(a.stops)
+            if (b.action != CreatureAction.STEP) assertFalse(b.setsOff || b.stops)
+        }
     }
 
     // --- In flight ---

@@ -113,36 +113,40 @@ object TileSetDefinition {
 
     /**
      * The picture of a visitor, in the creatures' atlas ([SpriteAtlas.creatures]): `creature_<id>`,
-     * facing left, standing with its anchor at its feet. For a flier, the whole of it with its
-     * wings spread (the nature notes show it).
+     * standing (or, for a flier, flying with its wings spread) as the nature notes show it. Those
+     * on the ground face left, standing with their anchor at their feet; the butterfly and the
+     * dragonfly are seen from above, head up, anchored on their thorax.
      */
     fun assetIdFor(creature: Creature): String = "creature_${creature.id}"
 
-    /**
-     * The picture the parts of [creature] ([creaturePartIds]) are hung on: a flier's body alone,
-     * `creature_<id>_body`; the squirrel itself, without its tail. Its attachment point is where
-     * they join it.
-     */
-    fun creatureBodyId(creature: Creature): String =
-        if (creature == Creature.BUTTERFLY || creature == Creature.DRAGONFLY) "${assetIdFor(creature)}_body" else assetIdFor(creature)
+    /** The squirrel running, `creature_squirrel_run`: drawn while it goes from cell to cell. Its anchor is the middle of its underside. */
+    const val SQUIRREL_RUNNING = "creature_squirrel_run"
 
     /**
-     * The parts of [creature] that move on their own, each with its anchor where it joins the
-     * body: a flier's near and far wings (`_wing_near`, `_wing_far`), opened and closed; the
-     * squirrel's tail (`_tail`), swung. None for the others.
+     * A flier's picture in parts ([wingIds]), the body first: the butterfly's and the dragonfly's
+     * `creature_<id>_body`, and the bird's flying one, `creature_bird_fly_body` (anchored on the
+     * middle of its body). Null for those that never fly.
      */
-    fun creaturePartIds(creature: Creature): List<String> = when (creature) {
-        Creature.BUTTERFLY, Creature.DRAGONFLY -> listOf("${assetIdFor(creature)}_wing_near", "${assetIdFor(creature)}_wing_far")
-        Creature.SQUIRREL -> listOf("${assetIdFor(creature)}_tail")
-        else -> emptyList()
+    fun wingedBodyId(creature: Creature): String? = when (creature) {
+        Creature.BUTTERFLY, Creature.DRAGONFLY -> "${assetIdFor(creature)}_body"
+        Creature.BIRD -> "${assetIdFor(creature)}_fly_body"
+        else -> null
     }
 
     /**
-     * Every sprite id the creatures' atlas may have: each visitor's picture, and the bodies and
-     * parts of those that move in parts.
+     * The left and right wings of a flier, beating on their own: `<body without _body>_wing_left`
+     * and `_wing_right`. Each is anchored where it joins the body, and its attachment point is
+     * where the body's anchor lies: hung on the body by the two, it turns or folds about its root.
      */
+    fun wingIds(creature: Creature): List<String> {
+        val body = wingedBodyId(creature) ?: return emptyList()
+        val stem = body.removeSuffix("_body")
+        return listOf("${stem}_wing_left", "${stem}_wing_right")
+    }
+
+    /** Every sprite id the creatures' atlas has: each visitor's picture, the running squirrel, and the fliers in parts. */
     val expectedCreatureSpriteIds: List<String> =
-        Creature.entries.flatMap { listOf(assetIdFor(it), creatureBodyId(it)).distinct() + creaturePartIds(it) }
+        Creature.entries.flatMap { listOf(assetIdFor(it)) + listOfNotNull(wingedBodyId(it)) + wingIds(it) } + SQUIRREL_RUNNING
 
     /**
      * Things drawn from a picture of their own in `res/drawable` (through [TerrainTextures]),
