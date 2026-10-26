@@ -89,11 +89,35 @@ class BuildingArtTest {
 
     @Test
     fun `a building's picture is about as tall as the height it hides things by`() {
-        for (structure in listOf(StructureData.COTTAGE, StructureData.WINDMILL)) {
+        // The hut and the well (#74) too: what they hide behind them is worked out from this.
+        for (structure in listOf(StructureData.COTTAGE, StructureData.WINDMILL, StructureData.HUT, StructureData.WELL)) {
             val building = sprite(structure.objectId)
             val stepsUp = building.anchorY * building.drawnHeight(1f) / step
             assertTrue("${structure.name}: $stepsUp", stepsUp in structure.heightSteps * 0.8f..structure.heightSteps * 1.1f)
         }
+    }
+
+    @Test
+    fun `the decorations of #74 are pictures within their cell, about the size they were drawn`() {
+        val tile = manifest.tileWidth.toFloat()
+        for (id in listOf("deco_rock", "deco_bench", "deco_lantern", "deco_sprinkler", "deco_starter_crate")) {
+            val deco = sprite(id)
+            assertTrue("$id is ${deco.drawnWidth(1f) / tile} of a cell wide", deco.drawnWidth(1f) / tile in 0.25f..0.6f)
+            assertTrue("$id stands on the middle of its base", deco.anchorX in 0.4f..0.6f)
+        }
+        // The well fits its one cell, the hut its two.
+        assertTrue(sprite("struct_well").drawnWidth(1f) <= tile)
+        assertEquals(2f, sprite("struct_hut").drawnWidth(1f) / tile, 0.05f)
+    }
+
+    @Test
+    fun `a sprinkler's water comes out of the hub its arms turn on`() {
+        val sprinkler = sprite("deco_sprinkler")
+        val (x, y) = sprinkler.attachmentAt(0f, 0f, 1f, flipped = false)!!
+        assertEquals(0f, x, 2f)
+        // Up its post, a little under the tips of its arms.
+        val up = -y / manifest.tileWidth
+        assertTrue("$up", up in 0.12f..0.3f)
     }
 
     @Test

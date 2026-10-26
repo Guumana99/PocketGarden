@@ -136,9 +136,14 @@ class BundledArtTest {
     }
 
     @Test
-    fun `the paving texture is bundled where the code looks for it`() {
-        val paving = Picture.read(File(main, "res/drawable-nodpi/tile_path_cobblestone.png"))
-        assertTrue(paving.width > 0 && paving.height > 0)
+    fun `the ground pictures are bundled where the code looks for them, one cell square (#74)`() {
+        for (name in listOf("floor_cobblestone", "floor_wood", "ground_pebble", "ground_flowers")) {
+            val picture = Picture.read(File(main, "res/drawable-nodpi/$name.png"))
+            assertEquals(name, 512, picture.width)
+            assertEquals(name, 512, picture.height)
+        }
+        // The illustrated paving it replaced is no longer bundled.
+        assertFalse(File(main, "res/drawable-nodpi/tile_path_cobblestone.png").exists())
         // The old location is gone: nothing reads from assets/tiles any more.
         assertFalse(File(main, "assets/tiles").exists())
     }
@@ -230,6 +235,22 @@ class BundledArtTest {
         val daikon = TestPng.read(File(main, "res/drawable-nodpi/icon_daikon.png"))
         val white = (0 until 256).sumOf { y -> (0 until 256).count { x -> daikon.alpha(x, y) > 200 && daikon.luminance(x, y) > 200 } }
         assertTrue("$white", white > 1200)
+    }
+
+    @Test
+    fun `the buildings, decorations and ground have icon pictures, cut out of their background (#74)`() {
+        val labels = File(main, "java/com/studioguu/miniaturegarden/ui/UiLabels.kt").readText()
+        for (id in listOf(
+            "struct_hut", "struct_well", "deco_rock", "deco_bench", "deco_lantern", "deco_sprinkler",
+            "ground_pebble", "ground_flowers", "floor_wood", "floor_cobblestone",
+        )) {
+            val file = File(main, "res/drawable-nodpi/icon_$id.png")
+            assertTrue("${file.name} is missing", file.isFile)
+            val icon = TestPng.read(file)
+            assertEquals(file.name, 256, icon.width)
+            for ((x, y) in listOf(0 to 0, 255 to 0, 0 to 255, 255 to 255)) assertEquals("${file.name} corner", 0, icon.alpha(x, y))
+            assertTrue(id, labels.contains("-> R.drawable.icon_$id\n"))
+        }
     }
 
     @Test

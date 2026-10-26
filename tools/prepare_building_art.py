@@ -18,6 +18,10 @@ The originals are in tools/source_art/ and are never changed. For each one this 
     would have to be enlarged to cover their footprint, the scale they are drawn at, and
     writes both into atlas_overrides.json for asset_packer.py.
 
+The hut, the well and the five decorations of #74 (PROPS) came on white, 1024 x 1024, like the
+crops: they are cut out of it first (prepare_drawable_art.cut_out), taking out only the plain
+white, as the hut's plinth is a pale cream that the usual cut bit into.
+
 Usage:
   python tools/prepare_building_art.py                 # writes raw_assets/ and the overrides
   python tools/prepare_building_art.py --preview out/  # also writes preview pictures
@@ -404,6 +408,78 @@ def prepare_building(rgba: np.ndarray, tiles: int, centred: bool = False) -> tup
     return rgba, override
 
 
+#: The pictures of #74, each (source, how it is sized):
+#:   ("tiles", n)   a building over its footprint, n tiles across ([prepare_building]);
+#:   ("w", share)   a decoration [share] of a tile wide; ("h", share) as tall: about the size it
+#:                  was drawn in code, within its cell.
+#: [band] is how much of the foot of the picture its base is looked for in ([base_of]): the well's
+#: bucket hangs down to near the foot of the stones, so only the lowest part is taken there; the
+#: bench's back legs end well above its front ones.
+PROPS: dict[str, tuple[str, tuple, float]] = {
+    "struct_hut": ("building_hut.png", ("tiles", 2), 0.35),
+    "struct_well": ("building_well.png", ("w", 0.86), 0.12),
+    "deco_rock": ("deco_rock.png", ("w", 0.46), 0.35),
+    "deco_bench": ("deco_bench.png", ("w", 0.56), 0.45),
+    "deco_lantern": ("deco_lantern.png", ("h", 0.44), 0.2),
+    "deco_sprinkler": ("deco_sprinkler.png", ("h", 0.34), 0.2),
+    "deco_starter_crate": ("deco_starter_crate.png", ("w", 0.42), 0.2),
+}
+
+
+def cut_from_white(name: str) -> np.ndarray:
+    """[name] (on white) cut out of its white: only the plain white goes (#74)."""
+    from prepare_drawable_art import cut_out
+    return cut_out(np.array(Image.open(SOURCE / name).convert("RGB")), white_parts=1.0)
+
+
+def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
+    name, (kind, size), band = PROPS[asset_id]
+    rgba = crop(keep_main_part(cut_from_white(name)))
+    if kind == "tiles":
+        return prepare_building(rgba, tiles=size)
+    h, w = rgba.shape[:2]
+    scale = size * TILE / (w if kind == "w" else h)
+    rgba = crop(resize(rgba, scale, scale))
+    # It stands on the middle of its base, as a building does.
+    cx, side_y, width = base_of(rgba, band)
+    ys, _ = np.where(rgba[:, :, 3] > ALPHA_MIN)
+    cy = (side_y + (ys.max() - width / 4)) / 2
+    h, w = rgba.shape[:2]
+    override = {"anchorX": round(float(cx / w), 4), "anchorY": round(float(cy / h), 4)}
+    if asset_id == "deco_sprinkler":
+        nx, ny = nozzle_of(rgba, cx, cy)
+        override["attachX"], override["attachY"] = round(nx / w, 4), round(ny / h, 4)
+    return rgba, override
+
+
+def nozzle_of(rgba: np.ndarray, cx: float, cy: float) -> tuple[float, float]:
+    """
+    Where the sprinkler's water comes out: the hub its four arms turn on, at the top of its post.
+    The post is followed up from the middle of its round foot ([cx], [cy]) along its own line,
+    while it is thin; the hub is where it spreads out into the arms.
+    """
+    opaque = rgba[:, :, 3] > 128
+    h, w = opaque.shape
+    x = int(round(cx))
+
+    def run_width(y: int) -> int:
+        if not opaque[y, x]:
+            return 0
+        left = right = x
+        while left > 0 and opaque[y, left - 1]:
+            left -= 1
+        while right < w - 1 and opaque[y, right + 1]:
+            right += 1
+        return right - left + 1
+
+    y = int(cy)
+    while y > 0 and run_width(y) > w * 0.12:  # the foot
+        y -= 1
+    while y > 0 and 0 < run_width(y) <= w * 0.2:  # the post
+        y -= 1
+    return float(cx), float(y)
+
+
 def prepare_windmill() -> dict[str, tuple[np.ndarray, dict]]:
     body_rgb = np.array(Image.open(SOURCE / "building_windmill_body.jpg").convert("RGB"))
     body = np.dstack([body_rgb, key_out_checkerboard(body_rgb, tones=[76, 92], tolerance=7, pocket_min=600, square=48, offset=24)])
@@ -470,6 +546,8 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     out["struct_cottage"] = prepare_building(load("building_cottage.png"), tiles=3)
     out["floor_greenhouse"] = prepare_building(load("building_greenhouse.png"), tiles=1)
     out.update(prepare_windmill())
+    for asset_id in PROPS:
+        out[asset_id] = prepare_prop(asset_id)
     return out
 
 

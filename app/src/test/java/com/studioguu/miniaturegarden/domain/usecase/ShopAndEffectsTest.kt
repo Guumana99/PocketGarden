@@ -223,15 +223,15 @@ class ShopAndEffectsTest {
 
     @Test
     fun `a well reaches the ring of cells round it and no further`() {
-        // A well is one cell wide and two deep; at (4,4) it stands on (4,4) and (4,5).
+        // A well stands on one cell (#74; it was 1 x 2, and reached the 10 cells round those two).
         val reach = StructureEffect.WELL.cellsInReach(4, 4)
 
-        assertEquals(10, reach.size) // a 3 x 4 block without the well's own two cells
-        assertFalse(GridCell(4, 4) in reach || GridCell(4, 5) in reach)
-        for (cell in listOf(GridCell(3, 3), GridCell(5, 3), GridCell(3, 6), GridCell(5, 6), GridCell(3, 4), GridCell(5, 5))) {
+        assertEquals(8, reach.size) // the 3 x 3 block round it without its own cell
+        assertFalse(GridCell(4, 4) in reach)
+        for (cell in listOf(GridCell(3, 3), GridCell(5, 3), GridCell(3, 5), GridCell(5, 5), GridCell(4, 5), GridCell(3, 4))) {
             assertTrue("$cell", cell in reach)
         }
-        for (cell in listOf(GridCell(2, 4), GridCell(6, 5), GridCell(4, 2), GridCell(4, 7))) {
+        for (cell in listOf(GridCell(2, 4), GridCell(6, 5), GridCell(4, 2), GridCell(4, 6))) {
             assertFalse("$cell", cell in reach)
         }
     }

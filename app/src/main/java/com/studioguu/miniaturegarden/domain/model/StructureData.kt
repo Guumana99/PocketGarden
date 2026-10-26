@@ -51,8 +51,15 @@ enum class StructureData(
     val heightSteps: Float,
     val isSymbol: Boolean = false,
 ) {
-    HUT("struct_hut", Footprint(width = 2, height = 2), heightSteps = 7f),
-    WELL("struct_well", Footprint(width = 1, height = 2), heightSteps = 2.4f),
+    /** A garden shed. As tall as its picture (#74): the ridge of its roof stands 11 steps up. */
+    HUT("struct_hut", Footprint(width = 2, height = 2), heightSteps = 11f),
+
+    /**
+     * A round stone well under a little roof, on one cell since #74 (it was 1 x 2 while drawn in
+     * code; a well saved then now covers its first cell, and its second is left free). Its roof
+     * stands 6.5 steps up.
+     */
+    WELL("struct_well", Footprint(width = 1, height = 1), heightSteps = 6.5f),
 
     /**
      * A cottage with a chimney: the first symbol building. As tall as its picture (#40): the

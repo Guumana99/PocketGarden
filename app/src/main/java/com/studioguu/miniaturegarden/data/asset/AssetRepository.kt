@@ -61,6 +61,7 @@ class SpriteAtlas(
  */
 class TerrainTextures(
     val riverAutotile: Bitmap? = null,
+    /** Paving seen from straight above, one copy to a cell (`floor_cobblestone.png`, #74). */
     val cobblestone: Bitmap? = null,
     /**
      * The untilled ground every cell starts as: the earth of `soil_wasteland.png` flattened into
@@ -88,7 +89,22 @@ class TerrainTextures(
      * (From #57 to #60 it was the face of a composted bed instead.)
      */
     val broken: Bitmap? = null,
+    /**
+     * Pebbles, wild flowers in grass and wooden decking (#74), each seen from straight above and
+     * made to tile, one copy to a cell, like [cobblestone]: the top faces of the slabs they came
+     * as (`tools/prepare_drawable_art.py`).
+     */
+    val pebbles: Bitmap? = null,
+    val flowers: Bitmap? = null,
+    val woodDeck: Bitmap? = null,
 ) {
+    /** The picture laid over a cell of ground cover [objectId] (pebbles, wild flowers), or null. */
+    fun coverFor(objectId: String): Bitmap? = when (objectId) {
+        GroundCover.PEBBLE.objectId -> pebbles
+        GroundCover.FLOWERS.objectId -> flowers
+        else -> null
+    }
+
     companion object {
         val EMPTY = TerrainTextures()
     }
@@ -175,7 +191,10 @@ class AssetRepository @Inject constructor(
             cachedTerrain ?: withContext(Dispatchers.IO) {
                 coroutineScope {
                     val river = async { decodeUnscaled(R.drawable.tile_river_autotile) }
-                    val cobblestone = async { decodeUnscaled(R.drawable.tile_path_cobblestone) }
+                    val cobblestone = async { decodeGround(R.drawable.floor_cobblestone) }
+                    val pebbles = async { decodeGround(R.drawable.ground_pebble) }
+                    val flowers = async { decodeGround(R.drawable.ground_flowers) }
+                    val woodDeck = async { decodeGround(R.drawable.floor_wood) }
                     val pond = async { decodeUnscaled(R.drawable.pond) }
                     val pondWater = async(Dispatchers.Default) {
                         decodeUnscaled(R.drawable.pond_center)?.let { picture ->
@@ -200,12 +219,18 @@ class AssetRepository @Inject constructor(
                         pondWater = pondWater.await(),
                         tilled = tilled.await(),
                         broken = broken.await(),
+                        pebbles = pebbles.await(),
+                        flowers = flowers.await(),
+                        woodDeck = woodDeck.await(),
                     )
                 }
             }.also { cachedTerrain = it }
         }
         val ground = wasteland?.await() ?: return@coroutineScope rest
-        TerrainTextures(rest.riverAutotile, rest.cobblestone, ground, rest.pond, rest.pondWater, rest.tilled, rest.broken)
+        TerrainTextures(
+            rest.riverAutotile, rest.cobblestone, ground, rest.pond, rest.pondWater, rest.tilled, rest.broken,
+            rest.pebbles, rest.flowers, rest.woodDeck,
+        )
     }
 
     /**
@@ -263,6 +288,13 @@ class AssetRepository @Inject constructor(
             partial.renameTo(file)
         }
     }
+
+    /**
+     * A picture laid over the ground cell by cell ([TerrainTextures.cobblestone] and the like):
+     * with mipmaps, as it is drawn many times smaller than it is, so that its stones and flowers
+     * blend rather than glitter as grain (as the lawn's, #53).
+     */
+    private fun decodeGround(@DrawableRes id: Int): Bitmap? = decodeUnscaled(id)?.also { it.setHasMipMap(true) }
 
     /**
      * Decodes at the file's own pixel size, whatever the screen density: a picture in plain

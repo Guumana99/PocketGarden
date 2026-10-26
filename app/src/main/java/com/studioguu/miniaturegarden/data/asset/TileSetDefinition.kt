@@ -150,9 +150,14 @@ object TileSetDefinition {
 
     /**
      * Things drawn from a picture of their own in `res/drawable` (through [TerrainTextures]),
-     * not from the atlas: they are never looked up there.
+     * not from the atlas: they are never looked up there. The ground of #74 is among them: laid
+     * over a cell so that the cells run on into one another, its picture repeats, and a part of
+     * an atlas page cannot.
      */
-    val DRAWABLE_OBJECT_IDS: Set<String> = setOf(GridObject.POND_OBJECT_ID)
+    val DRAWABLE_OBJECT_IDS: Set<String> = setOf(
+        GridObject.POND_OBJECT_ID, GridObject.COBBLESTONE_OBJECT_ID, GridObject.WOOD_DECK_OBJECT_ID,
+        GroundCover.PEBBLE.objectId, GroundCover.FLOWERS.objectId,
+    )
 
     /** The windmill's sails: a sprite of their own, hung on the mill's hub and turned. */
     const val WINDMILL_SAILS = "struct_windmill_blades"

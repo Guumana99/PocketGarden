@@ -102,19 +102,37 @@ class GardenGridTest {
     @Test
     fun `structures have their own footprint and everything else covers one cell`() {
         assertEquals(Footprint(2, 2), StructureData.HUT.footprint)
-        assertEquals(Footprint(1, 2), StructureData.WELL.footprint)
+        // The well has stood on one cell since #74 (1 x 2 while it was drawn in code).
+        assertEquals(Footprint(1, 1), StructureData.WELL.footprint)
         assertEquals(Footprint(2, 2), Footprint.forObjectId("struct_hut"))
         assertEquals(Footprint.SINGLE, Footprint.forObjectId("plant_tulip"))
         assertEquals(Footprint.SINGLE, Footprint.forObjectId("deco_rock"))
         assertEquals(Footprint.SINGLE, Footprint.forObjectId("something_unknown"))
 
         assertEquals(4, obj("hut", 0, 0, "struct_hut").occupiedCells().size)
-        assertEquals(listOf(GridCell(3, 1), GridCell(3, 2)), obj("well", 3, 1, "struct_well").occupiedCells())
+        assertEquals(listOf(GridCell(3, 1)), obj("well", 3, 1, "struct_well").occupiedCells())
         assertEquals(StructureData.entries.size, StructureData.entries.map { it.objectId }.toSet().size)
         assertFalse(obj("hut", 0, 0, "struct_hut").isPlant)
     }
 
     // --- GardenGrid: occupancy ---
+
+    @Test
+    fun `a well saved on two cells covers its first one, and leaves the second free (#74)`() {
+        // Saved while a well was 1 x 2 at (3, 1): it covered (3, 1) and (3, 2), and nothing else
+        // could stand on (3, 2). Its size comes from its id, not the save, so now it is 1 x 1.
+        val well = obj("well", 3, 1, "struct_well")
+        val grid = GardenGrid(map, listOf(well))
+        assertSame(well, grid.objectAt(3, 1))
+        assertNull(grid.objectAt(3, 2))
+        assertEquals(PlacementCheck.OK, grid.checkPlacement(Footprint.SINGLE, 3, 2))
+        assertEquals(PlacementCheck.OCCUPIED, grid.checkPlacement(Footprint.SINGLE, 3, 1))
+        // Something put there afterwards stands beside it, not under it.
+        val tulip = obj("tulip", 3, 2)
+        val both = GardenGrid(map, listOf(well, tulip))
+        assertSame(well, both.objectAt(3, 1))
+        assertSame(tulip, both.objectAt(3, 2))
+    }
 
     @Test
     fun `an object is found from any cell of its footprint`() {

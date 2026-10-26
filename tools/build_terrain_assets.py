@@ -2,16 +2,18 @@
 """Build the terrain art the game loads.
 
 Inputs (tools/source_art):
-  tile_path_cobblestone.png  cobblestone texture
   item_fence_wood.png        sheet of fence pieces on a plain background
   tile_river_atlas.png       reference only, see below
 
 Outputs:
   app/src/main/res/drawable-nodpi/tile_river_autotile.png   river atlas, see below
-  app/src/main/res/drawable-nodpi/tile_path_cobblestone.png
   tools/raw_assets/struct_fence*.png   fence parts, picked up by asset_packer.py like any sprite
 
-  The two tiles go into drawable-nodpi so the app can name them as R.drawable.*: a missing or
+  (Until #74 it also made the paving, tile_path_cobblestone.png, from an illustration of that
+  name; the paving is now prepare_drawable_art.py's floor_cobblestone.png, and the illustration
+  is kept in source_art unused.)
+
+  The river goes into drawable-nodpi so the app can name them as R.drawable.*: a missing or
   misnamed file then fails the build instead of silently drawing nothing, and nodpi keeps
   Android from rescaling them per screen density.
 
@@ -223,15 +225,6 @@ def build_river_atlas() -> None:
     atlas.save(TILES_OUT / "tile_river_autotile.png")
 
 
-def build_cobblestone() -> None:
-    texture = Image.open(SOURCE / "tile_path_cobblestone.png").convert("RGB")
-    # A quarter of the sheet per tile keeps the stones a readable size on a small tile.
-    half = texture.width // 2
-    tile = texture.crop((0, 0, half, half)).resize((256, 256), Image.LANCZOS)
-    TILES_OUT.mkdir(parents=True, exist_ok=True)
-    tile.save(TILES_OUT / "tile_path_cobblestone.png")
-
-
 # Fence parts cut from the sheet: output name -> (left, top, right, bottom) on the 1024 px sheet.
 # Each is drawn upright, facing the viewer, exactly as on the sheet: none is sheared or rotated.
 FENCE_PARTS = {
@@ -256,9 +249,8 @@ def build_fence() -> None:
 
 def main() -> int:
     build_river_atlas()
-    build_cobblestone()
     build_fence()
-    print("written:", TILES_OUT / "tile_river_autotile.png", TILES_OUT / "tile_path_cobblestone.png",
+    print("written:", TILES_OUT / "tile_river_autotile.png",
           *(RAW_ASSETS / f"{name}.png" for name in FENCE_PARTS), sep="\n  ")
     return 0
 

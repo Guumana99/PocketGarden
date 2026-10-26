@@ -345,12 +345,12 @@ class UiBalanceAndGroundTest {
     }
 
     @Test
-    fun `pebbles and wild flowers cover their cell, not a few specks (#60)`() {
+    fun `pebbles and wild flowers cover their cell, not a few specks (#60, #74)`() {
+        // #74: pictures seen from straight above, laid over the whole cell; the drawn scatter is gone.
         val canvas = source("ui/components/GardenCanvas.kt")
-        assertTrue(canvas.contains("if (obj.objectId == GroundCover.PEBBLE.objectId) {\n        drawPebbles(obj, base, unit)"))
-        assertTrue(canvas.contains("drawPath(bed, PEBBLE_GRAVEL)"))
-        assertTrue(Regex("private const val PEBBLES = (\\d+)").find(canvas)!!.groupValues[1].toInt() >= 10)
-        assertTrue(Regex("private const val WILD_FLOWERS = (\\d+)").find(canvas)!!.groupValues[1].toInt() >= 12)
+        assertTrue(canvas.contains("submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) { drawGroundTexture(cover, transform, obj.gridX, obj.gridY) }"))
+        assertFalse(canvas.contains("drawPebbles("))
+        assertFalse(canvas.contains("drawWildFlowers("))
     }
 
     @Test

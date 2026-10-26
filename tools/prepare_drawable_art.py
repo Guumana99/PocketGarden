@@ -15,7 +15,8 @@ This script:
         three stalks of stage 3 stand in. Stage 2 came with two stalks; a third, the right-hand one
         mirrored, is stood in front of them in the same place;
       - eggplant: stage 1 came as four seedlings; the front one is kept, as stages 2 and 3 are one plant;
-      - carrot: no stage 2 came; it is stage 3's leaves alone, the root still in the ground.
+      - carrot: stage 2 (#74) is the leaves with a thin ring of the root showing at their foot
+        (until #74, when none had come, stage 3's leaves cut off above the root).
         Stage 3 (#60) is the leaves with only the shoulder of the root showing, as a carrot
         stands in its bed; the whole root above the soil read as lying on the ground;
       - wheat: all three stages are a whole field filling the cell; they are laid out one tile wide
@@ -37,6 +38,11 @@ This script:
         each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag:
     one for each crop here, and for the crops whose plants are made elsewhere (ICON_ONLY, #72);
+    and icon_<item>.png for the buildings, decorations and ground of #74 (ITEM_ICONS), cut from
+    the same pictures as their sprites, the ground as the slab it came as;
+  * the ground of #74 (GROUND_TEXTURES): the top face of each slab (tile_<name>_iso.png) seen from straight
+    above, its large light and shade evened out, made to tile, to res/drawable-nodpi/<objectId>.png,
+    which the garden lays over a cell, one copy to a cell (ground_texture);
   * the lawn: the top face of tile_grass_iso.png unprojected into a flat square, for
     prepare_building_art.py to make tile_grass from (flat_lawn);
   * prints where the top face lies in each ground picture (GroundSlab's values).
@@ -309,12 +315,10 @@ def eggplant_stages() -> list[np.ndarray]:
 
 
 def carrot_stages() -> list[np.ndarray]:
-    grown = crop(load_cut("crop_carrot_3.png"))
-    # Stage 2: the leaves of stage 3, down to where the orange of the root begins.
+    grown = crop(load_cut("crop_carrot_stage3.png"))
     rgb = grown[:, :, :3].astype(int)
     orange = (rgb[:, :, 0] > 170) & (rgb[:, :, 1] < 150) & (rgb[:, :, 2] < 90) & (grown[:, :, 3] > 128)
     rows = np.where(orange.sum(axis=1) > 6)[0]
-    leaves = crop(grown[:rows.min() - 6].copy())
     # Stage 3: the leaves and the shoulder of the root, fading into the bed below it (#60).
     cut = rows.min() + int((rows.max() - rows.min()) * CARROT_SHOULDER)
     ready = grown[:cut].copy()
@@ -323,7 +327,9 @@ def carrot_stages() -> list[np.ndarray]:
     for i, k in enumerate(ramp):
         row = cut - fade + i
         ready[row, :, 3] = (ready[row, :, 3] * k).astype(ready.dtype)
-    return [crop(load_cut("crop_carrot_1.png")), leaves, crop(ready)]
+    # Stage 2 came in #74: its leaves, with a thin ring of the root's top at their foot. (Until
+    # then it was stage 3's leaves cut off above the root.)
+    return [crop(load_cut(f"crop_carrot_stage{n}.png")) for n in (1, 2)] + [crop(ready)]
 
 
 def without_roots(rgba: np.ndarray, flare: float = 1.15) -> np.ndarray:
@@ -455,15 +461,130 @@ def prepare_icons() -> dict[str, np.ndarray]:
         if path.stem.removeprefix("icon_") not in STAGES.keys() | ICON_ONLY:
             continue
         name = path.stem.removeprefix("icon_")
-        rgba = crop(load_cut(path.name, **ICON_CUT.get(name, CUT.get(name, {}))))
-        h, w = rgba.shape[:2]
-        scale = ICON_SIZE * 0.92 / max(h, w)
-        small = resize(rgba, scale, scale)
-        canvas = np.zeros((ICON_SIZE, ICON_SIZE, 4), np.uint8)
-        sh, sw = small.shape[:2]
-        paste(canvas, small, (ICON_SIZE - sw) // 2, (ICON_SIZE - sh) // 2)
-        out[path.stem] = canvas
+        out[path.stem] = to_icon(crop(load_cut(path.name, **ICON_CUT.get(name, CUT.get(name, {})))))
+    for item_id, source in ITEM_ICONS.items():
+        out[f"icon_{item_id}"] = item_icon(source)
     return out
+
+
+#: The ground of #74: objectId -> (slab picture, how far in from its edges the face is taken, how it
+#: is made to tile). "blend": the far edge brought round and blended in, as the pond's water
+#: (#54); "joints": the same, but in the middle of the blend the darker of the two wins, so that
+#: stones meet at a joint instead of showing through one another; "boards": the decking is cut
+#: across to a whole number of boards, so that they run on from cell to cell, and along them it
+#: is not blended: a cell's edge is where its boards end, as boards do.
+GROUND_TEXTURES: dict[str, tuple[str, float, str]] = {
+    "ground_pebble": ("tile_pebble_iso.png", 0.05, "joints"),
+    "ground_flowers": ("tile_flowers_iso.png", 0.05, "blend"),
+    "floor_wood": ("tile_wood_deck_iso.png", 0.03, "boards"),
+    "floor_cobblestone": ("tile_cobblestone_iso.png", 0.05, "joints"),
+}
+
+#: Pixels a side of a ground texture: one cell. About as many as a cell of the atlas (512).
+GROUND_SIZE = 512
+
+#: How much wider than [GROUND_SIZE] the face is taken, to blend its far edge in over.
+GROUND_MARGIN = 88
+
+#: How large the light and shade taken out of a ground texture is, at least (pixels): baked into
+#: the slab's face, a lit corner showed once a cell as a pattern over the ground.
+GROUND_EVEN_OUT = 60
+
+#: The icons of #74's things, item id -> the picture it is cut from (the slab, for the ground).
+ITEM_ICONS: dict[str, str] = {
+    "struct_hut": "building_hut.png",
+    "struct_well": "building_well.png",
+    "deco_rock": "deco_rock.png",
+    "deco_bench": "deco_bench.png",
+    "deco_lantern": "deco_lantern.png",
+    "deco_sprinkler": "deco_sprinkler.png",
+    "ground_pebble": "tile_pebble_iso.png",
+    "ground_flowers": "tile_flowers_iso.png",
+    "floor_wood": "tile_wood_deck_iso.png",
+    "floor_cobblestone": "tile_cobblestone_iso.png",
+}
+
+
+def flat_face(name: str, size: int, inset: float) -> np.ndarray:
+    """The top face of the slab [name], [inset] in from its edges, seen from straight above: RGB,
+    [size] square, its x along the face's edge from its top corner to its right one (gridX)."""
+    source = Image.open(SOURCE / name).convert("RGB")
+    cx, cy, width, height = top_face_of(cut_out(np.array(source)))
+    half_w, half_h = width / 2, height / 2
+    step = (1 - 2 * inset) / size
+    matrix = (half_w * step, -half_w * step, cx, half_h * step, half_h * step, cy - half_h + height * inset)
+    return np.array(source.transform((size, size), Image.AFFINE, matrix, resample=Image.BICUBIC)).astype(float)
+
+
+def even_out(rgb: np.ndarray, radius: float) -> np.ndarray:
+    """[rgb] with its light and shade larger than [radius] taken out, its mean colour kept."""
+    from PIL import ImageFilter
+    blurred = np.array(Image.fromarray(rgb.clip(0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(radius))).astype(float)
+    return rgb - blurred + rgb.reshape(-1, 3).mean(axis=0)
+
+
+def tile_by_blending(rgb: np.ndarray, margin: int, joints: bool) -> np.ndarray:
+    """
+    [rgb] made to tile, [margin] narrower each way: along each axis the strip past its far edge is
+    blended into its first pixels, weighted sin² in and keeping the grain (the difference from
+    the mean scaled back up, as FlatGround.seamless). With [joints], the darker of the two takes
+    over in the middle of the strip.
+    """
+    mean = rgb.reshape(-1, 3).mean(axis=0)
+    t = (np.arange(margin) + 0.5) / margin
+    own = np.sin(t * np.pi / 2) ** 2
+    other = 1 - own
+    norm = np.sqrt(own ** 2 + other ** 2)
+    dark_share = 4 * own * other if joints else np.zeros(margin)
+
+    def blend(a: np.ndarray, b: np.ndarray, shape: tuple) -> np.ndarray:
+        o, ot, n, k = (w.reshape(shape) for w in (own, other, norm, dark_share))
+        soft = mean + ((a - mean) * o + (b - mean) * ot) / n
+        darker = np.where(a.mean(axis=-1, keepdims=True) < b.mean(axis=-1, keepdims=True), a, b)
+        return soft * (1 - k) + darker * k
+
+    tile = rgb.shape[0] - margin
+    across = rgb[:, :tile].copy()
+    across[:, :margin] = blend(rgb[:, :margin], rgb[:, tile:tile + margin], (1, margin, 1))
+    out = across[:tile].copy()
+    out[:margin] = blend(across[:margin], across[tile:tile + margin], (margin, 1, 1))
+    return out
+
+
+def tile_boards(rgb: np.ndarray) -> np.ndarray:
+    """Decking whose boards run down [rgb]: cut across at its gaps to a whole number of boards, square."""
+    columns = rgb.mean(axis=2).mean(axis=0)
+    gap = columns < np.percentile(columns, 12)
+    starts = np.where(gap[1:] & ~gap[:-1])[0] + 1
+    pitch = float(np.median(np.diff(starts)))
+    width = int(round(int((rgb.shape[1] - starts[0]) // pitch) * pitch))
+    return rgb[:width, starts[0]:starts[0] + width]
+
+
+def ground_texture(object_id: str) -> np.ndarray:
+    name, inset, how = GROUND_TEXTURES[object_id]
+    face = even_out(flat_face(name, GROUND_SIZE + GROUND_MARGIN, inset), GROUND_EVEN_OUT)
+    if how == "boards":
+        square = tile_boards(face)
+        out = Image.fromarray(square.clip(0, 255).astype(np.uint8)).resize((GROUND_SIZE, GROUND_SIZE), Image.LANCZOS)
+        return np.array(out)
+    return tile_by_blending(face, GROUND_MARGIN, joints=how == "joints").clip(0, 255).astype(np.uint8)
+
+
+def item_icon(name: str) -> np.ndarray:
+    """An icon from [name] (on white), cut out of its plain white only, as the pictures of #74 are."""
+    rgba = crop(cut_out(np.array(Image.open(SOURCE / name).convert("RGB")), white_parts=1.0))
+    return to_icon(rgba)
+
+
+def to_icon(rgba: np.ndarray) -> np.ndarray:
+    h, w = rgba.shape[:2]
+    scale = ICON_SIZE * 0.92 / max(h, w)
+    small = resize(rgba, scale, scale)
+    canvas = np.zeros((ICON_SIZE, ICON_SIZE, 4), np.uint8)
+    sh, sw = small.shape[:2]
+    paste(canvas, small, (ICON_SIZE - sw) // 2, (ICON_SIZE - sh) // 2)
+    return canvas
 
 
 def slab_of(path: Path) -> tuple[float, float, float]:
@@ -503,6 +624,9 @@ def write(crops, icons) -> None:
     for name, rgba in icons.items():
         Image.fromarray(rgba, "RGBA").save(ICONS / f"{name}.png", optimize=True)
         print(f"{name:28s} {ICON_SIZE}x{ICON_SIZE}")
+    for object_id in GROUND_TEXTURES:
+        Image.fromarray(ground_texture(object_id), "RGB").save(ICONS / f"{object_id}.png", optimize=True)
+        print(f"{object_id:28s} {GROUND_SIZE}x{GROUND_SIZE} (ground)")
     for name in ("soil_wasteland", "soil_tilled", "soil_revived", "pond_center"):
         print(f"GroundSlab {name:16s} anchorX, anchorY, topWidth = {slab_of(GROUND / f'{name}.png')}")
 
