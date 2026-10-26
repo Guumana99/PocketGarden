@@ -21,5 +21,12 @@
   "plant_shiitake_stage1": {"anchorX": 0.4989, "anchorY": 1.0, "isFlippedAllowed": true},
   "plant_shiitake_stage2": {"anchorX": 0.4955, "anchorY": 1.0, "isFlippedAllowed": true},
   "plant_shiitake_stage3": {"anchorX": 0.5, "anchorY": 1.0, "isFlippedAllowed": true},
-  "plant_shiitake_withered": {"anchorX": 0.4989, "anchorY": 1.0, "isFlippedAllowed": true}
+  "plant_shiitake_withered": {"anchorX": 0.4989, "anchorY": 1.0, "isFlippedAllowed": true},
+  "struct_hut": {"anchorX": 0.4994, "anchorY": 0.7613, "scale": 1.7822},
+  "struct_well": {"anchorX": 0.4895, "anchorY": 0.8409},
+  "deco_rock": {"anchorX": 0.4637, "anchorY": 0.6788},
+  "deco_bench": {"anchorX": 0.5025, "anchorY": 0.7668},
+  "deco_lantern": {"anchorX": 0.4975, "anchorY": 0.8584},
+  "deco_sprinkler": {"anchorX": 0.4983, "anchorY": 0.8638, "attachX": 0.4983, "attachY": 0.3673},
+  "deco_starter_crate": {"anchorX": 0.4586, "anchorY": 0.8112}
 }

@@ -143,7 +143,7 @@ class ConstructionTest {
         assertEquals(t0, site.workStartedAt)
         assertEquals(t0 + GardenItem.STRUCT_WELL.buildSeconds * second, site.workEndsAt)
         // It takes up its place already.
-        assertEquals(ActionResult.TILE_OCCUPIED, HoeUseCase(repo, GardenMap.DEFAULT)(2, 3, t0))
+        assertEquals(ActionResult.TILE_OCCUPIED, HoeUseCase(repo, GardenMap.DEFAULT)(2, 2, t0))
     }
 
     @Test

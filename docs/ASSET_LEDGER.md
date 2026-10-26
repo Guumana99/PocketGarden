@@ -41,7 +41,7 @@
 | バラ（`plant_rose`） | Lv4 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ✅ | Recraft（#6 ごろの手描き風）。4 段階。アイコンは #72（Recraft、C2PA を grep で確認）。株は旧画風のまま、アイコンだけ 3D ミニチュア調 |
 | トマト（`plant_tomato`） | 最初から | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58） |
 | イチゴ（`plant_strawberry`） | 最初から | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58） |
-| ニンジン（`plant_carrot`） | Lv2 | ✅ | 🔁 | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58）。段階 2 は届いておらず、段階 3 の葉だけを切り出して作った。段階 3 は葉と根の肩だけに切り出し（#60） |
+| ニンジン（`plant_carrot`） | Lv2 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58、段階 2 は #74。C2PA を grep で確認）。段階 2 は #73 まで段階 3 の葉を切り出した代用品で、#74 で届いた絵（根元にオレンジの輪が少し見える）に。段階 3 は葉と根の肩だけに切り出し（#60） |
 | ナス（`plant_eggplant`） | Lv3 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58）。段階 1 は 4 本の苗から手前の 1 本を切り出し。アイコンの下に残っていた灰色の影を #73 で取り除いた |
 | 小麦（`plant_wheat`） | Lv4 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58） |
 | トウモロコシ（`plant_corn`） | Lv5 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58）。段階 1 は 16 本の苗から 3 本、段階 2 は 2 本に左右反転の 1 本を足して 3 本に並べ直した |
@@ -62,7 +62,7 @@
 
 | | ✅ 採用 | 🟡 旧画風 | 🔁 代用 | ⬜ 仮 |
 |---|---|---|---|---|
-| 段階・枯れの枠（72） | 58 | 13 | 1 | 0 |
+| 段階・枯れの枠（72） | 59 | 13 | 0 | 0 |
 | アイコン（18） | 18 | — | — | 0 |
 
 ## 建物
@@ -70,12 +70,12 @@
 | 物（id） | 状態 | 出所 | 素材・メモ |
 |---|---|---|---|
 | ウッドフェンス（`struct_fence`） | ✅＋⬜ | Recraft | `struct_fence` `struct_fence_post`（原画 `item_fence_wood.png` から切り出し）。斜めにつなぐ横木と杭はコード。`struct_fence_rail` は 📦 |
-| 井戸（`struct_well`） | ⬜ | — | `drawStructure` |
+| 井戸（`struct_well`） | ✅ | Recraft | `struct_well`（原画 `building_well.png`、Recraft（#74。C2PA を grep で確認））。#74 で 1×2 から 1×1 に。丸い石の井戸に屋根と桶 |
 | 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた） |
-| 小屋（`struct_hut`） | ⬜ | — | `drawStructure` |
+| 小屋（`struct_hut`） | ✅ | Recraft | `struct_hut`（原画 `building_hut.png`、Recraft（#74。C2PA を grep で確認））。土台の石が明るいクリーム色なので、真っ白だけを抜いて切り抜いた |
 | コテージ（`struct_cottage`） | ✅ | Recraft | `struct_cottage`（原画 `building_cottage.png`） |
 | ガラスの温室（`floor_greenhouse`） | ✅ | Recraft | `floor_greenhouse`（原画 `building_greenhouse.png`）。中の床は `floor_tilled` |
-| 工事現場（シート・足場） | ⬜ | — | コード。建物ごとの絵は無い |
+| 工事現場（シート・足場） | ⬜ | — | 演出としてコードで描く（建てる途中の進み具合で足場とシートが変わる）。建物ごとの絵は無い |
 
 ## 地面・装飾
 
@@ -84,24 +84,44 @@
 | 荒れ地（何も敷いていないマス） | ✅ | Recraft | `res/drawable/soil_wasteland.png` |
 | 崩しかけた地面（荒れ地と畑のあいだ） | ✅ | Recraft | `res/drawable/soil_revived.png`（#61 からこの用途） |
 | 耕した土（畑） | ✅ | Recraft | `res/drawable/soil_tilled.png` |
-| たい肥入りの畑 | ⬜ | — | `soil_tilled.png` を暗くして、葉とわらの粒をコードで描き足す（#61） |
-| 芝生（`ground_grass`） | ✅＋⬜ | Recraft | 育ちきると `tile_grass`（原画 `tile_grass_iso.png`）。育つ途中の苗床と葉の切り抜きはコード（#61）。`tile_grass_dark` は 📦 |
-| 小石（`ground_pebble`） | ⬜ | — | `drawPebbles` |
-| 野の花（`ground_flowers`） | ⬜ | — | `GardenCanvas.kt` |
-| 石畳（`floor_cobblestone`） | ✅ | Recraft | `res/drawable-nodpi/tile_path_cobblestone.png` |
-| ウッドデッキ（`floor_wood`） | ⬜ | — | `drawWoodDeck` |
+| たい肥入りの畑 | ⬜ | — | `soil_tilled.png` を暗くして、葉とわらの粒をコードで描き足す（#61）。粒は演出としてコードで描く |
+| 芝生（`ground_grass`） | ✅＋⬜ | Recraft | 育ちきると `tile_grass`（原画 `tile_grass_iso.png`）。育つ途中の苗床と葉の切り抜きは演出としてコードで描く（#61）。`tile_grass_dark` は 📦 |
+| 小石（`ground_pebble`） | ✅ | Recraft | `res/drawable-nodpi/ground_pebble.png`（原画 `tile_pebble_iso.png`、Recraft（#74。C2PA を grep で確認））。板の上面を真上から見た模様にし、マスどうしが続くようにして 1 マスに 1 枚敷く |
+| 野の花（`ground_flowers`） | ✅ | Recraft | `res/drawable-nodpi/ground_flowers.png`（原画 `tile_flowers_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方 |
+| 石畳（`floor_cobblestone`） | ✅ | Recraft | `res/drawable-nodpi/floor_cobblestone.png`（原画 `tile_cobblestone_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方で、継ぎ目では石が重ならず目地で区切れる。#73 まではイラスト調の `tile_path_cobblestone.png`（📦、`tools/source_art/`） |
+| ウッドデッキ（`floor_wood`） | ✅ | Recraft | `res/drawable-nodpi/floor_wood.png`（原画 `tile_wood_deck_iso.png`、Recraft（#74。C2PA を grep で確認））。板の幅の整数倍で切って、隣のマスへ板が続く。板の長さ方向はマスの縁が板の継ぎ目 |
 | 小川のかけら／せせらぎ（`tile_river`） | ⚙️ | スクリプト | `res/drawable-nodpi/tile_river_autotile.png`（`tools/build_terrain_assets.py`）。受け取った `tile_river_atlas.png` はつながりが合わず 📦 |
 | 池（`deco_pond`） | ✅ | Recraft | `res/drawable/pond.png`。つなぎ目と真ん中の水面は `pond_center.png`（✅ Recraft） |
-| 岩（`deco_rock`） | ⬜ | — | `drawDecoration` |
-| ベンチ（`deco_bench`） | ⬜ | — | `drawBench` |
-| 石灯籠（`deco_lantern`） | ⬜ | — | `drawLantern` |
-| スプリンクラー（`deco_sprinkler`） | ⬜ | — | 本体 `drawSprinkler`、水しぶき `SprinklerSpray`。絵を入れるなら `deco_sprinkler` と `deco_sprinkler_spray_0`〜`_7` |
-| 最初の木箱 | ⬜ | — | コード |
+| 岩（`deco_rock`） | ✅ | Recraft | `deco_rock`（原画 `deco_rock.png`、Recraft（#74。C2PA を grep で確認））。幅 0.46 マス |
+| ベンチ（`deco_bench`） | ✅ | Recraft | `deco_bench`（原画 `deco_bench.png`、Recraft（#74。C2PA を grep で確認））。幅 0.56 マス、4 本の脚の真ん中に立つ |
+| 石灯籠（`deco_lantern`） | ✅ | Recraft | `deco_lantern`（原画 `deco_lantern.png`、Recraft（#74。C2PA を grep で確認））。高さ 0.44 マス |
+| スプリンクラー（`deco_sprinkler`） | ✅＋⬜ | Recraft | 本体 `deco_sprinkler`（原画 `deco_sprinkler.png`、Recraft（#74。C2PA を grep で確認）。高さ 0.34 マス）。水しぶき（`SprinklerSpray`）は演出としてコードで描き、本体の絵の腕の軸（取り付け点）から出る。しぶきの絵を入れるなら `deco_sprinkler_spray_0`〜`_7` |
+| 最初の木箱（`deco_starter_crate`） | ✅ | Recraft | `deco_starter_crate`（原画 `deco_starter_crate.png`、Recraft（#74。C2PA を grep で確認））。幅 0.42 マス、ふたが開いて苗と種袋が見える |
 
 ## ショップのアイコン
 
-ショップ・持ち物・木箱で品物に出す小さな絵。**絵があるのは、上の作物の表でアイコンが ✅ の作物だけ**（#72 から作物 18 種すべて、Recraft）。
-建物・飾りはすべて ⬜ 絵文字（`UiLabels.itemEmoji`）。作物の `itemEmoji` は、絵が無いときの予備として残してある。
+ショップ・持ち物・木箱で品物に出す小さな絵（`UiLabels.itemIconRes`、256×256、`tools/prepare_drawable_art.py` が原画から作る）。作物は上の作物の表のアイコンの列（#72 から 18 種すべて ✅）。
+`itemEmoji` は、絵が無いときの予備として残してある。
+
+| 品物（id） | 状態 | 素材・メモ |
+|---|---|---|
+| 小屋・井戸（`struct_hut` `struct_well`） | ✅ | `icon_struct_hut.png` `icon_struct_well.png`（#74、建物の原画から） |
+| 岩・ベンチ・石灯籠・スプリンクラー（`deco_rock` `deco_bench` `deco_lantern` `deco_sprinkler`） | ✅ | `icon_deco_*.png`（#74、飾りの原画から） |
+| 小石・野の花・ウッドデッキ・石畳（`ground_pebble` `ground_flowers` `floor_wood` `floor_cobblestone`） | ✅ | `icon_ground_*.png` `icon_floor_*.png`（#74。斜め上から見た板の形のまま） |
+| ウッドフェンス・コテージ・風車・ガラスの温室・池・芝生・小川のかけら | ⬜ | 絵文字 |
+
+**集計（作物以外の品物のアイコン 17）**：✅ 10、⬜ 7。
+
+## 演出としてコードで描くもの
+
+絵に替える予定は無く、コードで描き続けるもの（#74 で決めた）。動き・進み具合・天気で形や色が変わるため。
+
+- 工事現場（シート・足場）：建てる途中の進み具合で変わる
+- たい肥入りの畑の葉とわらの粒
+- 芝生が育つ途中（苗床と葉の切り抜き）
+- フェンスの横木（隣のフェンスへ斜めにつなぐ部分）と杭
+- スプリンクラーの水しぶき（`SprinklerSpray`）
+- 庭の木枠・背景・影・風・天気（雨・慈雨）
 
 ## 生き物
 
@@ -124,10 +144,10 @@
 
 | 物 | 状態 | メモ |
 |---|---|---|
-| 背景（空・丘・草原・隅の茂み） | ⬜ | `ui/effects/GardenBackdrop.kt` |
-| 庭の木枠、影、風の筋、天気（雨・慈雨） | ⬜ | コード。演出として作り込んであり、絵に替える予定は今のところ無い |
+| 背景（空・丘・草原・隅の茂み） | ⬜ | `ui/effects/GardenBackdrop.kt`。演出としてコードで描く |
+| 庭の木枠、影、風の筋、天気（雨・慈雨） | ⬜ | 演出としてコードで描く（上の「演出としてコードで描くもの」） |
 | 木のボタン・トースト・図鑑の本・看板 | ⬜ | Compose のコード描画（`ui/components/` ほか） |
-| 店の内装（棚・カウンター） | ⬜ | コード。商品は絵文字（上の「ショップのアイコン」） |
+| 店の内装（棚・カウンター） | ⬜ | コード。商品は作物・建物・飾り・地面がアイコンの絵、ほかは絵文字（上の「ショップのアイコン」） |
 | アプリのアイコン（ランチャー） | ⬜ | `res/drawable/ic_launcher_foreground.xml`（鉢植えの単純なベクター）。リリース前に作る |
 | 通知の小さなアイコン | ✅ | `res/drawable/ic_stat_garden.xml`（芽の形の単色ベクター。ステータスバー用で単色が必須） |
 

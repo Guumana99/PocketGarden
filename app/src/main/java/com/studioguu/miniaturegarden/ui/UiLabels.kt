@@ -158,6 +158,17 @@ fun itemIconRes(item: GardenItem): Int? = when (item) {
     GardenItem.SEED_ROSE -> R.drawable.icon_rose
     GardenItem.SEED_PAPRIKA -> R.drawable.icon_paprika
     GardenItem.SEED_DAIKON -> R.drawable.icon_daikon
+    // The buildings, decorations and ground of #74.
+    GardenItem.STRUCT_HUT -> R.drawable.icon_struct_hut
+    GardenItem.STRUCT_WELL -> R.drawable.icon_struct_well
+    GardenItem.DECO_ROCK -> R.drawable.icon_deco_rock
+    GardenItem.DECO_BENCH -> R.drawable.icon_deco_bench
+    GardenItem.DECO_LANTERN -> R.drawable.icon_deco_lantern
+    GardenItem.DECO_SPRINKLER -> R.drawable.icon_deco_sprinkler
+    GardenItem.GROUND_PEBBLE -> R.drawable.icon_ground_pebble
+    GardenItem.GROUND_FLOWERS -> R.drawable.icon_ground_flowers
+    GardenItem.FLOOR_WOOD -> R.drawable.icon_floor_wood
+    GardenItem.FLOOR_COBBLESTONE -> R.drawable.icon_floor_cobblestone
     else -> null
 }
 

@@ -14,7 +14,7 @@ class OcclusionTest {
         GridObject(instanceId = id, gridX = x, gridY = y, objectId = objectId, lastUpdatedTimestamp = 0L)
 
     private val hut = at("hut", 4, 4, StructureData.HUT.objectId) // covers (4..5, 4..5)
-    private val well = at("well", 4, 4, StructureData.WELL.objectId) // covers (4, 4..5)
+    private val well = at("well", 4, 4, StructureData.WELL.objectId) // covers (4, 4)
     private val cottage = at("cottage", 3, 3, StructureData.COTTAGE.objectId) // covers (3..5, 3..5)
     private val transform = IsometricTransform(tileWidth = 128f, tileHeight = 64f, heightStep = 16f)
 
@@ -32,7 +32,8 @@ class OcclusionTest {
         assertFalse(Occlusion.hides(hut, GridCell(6, 6)))
         assertFalse(Occlusion.hides(hut, GridCell(5, 6)))
         assertFalse(Occlusion.hides(hut, GridCell(6, 5)))
-        assertFalse(Occlusion.hides(hut, GridCell(1, 1)))
+        // #74: as tall as its picture (11 steps), the hut hides two rows behind it, not three.
+        assertFalse(Occlusion.hides(hut, GridCell(0, 0)))
         assertFalse(Occlusion.hides(hut, GridCell(2, 6)))
         assertFalse(Occlusion.hides(hut, GridCell(6, 2)))
     }
@@ -45,9 +46,11 @@ class OcclusionTest {
 
     @Test
     fun `a taller building hides more of what is behind it`() {
+        // #74: the well (6.5 steps) hides two cells straight behind it, the hut (11) a third as well.
         assertTrue(Occlusion.hides(well, GridCell(3, 3)))
-        assertFalse(Occlusion.hides(well, GridCell(2, 2)))
-        assertTrue(Occlusion.hides(hut, GridCell(2, 2)))
+        assertTrue(Occlusion.hides(well, GridCell(2, 2)))
+        assertFalse(Occlusion.hides(well, GridCell(1, 1)))
+        assertTrue(Occlusion.hides(hut, GridCell(1, 1)))
         val behindCottage = (0 until 9).flatMap { x -> (0 until 9).map { y -> GridCell(x, y) } }
             .count { Occlusion.hides(cottage, it) }
         val behindHut = (0 until 9).flatMap { x -> (0 until 9).map { y -> GridCell(x, y) } }

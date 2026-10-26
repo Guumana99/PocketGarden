@@ -47,7 +47,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.studioguu.miniaturegarden.data.asset.Decoration
-import com.studioguu.miniaturegarden.data.asset.GroundCover
 import com.studioguu.miniaturegarden.data.asset.GroundTile
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
 import com.studioguu.miniaturegarden.data.asset.GroundSlab
@@ -611,12 +610,16 @@ private fun submitObjects(
                     drawSprite(atlasImage, soil, center, spriteScale, tint = if (obj.isComposted) COMPOST_TINT else null)
                 } else if (obj.isGreenhouse) {
                     drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.tilled)
-                } else if (obj.objectId == GridObject.WOOD_DECK_OBJECT_ID) {
-                    drawWoodDeck(transform, obj.gridX, obj.gridY)
-                } else if (paving != null) {
-                    drawGroundTexture(paving, transform, obj.gridX, obj.gridY)
                 } else {
-                    drawPath(transform.tilePath(obj.gridX, obj.gridY), PAVING_FALLBACK)
+                    // Decking and paving: pictures seen from straight above, one to a cell, made to
+                    // run on into the next (#74).
+                    val isDeck = obj.objectId == GridObject.WOOD_DECK_OBJECT_ID
+                    val face = if (isDeck) terrain.woodDeck else paving
+                    if (face != null) {
+                        drawGroundTexture(face, transform, obj.gridX, obj.gridY)
+                    } else {
+                        drawPath(transform.tilePath(obj.gridX, obj.gridY), if (isDeck) DECK_FALLBACK else PAVING_FALLBACK)
+                    }
                 }
             }
             // The glass house of a greenhouse bed goes over whatever grows in it.
@@ -699,6 +702,13 @@ private fun submitObjects(
             submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {
                 drawLawnPatch(transform, obj.gridX, obj.gridY, growth, lawn, onBareEarth = ambience.bareGround == BareGround.WASTELAND, sway = sway)
             }
+            continue
+        }
+        val cover = terrain.coverFor(obj.objectId)
+        if (cover != null) {
+            // Pebbles and wild flowers (#74): a picture seen from straight above over the cell,
+            // running on into the cells beside it, under whatever stands round it.
+            submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) { drawGroundTexture(cover, transform, obj.gridX, obj.gridY) }
             continue
         }
         if (obj.isFence) {
@@ -805,11 +815,14 @@ private fun submitObjects(
         if (obj.isSprinkler && obj.isOn && !obj.isWorking) {
             val frame = SprinklerSpray.frameAt(ambience.windMillis ?: 0L, running = true)
             val sprayArt = atlas[SprinklerSpray.spriteIdFor(frame.index)]
+            // The water comes out of the hub its arms turn on (#74): the picture's attachment point.
+            val nozzle = sprite?.attachmentAt(base.x, base.y, spriteScale, obj.isFlipped)?.let { (x, y) -> Offset(x, y) }
+                ?: (base - Offset(0f, unit * SPRAY_HEAD_HEIGHT))
             submit(obj, RenderLayer.TOP_EFFECTS, depth) {
                 if (sprayArt != null && atlasImage != null) {
                     drawSprite(atlasImage, sprayArt, base, spriteScale)
                 } else {
-                    drawSprinklerSpray(base, unit, frame)
+                    drawSprinklerSpray(base, nozzle, unit, frame)
                 }
             }
         }
@@ -1406,6 +1419,7 @@ private val GRASS_TUFT = Color(0xFF739E4D)
 private val GRASS_BLADE_LIGHT = Color(0xFFA9C86F)
 private val EARTH_PATCH = Color(0xFFBF9F6C)
 private val PAVING_FALLBACK = Color(0xFFBDBDBD)
+private val DECK_FALLBACK = Color(0xFFC79A63)
 private val SOIL_LEFT = Color(0xFF8D6E63)
 private val SOIL_RIGHT = Color(0xFF6D4C41)
 
@@ -2238,113 +2252,6 @@ private val BLOOM_COLORS = listOf(
 )
 
 
-private val DECK_BOARD = Color(0xFFC79A63)
-private val DECK_BOARD_ALT = Color(0xFFBB8C55)
-private val DECK_GAP = Color(0xFF7A5230)
-private val DECK_NAIL = Color(0xFF5D3A1A)
-private const val DECK_BOARDS = 4
-
-/**
- * A tile of wooden decking: four boards running across it, alternately a shade lighter and
- * darker, with dark gaps between them and a nail at either end of each.
- */
-private fun DrawScope.drawWoodDeck(transform: IsometricTransform, x: Int, y: Int) {
-    drawPath(transform.tilePath(x, y), DECK_GAP)
-    val gap = 0.025f
-    for (i in 0 until DECK_BOARDS) {
-        val y0 = y + i / DECK_BOARDS.toFloat() + gap / 2f
-        val y1 = y + (i + 1) / DECK_BOARDS.toFloat() - gap / 2f
-        drawPath(
-            quad(
-                transform.worldToScreen(x + gap, y0),
-                transform.worldToScreen(x + 1 - gap, y0),
-                transform.worldToScreen(x + 1 - gap, y1),
-                transform.worldToScreen(x + gap, y1),
-            ),
-            if ((i + x + y) % 2 == 0) DECK_BOARD else DECK_BOARD_ALT,
-        )
-        val middle = (y0 + y1) / 2f
-        val nail = transform.tileWidth * 0.008f
-        drawCircle(DECK_NAIL, nail, transform.worldToScreen(x + 0.1f, middle))
-        drawCircle(DECK_NAIL, nail, transform.worldToScreen(x + 0.9f, middle))
-    }
-}
-
-private val FLOWER_PETALS = listOf(Color(0xFFFFFFFF), Color(0xFFFFE082), Color(0xFFF8BBD0), Color(0xFFB39DDB))
-private val FLOWER_HEART = Color(0xFFFFB300)
-private val FLOWER_STEM = Color(0xFF5E8C3A)
-
-/** A scatter of small wild flowers over the tile: a short stem, four petals and a yellow heart each. */
-private fun DrawScope.drawWildFlowers(obj: GridObject, base: Offset, unit: Float) {
-    var state = obj.gridX * 73856093 xor obj.gridY * 19349663 xor 0x5F3759DF
-    fun next(): Float {
-        state = state * 1103515245 + 12345
-        return ((state ushr 16) and 0x7FFF) / 32767f
-    }
-    // #60: seven small flowers were a few specks on the bare earth. Now a meadow over the whole
-    // cell: leaves at the foot of each, then the flowers, back to front, larger and more of them.
-    val flowers = List(WILD_FLOWERS) { i -> Triple((next() - 0.5f) * 0.8f, (next() - 0.5f) * 0.8f, i) }
-        .sortedBy { (u, v, _) -> u + v }
-    for ((u, v, i) in flowers) {
-        val foot = cellPoint(base, unit, u, v)
-        val leaf = unit * 0.03f
-        drawOval(FLOWER_LEAF, Offset(foot.x - leaf * 1.2f, foot.y - leaf * 0.5f), Size(leaf * 1.3f, leaf * 0.6f))
-        drawOval(FLOWER_LEAF_LIGHT, Offset(foot.x - leaf * 0.1f, foot.y - leaf * 0.6f), Size(leaf * 1.2f, leaf * 0.55f))
-        val head = foot + Offset(0f, -unit * (0.045f + next() * 0.04f))
-        drawLine(FLOWER_STEM, foot, head, unit * 0.01f, StrokeCap.Round)
-        val petal = unit * (0.019f + next() * 0.008f)
-        val colour = FLOWER_PETALS[(i + obj.gridX + obj.gridY) % FLOWER_PETALS.size]
-        for (k in 0 until 5) {
-            val a = k * (2.0 * Math.PI / 5).toFloat() - (Math.PI / 2).toFloat()
-            drawCircle(colour, petal, head + Offset(kotlin.math.cos(a) * petal, kotlin.math.sin(a) * petal * 0.8f))
-        }
-        drawCircle(FLOWER_HEART, petal * 0.6f, head)
-    }
-}
-
-private const val WILD_FLOWERS = 13
-private val FLOWER_LEAF = Color(0xFF4E7A33)
-private val FLOWER_LEAF_LIGHT = Color(0xFF6E9A45)
-
-private val BENCH_WOOD = Color(0xFFB98552)
-private val BENCH_WOOD_DARK = Color(0xFF8A5F36)
-private val BENCH_LEG = Color(0xFF5D3A1A)
-
-/** A garden bench: a seat of two planks on four legs, and a back of two more. */
-private fun DrawScope.drawBench(base: Offset, unit: Float) {
-    val halfWidth = unit * 0.24f
-    val seatHeight = unit * 0.1f
-    val depth = Offset(unit * 0.07f, unit * 0.035f) // how far the front edge is from the back edge
-    val stroke = unit * 0.02f
-    val backLeft = base + Offset(-halfWidth, -seatHeight) - depth / 2f
-    val backRight = base + Offset(halfWidth, -seatHeight) - depth / 2f
-    val frontLeft = backLeft + depth
-    val frontRight = backRight + depth
-    // Legs first, back pair then front pair.
-    for (top in listOf(backLeft, backRight, frontLeft, frontRight)) {
-        drawLine(BENCH_LEG, top, top + Offset(0f, seatHeight), stroke, StrokeCap.Round)
-    }
-    // The back: two posts and two slats.
-    val rise = Offset(0f, -unit * 0.13f)
-    drawLine(BENCH_LEG, backLeft, backLeft + rise, stroke, StrokeCap.Round)
-    drawLine(BENCH_LEG, backRight, backRight + rise, stroke, StrokeCap.Round)
-    drawLine(BENCH_WOOD_DARK, backLeft + rise * 0.55f, backRight + rise * 0.55f, stroke * 1.5f, StrokeCap.Round)
-    drawLine(BENCH_WOOD, backLeft + rise * 0.95f, backRight + rise * 0.95f, stroke * 1.5f, StrokeCap.Round)
-    // The seat.
-    drawPath(quad(backLeft, backRight, frontRight, frontLeft), BENCH_WOOD)
-    drawLine(BENCH_WOOD_DARK, (backLeft + frontLeft) / 2f, (backRight + frontRight) / 2f, stroke * 0.5f)
-    drawLine(BENCH_LEG, frontLeft, frontRight, stroke * 0.6f, StrokeCap.Round)
-}
-
-private val LANTERN_STONE = Color(0xFFB7B3A8)
-private val LANTERN_STONE_DARK = Color(0xFF8E8A80)
-private val LANTERN_MOSS = Color(0xFF8DAE6A)
-private val LANTERN_LIGHT = Color(0xFFFFE9A8)
-
-/**
- * A stone lantern: a wide foot, a post, the lamp chamber with its lit window, and a broad cap
- * with a knob on top. A warm glow hangs round the window.
- */
 private val POND_WATER = Color(0xFF8FC3D9)
 private val POND_WATER_DEEP = Color(0xFF5E9BB5)
 private val POND_STONE = Color(0xFFD8D3C8)
@@ -2532,27 +2439,15 @@ private fun DrawScope.drawPondInCode(transform: IsometricTransform, x: Int, y: I
     drawPath(diamond(0.22f), POND_WATER)
 }
 
-private val SPRINKLER_METAL = Color(0xFF9AA5AD)
-private val SPRINKLER_METAL_DARK = Color(0xFF6D7880)
-private val SPRINKLER_BRASS = Color(0xFFC9A44C)
 private val SPRINKLER_WATER = Color(0xFFB3E0F7)
-
-/** The sprinkler: a short post on a round foot, with a brass head; a little blue light while it runs. */
-private fun DrawScope.drawSprinkler(base: Offset, unit: Float, running: Boolean) {
-    drawOval(SPRINKLER_METAL_DARK, base - Offset(unit * 0.09f, unit * 0.035f), Size(unit * 0.18f, unit * 0.07f))
-    val top = base - Offset(0f, unit * 0.2f)
-    drawLine(SPRINKLER_METAL, base - Offset(0f, unit * 0.02f), top, unit * 0.035f, StrokeCap.Round)
-    drawOval(SPRINKLER_BRASS, top - Offset(unit * 0.06f, unit * 0.03f), Size(unit * 0.12f, unit * 0.05f))
-    drawCircle(if (running) SPRINKLER_WATER else SPRINKLER_METAL_DARK, unit * 0.015f, top - Offset(0f, unit * 0.025f))
-}
 
 /**
  * The water of a running sprinkler, from [SprinklerSpray]: each drop a short streak along its
- * own arc, out over the ring of cells it waters in the garden's flattened view, and a small ring
- * on the ground where one has just come down. A faint wet sheen lies over the ground it reaches.
+ * own arc from the nozzle at [head], out over the ring of cells it waters in the garden's
+ * flattened view, and a small ring on the ground where one has just come down. A faint wet
+ * sheen lies over the ground it reaches.
  */
-private fun DrawScope.drawSprinklerSpray(base: Offset, unit: Float, frame: SprinklerSpray.Frame) {
-    val head = base - Offset(0f, unit * SPRAY_HEAD_HEIGHT)
+private fun DrawScope.drawSprinklerSpray(base: Offset, head: Offset, unit: Float, frame: SprinklerSpray.Frame) {
     // Where a drop is: out over the ground along its own direction, raised by its arc. The head
     // sits above the ground, so the arc starts there and comes down onto the ground at the far end.
     fun at(angle: Float, reach: Float, lift: Float): Offset {
@@ -2599,7 +2494,7 @@ private fun DrawScope.drawSprinklerSpray(base: Offset, unit: Float, frame: Sprin
     }
 }
 
-/** How high the sprinkler's nozzle stands above the ground, in tile widths. */
+/** How high the sprinkler's nozzle stands above the ground, in tile widths, when its picture cannot be read. */
 private const val SPRAY_HEAD_HEIGHT = 0.23f
 
 /** How far the spray carries over the ground, in tile widths: the ring of cells round it. */
@@ -2611,147 +2506,17 @@ private const val SPRAY_ARC_HEIGHT = 0.16f
 /** How much of its flight a drop's streak trails behind it. */
 private const val SPRAY_STREAK = 0.07f
 
-private fun DrawScope.drawLantern(base: Offset, unit: Float) {
-    fun slab(centre: Offset, width: Float, height: Float, colour: Color) =
-        drawRoundRect(colour, centre - Offset(width / 2f, height), Size(width, height), CornerRadius(height * 0.25f, height * 0.25f))
-
-    val foot = unit * 0.05f
-    val post = unit * 0.11f
-    val chamber = unit * 0.1f
-    slab(base, unit * 0.2f, foot, LANTERN_STONE_DARK)
-    slab(base + Offset(0f, -foot), unit * 0.08f, post, LANTERN_STONE)
-    val chamberBase = base + Offset(0f, -foot - post)
-    slab(chamberBase, unit * 0.15f, chamber, LANTERN_STONE)
-    // The glow, then the window it comes from.
-    val window = chamberBase + Offset(0f, -chamber / 2f)
-    drawCircle(
-        brush = Brush.radialGradient(listOf(LANTERN_LIGHT.copy(alpha = 0.55f), LANTERN_LIGHT.copy(alpha = 0f)), center = window, radius = unit * 0.16f),
-        radius = unit * 0.16f,
-        center = window,
-    )
-    drawRoundRect(LANTERN_LIGHT, window - Offset(unit * 0.035f, chamber * 0.3f), Size(unit * 0.07f, chamber * 0.6f), CornerRadius(unit * 0.01f, unit * 0.01f))
-    // The cap, wider than everything under it, with moss on one side and a knob on top.
-    val capBase = chamberBase + Offset(0f, -chamber)
-    val cap = Path().apply {
-        moveTo(capBase.x - unit * 0.13f, capBase.y)
-        lineTo(capBase.x + unit * 0.13f, capBase.y)
-        lineTo(capBase.x + unit * 0.04f, capBase.y - unit * 0.06f)
-        lineTo(capBase.x - unit * 0.04f, capBase.y - unit * 0.06f)
-        close()
-    }
-    drawPath(cap, LANTERN_STONE_DARK)
-    drawCircle(LANTERN_MOSS, unit * 0.022f, capBase + Offset(-unit * 0.07f, -unit * 0.018f))
-    drawCircle(LANTERN_STONE, unit * 0.02f, capBase + Offset(0f, -unit * 0.075f))
-}
-
-private val CRATE_WOOD_LEFT = Color(0xFFC89A5E)
-private val CRATE_WOOD_RIGHT = Color(0xFFA9773F)
-private val CRATE_WOOD_TOP = Color(0xFFDDB57A)
-private val CRATE_EDGE = Color(0xFF5D3A1A)
-private val CRATE_BAND = Color(0xFF8BC34A)
-
 /**
- * The starter crate: a small wooden box seen corner-on, its sides made of planks, a dark edge
- * round it, and a green band over the lid with two leaves for a bow.
+ * Ground cover without a picture of its own: a few dots of green. Pebbles and wild flowers are
+ * pictures laid over their cell (#74, [TerrainTextures.pebbles], [TerrainTextures.flowers]).
  */
-private fun DrawScope.drawStarterCrate(base: Offset, unit: Float) {
-    val half = unit * 0.17f // half the box's width on screen
-    val rise = unit * 0.15f // how tall it stands
-    val left = base + Offset(-half, -half / 2f)
-    val front = base
-    val right = base + Offset(half, -half / 2f)
-    val back = base + Offset(0f, -half)
-    val up = Offset(0f, -rise)
-    val stroke = unit * 0.012f
-
-    drawPath(quad(left, front, front + up, left + up), CRATE_WOOD_LEFT)
-    drawPath(quad(front, right, right + up, front + up), CRATE_WOOD_RIGHT)
-    drawPath(quad(left + up, front + up, right + up, back + up), CRATE_WOOD_TOP)
-    // Plank seams across both sides.
-    for (level in floatArrayOf(0.34f, 0.67f)) {
-        drawLine(CRATE_EDGE.copy(alpha = 0.45f), left + up * level, front + up * level, stroke * 0.8f)
-        drawLine(CRATE_EDGE.copy(alpha = 0.45f), front + up * level, right + up * level, stroke * 0.8f)
-    }
-    // The band over the lid, from the middle of the front-left edge to the middle of the back-right one.
-    val bandFrom = (left + front) / 2f + up
-    val bandTo = (right + back) / 2f + up
-    drawLine(CRATE_BAND, bandFrom, bandTo, stroke * 2.4f, StrokeCap.Round)
-    drawLine(CRATE_BAND, (left + front) / 2f + up * 0.05f, bandFrom, stroke * 2.4f, StrokeCap.Round)
-    // The outline.
-    for ((a, b) in listOf(left to front, front to right, left to left + up, front to front + up, right to right + up)) {
-        drawLine(CRATE_EDGE, a, b, stroke, StrokeCap.Round)
-    }
-    drawPath(quad(left + up, front + up, right + up, back + up), CRATE_EDGE, style = Stroke(width = stroke))
-    // Two leaves for a bow, in the middle of the lid.
-    val knot = (bandFrom + bandTo) / 2f
-    drawOval(CRATE_BAND, knot + Offset(-unit * 0.005f, -unit * 0.05f), Size(unit * 0.06f, unit * 0.035f))
-    drawOval(CRATE_BAND, knot + Offset(-unit * 0.055f, -unit * 0.045f), Size(unit * 0.05f, unit * 0.03f))
-}
-
-private fun DrawScope.drawGroundCover(obj: GridObject, base: Offset, unit: Float) {
-    if (obj.objectId == GroundCover.FLOWERS.objectId) {
-        drawWildFlowers(obj, base, unit)
-        return
-    }
-    if (obj.objectId == GroundCover.PEBBLE.objectId) {
-        drawPebbles(obj, base, unit)
-        return
-    }
+private fun DrawScope.drawGroundCover(base: Offset, unit: Float) {
     val color = Color(0xFF558B2F)
     val r = unit * 0.035f
     drawCircle(color, r * 1.3f, base + Offset(-unit * 0.12f, unit * 0.01f))
     drawCircle(color, r, base + Offset(unit * 0.04f, -unit * 0.05f))
     drawCircle(color, r * 1.1f, base + Offset(unit * 0.13f, unit * 0.04f))
 }
-
-/** A point ([u], [v]) of a cell (-0.5..0.5 each way from its middle) on screen, the cell's middle at [base]. */
-private fun cellPoint(base: Offset, unit: Float, u: Float, v: Float): Offset =
-    base + Offset((u - v) * unit / 2f, (u + v) * unit / 4f)
-
-/**
- * A bed of pebbles over the cell (#60): a pale patch of fine gravel nearly as large as the cell,
- * and on it a scatter of rounded stones in greys and buffs, each with its shadow and a glint,
- * back to front. Before, it was three grey dots, which all but vanished on the bare earth.
- */
-private fun DrawScope.drawPebbles(obj: GridObject, base: Offset, unit: Float) {
-    var state = obj.gridX * 83492791 xor obj.gridY * 29348117 xor 0x2C1B3C6D
-    fun next(): Float {
-        state = state * 1103515245 + 12345
-        return ((state ushr 16) and 0x7FFF) / 32767f
-    }
-    val bed = Path().apply {
-        val inset = 0.42f
-        moveTo(cellPoint(base, unit, -inset, -inset).x, cellPoint(base, unit, -inset, -inset).y)
-        lineTo(cellPoint(base, unit, inset, -inset).x, cellPoint(base, unit, inset, -inset).y)
-        lineTo(cellPoint(base, unit, inset, inset).x, cellPoint(base, unit, inset, inset).y)
-        lineTo(cellPoint(base, unit, -inset, inset).x, cellPoint(base, unit, -inset, inset).y)
-        close()
-    }
-    drawPath(bed, PEBBLE_GRAVEL)
-    // Specks of grit over the gravel.
-    repeat(18) {
-        val at = cellPoint(base, unit, (next() - 0.5f) * 0.8f, (next() - 0.5f) * 0.8f)
-        drawCircle(if (next() > 0.5f) PEBBLE_GRIT_DARK else PEBBLE_GRIT_LIGHT, unit * 0.006f, at)
-    }
-    val stones = List(PEBBLES) { Triple((next() - 0.5f) * 0.72f, (next() - 0.5f) * 0.72f, next()) }
-        .sortedBy { (u, v, _) -> u + v }
-    for ((u, v, r) in stones) {
-        val at = cellPoint(base, unit, u, v)
-        val w = unit * (0.045f + r * 0.035f)
-        val h = w * 0.62f
-        val colour = PEBBLE_COLOURS[((r * 997).toInt()) % PEBBLE_COLOURS.size]
-        drawOval(PEBBLE_SHADOW, Offset(at.x - w * 0.5f, at.y - h * 0.25f), Size(w * 1.05f, h * 0.9f))
-        drawOval(colour, Offset(at.x - w * 0.5f, at.y - h * 0.75f), Size(w, h))
-        drawOval(Color.White.copy(alpha = 0.45f), Offset(at.x - w * 0.28f, at.y - h * 0.68f), Size(w * 0.32f, h * 0.28f))
-    }
-}
-
-private const val PEBBLES = 12
-private val PEBBLE_GRAVEL = Color(0xFFB9AE9C)
-private val PEBBLE_GRIT_DARK = Color(0xFF8C8273)
-private val PEBBLE_GRIT_LIGHT = Color(0xFFD8D0C2)
-private val PEBBLE_SHADOW = Color(0x55302A22)
-private val PEBBLE_COLOURS = listOf(Color(0xFFC9C5BE), Color(0xFFA9A49B), Color(0xFFD9CDB5), Color(0xFF8F8A82), Color(0xFFBFB3A0))
 
 /**
  * A lawn on cell ([x], [y]), [growth] of the way grown (0 sown .. 1 grown, [LawnGrowth]). On the
@@ -2863,14 +2628,6 @@ private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {
     if (!withered) drawCircle(Color(0xFFFFF8E1), bloomRadius * 0.35f, top)
 }
 
-private fun DrawScope.drawDecoration(base: Offset, unit: Float) {
-    val width = unit * 0.36f
-    val height = unit * 0.24f
-    val topLeft = base - Offset(width / 2f, height * 0.85f)
-    drawOval(Color(0xFF9E9E9E), topLeft, Size(width, height))
-    drawOval(Color(0xFFBDBDBD), topLeft + Offset(width * 0.12f, height * 0.08f), Size(width * 0.5f, height * 0.4f))
-}
-
 private fun DrawScope.drawStatusBubble(obj: GridObject, base: Offset, unit: Float) {
     val center = TapTargets.statusBubbleCentre(base, obj, unit)
     val radius = unit * 0.085f
@@ -2879,99 +2636,30 @@ private fun DrawScope.drawStatusBubble(obj: GridObject, base: Offset, unit: Floa
     drawCircle(icon, radius * 0.55f, center)
 }
 
-/** Shape drawn for an object whose sprite is not in the atlas. */
+/**
+ * Shape drawn for an object whose sprite is not in the atlas. Since #74 every decoration has its
+ * picture, and one that cannot be read is not drawn; a crop or ground cover still has a shape.
+ */
 private fun DrawScope.drawPlaceholder(obj: GridObject, base: Offset, unit: Float) {
     if (obj.objectId.startsWith(GROUND_OBJECT_ID_PREFIX)) {
-        drawGroundCover(obj, base, unit)
+        drawGroundCover(base, unit)
         return
     }
     // isFlipped mirrors the shape around the vertical line through its tile center.
-    scale(scaleX = if (obj.isFlipped) -1f else 1f, scaleY = 1f, pivot = base) {
-        when {
-            obj.isPlant -> drawPlant(obj, base, unit)
-            obj.objectId == Decoration.BENCH.objectId -> drawBench(base, unit)
-            obj.objectId == Decoration.LANTERN.objectId -> drawLantern(base, unit)
-            obj.isSprinkler -> drawSprinkler(base, unit, obj.isOn)
-            obj.isStarterCrate -> drawStarterCrate(base, unit)
-            else -> drawDecoration(base, unit)
-        }
-    }
+    if (obj.isPlant) scale(scaleX = if (obj.isFlipped) -1f else 1f, scaleY = 1f, pivot = base) { drawPlant(obj, base, unit) }
 }
 
 // --- Structures -------------------------------------------------------------------------------
-
-private val HUT_WALL_LEFT = Color(0xFFD7B98E)
-private val HUT_WALL_RIGHT = Color(0xFFB8956A)
-private val HUT_ROOF_LIGHT = Color(0xFFC0563F)
-private val HUT_ROOF_DARK = Color(0xFF9C3F2E)
-private val WELL_WALL_LEFT = Color(0xFFBDBDBD)
-private val WELL_WALL_RIGHT = Color(0xFF9E9E9E)
-private val WELL_RIM = Color(0xFFE0E0E0)
-private val WELL_WATER = Color(0xFF3F8FC4)
 
 /** How far the walls stand back from the edge of the footprint, in tiles. */
 private const val STRUCTURE_INSET = 0.12f
 
 /**
- * How much of a code-drawn building's height is wall, the rest being the hut's roof; and how
- * high the well's rim stands, as a part of its height. Taken from [StructureData.heightSteps],
- * the height that decides what a building hides ([Occlusion]), so the stand-in is never taller
- * or shorter than what the garden makes see-through behind it.
- */
-internal const val HUT_WALL_SHARE = 4f / 7f
-internal const val WELL_RIM_SHARE = 0.75f
-
-/**
- * Placeholder for a structure without a sprite: a box standing on its whole footprint, with a
- * pitched roof for the hut and an open, water-filled top for the well. Heights are in height
- * steps, like [GridObject.heightLevel].
+ * Placeholder for a structure without a sprite: the cottage drawn in code. The hut, the well
+ * (#74) and the windmill have pictures, and are not drawn while those cannot be read.
  */
 private fun DrawScope.drawStructure(transform: IsometricTransform, obj: GridObject, structure: StructureData) {
-    val x0 = obj.gridX + STRUCTURE_INSET
-    val y0 = obj.gridY + STRUCTURE_INSET
-    val x1 = obj.gridX + structure.footprint.width - STRUCTURE_INSET
-    val y1 = obj.gridY + structure.footprint.height - STRUCTURE_INSET
-    val ground = obj.heightLevel.toFloat()
-    if (structure == StructureData.COTTAGE) {
-        drawCottage(transform, obj)
-        return
-    }
-    // Without its picture, the windmill is drawn like the hut: a box with a pointed roof.
-    val isHut = structure == StructureData.HUT || structure == StructureData.WINDMILL
-    val top = ground + structure.heightSteps * if (isHut) HUT_WALL_SHARE else WELL_RIM_SHARE
-
-    // Corners of the box, named by where they appear on screen.
-    val leftLow = transform.worldToScreen(x0, y1, ground)
-    val frontLow = transform.worldToScreen(x1, y1, ground)
-    val rightLow = transform.worldToScreen(x1, y0, ground)
-    val back = transform.worldToScreen(x0, y0, top)
-    val left = transform.worldToScreen(x0, y1, top)
-    val front = transform.worldToScreen(x1, y1, top)
-    val right = transform.worldToScreen(x1, y0, top)
-
-    drawPath(quad(leftLow, frontLow, front, left), if (isHut) HUT_WALL_LEFT else WELL_WALL_LEFT)
-    drawPath(quad(frontLow, rightLow, right, front), if (isHut) HUT_WALL_RIGHT else WELL_WALL_RIGHT)
-
-    if (isHut) {
-        val apex = transform.worldToScreen((x0 + x1) / 2f, (y0 + y1) / 2f, ground + structure.heightSteps)
-        // Back slopes first, then the two facing the viewer.
-        drawPath(triangle(back, left, apex), HUT_ROOF_DARK)
-        drawPath(triangle(back, right, apex), HUT_ROOF_DARK)
-        drawPath(triangle(left, front, apex), HUT_ROOF_LIGHT)
-        drawPath(triangle(front, right, apex), HUT_ROOF_DARK)
-    } else {
-        drawPath(quad(back, right, front, left), WELL_RIM)
-        val rim = 0.14f
-        drawPath(
-            quad(
-                transform.worldToScreen(x0 + rim, y0 + rim, top),
-                transform.worldToScreen(x1 - rim, y0 + rim, top),
-                transform.worldToScreen(x1 - rim, y1 - rim, top),
-                transform.worldToScreen(x0 + rim, y1 - rim, top),
-            ),
-            WELL_WATER,
-        )
-    }
+    if (structure == StructureData.COTTAGE) drawCottage(transform, obj)
 }
 
 private val COTTAGE_WALL_LEFT = Color(0xFFF3E6CC)

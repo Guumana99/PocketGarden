@@ -471,8 +471,8 @@ class GardenActionUseCasesTest {
         // Starts on the last row / column, so half of it is off the map.
         assertEquals(ActionResult.OUT_OF_BOUNDS, placeOnRiverMap(0, 0, 8, t0))
         assertEquals(ActionResult.OUT_OF_BOUNDS, placeOnRiverMap(0, 8, 0, t0))
-        // The well is one wide and two deep: its second cell is the tulip's.
-        assertEquals(ActionResult.TILE_OCCUPIED, placeOnRiverMap(1, 3, 3, t0))
+        // The well (one cell since #74) cannot go on the tulip.
+        assertEquals(ActionResult.TILE_OCCUPIED, placeOnRiverMap(1, 3, 4, t0))
 
         assertEquals(1, repo.objects.size)
         assertEquals(1, repo.slots.getValue(0).amount)

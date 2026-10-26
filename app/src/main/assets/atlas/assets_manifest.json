@@ -19,11 +19,68 @@
     },
     {
       "file": "world_0.png",
-      "width": 1820,
-      "height": 966
+      "width": 1970,
+      "height": 1424
     }
   ],
   "assets": [
+    {
+      "assetId": "deco_bench",
+      "anchorX": 0.5025,
+      "anchorY": 0.7668,
+      "width": 287,
+      "height": 311,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 853,
+      "atlasY": 525
+    },
+    {
+      "assetId": "deco_lantern",
+      "anchorX": 0.4975,
+      "anchorY": 0.8584,
+      "width": 141,
+      "height": 225,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 1247,
+      "atlasY": 966
+    },
+    {
+      "assetId": "deco_rock",
+      "anchorX": 0.4637,
+      "anchorY": 0.6788,
+      "width": 235,
+      "height": 159,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 2,
+      "atlasY": 1263
+    },
+    {
+      "assetId": "deco_sprinkler",
+      "anchorX": 0.4983,
+      "anchorY": 0.8638,
+      "width": 213,
+      "height": 174,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 1666,
+      "atlasY": 966,
+      "attachX": 0.4983,
+      "attachY": 0.3673
+    },
+    {
+      "assetId": "deco_starter_crate",
+      "anchorX": 0.4586,
+      "anchorY": 0.8112,
+      "width": 215,
+      "height": 237,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 1030,
+      "atlasY": 966
+    },
     {
       "assetId": "floor_greenhouse",
       "anchorX": 0.4993,
@@ -32,8 +89,8 @@
       "height": 439,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 620,
-      "atlasY": 2
+      "atlasX": 2,
+      "atlasY": 525
     },
     {
       "assetId": "floor_tilled",
@@ -43,8 +100,8 @@
       "height": 279,
       "isFlippedAllowed": false,
       "page": 3,
-      "atlasX": 1030,
-      "atlasY": 517
+      "atlasX": 516,
+      "atlasY": 966
     },
     {
       "assetId": "plant_carrot_stage1",
@@ -59,9 +116,9 @@
     },
     {
       "assetId": "plant_carrot_stage2",
-      "anchorX": 0.503,
+      "anchorX": 0.5,
       "anchorY": 1.0,
-      "width": 328,
+      "width": 302,
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
@@ -186,7 +243,7 @@
       "height": 218,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1780,
+      "atlasX": 1754,
       "atlasY": 1797
     },
     {
@@ -560,7 +617,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 332,
+      "atlasX": 306,
       "atlasY": 1797
     },
     {
@@ -604,7 +661,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 477,
+      "atlasX": 451,
       "atlasY": 1797
     },
     {
@@ -626,7 +683,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 753,
+      "atlasX": 727,
       "atlasY": 1797
     },
     {
@@ -736,7 +793,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1076,
+      "atlasX": 1050,
       "atlasY": 1797
     },
     {
@@ -846,7 +903,7 @@
       "height": 245,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1343,
+      "atlasX": 1317,
       "atlasY": 1797
     },
     {
@@ -901,7 +958,7 @@
       "height": 513,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 2,
+      "atlasX": 1021,
       "atlasY": 2,
       "drawScale": 2.4971
     },
@@ -913,8 +970,8 @@
       "height": 150,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 2,
-      "atlasY": 814
+      "atlasX": 239,
+      "atlasY": 1263
     },
     {
       "assetId": "struct_fence_post",
@@ -924,8 +981,8 @@
       "height": 119,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 357,
-      "atlasY": 814
+      "atlasX": 594,
+      "atlasY": 1263
     },
     {
       "assetId": "struct_fence_rail",
@@ -935,8 +992,31 @@
       "height": 176,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1544,
-      "atlasY": 517
+      "atlasX": 1390,
+      "atlasY": 966
+    },
+    {
+      "assetId": "struct_hut",
+      "anchorX": 0.4994,
+      "anchorY": 0.7613,
+      "width": 575,
+      "height": 521,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 2,
+      "atlasY": 2,
+      "drawScale": 1.7822
+    },
+    {
+      "assetId": "struct_well",
+      "anchorX": 0.4895,
+      "anchorY": 0.8409,
+      "width": 440,
+      "height": 514,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 579,
+      "atlasY": 2
     },
     {
       "assetId": "struct_windmill",
@@ -946,8 +1026,8 @@
       "height": 424,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1135,
-      "atlasY": 2,
+      "atlasX": 517,
+      "atlasY": 525,
       "drawScale": 3.2802,
       "attachX": 0.8422,
       "attachY": 0.25
@@ -960,8 +1040,8 @@
       "height": 303,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1471,
-      "atlasY": 2,
+      "atlasX": 1142,
+      "atlasY": 525,
       "drawScale": 3.2802
     },
     {
@@ -972,8 +1052,8 @@
       "height": 295,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 2,
-      "atlasY": 517
+      "atlasX": 1456,
+      "atlasY": 525
     },
     {
       "assetId": "tile_grass_dark",
@@ -983,8 +1063,8 @@
       "height": 295,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 516,
-      "atlasY": 517
+      "atlasX": 2,
+      "atlasY": 966
     }
   ]
 }

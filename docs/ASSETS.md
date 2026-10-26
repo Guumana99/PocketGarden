@@ -11,7 +11,8 @@
 | `app/src/main/assets/atlas/{crops,world}_<n>.png` + `assets_manifest.json` | スプライト 87 枚を 1 辺 2048px 以内のページに詰めたもの（#73）。作物（`plant_*`）は `crops_0`〜`2`（2035×2045・1952×2023・1925×467）、それ以外（建物・地面・柵）は `world_0`（1820×966）。合計 約 13.8MB、メモリ上 約 43MB、1 タイル 512px | `tools/asset_packer.py` |
 | `app/src/main/assets/atlas/creatures_0.png` + `creatures_manifest.json` | 生き物 6 種の絵 16 枚（#71。1009×459、約 480KB、1 タイル 960px）。作物のアトラスとは別（形は同じ。#73 で `creatures.png` から改名） | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
-| `app/src/main/res/drawable-nodpi/tile_path_cobblestone.png` | 石畳の床 | 同スクリプトが原画から切り出し |
+| `app/src/main/res/drawable-nodpi/{floor_cobblestone,floor_wood,ground_pebble,ground_flowers}.png` | 石畳・ウッドデッキ・小石・野の花（#74）。真上から見た 1 マス分の模様（512×512）で、並べると隣のマスへ続く。庭は 1 マスに 1 枚敷く（`drawGroundTexture`） | `tools/prepare_drawable_art.py`（`GROUND`）が板の原画の上面から作る |
+| `app/src/main/res/drawable-nodpi/icon_{struct_hut,struct_well,deco_rock,deco_bench,deco_lantern,deco_sprinkler,ground_pebble,ground_flowers,floor_wood,floor_cobblestone}.png` | 建物・飾り・地面の品物のアイコン（#74、256×256） | `tools/prepare_drawable_art.py`（`ITEM_ICONS`）が原画から切り抜く。地面は斜め上から見た板の形のまま |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
 | `app/src/main/res/drawable/soil_tilled.png` | 耕した土（畝 3 本）の板（#57）。上面を畑の 1 マスに敷く | 受け取ったまま（1024×1024、白背景）。`GroundSlab.TILLED` |
 | `app/src/main/res/drawable/soil_revived.png` | 鍬で崩しかけた地面（畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
@@ -113,33 +114,33 @@
 | 種 | 小麦の種（`seed_wheat`） | 45 | Lv4 | 確定アセット | `plant_wheat_*`（#57）、アイコン画像あり |
 | 種 | トウモロコシの種（`seed_corn`） | 60 | Lv5 | 確定アセット | `plant_corn_*`（#57）、アイコン画像あり |
 | 建物 | ウッドフェンス（`struct_fence`） | 15 | 最初から | 確定アセット＋コード | `struct_fence` `struct_fence_post`。斜めにつなぐ横木はコード |
-| 建物 | 井戸（`struct_well`） | 80 | Lv3 | コード描画（仮置き） | `drawStructure` |
+| 建物 | 井戸（`struct_well`） | 80 | Lv3 | 確定アセット | `struct_well`（#74、1×1）、アイコン画像あり |
 | 建物 | 風車（`struct_windmill`） | 120 | Lv4 | 確定アセット | `struct_windmill` `struct_windmill_blades` |
-| 建物 | 小屋（`struct_hut`） | 150 | Lv5 | コード描画（仮置き） | `drawStructure` |
+| 建物 | 小屋（`struct_hut`） | 150 | Lv5 | 確定アセット | `struct_hut`（#74）、アイコン画像あり |
 | 建物 | コテージ（`struct_cottage`） | 300 | Lv6 | 確定アセット | `struct_cottage` |
 | 建物 | ガラスの温室（`floor_greenhouse`） | 300 | Lv18 | 確定アセット | `floor_greenhouse`、床は `floor_tilled` |
 | 飾り | 芝生（`ground_grass`） | 10 | 最初から | 確定アセット＋コード | 育ちきると `tile_grass`。育つ途中の苗床と葉の切り抜きはコード（#61） |
-| 飾り | 小石（`ground_pebble`） | 10 | 最初から | コード描画（仮置き） | `drawPebbles` |
-| 飾り | 石畳（`floor_cobblestone`） | 10 | 最初から | 確定アセット | `tile_path_cobblestone.png` |
+| 飾り | 小石（`ground_pebble`） | 10 | 最初から | 確定アセット | `ground_pebble.png`（#74）、アイコン画像あり |
+| 飾り | 石畳（`floor_cobblestone`） | 10 | 最初から | 確定アセット | `floor_cobblestone.png`（#74 で差し替え）、アイコン画像あり |
 | 飾り | 小川のかけら（`tile_river`） | 10 | 最初から | 生成アセット | `tile_river_autotile.png`（スクリプトで生成）。庭・図鑑での名前は「せせらぎ」 |
-| 飾り | 野の花（`ground_flowers`） | 15 | 最初から | コード描画（仮置き） | `GardenCanvas.kt` |
-| 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 2 ページ | コード描画（仮置き） | `drawWoodDeck` |
-| 飾り | 岩（`deco_rock`） | 30 | Lv2 | コード描画（仮置き） | `drawDecoration` |
-| 飾り | ベンチ（`deco_bench`） | 40 | Lv2 | コード描画（仮置き） | `drawBench` |
-| 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 4 ページ | コード描画（仮置き） | `drawLantern` |
-| 飾り | スプリンクラー（`deco_sprinkler`） | 70 | Lv3 | コード描画（仮置き） | `drawSprinkler`、水しぶきも `SprinklerSpray` のコード |
+| 飾り | 野の花（`ground_flowers`） | 15 | 最初から | 確定アセット | `ground_flowers.png`（#74）、アイコン画像あり |
+| 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 2 ページ | 確定アセット | `floor_wood.png`（#74）、アイコン画像あり |
+| 飾り | 岩（`deco_rock`） | 30 | Lv2 | 確定アセット | `deco_rock`（#74）、アイコン画像あり |
+| 飾り | ベンチ（`deco_bench`） | 40 | Lv2 | 確定アセット | `deco_bench`（#74）、アイコン画像あり |
+| 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 4 ページ | 確定アセット | `deco_lantern`（#74）、アイコン画像あり |
+| 飾り | スプリンクラー（`deco_sprinkler`） | 70 | Lv3 | 確定アセット＋コード | `deco_sprinkler`（#74）、アイコン画像あり。水しぶきは `SprinklerSpray` のコードで、絵の腕の軸から出る |
 | 飾り | 池（`deco_pond`） | 75 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |
 
-集計：確定アセット 25（うちコード併用 2、旧画風 3）、生成アセット 1、コード描画（仮置き） 9。
-ショップに出ないもの：耕した土（鍬で作る。`soil_tilled.png`）、崩しかけた地面（`soil_revived.png`）、最初の木箱（コード描画）。
+集計：確定アセット 34（うちコード併用 3、旧画風 3）、生成アセット 1、コード描画（仮置き） 0。
+ショップに出ないもの：耕した土（鍬で作る。`soil_tilled.png`）、崩しかけた地面（`soil_revived.png`）、最初の木箱（`deco_starter_crate`、#74 から絵）。
 品を足したり絵を入れたりしたら、この表と `GardenItem.kt` 冒頭の一覧と `ASSET_LEDGER.md` を直すこと。
 
 ### 画像が無く、プログラムで描いているもの
 
-岩、小石、野の花、ウッドデッキ、ベンチ、石どうろう、井戸、小屋、スプリンクラー（本体と水しぶき）、
-芝生の育つ途中の苗床、たい肥の粒、フェンスの横木と杭、工事現場（シート・足場）、木枠、背景（空・丘・茂み）、影、風の筋。
+#74 で庭に置く物はすべて絵になった。残りは**演出としてコードで描く**もの（絵に替える予定は無い。`ASSET_LEDGER.md` の「演出としてコードで描くもの」）：
+工事現場（シート・足場）、たい肥の粒、芝生の育つ途中の苗床と葉、フェンスの横木と杭、スプリンクラーの水しぶき、木枠、背景（空・丘・茂み）、影、風の筋、天気。
 すべて `ui/components/GardenCanvas.kt` と `ui/effects/GardenBackdrop.kt` にある。
-絵を用意できれば、同じ assetId でアトラスに入れるだけで差し替わる（スプライトがあればそちらを優先して描く）。
+庭に置く物は、絵があればそれを描く（同じ assetId でアトラスに入れるだけで差し替わる）。絵が読めないとき、コテージだけはコードの図形で、ほかの建物と飾りは何も描かない（#74 で図形を削除）。
 
 作物と生き物の仮の絵（コード描画）について:
 
@@ -180,13 +181,13 @@
 |---|---|
 | `item_fence_wood.png` | 正面向きのパーツ集。柵・支柱・横木を切り出して使用 |
 | `creature_{squirrel,squirrel_run,bird,bird_fly,frog,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures_0.png` に |
-| `tile_path_cobblestone.png` | 石畳。そのまま使用 |
+| `tile_path_cobblestone.png` | **#74 から未使用（保管）**。イラスト調の石畳（#40）。#73 まで `build_terrain_assets.py` が 4 分の 1 を切り出して石畳の床にしていた。#74 で `tile_cobblestone_iso.png` から作った `floor_cobblestone.png` に差し替え |
 | `building_cottage.png` | コテージ（#40）。透過はきれいだった。切り抜いて 3 マス分の幅で描く（描画倍率 約 2.5）。土台が 2:1 より平たい。#41 では土台の左右の角を 3×3 の左右の角にそろえていた（anchorY 0.7975）が、前の列が空いて奥に寄って見えたので、#55 から他の建物と同じく左右の角と前の角のずれを半分ずつにする（`ground_centre_y`、anchorY 0.7481、約 0.2 マス手前へ） |
 | `building_greenhouse.png` | ガラスの温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |
 | `building_windmill_body.jpg` | 風車の本体（#40）。**JPEG で透過が無く、灰色の市松模様（48px、2 トーン）が背景として描き込まれていた**。マスごとの色で抜いた |
 | `building_windmill_blades.jpg` | 風車の羽根（#40）。同じく白と灰色の市松模様（約 12px）と、白いにじみが描き込まれていた。色で抜いた |
 | `tile_grass_iso.png` | 芝生（#57、受け取ったときは `res/drawable/tile_grass.png`）。白背景のアイソメの芝の板（1024×1024）。`prepare_drawable_art.flat_lawn` が上面を真上から見た正方形（720 px）に戻し、`flat_to_tile` で中央の正方形の半分（`share=0.5`）を 2:1 のひし形へ貼り、ぼかし 1.2px、厚み 55px の側面を足して `tile_grass` に。細かい葉のままだとスマホで約 7 分の 1 に縮んだとき砂嵐のようにちらつくため、葉を大きく柔らかくしている。#53 の `tile_lawn_flat.png` はこれに置き換えて削除 |
-| `crop_*.png`（63 枚） | 作物の原画（#57・#58・#62〜#69）。トウモロコシ・ナス・小麦・ひまわり・ミント・コスモス・スノードロップ・スイカ・ラベンダー・しいたけ・ポインセチアは `_stage1`〜`3` と `_withered`、トマト・イチゴは `_1`〜`3` と `_withered`、ニンジンは `_1`・`_3`・`_withered`、チューリップは `_stage1`・`_stage2` と 6 色の `_<色>_stage3` | `prepare_drawable_art.py` が切り抜いて `raw_assets/plant_*` に |
+| `crop_*.png`（63 枚） | 作物の原画（#57・#58・#62〜#69）。トウモロコシ・ナス・小麦・ひまわり・ミント・コスモス・スノードロップ・スイカ・ラベンダー・しいたけ・ポインセチアは `_stage1`〜`3` と `_withered`、トマト・イチゴは `_1`〜`3` と `_withered`、ニンジンは `_stage1`〜`3` と `_withered`（#74 で `_1`・`_3` を改名、`_stage2` は #74 で届いた）、チューリップは `_stage1`・`_stage2` と 6 色の `_<色>_stage3` | `prepare_drawable_art.py` が切り抜いて `raw_assets/plant_*` に |
 | `icon_*.png`（18 枚） | アイコンの原画（#57、ミントは #62、コスモスは #63、スイカは #65、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72）。バラ・パプリカ・大根は株の絵をこのスクリプトで作っていないので、アイコンだけ作る（`ICON_ONLY`）。大根は白い根が欠けたため、ラベンダーと同じく `ICON_CUT` で真っ白だけを背景として抜く。`icon_snowdrop.png` は #64 では枯れた絵の複製だったが、#66 で正しい絵に置き直して使っている | `prepare_drawable_art.py` が切り抜いて `res/drawable-nodpi/` に |
 | `tile_soil_flat.png` | 耕した土（#53）。同じく真上からの写真（受け取ったときは `floor_tilled.png`）。正方形全体をひし形へ、厚み 33px で `floor_tilled` に（温室の床でだけ使う） |
 | `pond.png` | 池（#53）。透過ありのアイソメの絵（丸太の枠と石）。#54 から `res/drawable/pond.png` にコピーして池（`deco_pond`）に使用。`raw_assets/` に置くと詰められて `CodeArtTest` が落ちるので、原画はここに置いてある |
