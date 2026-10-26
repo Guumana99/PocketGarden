@@ -578,9 +578,10 @@ class PurchaseItemUseCase @Inject constructor(
  * Brings every plant up to [now] and re-stamps the profile. Run on launch / resume and
  * periodically while the garden is open.
  *
- * Integrity is checked first, against the clocks recorded by the previous run. If the device
- * clock was manipulated or the profile's signature is broken, the elapsed time is not credited:
- * objects are simply re-anchored to [now], and building jobs start over.
+ * [now] is the game's time ([com.studioguu.miniaturegarden.domain.repository.GameClock]), which
+ * only moves as far as time has really passed, so a device clock set forward brings nothing on
+ * and needs no checking here. The profile's signature is checked first: if it is broken, the
+ * elapsed time is not credited: objects are simply re-anchored to [now], and building jobs start over.
  */
 class SyncGardenUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -589,7 +590,7 @@ class SyncGardenUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(now: Long, weather: WeatherForecast): IntegrityResult {
         val integrity = verifyIntegrity()
-        val trusted = integrity.signatureValid && integrity.timeConsistent
+        val trusted = integrity.signatureValid
         gardenRepository.runInTransaction {
             val objects = gardenRepository.getGridObjects()
             val updated = if (trusted) {
@@ -616,8 +617,8 @@ class SyncGardenUseCase @Inject constructor(
 
 /**
  * Development aid: makes every object [millis] older and applies the resulting offline progress,
- * as if that much time had passed with the app closed. Only object timestamps move; the
- * profile's clocks are left alone, so this does not look like clock tampering.
+ * as if that much time had passed with the app closed. Only object timestamps (and the season's
+ * start) move; the game's clock itself is left alone.
  */
 class SkipTimeUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,

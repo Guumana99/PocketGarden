@@ -9,8 +9,10 @@ import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
 import com.studioguu.miniaturegarden.data.local.dao.LetterDao
 import com.studioguu.miniaturegarden.data.local.dao.NatureNoteDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
+import com.studioguu.miniaturegarden.data.local.dao.WeatherDayDao
 import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
+import com.studioguu.miniaturegarden.data.local.entity.WeatherDayEntity
 import com.studioguu.miniaturegarden.data.local.mapper.toDomain
 import com.studioguu.miniaturegarden.data.local.mapper.toEntity
 import com.studioguu.miniaturegarden.data.security.SecurityManager
@@ -22,6 +24,8 @@ import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.StarterGarden
 import com.studioguu.miniaturegarden.domain.model.UserProfile
+import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.domain.repository.GameClock
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,7 +42,9 @@ class GardenRepositoryImpl @Inject constructor(
     private val gardenProgressDao: GardenProgressDao,
     private val natureNoteDao: NatureNoteDao,
     private val letterDao: LetterDao,
+    private val weatherDayDao: WeatherDayDao,
     private val securityManager: SecurityManager,
+    private val clock: GameClock,
 ) : GardenRepository {
 
     override suspend fun <T> runInTransaction(block: suspend () -> T): T = database.withTransaction { block() }
@@ -51,7 +57,7 @@ class GardenRepositoryImpl @Inject constructor(
         if (existing == null) {
             // A new garden: bare lawn and the crate whose seed is the first thing to plant. The
             // player starts out with an empty bag. Its season clock starts at the first sync.
-            gridObjectDao.upsertAll(StarterGarden.objects(System.currentTimeMillis()).map { it.toEntity() })
+            gridObjectDao.upsertAll(StarterGarden.objects(clock.now()).map { it.toEntity() })
             gardenProgressDao.upsert(GardenProgress.NEW_GARDEN.toEntity())
         } else if (gardenProgressDao.get() == null) {
             // Saved before there was any progress to keep: the player knows the way already.
@@ -71,6 +77,7 @@ class GardenRepositoryImpl @Inject constructor(
         gardenProgressDao.deleteAll()
         natureNoteDao.deleteAll()
         letterDao.deleteAll()
+        weatherDayDao.deleteAll()
         userProfileDao.deleteAll()
     }
 
@@ -131,4 +138,12 @@ class GardenRepositoryImpl @Inject constructor(
     override suspend fun postLetter(letter: Letter): Boolean = letterDao.insertIfAbsent(letter.toEntity()) != -1L
 
     override suspend fun markLetterRead(letterId: String) = letterDao.markRead(letterId)
+
+    override suspend fun getWeatherDays(): Map<Long, WeatherType> =
+        weatherDayDao.getAll().mapNotNull { row -> WeatherType.fromName(row.weather)?.let { row.day to it } }.toMap()
+
+    override suspend fun keepWeatherDays(days: Map<Long, WeatherType>) =
+        weatherDayDao.insertIfAbsent(days.map { (day, weather) -> WeatherDayEntity(day, weather.name) })
+
+    override suspend fun forgetWeatherBefore(day: Long) = weatherDayDao.deleteBefore(day)
 }

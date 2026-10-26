@@ -82,7 +82,7 @@ class UiBalanceAndGroundTest {
         assertFalse(bar.contains("onWater"))
         val panel = source("ui/hud/ObjectStatusDialog.kt")
         assertTrue(panel.contains("toolStars(wateringCanLevel)"))
-        assertTrue(source("ui/GardenScreen.kt").contains("wateringCanLevel = toolLevels.wateringCan,\n                            )"))
+        assertTrue(source("ui/GardenScreen.kt").contains("wateringCanLevel = toolLevels.wateringCan,\n"))
     }
 
     @Test

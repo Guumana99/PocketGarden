@@ -17,6 +17,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.TimeOfDay
+import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
+import com.studioguu.miniaturegarden.ui.timeOfDayLabel
+import com.studioguu.miniaturegarden.ui.weatherEmoji
+import com.studioguu.miniaturegarden.ui.weatherLabel
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
@@ -32,6 +37,9 @@ private const val DAY_MILLIS = 24 * HOUR_MILLIS
  * @param onCycleWeather switches to the next kind of weather, overriding the day's own.
  * @param onBoost adds coins and a level, to reach what opens late (the symbol building) quickly.
  * @param onNextSeason lets the rest of the season go by, so that the next one comes now.
+ * @param onCycleTimeOfDay shows the garden at the next time of day, for a look at its light.
+ * @param timeOfDayShown the time of day shown in place of the clock's; null for the clock's own.
+ * @param outlook today's and tomorrow's weather, until the weathervane shows them in the garden.
  * @param zoomScale the garden's zoom as it is now, shown at the top.
  */
 @Composable
@@ -41,6 +49,9 @@ fun DebugMenuDialog(
     onDismiss: () -> Unit,
     onBoost: () -> Unit = {},
     onNextSeason: () -> Unit = {},
+    onCycleTimeOfDay: () -> Unit = {},
+    timeOfDayShown: TimeOfDay? = null,
+    outlook: WeatherOutlook? = null,
     zoomScale: Float? = null,
 ) {
     AlertDialog(
@@ -61,6 +72,19 @@ fun DebugMenuDialog(
                 }
                 FilledTonalButton(onClick = onCycleWeather) {
                     Text(stringResource(R.string.debug_cycle_weather))
+                }
+                FilledTonalButton(onClick = onCycleTimeOfDay) {
+                    val shown = timeOfDayShown?.let { stringResource(timeOfDayLabel(it)) } ?: stringResource(R.string.debug_time_clock)
+                    Text(stringResource(R.string.debug_cycle_time, shown))
+                }
+                if (outlook != null) {
+                    Text(
+                        stringResource(
+                            R.string.debug_forecast,
+                            "${weatherEmoji(outlook.today)}${stringResource(weatherLabel(outlook.today))}",
+                            "${weatherEmoji(outlook.tomorrow)}${stringResource(weatherLabel(outlook.tomorrow))}",
+                        )
+                    )
                 }
                 FilledTonalButton(onClick = onBoost) {
                     Text(stringResource(R.string.debug_boost))

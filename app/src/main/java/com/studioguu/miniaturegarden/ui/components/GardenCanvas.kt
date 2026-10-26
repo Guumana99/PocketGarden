@@ -72,6 +72,8 @@ import com.studioguu.miniaturegarden.domain.model.TileType
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.render.Daylight
+import com.studioguu.miniaturegarden.ui.render.SceneTint
+import com.studioguu.miniaturegarden.ui.render.drawSpriteSnow
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
@@ -170,6 +172,11 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param onZoomChanged told the zoom at every change, as it happens (the debug read-out).
  * @param bareGround what a cell with nothing laid on it looks like: the untilled wasteland of a
  *   garden being made, or the lawn of the title's garden in full swing.
+ * @param hourOfDay the local time the garden is lit for (0 until 24); null for the device's clock.
+ * @param lightByTimeOfDay lays the light of the time of day over the whole scene ([SceneTint]),
+ *   and lights the lanterns and the windows at night. The title's garden goes without.
+ * @param clockOffset how far the game's clock is ahead of the device's, for how far along
+ *   building jobs are.
  */
 @Composable
 fun GardenCanvas(
@@ -200,6 +207,9 @@ fun GardenCanvas(
      * turned earth ([TerrainTextures.broken]), the step between the wasteland and a bed.
      */
     brokenCells: Set<GridCell> = emptySet(),
+    hourOfDay: Float? = null,
+    lightByTimeOfDay: Boolean = false,
+    clockOffset: Long = 0L,
 ) {
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -282,7 +292,7 @@ fun GardenCanvas(
         }
     }
     // The time of day, for the direction of the light; looked at again every minute.
-    val hourOfDay by produceState(currentHourOfDay()) {
+    val clockHourOfDay by produceState(currentHourOfDay()) {
         while (true) {
             delay(60_000)
             value = currentHourOfDay()
@@ -360,8 +370,10 @@ fun GardenCanvas(
     ) {
         val transform = camera?.toTransform(metrics, size) ?: return@Canvas
         val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
+        val hour = hourOfDay ?: clockHourOfDay
+        val wallMillis = System.currentTimeMillis()
         val ambience = Ambience(
-            Daylight.at(hourOfDay, weather), weather, windMillis, season = season,
+            Daylight.at(hour, weather), weather, windMillis, epochMillis = wallMillis, gameMillis = wallMillis + clockOffset, season = season,
             // The bare ground as it is actually laid: the lawn wherever the wasteland cannot be read.
             bareGround = if (bareGround == BareGround.WASTELAND && terrain.wasteland != null) BareGround.WASTELAND else BareGround.LAWN,
         )
@@ -380,6 +392,10 @@ fun GardenCanvas(
             pipeline.submit(RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(cell.x, cell.y)) {
                 drawBrokenGround(transform, cell.x, cell.y, terrain.broken)
             }
+        }
+        // A thin cover of snow over the ground, the beds and the lawns; the water stays open.
+        if (weather == WeatherType.SNOWY) {
+            pipeline.submit(RenderLayer.BOTTOM_OBJECTS, Float.MAX_VALUE) { drawSnowCover(transform, gardenMap, grid) }
         }
         // Last of the ground, over the stream and the beds at the garden's edge too.
         pipeline.submit(RenderLayer.BASE_TERRAIN, Float.MAX_VALUE) { drawFrameLip(transform, gardenMap.size.toFloat()) }
@@ -457,6 +473,12 @@ fun GardenCanvas(
             }
         }
         pipeline.render(this)
+        if (lightByTimeOfDay) {
+            val tint = SceneTint.at(hour, season)
+            if (tint.alpha > 0f) drawRect(tint)
+            val lamps = SceneTint.lampsAt(hour, season)
+            if (lamps > 0f) drawLamps(gridObjects, transform, atlas, spriteScale, lamps)
+        }
     }
 }
 
@@ -484,8 +506,10 @@ private class Ambience(
     val light: SunLight,
     val weather: WeatherType,
     val windMillis: Long?,
-    /** Wall clock, for how far along building jobs are. */
+    /** Wall clock, for where the visitors have got to. */
     val epochMillis: Long = System.currentTimeMillis(),
+    /** The game's clock, for how far along building jobs are. */
+    val gameMillis: Long = epochMillis,
     /** The garden's season, which the lawn shows. */
     val season: Season = Season.SPRING,
     /** What the cells with nothing on them are: what stands on open ground grows from it. */
@@ -552,7 +576,7 @@ private fun submitObjects(
             // (put back in the bag, called off), it is the site that fades, never the finished
             // building (#50: that showed for a moment).
             if (layer == RenderLayer.GRID_OBJECTS) {
-                val progress = obj.workProgress(ambience.epochMillis)
+                val progress = obj.workProgress(ambience.gameMillis)
                 val site: DrawScope.() -> Unit = { drawWorkSite(transform, obj, progress, ambience.windMillis ?: 0L) }
                 if (vanish != null) {
                     val footprint = obj.footprint
@@ -777,6 +801,10 @@ private fun submitObjects(
                     else -> sway * PLANT_LEAN
                 }
                 drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
+                // On a snowy day the snow lies on the top of every plant.
+                if (obj.isPlant && ambience.weather == WeatherType.SNOWY) {
+                    drawSpriteSnow(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
+                }
                 if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {
                     val sails = atlas[WindmillSails.SAILS_ASSET_ID]
                     val hub = sprite.attachmentAt(base.x, base.y, spriteScale, obj.isFlipped)
@@ -2726,4 +2754,106 @@ private fun DrawScope.drawCottage(transform: IsometricTransform, obj: GridObject
     )
     drawPath(quad(p(x0 - over, y1 + over, eaves - 0.3f), p(x1 + over, y1 + over, eaves - 0.3f), ridgeB, ridgeA), COTTAGE_ROOF_LIGHT)
     drawLine(COTTAGE_ROOF_DARK, ridgeA, ridgeB, stroke * 1.5f, StrokeCap.Round)
+}
+
+// --- Snow and the lights of the night ---------------------------------------------------------
+
+private val SNOW_COVER = Color(0x66FFFFFF)
+
+/** A thin, see-through cover of snow over every cell of the garden but its water. */
+private fun DrawScope.drawSnowCover(transform: IsometricTransform, gardenMap: GardenMap, grid: GardenGrid) {
+    for (y in 0 until gardenMap.size) {
+        for (x in 0 until gardenMap.size) {
+            if (!gardenMap.isInside(x, y)) continue
+            val occupant = grid.occupantAt(x, y)
+            if (occupant != null && (occupant.isTerrain || occupant.isPond)) continue
+            drawPath(transform.tilePath(x, y), SNOW_COVER)
+        }
+    }
+}
+
+private val LAMP_GLOW = Color(0xFFFFC46B)
+private val LAMP_CORE = Color(0xFFFFF1C2)
+
+/**
+ * The lights of the night, [strength] 0 (out) to 1 (fully lit): the fire in each stone lantern,
+ * and the windows of the hut and the cottage, each pane glowing warm with a halo round it, and a
+ * pool of light on the ground below. Drawn over the darkness, so they shine through it. A
+ * building still under construction is dark, and so is one whose picture cannot be read.
+ */
+private fun DrawScope.drawLamps(
+    objects: List<GridObject>,
+    transform: IsometricTransform,
+    atlas: SpriteAtlas,
+    spriteScale: Float,
+    strength: Float,
+) {
+    for (obj in objects) {
+        if (obj.isWorking) continue
+        val lights = LAMPS[obj.objectId] ?: continue
+        val sprite = atlas[obj.objectId] ?: continue
+        val footprint = obj.footprint
+        val base = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f, obj.heightLevel.toFloat())
+        val width = sprite.drawnWidth(spriteScale)
+        val height = sprite.drawnHeight(spriteScale)
+        val left = sprite.drawLeft(base.x, spriteScale)
+        val top = sprite.drawTop(base.y, spriteScale)
+        for (light in lights) {
+            val x = left + light.x * width
+            // A building turned round shows its picture mirrored about its foot.
+            val center = Offset(if (obj.isFlipped && sprite.isFlippedAllowed) 2 * base.x - x else x, top + light.y * height)
+            val pane = Size(light.width * width, light.height * height)
+            drawLightPool(Offset(center.x, base.y), width * 0.3f, strength * 0.8f)
+            drawGlow(center, pane, maxOf(pane.width, pane.height) * 1.6f, strength)
+        }
+    }
+}
+
+/**
+ * A lit window or lantern fire, as a share of its picture: the middle of it ([x], [y] from the
+ * picture's top left) and its size.
+ */
+private class Lamp(val x: Float, val y: Float, val width: Float, val height: Float)
+
+/** Where the lights are in each picture that has some (measured off tools/raw_assets). */
+private val LAMPS: Map<String, List<Lamp>> = mapOf(
+    // The fire box under the lantern's roof.
+    "deco_lantern" to listOf(Lamp(0.505f, 0.39f, 0.3f, 0.09f)),
+    // The shuttered window on its left face.
+    StructureData.HUT.objectId to listOf(Lamp(0.303f, 0.45f, 0.13f, 0.17f)),
+    // Two windows on the long face, one on the gable end.
+    StructureData.COTTAGE.objectId to listOf(
+        Lamp(0.243f, 0.505f, 0.065f, 0.13f),
+        Lamp(0.367f, 0.535f, 0.055f, 0.12f),
+        Lamp(0.72f, 0.535f, 0.07f, 0.12f),
+    ),
+)
+
+/** A pane of [size] glowing warm round [center], in a soft halo of [radius]. */
+private fun DrawScope.drawGlow(center: Offset, size: Size, radius: Float, strength: Float) {
+    drawCircle(
+        brush = Brush.radialGradient(
+            listOf(LAMP_GLOW.copy(alpha = 0.5f * strength), LAMP_GLOW.copy(alpha = 0f)),
+            center = center,
+            radius = radius,
+        ),
+        radius = radius,
+        center = center,
+    )
+    drawRect(LAMP_CORE.copy(alpha = 0.6f * strength), topLeft = center - Offset(size.width / 2f, size.height / 2f), size = size)
+}
+
+/** The light a lamp throws on the ground round [center]: a flat, soft oval. */
+private fun DrawScope.drawLightPool(center: Offset, radius: Float, strength: Float) {
+    scale(scaleX = 1f, scaleY = 0.5f, pivot = center) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                listOf(LAMP_GLOW.copy(alpha = 0.28f * strength), LAMP_GLOW.copy(alpha = 0f)),
+                center = center,
+                radius = radius,
+            ),
+            radius = radius,
+            center = center,
+        )
+    }
 }

@@ -31,7 +31,7 @@ import kotlin.math.min
  *   stress too, and withers [OVERRIPE_HOURS] later if it is not harvested;
  * - at full stress it is withered. It is never removed: it stays where it is until the player
  *   revives it or clears it away.
- * Rain waters every plant and stops all of the above for as long as it falls.
+ * Rain and snow water every plant and stop all of the above for as long as they fall.
  */
 class CalculateOfflineProgressUseCase @Inject constructor() {
 
@@ -70,8 +70,7 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         }
         while (cursor < currentTimeMillis) {
             // The weather of a stretch is the weather at its start; it holds until the next change.
-            val nextChange = (Math.floorDiv(cursor, WeatherType.DAY_MILLIS) + 1) * WeatherType.DAY_MILLIS
-            val until = min(nextChange, currentTimeMillis)
+            val until = min(weather.nextChangeAfter(cursor), currentTimeMillis)
             // Whatever part of a minute is left at the change stays in the object's timestamp and
             // is counted with the next stretch, so nothing is lost at the joins.
             current = advance(current, until, weather.at(cursor), surroundings)

@@ -21,6 +21,8 @@ data class GardenProgressEntity(
     @ColumnInfo(defaultValue = "0") val hoeXp: Int = 0,
     /** Times the watering can has watered, its experience. Added in schema version 14. */
     @ColumnInfo(defaultValue = "0") val wateringCanXp: Int = 0,
+    /** The seed of the garden's weather; 0 until chosen. Added in schema version 16. */
+    @ColumnInfo(defaultValue = "0") val weatherSeed: Long = 0L,
 ) {
     companion object {
         const val SINGLETON_ID = 1

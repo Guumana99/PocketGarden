@@ -15,9 +15,6 @@ class SecurityRepositoryImpl @Inject constructor(
     override fun isSignatureValid(profile: UserProfile): Boolean =
         securityManager.verifySignature(profile.toEntity())
 
-    override fun isTimeTampered(profile: UserProfile): Boolean =
-        securityManager.detectTimeTampering(profile.lastUpdatedTimestamp, profile.lastMonoClockTime)
-
     override fun isTamperFlagged(): Boolean = securityManager.isTamperFlagged()
 
     override fun setTamperFlag(flagged: Boolean) = securityManager.setTamperFlag(flagged)

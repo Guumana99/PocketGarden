@@ -36,6 +36,7 @@
 | 触った場所 | 回すクラス |
 |---|---|
 | 作物の成長・天候・枯れ | `CalculateOfflineProgressUseCaseTest` `WitherAndWeatherTest` `RiverAndWeatherTest` |
+| 日の区切り・時間帯・時間帯の光・天気の決め方と保存・ゲームの時計（#75） | `DaysAndWeatherTest`（＋季節の日数 `SeasonsTest`、生き物の時間帯と雪 `CreatureVisitTest`） |
 | 地面・建物の絵（アンカー・倍率・アトラスの大きさ）、建物の向き、風車の羽根 | `BuildingArtTest`（＋数を見る 4 クラス、効果 `ShopAndEffectsTest`、見本の庭 `OnboardingTest`） |
 | 収穫のしかた（単発・連続）・枯れた作物の撤去・DB v13 | `HarvestTypeTest`（＋絵 `BundledArtTest`、稼ぎの規則 `ProgressionTest`、作物を増減したら数を見る 4 クラス） |
 | 配置・水やり・収穫・購入 | `GardenActionUseCasesTest` `HoeTest` `FloorAndFenceTest` |
@@ -61,7 +62,7 @@
 | 画像・アトラス・`tools/` | `BundledArtTest` `AssetPipelineTest`（＋台帳 `AssetLedgerTest`） |
 | アセット台帳（`docs/ASSET_LEDGER.md`）、作物・ショップの品・生き物・アイコン・音の増減 | `AssetLedgerTest` |
 | 文言・レイアウト・トースト | `PolishTest`（＋文言を見る `StoreObjectTest` `BundledArtTest`） |
-| 設定・音・BGM の曲の選び方と切り替え・改ざん検出 | `SettingsRepositoryTest` `AudioManagerTest` `TimeTamperDetectionTest` |
+| 設定・音・BGM の曲の選び方と切り替え | `SettingsRepositoryTest` `AudioManagerTest`（時計の改ざん検出は #75 で廃止、`TimeTamperDetectionTest` も削除） |
 | 設定画面・メニューの部品（Compose UI テスト、Robolectric） | `SettingsContentTest` `CozyComponentsTest` |
 | タイトル・スターターガーデン・チュートリアル・機能の段階解放・季節・導きの間の道具の制限 | `OnboardingTest`（＋木箱のダイアログ `StarterCrateDialogTest`） |
 | 庭の倍率の保存 | `SettingsRepositoryTest` `IsometricEngineTest` |

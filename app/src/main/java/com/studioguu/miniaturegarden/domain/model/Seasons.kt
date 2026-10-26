@@ -1,17 +1,25 @@
 package com.studioguu.miniaturegarden.domain.model
 
+import java.time.ZoneId
+
 /**
  * How the seasons go round. Each garden keeps its own clock: a new garden starts in spring on the
- * day it is made, and every [SEASON_MILLIS] the next season comes. The clock runs on real time,
- * the same as the plants, so it also turns while the player is away.
+ * day it is made, and after [DAYS_PER_SEASON] days ([GameDay], which begin at 5 in the morning)
+ * the next season comes. The clock runs on the game's time (the elapsed time the device can
+ * vouch for), the same as the plants, so it also turns while the player is away.
+ *
+ * Each season is cut into three phases of [DAYS_PER_PHASE] days ([SeasonPhase]).
  */
 object SeasonClock {
     /** How many days one season lasts. The one number to change to make the year faster or slower. */
-    const val DAYS_PER_SEASON = 10
+    const val DAYS_PER_SEASON = 9
+
+    /** How many days each of the three phases of a season lasts. */
+    const val DAYS_PER_PHASE = DAYS_PER_SEASON / 3
 
     const val DAY_MILLIS = 24L * 60 * 60 * 1000
 
-    /** How long one season lasts. */
+    /** How long one season lasts, give or take a change of daylight saving time. */
     const val SEASON_MILLIS = DAYS_PER_SEASON * DAY_MILLIS
 
     /** How long before the end of a season the post brings word of the next one. */
@@ -20,21 +28,44 @@ object SeasonClock {
     /**
      * Where the year stands at [now], for a garden that is in [season] since [startedAt].
      *
-     * Several seasons may have gone by while the player was away; then the result is the season
-     * of now, started when it really started. A clock that has gone backwards (the device's
-     * time was set back) turns nothing back: the season stays as it is.
+     * A season lasts from the day it started on ([GameDay.of] [startedAt]) for [DAYS_PER_SEASON]
+     * days; the next one starts when the day after those begins. Several seasons may have gone by
+     * while the player was away; then the result is the season of now, started when it really
+     * started. A clock that has gone backwards turns nothing back: the season stays as it is.
      */
-    fun at(season: Season, startedAt: Long, now: Long): SeasonState {
-        if (now - startedAt < SEASON_MILLIS) return SeasonState(season, startedAt)
-        val passed = (now - startedAt) / SEASON_MILLIS
-        return SeasonState(season.after(passed.toInt()), startedAt + passed * SEASON_MILLIS)
+    fun at(season: Season, startedAt: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): SeasonState {
+        val startDay = GameDay.of(startedAt, zone)
+        val passed = Math.floorDiv(GameDay.of(now, zone) - startDay, DAYS_PER_SEASON.toLong())
+        if (passed <= 0L) return SeasonState(season, startedAt)
+        return SeasonState(season.after(passed.toInt()), GameDay.startOf(startDay + passed * DAYS_PER_SEASON, zone))
     }
 
+    /**
+     * The season and its phase on [day], for a garden that is in [season] since [startedAt]. Days
+     * before [startedAt] are worked out backwards, as the seasons would have gone.
+     */
+    fun on(day: Long, season: Season, startedAt: Long, zone: ZoneId = ZoneId.systemDefault()): Pair<Season, SeasonPhase> {
+        val sinceStart = day - GameDay.of(startedAt, zone)
+        val seasons = Math.floorDiv(sinceStart, DAYS_PER_SEASON.toLong())
+        val dayOfSeason = Math.floorMod(sinceStart, DAYS_PER_SEASON.toLong()).toInt() + 1
+        return season.after(seasons.toInt()) to SeasonPhase.ofDay(dayOfSeason)
+    }
+
+    /** Which day of its season [now] is, from 1 to [DAYS_PER_SEASON], for a season that started at [startedAt]. */
+    fun dayOfSeason(startedAt: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): Int =
+        (Math.floorMod(GameDay.of(now, zone) - GameDay.of(startedAt, zone), DAYS_PER_SEASON.toLong()) + 1).toInt()
+
+    /** The phase of the season at [now], for a season that started at [startedAt]. */
+    fun phaseAt(startedAt: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): SeasonPhase =
+        SeasonPhase.ofDay(dayOfSeason(startedAt, now, zone))
+
     /** When the season that started at [startedAt] gives way to the next. */
-    fun endOf(startedAt: Long): Long = startedAt + SEASON_MILLIS
+    fun endOf(startedAt: Long, zone: ZoneId = ZoneId.systemDefault()): Long =
+        GameDay.startOf(GameDay.of(startedAt, zone) + DAYS_PER_SEASON, zone)
 
     /** Whether, at [now], the end of the season that started at [startedAt] is near enough to announce. */
-    fun isEndNear(startedAt: Long, now: Long): Boolean = now >= endOf(startedAt) - NOTICE_MILLIS
+    fun isEndNear(startedAt: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): Boolean =
+        now >= endOf(startedAt, zone) - NOTICE_MILLIS
 }
 
 /** A season and the moment it began. */

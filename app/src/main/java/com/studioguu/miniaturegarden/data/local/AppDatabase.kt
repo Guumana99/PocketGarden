@@ -11,6 +11,7 @@ import com.studioguu.miniaturegarden.data.local.dao.InventorySlotDao
 import com.studioguu.miniaturegarden.data.local.dao.LetterDao
 import com.studioguu.miniaturegarden.data.local.dao.NatureNoteDao
 import com.studioguu.miniaturegarden.data.local.dao.UserProfileDao
+import com.studioguu.miniaturegarden.data.local.dao.WeatherDayDao
 import com.studioguu.miniaturegarden.data.local.entity.CollectionEntryEntity
 import com.studioguu.miniaturegarden.data.local.entity.GardenProgressEntity
 import com.studioguu.miniaturegarden.data.local.entity.GridObjectEntity
@@ -18,6 +19,7 @@ import com.studioguu.miniaturegarden.data.local.entity.InventorySlotEntity
 import com.studioguu.miniaturegarden.data.local.entity.LetterEntity
 import com.studioguu.miniaturegarden.data.local.entity.NatureNoteEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
+import com.studioguu.miniaturegarden.data.local.entity.WeatherDayEntity
 
 @Database(
     entities = [
@@ -28,8 +30,9 @@ import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
         GardenProgressEntity::class,
         NatureNoteEntity::class,
         LetterEntity::class,
+        WeatherDayEntity::class,
     ],
-    version = 15,
+    version = 16,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -40,6 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun gardenProgressDao(): GardenProgressDao
     abstract fun natureNoteDao(): NatureNoteDao
     abstract fun letterDao(): LetterDao
+    abstract fun weatherDayDao(): WeatherDayDao
 
     companion object {
         const val NAME = "pocket_garden.db"
@@ -181,6 +185,18 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_14_15 = object : Migration(14, 15) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("UPDATE grid_objects SET growthProgress = 1.0 WHERE objectId = 'ground_grass'")
+            }
+        }
+
+        /**
+         * v16: each garden keeps its own weather, one kind a day, decided once ([WeatherDayEntity]),
+         * from a seed of its own. Nothing is decided yet: the days are filled in at the next sync,
+         * and the seed is chosen then.
+         */
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `weather_days` (`day` INTEGER NOT NULL, `weather` TEXT NOT NULL, PRIMARY KEY(`day`))")
+                db.execSQL("ALTER TABLE garden_progress ADD COLUMN weatherSeed INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

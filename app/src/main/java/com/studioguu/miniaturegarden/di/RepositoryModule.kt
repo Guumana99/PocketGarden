@@ -1,6 +1,8 @@
 package com.studioguu.miniaturegarden.di
 
 import com.studioguu.miniaturegarden.data.repository.GardenRepositoryImpl
+import com.studioguu.miniaturegarden.data.security.TrustedClock
+import com.studioguu.miniaturegarden.domain.repository.GameClock
 import com.studioguu.miniaturegarden.data.repository.SecurityRepositoryImpl
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.SecurityRepository
@@ -21,4 +23,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindSecurityRepository(impl: SecurityRepositoryImpl): SecurityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindGameClock(impl: TrustedClock): GameClock
 }

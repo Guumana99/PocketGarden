@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.UserProfile
+import com.studioguu.miniaturegarden.domain.model.WeatherType
 import kotlinx.coroutines.flow.Flow
 
 interface GardenRepository {
@@ -23,7 +24,7 @@ interface GardenRepository {
 
     /**
      * Throws the saved garden away entirely: profile, garden, inventory, encyclopedia, nature
-     * notes, letters and progress. The next [ensureInitialized] starts a new one.
+     * notes, letters, weather and progress. The next [ensureInitialized] starts a new one.
      */
     suspend fun deleteSavedGarden()
 
@@ -73,4 +74,13 @@ interface GardenRepository {
 
     /** The player has opened [letterId]. */
     suspend fun markLetterRead(letterId: String)
+
+    /** The weather of each day decided so far ([com.studioguu.miniaturegarden.domain.model.GameDay]), as kept. */
+    suspend fun getWeatherDays(): Map<Long, WeatherType>
+
+    /** Keeps the weather of [days]. A day already kept is not changed: once decided, it stays. */
+    suspend fun keepWeatherDays(days: Map<Long, WeatherType>)
+
+    /** Lets go of the weather of the days before [day], which nothing needs any more. */
+    suspend fun forgetWeatherBefore(day: Long)
 }

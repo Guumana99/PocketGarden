@@ -377,7 +377,6 @@ class ShopAndEffectsTest {
 
     private object Honest : com.studioguu.miniaturegarden.domain.repository.SecurityRepository {
         override fun isSignatureValid(profile: UserProfile) = true
-        override fun isTimeTampered(profile: UserProfile) = false
         override fun isTamperFlagged() = false
         override fun setTamperFlag(flagged: Boolean) = Unit
     }

@@ -408,13 +408,13 @@ class ConstructionTest {
     // --- Time that cannot be trusted ---
 
     @Test
-    fun `a clock that was tampered with builds nothing - the job starts over`() = runBlocking {
+    fun `a broken save builds nothing - the job starts over`() = runBlocking {
         val security = Untrusted()
         val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, security), CalculateOfflineProgressUseCase())
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
         place(0, 3, 3, t0)
 
-        // The clock jumps a day ahead.
+        // A day later, with the profile's signature broken.
         val later = t0 + 24 * 3_600 * second
         assertFalse(sync(later, WeatherType.SUNNY).isTrusted)
 
@@ -544,14 +544,12 @@ class ConstructionTest {
 
     private class Trusted : SecurityRepository {
         override fun isSignatureValid(profile: UserProfile) = true
-        override fun isTimeTampered(profile: UserProfile) = false
         override fun isTamperFlagged() = false
         override fun setTamperFlag(flagged: Boolean) = Unit
     }
 
     private class Untrusted : SecurityRepository {
-        override fun isSignatureValid(profile: UserProfile) = true
-        override fun isTimeTampered(profile: UserProfile) = true
+        override fun isSignatureValid(profile: UserProfile) = false
         override fun isTamperFlagged() = true
         override fun setTamperFlag(flagged: Boolean) = Unit
     }

@@ -7,12 +7,7 @@ interface SecurityRepository {
     /** True when [profile]'s signature matches its contents. */
     fun isSignatureValid(profile: UserProfile): Boolean
 
-    /**
-     * True when the device clock looks manipulated relative to [profile]'s last save.
-     * A positive result also raises the tamper flag.
-     */
-    fun isTimeTampered(profile: UserProfile): Boolean
-
+    /** Raised once a signature has been found broken; it stays until cleared. */
     fun isTamperFlagged(): Boolean
     fun setTamperFlag(flagged: Boolean)
 }

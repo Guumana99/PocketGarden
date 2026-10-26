@@ -96,6 +96,7 @@ import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.debug.DebugZoomReadout
 import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.effects.RainOverlay
+import com.studioguu.miniaturegarden.ui.effects.SnowOverlay
 import com.studioguu.miniaturegarden.ui.effects.RainStyle
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
 import com.studioguu.miniaturegarden.ui.hud.ExpandConfirmDialog
@@ -166,6 +167,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
     val openingCrate by viewModel.openingCrate.collectAsStateWithLifecycle()
     val season by viewModel.season.collectAsStateWithLifecycle()
+    val seasonPhase by viewModel.seasonPhase.collectAsStateWithLifecycle()
+    val clockHour by viewModel.clockHour.collectAsStateWithLifecycle()
+    val clockOffset by viewModel.clockOffset.collectAsStateWithLifecycle()
     val letters by viewModel.letters.collectAsStateWithLifecycle()
     val inventorySlots by viewModel.inventorySlots.collectAsStateWithLifecycle()
     val gardenReady by viewModel.gardenReady.collectAsStateWithLifecycle()
@@ -235,7 +239,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         ) {
             // Sky, hills and meadow behind the garden. Inside the recorded box, so a shared
             // picture has them too.
-            GardenBackdrop(weather, Modifier.fillMaxSize(), season = season)
+            GardenBackdrop(weather, Modifier.fillMaxSize(), season = season, hourOfDay = clockHour)
             // The reach of the selected building's effect, if it has one and is finished.
             val aura = remember(selectedObject) {
                 selectedObject?.takeUnless { it.isWorking }
@@ -269,6 +273,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 onZoomChanged = if (BuildConfig.DEBUG) ({ debugZoom = it }) else null,
                 paused = showInventory || showShop,
                 season = season,
+                // Morning, evening and night by the device's clock, lanterns lit after dark.
+                hourOfDay = clockHour,
+                lightByTimeOfDay = true,
+                clockOffset = clockOffset,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
                 // the hoe), or when the selected cell is behind one of them.
                 fadedObjectIds = remember(gridObjects, selectedTile, placingSlot, hoeActive, movingObject, cameraMode) {
@@ -287,6 +295,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             // Inside the recorded box, so a shared picture shows the rain too.
             if (weather == WeatherType.RAINY || blessedRainFalling) {
                 RainOverlay(Modifier.fillMaxSize(), style = if (blessedRainFalling) RainStyle.BLESSED else RainStyle.RAIN)
+            } else if (weather == WeatherType.SNOWY) {
+                SnowOverlay(Modifier.fillMaxSize())
             }
         }
 
@@ -324,6 +334,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 currentXp = profile?.currentXp ?: 0L,
                 weather = weather,
                 season = season,
+                phase = seasonPhase,
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
             ) }
 
@@ -517,6 +528,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 sprinkled = remember(it, gridObjects) { it.isPlant && Sprinkler.waters(it, gridObjects) },
                                 onToggleSprinkler = viewModel::toggleSprinklerSelected,
                                 wateringCanLevel = toolLevels.wateringCan,
+                                clockOffset = clockOffset,
                             )
                         }
                     }
@@ -649,11 +661,16 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         CollectionDialog(onDismiss = { showCollection = false })
     }
     if (showDebugMenu) {
+        val debugTimeOfDay by viewModel.debugTimeOfDay.collectAsStateWithLifecycle()
+        val outlook by viewModel.outlook.collectAsStateWithLifecycle()
         DebugMenuDialog(
             onSkipTime = viewModel::debugSkipTime,
             onCycleWeather = viewModel::debugCycleWeather,
             onBoost = viewModel::debugBoost,
             onNextSeason = viewModel::debugNextSeason,
+            onCycleTimeOfDay = viewModel::debugCycleTimeOfDay,
+            timeOfDayShown = debugTimeOfDay,
+            outlook = outlook,
             zoomScale = debugZoom.takeIf { it > 0f },
             onDismiss = { showDebugMenu = false },
         )

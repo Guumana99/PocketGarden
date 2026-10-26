@@ -8,6 +8,7 @@
     <string name="weather_sunny">晴れ</string>
     <string name="weather_cloudy">曇り</string>
     <string name="weather_rainy">雨</string>
+    <string name="weather_snowy">雪</string>
 
     <!-- Quick action bar -->
     <string name="action_water">水やり</string>
@@ -331,6 +332,9 @@
     <string name="debug_cycle_weather">天気を切り替え</string>
     <string name="debug_boost">+500 コイン・Lv+1</string>
     <string name="debug_next_season">次の季節へ</string>
+    <string name="debug_cycle_time">時間帯を切り替える（%1$s）</string>
+    <string name="debug_time_clock">端末の時計</string>
+    <string name="debug_forecast">天気予報：今日 %1$s　明日 %2$s</string>
     <string name="debug_zoom">マップ倍率 %1$s（標準 %2$s）</string>
 
     <!-- Title screen -->
@@ -347,6 +351,26 @@
     <string name="season_summer">夏</string>
     <string name="season_autumn">秋</string>
     <string name="season_winter">冬</string>
+
+    <!-- The three phases of each season, as the status bar names them -->
+    <string name="season_spring_early">春のはじめ</string>
+    <string name="season_spring_mid">春のなかごろ</string>
+    <string name="season_spring_late">春のおわり</string>
+    <string name="season_summer_early">夏のはじめ</string>
+    <string name="season_summer_mid">真夏</string>
+    <string name="season_summer_late">夏のおわり</string>
+    <string name="season_autumn_early">秋のはじめ</string>
+    <string name="season_autumn_mid">秋のなかごろ</string>
+    <string name="season_autumn_late">秋のおわり</string>
+    <string name="season_winter_early">冬のはじめ</string>
+    <string name="season_winter_mid">真冬</string>
+    <string name="season_winter_late">冬のおわり</string>
+
+    <!-- Times of day -->
+    <string name="time_morning">朝</string>
+    <string name="time_day">昼</string>
+    <string name="time_evening">夕方</string>
+    <string name="time_night">夜</string>
 
     <!-- First steps -->
     <string name="object_deco_starter_crate">小さな木箱</string>

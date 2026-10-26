@@ -17,6 +17,8 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.SeasonPhase
+import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 
@@ -194,6 +196,7 @@ fun weatherEmoji(weather: WeatherType): String = when (weather) {
     WeatherType.SUNNY -> "☀️"
     WeatherType.CLOUDY -> "☁️"
     WeatherType.RAINY -> "🌧️"
+    WeatherType.SNOWY -> "🌨️"
 }
 
 @StringRes
@@ -201,6 +204,7 @@ fun weatherLabel(weather: WeatherType): Int = when (weather) {
     WeatherType.SUNNY -> R.string.weather_sunny
     WeatherType.CLOUDY -> R.string.weather_cloudy
     WeatherType.RAINY -> R.string.weather_rainy
+    WeatherType.SNOWY -> R.string.weather_snowy
 }
 
 @StringRes
@@ -209,6 +213,39 @@ fun seasonLabel(season: Season): Int = when (season) {
     Season.SUMMER -> R.string.season_summer
     Season.AUTUMN -> R.string.season_autumn
     Season.WINTER -> R.string.season_winter
+}
+
+/** The season with its phase, as the status bar shows it: "春のはじめ", "真夏", "冬のおわり". */
+@StringRes
+fun seasonPhaseLabel(season: Season, phase: SeasonPhase): Int = when (season) {
+    Season.SPRING -> when (phase) {
+        SeasonPhase.EARLY -> R.string.season_spring_early
+        SeasonPhase.MID -> R.string.season_spring_mid
+        SeasonPhase.LATE -> R.string.season_spring_late
+    }
+    Season.SUMMER -> when (phase) {
+        SeasonPhase.EARLY -> R.string.season_summer_early
+        SeasonPhase.MID -> R.string.season_summer_mid
+        SeasonPhase.LATE -> R.string.season_summer_late
+    }
+    Season.AUTUMN -> when (phase) {
+        SeasonPhase.EARLY -> R.string.season_autumn_early
+        SeasonPhase.MID -> R.string.season_autumn_mid
+        SeasonPhase.LATE -> R.string.season_autumn_late
+    }
+    Season.WINTER -> when (phase) {
+        SeasonPhase.EARLY -> R.string.season_winter_early
+        SeasonPhase.MID -> R.string.season_winter_mid
+        SeasonPhase.LATE -> R.string.season_winter_late
+    }
+}
+
+@StringRes
+fun timeOfDayLabel(time: TimeOfDay): Int = when (time) {
+    TimeOfDay.MORNING -> R.string.time_morning
+    TimeOfDay.DAY -> R.string.time_day
+    TimeOfDay.EVENING -> R.string.time_evening
+    TimeOfDay.NIGHT -> R.string.time_night
 }
 
 fun seasonEmoji(season: Season): String = when (season) {
