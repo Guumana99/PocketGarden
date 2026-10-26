@@ -34,6 +34,8 @@ object WindmillSails {
         WeatherType.SUNNY -> 1f
         WeatherType.CLOUDY -> 1.25f
         WeatherType.RAINY -> 1.6f
+        // Snow falls through still air.
+        WeatherType.SNOWY -> 0.6f
     }
 
     /**

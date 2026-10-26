@@ -18,6 +18,7 @@ fun skyColor(weather: WeatherType): Color = when (weather) {
     WeatherType.SUNNY -> Color(0xFFDCEFF5)
     WeatherType.CLOUDY -> Color(0xFFD3DBDF)
     WeatherType.RAINY -> Color(0xFFB4C2CB)
+    WeatherType.SNOWY -> Color(0xFFDDE4EA)
 }
 
 /** Time between two frames of the rain: about 30 a second. */
@@ -63,6 +64,31 @@ fun RainOverlay(modifier: Modifier = Modifier, style: RainStyle = RainStyle.RAIN
                 strokeWidth = stroke,
                 cap = StrokeCap.Round,
             )
+        }
+    }
+}
+
+/** Time between two frames of the snow: snowflakes drift slowly, 20 a second is plenty. */
+private const val SNOW_FRAME_MILLIS = 50L
+
+private val FLAKE_COLOR = Color(0xFFFFFFFF)
+
+/**
+ * Falling snow, drawn over whatever is behind it: soft white flakes drifting down and swaying
+ * from side to side, each at its own pace ([SnowField]). Like the rain, it takes no touches.
+ */
+@Composable
+fun SnowOverlay(modifier: Modifier = Modifier) {
+    val timeMillis by produceState(0L) {
+        while (true) {
+            withFrameMillis { value = it }
+            delay(SNOW_FRAME_MILLIS)
+        }
+    }
+    Canvas(modifier) {
+        val unit = 1.dp.toPx()
+        for (flake in SnowField.flakes(timeMillis, size.width, size.height)) {
+            drawCircle(FLAKE_COLOR.copy(alpha = flake.alpha), radius = flake.radius * unit, center = Offset(flake.x, flake.y))
         }
     }
 }

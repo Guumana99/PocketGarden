@@ -48,7 +48,8 @@ object CreatureVisits {
 
     /**
      * The visitors of the period [now] falls in, for the garden as it is: [objects] on [map],
-     * under [weather], in [season]. Visits whose time has already passed are included; see [CreatureVisit.isPresentAt].
+     * under [weather], in [season], at [timeOfDay]. Visits whose time has already passed are
+     * included; see [CreatureVisit.isPresentAt].
      */
     fun visitorsAt(
         now: Long,
@@ -56,9 +57,10 @@ object CreatureVisits {
         weather: WeatherType,
         map: GardenMap,
         season: Season = Season.SPRING,
+        timeOfDay: TimeOfDay = TimeOfDay.DAY,
     ): List<CreatureVisit> {
         val period = periodOf(now)
-        val garden = GardenSnapshot(objects, weather, season)
+        val garden = GardenSnapshot(objects, weather, season, timeOfDay)
         val grid = GardenGrid(map, objects)
         val taken = HashSet<GridCell>()
         val visits = ArrayList<CreatureVisit>()

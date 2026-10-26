@@ -8,22 +8,26 @@ package com.studioguu.miniaturegarden.domain.model
  * nature notes), so none can be forgotten. A creature can have several entries: it comes for
  * any of them.
  *
- *     entry               creature   needs                                          stays
- *     BUTTERFLY_BLOOMS    butterfly  2 crops in full bloom, not raining             over a bloom
- *     LADYBUG_TULIPS      ladybug    3 tulips (any size) and a tuft of grass        on a tulip
- *     BIRD_BENCH          bird       a bench and 3 sections of fence                on the bench
- *     BIRD_COTTAGE        bird       a finished cottage                             on its roof
- *     SQUIRREL_SUNFLOWER  squirrel   a sunflower in full bloom and a rock           beside the rock
- *     FROG_RAIN           frog       3 river tiles, on a rainy day                  beside the river
- *     FROG_SUMMER         frog       3 river tiles, in summer                       beside the river
- *     SQUIRREL_AUTUMN     squirrel   a rock, in autumn                              beside the rock
- *     DRAGONFLY_AUTUMN    dragonfly  2 river tiles, in autumn, not raining          over the river
- *     BUTTERFLY_LAVENDER  butterfly  2 lavenders (any size), not raining            over a lavender
- *     LADYBUG_STRAWBERRY  ladybug    2 strawberries (any size), in spring           on a strawberry
- *     BIRD_HUT            bird       a finished hut                                 on its roof
- *     BIRD_WINTER_WELL    bird       a well, in winter                              beside the well
- *     SQUIRREL_SHIITAKE   squirrel   a shiitake log ready to pick (stage 3)         beside the log
- *     FROG_WELL           frog       a well, on a rainy day                         beside the well
+ *     entry               creature   needs                                               stays
+ *     BUTTERFLY_BLOOMS    butterfly  2 crops in full bloom, fair weather, morning/day     over a bloom
+ *     LADYBUG_TULIPS      ladybug    3 tulips (any size) and a tuft of grass             on a tulip
+ *     BIRD_BENCH          bird       a bench and 3 sections of fence, not at night       on the bench
+ *     BIRD_COTTAGE        bird       a finished cottage, not at night                    on its roof
+ *     SQUIRREL_SUNFLOWER  squirrel   a sunflower in full bloom and a rock                beside the rock
+ *     FROG_RAIN           frog       3 river tiles, on a rainy day                       beside the river
+ *     FROG_SUMMER         frog       3 river tiles, in summer                            beside the river
+ *     SQUIRREL_AUTUMN     squirrel   a rock, in autumn                                   beside the rock
+ *     DRAGONFLY_AUTUMN    dragonfly  2 river tiles, in autumn, fair weather, day/evening over the river
+ *     BUTTERFLY_LAVENDER  butterfly  2 lavenders (any size), fair weather, morning/day   over a lavender
+ *     LADYBUG_STRAWBERRY  ladybug    2 strawberries (any size), in spring                on a strawberry
+ *     BIRD_HUT            bird       a finished hut, not at night                        on its roof
+ *     BIRD_WINTER_WELL    bird       a well, in winter, not at night                     beside the well
+ *     SQUIRREL_SHIITAKE   squirrel   a shiitake log ready to pick (stage 3)              beside the log
+ *     FROG_WELL           frog       a well, on a rainy day                              beside the well
+ *
+ * "Fair weather" is sunny or cloudy: no butterfly or dragonfly is out in the rain or the snow.
+ * The snow does not count as rain either, so the frogs that come with the rain stay away on a
+ * snowy day. The time of day is the device's own ([TimeOfDay]).
  *
  * Only finished things count: a work site is no place to sit.
  *
@@ -43,7 +47,7 @@ enum class VisitRule(
 ) {
     BUTTERFLY_BLOOMS(
         Creature.BUTTERFLY,
-        conditions = listOf(VisitCondition.Crops(atLeast = 2, minGrowth = 1f), VisitCondition.WeatherNot(WeatherType.RAINY)),
+        conditions = listOf(VisitCondition.Crops(atLeast = 2, minGrowth = 1f), VisitCondition.FAIR_WEATHER, VisitCondition.TimeIs(DAYTIME)),
         anchor = Anchor(PlantSpecies.entries.map { it.objectId }.toSet(), minGrowth = 1f),
         placement = VisitPlacement.ON_ANCHOR,
         chance = 0.6f,
@@ -60,6 +64,7 @@ enum class VisitRule(
         conditions = listOf(
             VisitCondition.Things(setOf("deco_bench")),
             VisitCondition.Things(FencePart.entries.map { it.objectId }.toSet(), atLeast = 3),
+            VisitCondition.TimeIs(NOT_NIGHT),
         ),
         anchor = Anchor(setOf("deco_bench")),
         placement = VisitPlacement.ON_ANCHOR,
@@ -67,7 +72,7 @@ enum class VisitRule(
     ),
     BIRD_COTTAGE(
         Creature.BIRD,
-        conditions = listOf(VisitCondition.Things(setOf(StructureData.COTTAGE.objectId))),
+        conditions = listOf(VisitCondition.Things(setOf(StructureData.COTTAGE.objectId)), VisitCondition.TimeIs(NOT_NIGHT)),
         anchor = Anchor(setOf(StructureData.COTTAGE.objectId)),
         placement = VisitPlacement.ON_ANCHOR,
         chance = 0.5f,
@@ -108,7 +113,8 @@ enum class VisitRule(
         conditions = listOf(
             VisitCondition.SeasonIs(setOf(Season.AUTUMN)),
             VisitCondition.Things(setOf(GridObject.RIVER_OBJECT_ID), atLeast = 2),
-            VisitCondition.WeatherNot(WeatherType.RAINY),
+            VisitCondition.FAIR_WEATHER,
+            VisitCondition.TimeIs(setOf(TimeOfDay.DAY, TimeOfDay.EVENING)),
         ),
         anchor = Anchor(setOf(GridObject.RIVER_OBJECT_ID)),
         placement = VisitPlacement.ON_ANCHOR,
@@ -123,7 +129,8 @@ enum class VisitRule(
         Creature.BUTTERFLY,
         conditions = listOf(
             VisitCondition.Crops(atLeast = 2, species = PlantSpecies.LAVENDER),
-            VisitCondition.WeatherNot(WeatherType.RAINY),
+            VisitCondition.FAIR_WEATHER,
+            VisitCondition.TimeIs(DAYTIME),
         ),
         anchor = Anchor(setOf(PlantSpecies.LAVENDER.objectId)),
         placement = VisitPlacement.ON_ANCHOR,
@@ -138,14 +145,18 @@ enum class VisitRule(
     ),
     BIRD_HUT(
         Creature.BIRD,
-        conditions = listOf(VisitCondition.Things(setOf(StructureData.HUT.objectId))),
+        conditions = listOf(VisitCondition.Things(setOf(StructureData.HUT.objectId)), VisitCondition.TimeIs(NOT_NIGHT)),
         anchor = Anchor(setOf(StructureData.HUT.objectId)),
         placement = VisitPlacement.ON_ANCHOR,
         chance = 0.4f,
     ),
     BIRD_WINTER_WELL(
         Creature.BIRD,
-        conditions = listOf(VisitCondition.SeasonIs(setOf(Season.WINTER)), VisitCondition.Things(setOf(StructureData.WELL.objectId))),
+        conditions = listOf(
+            VisitCondition.SeasonIs(setOf(Season.WINTER)),
+            VisitCondition.Things(setOf(StructureData.WELL.objectId)),
+            VisitCondition.TimeIs(NOT_NIGHT),
+        ),
         anchor = Anchor(setOf(StructureData.WELL.objectId)),
         placement = VisitPlacement.BESIDE_ANCHOR,
         chance = 0.4f,
@@ -185,8 +196,19 @@ enum class Creature(val id: String) {
     DRAGONFLY("dragonfly"),
 }
 
-/** The garden as the visitors see it: what stands in it, today's weather and the season. */
-data class GardenSnapshot(val objects: List<GridObject>, val weather: WeatherType, val season: Season = Season.SPRING) {
+/** The times of day the butterflies are out. */
+private val DAYTIME = setOf(TimeOfDay.MORNING, TimeOfDay.DAY)
+
+/** All but the night: the birds have gone to roost. */
+private val NOT_NIGHT = setOf(TimeOfDay.MORNING, TimeOfDay.DAY, TimeOfDay.EVENING)
+
+/** The garden as the visitors see it: what stands in it, today's weather, the season and the time of day. */
+data class GardenSnapshot(
+    val objects: List<GridObject>,
+    val weather: WeatherType,
+    val season: Season = Season.SPRING,
+    val timeOfDay: TimeOfDay = TimeOfDay.DAY,
+) {
     /** Everything finished: plants that are alive, and anything that is not a work site. */
     val settled: List<GridObject> = objects.filter { !it.isWorking && !(it.isPlant && it.status == PlantStatus.WITHERED) }
 }
@@ -217,9 +239,19 @@ sealed interface VisitCondition {
         override fun isMetBy(garden: GardenSnapshot): Boolean = garden.season in seasons
     }
 
-    /** Today's weather is anything but [weather]. */
-    data class WeatherNot(val weather: WeatherType) : VisitCondition {
-        override fun isMetBy(garden: GardenSnapshot): Boolean = garden.weather != weather
+    /** Today's weather is one of [weathers]. */
+    data class WeatherIn(val weathers: Set<WeatherType>) : VisitCondition {
+        override fun isMetBy(garden: GardenSnapshot): Boolean = garden.weather in weathers
+    }
+
+    /** It is one of [times] of day. */
+    data class TimeIs(val times: Set<TimeOfDay>) : VisitCondition {
+        override fun isMetBy(garden: GardenSnapshot): Boolean = garden.timeOfDay in times
+    }
+
+    companion object {
+        /** Neither rain nor snow: sunny or cloudy. */
+        val FAIR_WEATHER = WeatherIn(setOf(WeatherType.SUNNY, WeatherType.CLOUDY))
     }
 }
 

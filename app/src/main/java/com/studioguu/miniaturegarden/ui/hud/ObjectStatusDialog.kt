@@ -81,6 +81,8 @@ fun ObjectStatusDialog(
     sprinkled: Boolean = false,
     onToggleSprinkler: () -> Unit = {},
     wateringCanLevel: Int = 1,
+    /** How far the game's clock is ahead of the device's: the time a job has left goes by the game's. */
+    clockOffset: Long = 0L,
 ) {
     Surface(
         modifier = modifier,
@@ -107,7 +109,7 @@ fun ObjectStatusDialog(
                 WoodButton(text = stringResource(R.string.action_close), onClick = onDismiss)
             }
 
-            if (gridObject.isWorking) WorkRow(gridObject)
+            if (gridObject.isWorking) WorkRow(gridObject, clockOffset)
 
             if (gridObject.isSprinkler) {
                 Text(
@@ -290,12 +292,12 @@ private fun ExpansionRow(gardenSize: Int, playerLevel: Int, symbol: GridObject, 
 
 /** What is being done to a work site, how far along it is and how long it still takes. */
 @Composable
-private fun WorkRow(gridObject: GridObject) {
+private fun WorkRow(gridObject: GridObject, clockOffset: Long) {
     // The job's own clock: looked at twice a second while the panel is open.
-    val now by produceState(System.currentTimeMillis(), gridObject.instanceId) {
+    val now by produceState(System.currentTimeMillis() + clockOffset, gridObject.instanceId, clockOffset) {
         while (true) {
             delay(500)
-            value = System.currentTimeMillis()
+            value = System.currentTimeMillis() + clockOffset
         }
     }
     val label = when (gridObject.workKind) {

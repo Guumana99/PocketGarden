@@ -29,9 +29,10 @@ import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.SeasonPhase
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.seasonEmoji
-import com.studioguu.miniaturegarden.ui.seasonLabel
+import com.studioguu.miniaturegarden.ui.seasonPhaseLabel
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import com.studioguu.miniaturegarden.ui.weatherEmoji
 import com.studioguu.miniaturegarden.ui.weatherLabel
@@ -40,7 +41,8 @@ import com.studioguu.miniaturegarden.ui.weatherLabel
 private const val GAUGE_FILL_MILLIS = 450
 
 /**
- * Coins, the level with a gauge of the way to the next one, and the season with today's weather.
+ * Coins, the level with a gauge of the way to the next one, and the season (with its phase,
+ * "春のはじめ") and today's weather.
  * The experience itself is never written out as numbers: the gauge fills as it grows, and empties
  * again when the level goes up.
  *
@@ -55,6 +57,7 @@ fun TopStatusBar(
     weather: WeatherType,
     modifier: Modifier = Modifier,
     season: Season = Season.SPRING,
+    phase: SeasonPhase = SeasonPhase.EARLY,
 ) {
     Row(
         modifier = modifier,
@@ -63,7 +66,7 @@ fun TopStatusBar(
     ) {
         StatusChip("🪙 $coins")
         LevelChip(playerLevel, currentXp)
-        StatusChip("${seasonEmoji(season)}${stringResource(seasonLabel(season))} ${weatherEmoji(weather)} ${stringResource(weatherLabel(weather))}")
+        StatusChip("${seasonEmoji(season)}${stringResource(seasonPhaseLabel(season, phase))} ${weatherEmoji(weather)} ${stringResource(weatherLabel(weather))}")
     }
 }
 

@@ -6,6 +6,7 @@ import com.studioguu.miniaturegarden.domain.model.NotificationPlan
 import com.studioguu.miniaturegarden.domain.model.PlannedNotification
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
+import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.NotificationScheduler
@@ -31,7 +32,7 @@ class PlanGardenNotificationsUseCase @Inject constructor(
     operator fun invoke(
         objects: List<GridObject>,
         now: Long,
-        weather: WeatherForecast = WeatherForecast.Daily,
+        weather: WeatherForecast = WeatherType.SUNNY,
     ): List<PlannedNotification> {
         val until = now + NotificationPlan.HORIZON_MILLIS
         val events = buildList {
@@ -113,7 +114,7 @@ class ScheduleGardenNotificationsUseCase @Inject constructor(
     private val scheduler: NotificationScheduler,
     private val plan: PlanGardenNotificationsUseCase,
 ) {
-    suspend operator fun invoke(now: Long, weather: WeatherForecast = WeatherForecast.Daily) {
+    suspend operator fun invoke(now: Long, weather: WeatherForecast) {
         if (!settingsRepository.settings.first().notificationsEnabled) {
             scheduler.cancelAll()
             return

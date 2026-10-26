@@ -63,6 +63,7 @@ object Daylight {
         WeatherType.SUNNY -> 0.30f
         WeatherType.CLOUDY -> 0.14f
         WeatherType.RAINY -> 0.07f
+        WeatherType.SNOWY -> 0.10f
     }
 }
 
@@ -132,6 +133,8 @@ object Wind {
         WeatherType.SUNNY -> 1.0f
         WeatherType.CLOUDY -> 1.2f
         WeatherType.RAINY -> 1.5f
+        // Snow falls through still air.
+        WeatherType.SNOWY -> 0.6f
     }
 
     /** The gust of one slot: when it starts, how long it takes to cross, and which way it runs. */

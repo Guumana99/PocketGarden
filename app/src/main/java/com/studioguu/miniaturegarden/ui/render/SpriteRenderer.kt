@@ -1,7 +1,9 @@
 package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
@@ -9,6 +11,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
@@ -16,6 +19,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.studioguu.miniaturegarden.data.asset.AssetManifest
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -52,6 +56,10 @@ fun DrawScope.drawTurningSprite(pages: AtlasPages, asset: AssetManifest, pivot: 
 fun DrawScope.drawSwayingSprite(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, lean: Float, flipped: Boolean = false) =
     drawSwayingSprite(pages[asset], asset, anchor, scale, lean, flipped)
 
+/** [drawSpriteSnow] from the page of [pages] that [asset] is on. */
+fun DrawScope.drawSpriteSnow(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, lean: Float, flipped: Boolean = false) =
+    drawSpriteSnow(pages[asset], asset, anchor, scale, lean, flipped)
+
 /** [drawSpriteShadow] from the page of [pages] that [asset] is on. */
 fun DrawScope.drawSpriteShadow(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, light: SunLight) =
     drawSpriteShadow(pages[asset], asset, anchor, scale, light)
@@ -70,6 +78,7 @@ fun DrawScope.drawSprite(
     flipped: Boolean = false,
     alpha: Float = 1f,
     tint: Color? = null,
+    colorFilter: ColorFilter? = tint?.let { ColorFilter.tint(it, BlendMode.Modulate) },
 ) {
     val dstOffset = IntOffset(
         asset.drawLeft(anchor.x, scale).roundToInt(),
@@ -87,7 +96,7 @@ fun DrawScope.drawSprite(
             dstOffset = dstOffset,
             dstSize = dstSize,
             alpha = alpha,
-            colorFilter = tint?.let { ColorFilter.tint(it, BlendMode.Modulate) },
+            colorFilter = colorFilter,
             filterQuality = FilterQuality.Medium,
         )
     }
@@ -146,6 +155,51 @@ fun DrawScope.drawSwayingSprite(
     withTransform({ transform(shearAbout(anchor, lean, -1f)) }) {
         drawSprite(atlasImage, asset, anchor, scale, flipped)
     }
+}
+
+private val SNOW = Color(0xFFFFFFFF)
+
+/**
+ * Snow lying on the sprite standing on [anchor], leaning with it by [lean] (see
+ * [drawSwayingSprite]): the sprite's own outline in white, thick at the top and thinning out
+ * towards the middle, so that it reads as a dusting on its upper leaves.
+ */
+fun DrawScope.drawSpriteSnow(
+    atlasImage: ImageBitmap,
+    asset: AssetManifest,
+    anchor: Offset,
+    scale: Float,
+    lean: Float,
+    flipped: Boolean = false,
+) {
+    val top = asset.drawTop(anchor.y, scale)
+    val height = anchor.y - top
+    if (height <= 0f) return
+    val reach = abs(lean) * height
+    val bounds = Rect(asset.drawLeft(anchor.x, scale) - reach, top, asset.drawLeft(anchor.x, scale) + asset.drawnWidth(scale) + reach, anchor.y)
+    drawContext.canvas.saveLayer(bounds, Paint())
+    val outline = ColorFilter.tint(SNOW, BlendMode.SrcIn)
+    if (lean == 0f) {
+        drawSprite(atlasImage, asset, anchor, scale, flipped, colorFilter = outline)
+    } else {
+        withTransform({ transform(shearAbout(anchor, lean, -1f)) }) {
+            drawSprite(atlasImage, asset, anchor, scale, flipped, colorFilter = outline)
+        }
+    }
+    // Only the upper part keeps it, fading out downwards.
+    drawRect(
+        brush = Brush.verticalGradient(
+            0f to Color.Black.copy(alpha = 0.85f),
+            0.3f to Color.Black.copy(alpha = 0.45f),
+            0.6f to Color.Transparent,
+            startY = top,
+            endY = anchor.y,
+        ),
+        topLeft = bounds.topLeft,
+        size = bounds.size,
+        blendMode = BlendMode.DstIn,
+    )
+    drawContext.canvas.restore()
 }
 
 /**

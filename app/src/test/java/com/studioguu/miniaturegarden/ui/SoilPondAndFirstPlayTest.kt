@@ -6,6 +6,8 @@ import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
+import com.studioguu.miniaturegarden.domain.model.WeatherDiary
+import com.studioguu.miniaturegarden.domain.model.SeasonClock
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.render.PondJoin
 import java.io.File
@@ -32,11 +34,11 @@ class SoilPondAndFirstPlayTest {
         assertEquals(Season.SPRING, GardenProgress.NEW_GARDEN.season)
         assertEquals(TutorialStep.OPEN_CRATE, GardenProgress.NEW_GARDEN.tutorialStep)
         // Whatever the day's own weather, every moment of the first play is sunny.
-        val day = WeatherType.DAY_MILLIS
-        val rainyDay = (0L until 400L).first { WeatherType.forTime(it * day) == WeatherType.RAINY } * day
+        val day = SeasonClock.DAY_MILLIS
+        val rainyDay = 20_000L * day
         for (step in TutorialStep.entries.filter { it <= TutorialStep.FINISHED }) {
             assertTrue(step.name, step.isFirstPlay)
-            val forecast = WeatherForecast.forGarden(step)
+            val forecast = WeatherForecast.forGarden(step, WeatherType.RAINY)
             assertEquals(step.name, WeatherType.SUNNY, forecast.at(rainyDay))
             assertEquals(step.name, WeatherType.SUNNY, forecast.at(rainyDay + 5 * day))
         }
@@ -44,19 +46,20 @@ class SoilPondAndFirstPlayTest {
 
     @Test
     fun `after the first play the weather goes by the day again`() {
+        val diary = WeatherDiary(mapOf(1L to WeatherType.RAINY))
         for (step in listOf(TutorialStep.REVEAL_EDIT, TutorialStep.REVEAL_POST, TutorialStep.DONE)) {
             assertFalse(step.name, step.isFirstPlay)
-            assertSame(WeatherForecast.Daily, WeatherForecast.forGarden(step))
+            assertSame(diary, WeatherForecast.forGarden(step, diary))
         }
         // Not read yet: no guess.
-        assertSame(WeatherForecast.Daily, WeatherForecast.forGarden(null))
+        assertSame(diary, WeatherForecast.forGarden(null, diary))
     }
 
     @Test
     fun `the garden screen runs on the first play's weather`() {
         val viewModel = source("ui/GardenViewModel.kt")
-        assertTrue(viewModel.contains("WeatherForecast.forGarden(progress.value?.tutorialStep)"))
-        assertFalse(viewModel.contains("debugWeather ?: WeatherForecast.Daily"))
+        assertTrue(viewModel.contains("WeatherForecast.forGarden(progress.value?.tutorialStep, diary)"))
+        assertFalse(viewModel.contains("debugWeather ?: diary"))
         assertTrue(viewModel.contains("watchFirstPlayWeather()"))
     }
 

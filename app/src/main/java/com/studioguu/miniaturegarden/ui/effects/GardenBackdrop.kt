@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import androidx.compose.ui.graphics.lerp
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.TimeOfDay
+import com.studioguu.miniaturegarden.ui.render.SceneTint
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -66,6 +68,21 @@ private val RAINY = BackdropPalette(
     haze = Color(0x24566470),
 )
 
+private val SNOWY = BackdropPalette(
+    skyTop = Color(0xFFC3CDD5),
+    skyHorizon = Color(0xFFEDEFF0),
+    hillFar = Color(0xFFE4E9EC),
+    hillMid = Color(0xFFDCE3E6),
+    hillNear = Color(0xFFD3DCDF),
+    meadowTop = Color(0xFFE5EAEC),
+    meadowBottom = Color(0xFFDADDDD),
+    cloud = Color(0xFFF4F5F6),
+    haze = Color(0x18707A86),
+)
+
+private val MOON = Color(0xFFFFF6D8)
+private val STAR = Color(0xFFFFFFF0)
+
 private val LEAF_DARK = Color(0xFF5E8C3A)
 private val LEAF_LIGHT = Color(0xFF86B454)
 
@@ -118,15 +135,21 @@ private const val HORIZON = 0.4f
  * What lies behind and around the garden box: a sky fading to a warm horizon, three ranges of
  * hills, a meadow that turns to earth towards the viewer, and greenery at the corners of the
  * screen. It is all drawn from shapes, without images, and changes its colours with the weather.
+ * The sun stands in the sky by day; by night ([hourOfDay]) a moon and a few stars do, where the
+ * sky is clear. The darkness itself is laid over the scene with the garden ([SceneTint]).
  * Nothing in it moves or takes touches.
+ *
+ * @param hourOfDay local time (0 until 24); null for an afternoon.
  */
 @Composable
-fun GardenBackdrop(weather: WeatherType, modifier: Modifier = Modifier, season: Season = Season.SPRING) {
+fun GardenBackdrop(weather: WeatherType, modifier: Modifier = Modifier, season: Season = Season.SPRING, hourOfDay: Float? = null) {
     val palette = when (weather) {
         WeatherType.SUNNY -> SUNNY
         WeatherType.CLOUDY -> CLOUDY
         WeatherType.RAINY -> RAINY
+        WeatherType.SNOWY -> SNOWY
     }.inSeason(season)
+    val time = hourOfDay?.let { TimeOfDay.at(it, season) } ?: TimeOfDay.DAY
     val leaves = SeasonLeaves.of(season)
     Canvas(modifier) {
         val horizon = size.height * HORIZON
@@ -135,7 +158,23 @@ fun GardenBackdrop(weather: WeatherType, modifier: Modifier = Modifier, season: 
             brush = Brush.verticalGradient(listOf(palette.skyTop, palette.skyHorizon), endY = horizon),
             size = Size(size.width, horizon + size.height * 0.05f),
         )
-        if (weather == WeatherType.SUNNY) {
+        if (time == TimeOfDay.NIGHT && weather != WeatherType.RAINY && weather != WeatherType.SNOWY) {
+            // Stars only where the sky is clear, and fewer behind the clouds of a grey night.
+            val stars = if (weather == WeatherType.SUNNY) 18 else 7
+            repeat(stars) { i ->
+                val x = ((i * 0.618034f + 0.11f) % 1f) * size.width
+                val y = ((i * 0.381966f * 1.7f + 0.05f) % 1f) * horizon * 0.8f
+                drawCircle(STAR.copy(alpha = 0.55f + (i % 3) * 0.15f), radius = size.width * (0.0028f + (i % 4) * 0.0008f), center = Offset(x, y))
+            }
+            val moon = Offset(size.width * 0.12f, size.height * 0.23f)
+            drawCircle(
+                brush = Brush.radialGradient(listOf(MOON.copy(alpha = 0.45f), MOON.copy(alpha = 0f)), center = moon, radius = size.width * 0.16f),
+                radius = size.width * 0.16f,
+                center = moon,
+            )
+            drawCircle(MOON, radius = size.width * 0.045f, center = moon)
+        }
+        if (weather == WeatherType.SUNNY && (time == TimeOfDay.MORNING || time == TimeOfDay.DAY)) {
             val sun = Offset(size.width * 0.2f, size.height * 0.14f)
             drawCircle(
                 brush = Brush.radialGradient(

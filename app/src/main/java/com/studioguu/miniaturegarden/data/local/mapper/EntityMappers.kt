@@ -117,6 +117,7 @@ fun GardenProgressEntity.toDomain() = GardenProgress(
     seasonStartedAt = seasonStartedAt,
     hoeXp = hoeXp,
     wateringCanXp = wateringCanXp,
+    weatherSeed = weatherSeed,
 )
 
 fun GardenProgress.toEntity() = GardenProgressEntity(
@@ -126,6 +127,7 @@ fun GardenProgress.toEntity() = GardenProgressEntity(
     seasonStartedAt = seasonStartedAt,
     hoeXp = hoeXp,
     wateringCanXp = wateringCanXp,
+    weatherSeed = weatherSeed,
 )
 
 /** Null for a letter of a kind this version does not know (written by a newer one). */

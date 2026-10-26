@@ -27,6 +27,7 @@ import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import com.studioguu.miniaturegarden.ui.objectNameRes
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
+import com.studioguu.miniaturegarden.domain.repository.GameClock
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
@@ -44,11 +45,13 @@ import kotlinx.coroutines.runBlocking
 @Singleton
 class WorkManagerNotificationScheduler @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val clock: GameClock,
 ) : NotificationScheduler {
 
     override fun replaceAll(plan: List<PlannedNotification>) {
         val workManager = WorkManager.getInstance(context)
-        val now = System.currentTimeMillis()
+        // The plan is on the game's clock: so is the wait.
+        val now = clock.now()
         for (kind in GardenNotificationKind.entries) {
             val planned = plan.firstOrNull { it.kind == kind }
             if (planned == null) {

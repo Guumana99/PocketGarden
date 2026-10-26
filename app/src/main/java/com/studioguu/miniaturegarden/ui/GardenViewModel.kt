@@ -42,7 +42,13 @@ import com.studioguu.miniaturegarden.domain.model.TutorialGuide
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.VisitRule
+import com.studioguu.miniaturegarden.domain.model.GameDay
+import com.studioguu.miniaturegarden.domain.model.SeasonClock
+import com.studioguu.miniaturegarden.domain.model.SeasonPhase
+import com.studioguu.miniaturegarden.domain.model.TimeOfDay
+import com.studioguu.miniaturegarden.domain.model.WeatherDiary
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
+import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
@@ -53,6 +59,8 @@ import com.studioguu.miniaturegarden.domain.usecase.GardenLayout
 import com.studioguu.miniaturegarden.domain.usecase.LayoutAction
 import com.studioguu.miniaturegarden.domain.usecase.LayoutCheck
 import com.studioguu.miniaturegarden.domain.usecase.AdvanceSeasonUseCase
+import com.studioguu.miniaturegarden.domain.usecase.KeepWeatherUseCase
+import com.studioguu.miniaturegarden.domain.repository.GameClock
 import com.studioguu.miniaturegarden.domain.usecase.PostLettersUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ReadLettersUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
@@ -98,6 +106,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import java.time.LocalTime
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -133,6 +142,8 @@ class GardenViewModel @Inject constructor(
     private val scheduleNotifications: ScheduleGardenNotificationsUseCase,
     private val recordNatureNote: RecordNatureNoteUseCase,
     private val advanceSeason: AdvanceSeasonUseCase,
+    private val keepWeather: KeepWeatherUseCase,
+    private val clock: GameClock,
     private val postLetters: PostLettersUseCase,
     private val readLetters: ReadLettersUseCase,
     private val settingsRepository: SettingsRepository,
@@ -170,6 +181,38 @@ class GardenViewModel @Inject constructor(
     val season: StateFlow<Season> = progress.map { it?.season ?: Season.SPRING }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
 
+    /** Ticks at the turn of every minute: for what changes with the time of day, or the day. */
+    private val minutes: Flow<Unit> = flow {
+        while (true) {
+            emit(Unit)
+            delay(MINUTE_MILLIS - System.currentTimeMillis() % MINUTE_MILLIS)
+        }
+    }
+
+    /** Which third of its season the garden is in ([SeasonPhase]), on the game's clock. */
+    val seasonPhase: StateFlow<SeasonPhase> = combine(progress, minutes) { saved, _ ->
+        saved?.seasonStartedAt?.takeIf { it > 0L }?.let { SeasonClock.phaseAt(it, clock.now()) } ?: SeasonPhase.EARLY
+    }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SeasonPhase.EARLY)
+
+    /** The debug menu's time of day, shown in place of the clock's; null for the clock's own. */
+    private val _debugTimeOfDay = MutableStateFlow<TimeOfDay?>(null)
+    val debugTimeOfDay: StateFlow<TimeOfDay?> = _debugTimeOfDay.asStateFlow()
+
+    /**
+     * The hour the garden is lit for (local time, 0 until 24, minutes as a fraction): the
+     * device's own clock, wherever the player is, or an hour well inside the debug menu's time of day.
+     */
+    val clockHour: StateFlow<Float> = combine(minutes, _debugTimeOfDay, season) { _, debug, season ->
+        debug?.typicalHour(season) ?: localHour()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), localHour())
+
+    /** Morning, day, evening or night, for how the garden looks and who visits it; nothing else goes by it. */
+    val timeOfDay: StateFlow<TimeOfDay> = combine(clockHour, season) { hour, season -> TimeOfDay.at(hour, season) }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TimeOfDay.at(localHour(), Season.SPRING))
+
     /** The hoe's and the watering can's levels ([FarmTool]), for the tool bar. */
     val toolLevels: StateFlow<ToolLevels> = progress.map { ToolLevels(it?.hoeLevel ?: 1, it?.wateringCanLevel ?: 1) }
         .distinctUntilChanged()
@@ -201,7 +244,7 @@ class GardenViewModel @Inject constructor(
     fun debugNextSeason() {
         viewModelScope.launch {
             initJob.join()
-            val arrived = actionMutex.withLock { advanceSeason.skipSeason(System.currentTimeMillis()) }
+            val arrived = actionMutex.withLock { advanceSeason.skipSeason(clock.now()) }
             arrived?.let(::announceSeason)
         }
     }
@@ -229,10 +272,29 @@ class GardenViewModel @Inject constructor(
         objects.firstOrNull { it.instanceId == id && it.isStarterCrate }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    private val _weather = MutableStateFlow(WeatherType.forTime(System.currentTimeMillis()))
+    private val _weather = MutableStateFlow(WeatherType.SUNNY)
     val weather: StateFlow<WeatherType> = _weather.asStateFlow()
 
     private var debugWeather: WeatherType? = null
+
+    /** The garden's weather, day by day, as kept ([KeepWeatherUseCase]); brought up to date at every sync. */
+    private var diary: WeatherDiary = WeatherDiary.EMPTY
+
+    private val _outlook = MutableStateFlow<WeatherOutlook?>(null)
+
+    /**
+     * Today's and tomorrow's weather, as they will really be. Not shown in the garden yet: the
+     * weathervane will open it ([WeatherOutlook.isReadable]); for now the debug menu shows it.
+     */
+    val outlook: StateFlow<WeatherOutlook?> = _outlook.asStateFlow()
+
+    private val _clockOffset = MutableStateFlow(0L)
+
+    /**
+     * How far the game's clock is ahead of the device's (negative: behind). Zero unless the
+     * device's clock has been set: then the time left on a job is still shown in the game's time.
+     */
+    val clockOffset: StateFlow<Long> = _clockOffset.asStateFlow()
 
     /** Blessed rains still available today. */
     val rainRemaining: StateFlow<Int> = rewardLimits.usage
@@ -273,7 +335,7 @@ class GardenViewModel @Inject constructor(
                 grant = viewModelScope.async {
                     initJob.join()
                     actionMutex.withLock {
-                        val now = System.currentTimeMillis()
+                        val now = clock.now()
                         grantReward.blessedRain(now, currentWeather(now), todayEpochDay())
                     }
                 }
@@ -434,9 +496,10 @@ class GardenViewModel @Inject constructor(
     private val initialized: StateFlow<Boolean> = _initialized.asStateFlow()
     private val initJob = viewModelScope.launch {
         gardenRepository.ensureInitialized()
+        diary = keepWeather(clock.now())
         // Crops taken out of the game leave the garden, their seeds paid back (#68).
         retiredCrops()
-        hoe.tillUnderExistingPlants(System.currentTimeMillis())
+        hoe.tillUnderExistingPlants(clock.now())
         followTutorial()
         _initialized.value = true
     }
@@ -531,12 +594,12 @@ class GardenViewModel @Inject constructor(
         }
         viewModelScope.launch {
             initJob.join()
-            combine(gridObjects, _weather, gardenMap, season, periods) { objects, weather, map, season, period ->
-                Visiting(objects, weather, map, season, period)
+            combine(gridObjects, _weather, gardenMap, combine(season, timeOfDay, ::Pair), periods) { objects, weather, map, (season, time), period ->
+                Visiting(objects, weather, map, season, time, period)
             }
                 .collectLatest { visiting ->
                     val now = System.currentTimeMillis()
-                    val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season)
+                    val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay)
                         .filter { it.leavesAt > now }
                     _visitors.value = visits
                     coroutineScope {
@@ -551,11 +614,18 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    private class Visiting(val objects: List<GridObject>, val weather: WeatherType, val map: GardenMap, val season: Season, val period: Long)
+    private class Visiting(
+        val objects: List<GridObject>,
+        val weather: WeatherType,
+        val map: GardenMap,
+        val season: Season,
+        val timeOfDay: TimeOfDay,
+        val period: Long,
+    )
 
     private suspend fun noteVisit(period: Long, visit: CreatureVisit) {
         if (!notedVisits.add(period to visit.rule)) return
-        when (recordNatureNote(visit.rule, System.currentTimeMillis())) {
+        when (recordNatureNote(visit.rule, clock.now())) {
             NoteResult.NEW_CREATURE -> _messages.trySend(creatureMetMessage(visit.creature))
             NoteResult.NEW_COMBINATION -> _messages.trySend(R.string.msg_nature_note_added)
             NoteResult.SEEN_BEFORE -> Unit
@@ -590,7 +660,7 @@ class GardenViewModel @Inject constructor(
         viewModelScope.launch {
             initJob.join()
             val weather: WeatherForecast = gardenForecast()
-            withContext(Dispatchers.Default) { scheduleNotifications(System.currentTimeMillis(), weather) }
+            withContext(Dispatchers.Default) { scheduleNotifications(clock.now(), weather) }
         }
     }
 
@@ -650,8 +720,10 @@ class GardenViewModel @Inject constructor(
             initJob.join()
             var arrived: Season? = null
             val finished = actionMutex.withLock {
-                val now = System.currentTimeMillis()
-                // Jobs are only finished on time that can be trusted; otherwise the sync has
+                val now = clock.now()
+                // Tomorrow's weather is decided a day ahead, and the days away are filled in.
+                diary = keepWeather(now)
+                // Jobs are only finished on a save that can be trusted; otherwise the sync has
                 // just restarted them.
                 (if (syncGarden(now, currentWeather(now)).isTrusted) completeWork(now) else emptyList())
                     // A plant harvested or cleared away under the first steps lets them go.
@@ -686,7 +758,7 @@ class GardenViewModel @Inject constructor(
             gridObjects.collectLatest { objects ->
                 val nextDue = objects.filter { it.isWorking && it.workKind != WorkKind.READY }
                     .minOfOrNull { it.workEndsAt } ?: return@collectLatest
-                delay((nextDue - System.currentTimeMillis()).coerceAtLeast(0L) + WORK_GRACE_MILLIS)
+                delay((nextDue - clock.now()).coerceAtLeast(0L) + WORK_GRACE_MILLIS)
                 sync()
             }
         }
@@ -1006,7 +1078,18 @@ class GardenViewModel @Inject constructor(
     fun debugCycleWeather() {
         val next = WeatherType.entries[(weather.value.ordinal + 1) % WeatherType.entries.size]
         debugWeather = next
-        _weather.value = next
+        currentWeather(clock.now())
+    }
+
+    /**
+     * Debug menu: shows the garden at the next time of day (morning, day, evening, night), and
+     * after the night goes back to the clock's own. Only the look and the visitors change.
+     */
+    fun debugCycleTimeOfDay() {
+        _debugTimeOfDay.update { shown ->
+            val from = shown ?: timeOfDay.value
+            if (shown == TimeOfDay.NIGHT) null else TimeOfDay.entries[(from.ordinal + 1) % TimeOfDay.entries.size]
+        }
     }
 
     fun onEffectFinished(id: Long) {
@@ -1031,9 +1114,9 @@ class GardenViewModel @Inject constructor(
                         audio.play(SoundEffect.LEVEL_UP)
                         _levelUp.update { LevelUpNotice.after(it, previous, level) }
                         // The shop's news also comes by post, to be read again later.
-                        postLetters.newStock(previous, level, System.currentTimeMillis())
+                        postLetters.newStock(previous, level, clock.now())
                         // The level for the garden's next size may have come with it.
-                        actionMutex.withLock { announceGrowthIfDue(System.currentTimeMillis()) }
+                        actionMutex.withLock { announceGrowthIfDue(clock.now()) }
                     }
                 }
                 lastLevel = level
@@ -1087,7 +1170,7 @@ class GardenViewModel @Inject constructor(
         viewModelScope.launch {
             initJob.join()
             val result = actionMutex.withLock {
-                val now = System.currentTimeMillis()
+                val now = clock.now()
                 block(now, currentWeather(now))
             }
             when (result) {
@@ -1109,11 +1192,14 @@ class GardenViewModel @Inject constructor(
     private fun currentWeather(now: Long): WeatherForecast {
         val forecast = gardenForecast()
         _weather.value = forecast.at(now)
+        // Tomorrow as it will be lived: the same forecast, at the start of tomorrow.
+        _outlook.value = WeatherOutlook(forecast.at(now), forecast.at(GameDay.startOf(GameDay.of(now) + 1)))
+        _clockOffset.value = now - System.currentTimeMillis()
         return forecast
     }
 
     /** The debug menu's weather, else the garden's own: sunny through its first play, then day by day. */
-    private fun gardenForecast(): WeatherForecast = debugWeather ?: WeatherForecast.forGarden(progress.value?.tutorialStep)
+    private fun gardenForecast(): WeatherForecast = debugWeather ?: WeatherForecast.forGarden(progress.value?.tutorialStep, diary)
 
     /**
      * Keeps the weather shown in step with the first play: a new game shows sunshine from its
@@ -1122,7 +1208,7 @@ class GardenViewModel @Inject constructor(
     private fun watchFirstPlayWeather() {
         viewModelScope.launch {
             tutorialStep.filterNotNull().map { it.isFirstPlay }.distinctUntilChanged().collect {
-                currentWeather(System.currentTimeMillis())
+                currentWeather(clock.now())
             }
         }
     }
@@ -1133,6 +1219,11 @@ class GardenViewModel @Inject constructor(
 
     private companion object {
         const val BLESSED_RAIN_SHOWER_MILLIS = 4_000L
+
+        const val MINUTE_MILLIS = 60_000L
+
+        /** The device's local time as hours since midnight, minutes included as a fraction. */
+        fun localHour(): Float = LocalTime.now().let { it.hour + it.minute / 60f }
 
         /** Waited past a job's end before syncing, so that the sync is sure to find it due. */
         const val WORK_GRACE_MILLIS = 60L

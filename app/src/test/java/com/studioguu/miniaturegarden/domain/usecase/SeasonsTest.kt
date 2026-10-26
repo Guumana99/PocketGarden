@@ -15,7 +15,9 @@ import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.LetterKind
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.GameDay
 import com.studioguu.miniaturegarden.domain.model.SeasonClock
+import com.studioguu.miniaturegarden.domain.model.SeasonPhase
 import com.studioguu.miniaturegarden.domain.model.SeasonState
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.UnlockCondition
@@ -34,9 +36,15 @@ import org.junit.Test
 
 class SeasonsTest {
 
-    private val t0 = 1_700_000_000_000L
-    private val season = SeasonClock.SEASON_MILLIS
     private val day = SeasonClock.DAY_MILLIS
+
+    /** The first day of the year in these tests ([GameDay]), and seven in the morning on it. */
+    private val firstDay = 19_700L
+    private val t0 = GameDay.startOf(firstDay) + 2 * 3_600_000L
+    private val season = SeasonClock.SEASON_MILLIS
+
+    /** When the season begun at [t0] ends: five in the morning on its tenth day. */
+    private val end = GameDay.startOf(firstDay + SeasonClock.DAYS_PER_SEASON)
 
     // --- The year going round ---
 
@@ -51,12 +59,36 @@ class SeasonsTest {
     }
 
     @Test
-    fun `a season lasts its time, then the next one comes`() {
-        assertEquals(SeasonState(Season.SPRING, t0), SeasonClock.at(Season.SPRING, t0, t0 + season - 1))
-        assertEquals(SeasonState(Season.SUMMER, t0 + season), SeasonClock.at(Season.SPRING, t0, t0 + season))
+    fun `a season lasts nine days, then the next one comes at five in the morning`() {
+        assertEquals(9, SeasonClock.DAYS_PER_SEASON)
+        assertEquals(SeasonState(Season.SPRING, t0), SeasonClock.at(Season.SPRING, t0, end - 1))
+        assertEquals(SeasonState(Season.SUMMER, end), SeasonClock.at(Season.SPRING, t0, end))
+        assertEquals(end, SeasonClock.endOf(t0))
         // Long away: the season of now, begun when it really began.
-        assertEquals(SeasonState(Season.WINTER, t0 + 3 * season), SeasonClock.at(Season.SPRING, t0, t0 + 3 * season + 5 * day))
-        assertEquals(SeasonState(Season.SUMMER, t0 + 5 * season), SeasonClock.at(Season.SPRING, t0, t0 + 5 * season))
+        val winter = GameDay.startOf(firstDay + 27)
+        assertEquals(SeasonState(Season.WINTER, winter), SeasonClock.at(Season.SPRING, t0, winter + 5 * day))
+        val nextSummer = GameDay.startOf(firstDay + 45)
+        assertEquals(SeasonState(Season.SUMMER, nextSummer), SeasonClock.at(Season.SPRING, t0, nextSummer))
+    }
+
+    @Test
+    fun `a season has three phases of three days`() {
+        // Late at night on the first day is still the first day: the day turns at five.
+        assertEquals(1, SeasonClock.dayOfSeason(t0, GameDay.startOf(firstDay + 1) - 1))
+        assertEquals(2, SeasonClock.dayOfSeason(t0, GameDay.startOf(firstDay + 1)))
+        val phases = (0 until 9).map { SeasonClock.phaseAt(t0, GameDay.startOf(firstDay + it) + 3_600_000L) }
+        assertEquals(List(3) { SeasonPhase.EARLY } + List(3) { SeasonPhase.MID } + List(3) { SeasonPhase.LATE }, phases)
+        // The season and phase of any day, forwards and backwards.
+        assertEquals(Season.SPRING to SeasonPhase.MID, SeasonClock.on(firstDay + 4, Season.SPRING, t0))
+        assertEquals(Season.SUMMER to SeasonPhase.EARLY, SeasonClock.on(firstDay + 9, Season.SPRING, t0))
+        assertEquals(Season.WINTER to SeasonPhase.LATE, SeasonClock.on(firstDay - 1, Season.SPRING, t0))
+    }
+
+    @Test
+    fun `a garden saved on its tenth day of a ten-day season moves on to the next`() {
+        // Seasons were ten days long: a spring begun nine and a half days ago is over now.
+        val now = t0 + 9 * day + 12 * 3_600_000L
+        assertEquals(Season.SUMMER, SeasonClock.at(Season.SPRING, t0, now).season)
     }
 
     @Test
@@ -66,8 +98,8 @@ class SeasonsTest {
 
     @Test
     fun `the end of a season is near in its last days`() {
-        assertFalse(SeasonClock.isEndNear(t0, t0 + season - SeasonClock.NOTICE_MILLIS - 1))
-        assertTrue(SeasonClock.isEndNear(t0, t0 + season - SeasonClock.NOTICE_MILLIS))
+        assertFalse(SeasonClock.isEndNear(t0, end - SeasonClock.NOTICE_MILLIS - 1))
+        assertTrue(SeasonClock.isEndNear(t0, end - SeasonClock.NOTICE_MILLIS))
     }
 
     // --- Turning the garden's year, and the post ---
@@ -103,9 +135,9 @@ class SeasonsTest {
     @Test
     fun `when the season turns, the garden moves on and the post says so`() = runBlocking {
         advance(t0)
-        assertEquals(Season.SUMMER, advance(t0 + season + 1))
+        assertEquals(Season.SUMMER, advance(end + 1))
         assertEquals(Season.SUMMER, repo.progress?.season)
-        assertEquals(t0 + season, repo.progress?.seasonStartedAt)
+        assertEquals(end, repo.progress?.seasonStartedAt)
         assertTrue(repo.letters.values.any { it.kind == LetterKind.SEASON_ARRIVED && it.season == Season.SUMMER && !it.read })
         // The tutorial is not touched by the year going round.
         assertEquals(TutorialStep.OPEN_CRATE, repo.progress?.tutorialStep)

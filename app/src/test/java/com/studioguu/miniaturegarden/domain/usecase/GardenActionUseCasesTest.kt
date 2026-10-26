@@ -653,17 +653,17 @@ class GardenActionUseCasesTest {
     }
 
     @Test
-    fun `sync does not credit time when the clock was tampered with`() = runBlocking {
+    fun `sync credits the game's time in full, with nothing held against the clock`() = runBlocking {
+        // The game's clock only moves as far as time has really passed, so whatever it says is
+        // credited: there is no check of the device's clock left to fail.
         repo.profile = UserProfile()
         repo.put(tulip())
-        security.timeTampered = true
 
         val integrity = sync(t0 + 48 * hour, sunny)
 
-        assertFalse(integrity.timeConsistent)
-        assertEquals(tulip().copy(lastUpdatedTimestamp = t0 + 48 * hour), stored())
-        // Still re-stamped, so the next honest session is measured from here.
-        assertEquals(1, repo.profileSaves)
+        assertTrue(integrity.isTrusted)
+        assertTrue(stored().growthProgress > 0f)
+        assertFalse(security.flagged)
     }
 
     @Test
@@ -725,6 +725,7 @@ internal class FakeGardenRepository : GardenRepository {
         collection.clear()
         natureNotes.clear()
         letters.clear()
+        weatherDays.clear()
         progress = null
         profile = null
     }
@@ -783,6 +784,16 @@ internal class FakeGardenRepository : GardenRepository {
         letters.computeIfPresent(letterId) { _, it -> it.copy(read = true) }
     }
 
+    val weatherDays = sortedMapOf<Long, WeatherType>()
+
+    override suspend fun getWeatherDays(): Map<Long, WeatherType> = weatherDays.toMap()
+    override suspend fun keepWeatherDays(days: Map<Long, WeatherType>) {
+        days.forEach { (day, weather) -> weatherDays.putIfAbsent(day, weather) }
+    }
+    override suspend fun forgetWeatherBefore(day: Long) {
+        weatherDays.headMap(day).clear()
+    }
+
     private fun lettersNewestFirst() = letters.values.sortedWith(compareByDescending<Letter> { it.sentAt }.thenBy { it.letterId })
 
     override fun observeInventory(): Flow<List<InventorySlot>> = MutableStateFlow(slots.values.toList())
@@ -793,11 +804,9 @@ internal class FakeGardenRepository : GardenRepository {
 
 private class FakeSecurityRepository : SecurityRepository {
     var signatureValid = true
-    var timeTampered = false
     var flagged = false
 
     override fun isSignatureValid(profile: UserProfile): Boolean = signatureValid
-    override fun isTimeTampered(profile: UserProfile): Boolean = timeTampered.also { if (it) this.flagged = true }
     override fun isTamperFlagged(): Boolean = flagged
     override fun setTamperFlag(flagged: Boolean) {
         this.flagged = flagged

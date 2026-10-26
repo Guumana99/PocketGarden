@@ -125,6 +125,8 @@ data class GardenProgress(
     val hoeXp: Int = 0,
     /** How often the watering can has watered: its level ([FarmTool.WATERING_CAN]). */
     val wateringCanXp: Int = 0,
+    /** Where the garden's own weather comes from ([WeatherPlanner]); 0 until it has been chosen. */
+    val weatherSeed: Long = 0L,
 ) {
     val hoeLevel: Int get() = FarmTool.HOE.levelFor(hoeXp)
     val wateringCanLevel: Int get() = FarmTool.WATERING_CAN.levelFor(wateringCanXp)

@@ -8,10 +8,14 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
+import com.studioguu.miniaturegarden.domain.model.WeatherDiary
+import com.studioguu.miniaturegarden.domain.model.SeasonClock
+import com.studioguu.miniaturegarden.domain.model.GameDay
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.OVERRIPE_HOURS
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import java.time.ZoneOffset
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
@@ -21,9 +25,9 @@ import org.junit.Test
 class WitherAndWeatherTest {
 
     private val hour = 3_600_000L
-    private val day = WeatherType.DAY_MILLIS
+    private val day = SeasonClock.DAY_MILLIS
 
-    /** Midnight UTC, so that whole days line up with the changes of the weather. */
+    /** Midnight UTC, the start of the days that [days] changes the weather on. */
     private val t0 = 19_700L * day
     private val sunny = WeatherType.SUNNY
     private val rainy = WeatherType.RAINY
@@ -53,8 +57,9 @@ class WitherAndWeatherTest {
     )
 
     /** A forecast that reads its weather off a list, one entry per day from [t0] on. */
-    private fun days(vararg weather: WeatherType) = WeatherForecast { time ->
-        weather[Math.floorDiv(time - t0, day).toInt().coerceIn(0, weather.lastIndex)]
+    private fun days(vararg weather: WeatherType) = object : WeatherForecast {
+        override fun at(epochMillis: Long) = weather[Math.floorDiv(epochMillis - t0, day).toInt().coerceIn(0, weather.lastIndex)]
+        override fun nextChangeAfter(epochMillis: Long) = t0 + (Math.floorDiv(epochMillis - t0, day) + 1) * day
     }
 
     // --- Going over after full bloom ---
@@ -276,7 +281,7 @@ class WitherAndWeatherTest {
         repo.putSlot(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1))
 
         // A month goes by.
-        val soil = calc(repo.objects.getValue("soil_0_0"), t0 + 30 * day, WeatherForecast.Daily)
+        val soil = calc(repo.objects.getValue("soil_0_0"), t0 + 30 * day, days(sunny, rainy, WeatherType.CLOUDY))
         assertTrue(soil.isComposted)
 
         place(0, 0, 0, t0)
@@ -441,7 +446,7 @@ class WitherAndWeatherTest {
     fun `nothing happens when no time has passed, whatever the forecast`() {
         val start = flower(growth = 0.4f, moisture = 0.1f)
 
-        assertSame(start, calc(start, t0, WeatherForecast.Daily))
+        assertSame(start, calc(start, t0, days(sunny, rainy)))
         assertSame(start, calc(start, t0 + 20_000, days(rainy)))
     }
 
@@ -449,23 +454,44 @@ class WitherAndWeatherTest {
     fun `a clock set back is repaired under a forecast too`() {
         val fromTheFuture = flower(at = t0 + 5 * hour)
 
-        val result = calc(fromTheFuture, t0, WeatherForecast.Daily)
+        val result = calc(fromTheFuture, t0, days(sunny, rainy))
 
         assertEquals(t0, result.lastUpdatedTimestamp)
         assertEquals(0f, result.growthProgress, 0f)
     }
 
     @Test
-    fun `the daily forecast is the game's own weather`() {
-        for (d in 0 until 60) {
-            val time = t0 + d * day + 5 * hour
-            assertEquals(WeatherType.forTime(time), WeatherForecast.Daily.at(time))
-        }
-        // A kind of weather is a forecast of itself.
+    fun `the diary is the garden's own weather, changing at five in the morning`() {
+        val utc = ZoneOffset.UTC
+        val today = GameDay.of(t0 + 12 * hour, utc)
+        val diary = WeatherDiary(mapOf(today to rainy, today + 1 to sunny), utc)
+        assertEquals(rainy, diary.at(t0 + 5 * hour))
+        assertEquals(rainy, diary.at(t0 + day + 4 * hour + 59 * 60_000L))
+        assertEquals(sunny, diary.at(t0 + day + 5 * hour))
+        assertEquals(t0 + day + 5 * hour, diary.nextChangeAfter(t0 + 12 * hour))
+        // Before five it is still the day before, which is not in the diary: fine weather.
+        assertEquals(sunny, diary.at(t0 + 4 * hour))
+        // A kind of weather is a forecast of itself, and never changes.
         assertEquals(rainy, rainy.at(t0))
+        assertEquals(Long.MAX_VALUE, rainy.nextChangeAfter(t0))
         assertTrue(rainy.isProtective)
+        assertTrue(WeatherType.SNOWY.isProtective)
         assertFalse(sunny.isProtective)
         assertFalse(WeatherType.CLOUDY.isProtective)
+    }
+
+    @Test
+    fun `snow keeps plants watered and unharmed, but brings them on no faster`() {
+        val start = flower(growth = 0.1f, moisture = 0.3f)
+        val snowed = calc(start, t0 + 6 * hour, WeatherType.SNOWY)
+        val sunnyHours = calc(start.copy(moistureLevel = 1f), t0 + 6 * hour, sunny)
+        val rained = calc(start, t0 + 6 * hour, rainy)
+
+        assertEquals(1f, snowed.moistureLevel, 0f)
+        assertEquals(0f, snowed.stressRate, 0f)
+        // As fast as a healthy plant on a fine day; the rain is a fifth faster.
+        assertEquals(sunnyHours.growthProgress, snowed.growthProgress, 1e-4f)
+        assertEquals((rained.growthProgress - 0.1f) / 1.2f, snowed.growthProgress - 0.1f, 1e-4f)
     }
 
     @Test
@@ -514,7 +540,6 @@ class WitherAndWeatherTest {
 /** A device whose clock and save data are as they should be. */
 private object AlwaysTrusted : com.studioguu.miniaturegarden.domain.repository.SecurityRepository {
     override fun isSignatureValid(profile: UserProfile): Boolean = true
-    override fun isTimeTampered(profile: UserProfile): Boolean = false
     override fun isTamperFlagged(): Boolean = false
     override fun setTamperFlag(flagged: Boolean) = Unit
 }

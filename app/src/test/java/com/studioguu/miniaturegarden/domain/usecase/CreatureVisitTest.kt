@@ -12,6 +12,7 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.StructureData
+import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.VisitCondition
 import com.studioguu.miniaturegarden.domain.model.VisitPlacement
 import com.studioguu.miniaturegarden.domain.model.VisitRule
@@ -322,6 +323,37 @@ class CreatureVisitTest {
         assertEquals(listOf(VisitRule.BIRD_WINTER_WELL), winterOnly)
         val wintry = visitsOver(200, gardenFor(VisitRule.BIRD_WINTER_WELL), season = Season.WINTER)
         assertTrue(wintry.any { it.rule == VisitRule.BIRD_WINTER_WELL })
+    }
+
+    @Test
+    fun `butterflies, dragonflies and frogs stay away on a snowy day`() {
+        for (rule in listOf(VisitRule.BUTTERFLY_BLOOMS, VisitRule.BUTTERFLY_LAVENDER, VisitRule.DRAGONFLY_AUTUMN, VisitRule.FROG_RAIN, VisitRule.FROG_WELL)) {
+            assertFalse(rule.name, rule.isMetBy(GardenSnapshot(gardenFor(rule), WeatherType.SNOWY, seasonFor(rule))))
+        }
+        // The rest do not mind the snow.
+        assertTrue(VisitRule.BIRD_WINTER_WELL.isMetBy(GardenSnapshot(gardenFor(VisitRule.BIRD_WINTER_WELL), WeatherType.SNOWY, Season.WINTER)))
+        assertTrue(VisitRule.SQUIRREL_SUNFLOWER.isMetBy(GardenSnapshot(gardenFor(VisitRule.SQUIRREL_SUNFLOWER), WeatherType.SNOWY)))
+        // Clouds are fair weather.
+        assertTrue(VisitRule.BUTTERFLY_BLOOMS.isMetBy(GardenSnapshot(gardenFor(VisitRule.BUTTERFLY_BLOOMS), WeatherType.CLOUDY)))
+    }
+
+    @Test
+    fun `some visitors keep to their times of day`() {
+        fun comesAt(rule: VisitRule, time: TimeOfDay) =
+            rule.isMetBy(GardenSnapshot(gardenFor(rule), weatherFor(rule), seasonFor(rule), time))
+        // Butterflies in the morning and by day; dragonflies by day and in the evening.
+        for (rule in listOf(VisitRule.BUTTERFLY_BLOOMS, VisitRule.BUTTERFLY_LAVENDER)) {
+            assertEquals(rule.name, listOf(true, true, false, false), TimeOfDay.entries.map { comesAt(rule, it) })
+        }
+        assertEquals(listOf(false, true, true, false), TimeOfDay.entries.map { comesAt(VisitRule.DRAGONFLY_AUTUMN, it) })
+        // Birds are gone to roost at night.
+        for (rule in VisitRule.entries.filter { it.creature == Creature.BIRD }) {
+            assertEquals(rule.name, listOf(true, true, true, false), TimeOfDay.entries.map { comesAt(rule, it) })
+        }
+        // The others come at any hour.
+        for (rule in VisitRule.entries.filter { it.creature in setOf(Creature.LADYBUG, Creature.SQUIRREL, Creature.FROG) }) {
+            assertTrue(rule.name, TimeOfDay.entries.all { comesAt(rule, it) })
+        }
     }
 
     /** PHILOSOPHY 12: a rumour hints at what a creature likes; it never spells out counts. */
