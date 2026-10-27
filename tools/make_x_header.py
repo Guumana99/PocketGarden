@@ -5,9 +5,13 @@ Not part of the app: a picture for the store pages, so it is not in docs/ASSET_L
 
   * the background is tools/source_art/app_icon_bg_sky.png (the app icon's blurred sky and green
     hills), scaled to 1500 wide and cut to 500 tall round the line of the hills;
-  * on the hills, right of the middle, stand seven crops at their last stage, cut out of their white
-    as in the game (prepare_drawable_art.cut_out, with the crop's own CUT), two rows: the back one
-    smaller and higher up. Each has a faint shadow at its foot, to sit in the grass;
+  * on the hills, right of the middle, stand five crops at their last stage, cut out of their white
+    as in the game (prepare_drawable_art.cut_out, with the crop's own CUT), one beside another with
+    a little room between them, by turns at the front (larger, lower) and at the back (smaller,
+    higher up);
+  * across the bottom, a strip of near grass (grass_strip), less blurred than the hills, with
+    blades along its top: the crops' feet are hidden in it, so that they stand in the grass
+    instead of floating over the hills, each with a faint shadow on it;
   * a butterfly (cut out as prepare_creature_art does), tilted, in the sky above them.
 
 Only crops and the butterfly that a new player meets early are shown (no later crops, no other
@@ -42,18 +46,31 @@ WIDTH, HEIGHT = 1500, 500
 #: the hills' line about 340 px down.
 SKY_TOP = 770
 
-#: The crops: (crop, source picture, x and y of its foot, pixels a tile at that depth). Drawn in
-#: this order, back to front. Pixels a tile scale the game's own sizes (STAGES), so that the crops
-#: keep their sizes against one another; the back row is about three quarters of the front one.
-CROPS: list[tuple[str, str, int, int, int]] = [
-    ("sunflower", "crop_sunflower_stage3.png", 1005, 368, 250),
-    ("cosmos", "crop_cosmos_stage3.png", 1300, 364, 245),
-    ("lavender", "crop_lavender_stage3.png", 1160, 374, 250),
-    ("tomato", "crop_tomato_3.png", 865, 426, 320),
-    ("tulip", "crop_tulip_red_stage3.png", 1050, 438, 320),
-    ("strawberry", "crop_strawberry_3.png", 1220, 434, 330),
-    ("snowdrop", "crop_snowdrop_stage3.png", 1385, 428, 320),
+#: The crops, left to right: (crop, source picture, row).
+CROPS: list[tuple[str, str, str]] = [
+    ("tomato", "crop_tomato_3.png", "front"),
+    ("sunflower", "crop_sunflower_stage3.png", "back"),
+    ("strawberry", "crop_strawberry_3.png", "front"),
+    ("lavender", "crop_lavender_stage3.png", "back"),
+    ("cosmos", "crop_cosmos_stage3.png", "front"),
 ]
+
+#: Each row: (y of the crops' feet, pixels a tile). Pixels a tile scale the game's own sizes
+#: (STAGES), so that the crops keep their sizes against one another; the back row is about four
+#: fifths of the front one, and stands further up the strip. Both feet are below the top of the
+#: grass strip, hidden in it.
+ROWS: dict[str, tuple[int, int]] = {"front": (484, 300), "back": (452, 245)}
+
+#: Where the right-hand crop ends, and the room between one crop's picture and the next.
+CROPS_RIGHT = 1465
+CROPS_GAP = 18
+
+#: The top of the near grass; its blades rise up to [BLADE_HEIGHT] above where they stand.
+STRIP_TOP = 440
+BLADE_HEIGHT = (10, 30)
+
+#: The green the near grass is drawn towards, from the hills' own (which is yellow on the left).
+GRASS_GREEN = np.array([74.0, 122.0, 42.0])
 
 #: The butterfly: middle, width in pixels, and turn (degrees, anticlockwise).
 BUTTERFLY = ((1150, 118), 104, 18)
@@ -87,6 +104,41 @@ def ground_shadow(canvas: Image.Image, x: int, y: int, width: int) -> None:
     canvas.alpha_composite(layer, (int(x - w / 2), int(y - h / 2 - 2)))
 
 
+def grass_strip(rng: np.random.Generator) -> Image.Image:
+    """The near grass across the bottom: rows of thin leaning blades, one row every few pixels
+    from [STRIP_TOP] down, each nearer row a little lighter; under them a body of the same green,
+    darker below. The green at each column is the hills' own (from the bottom rows of the
+    background, smoothed along) drawn halfway to [GRASS_GREEN]. Drawn three times larger and
+    scaled down, for smooth edges, and only a little softened: sharper than the hills behind."""
+    k = 3
+    rows = np.array(background())[HEIGHT - 40:, :, :3].astype(float).mean(axis=0)
+    kernel = np.ones(121) / 121
+    hills = np.stack([np.convolve(np.pad(rows[:, c], 60, mode="edge"), kernel, "valid") for c in range(3)], axis=1)
+    base = (hills + GRASS_GREEN) / 2 * 0.8
+
+    layer = Image.new("RGBA", (WIDTH * k, HEIGHT * k), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    body = STRIP_TOP + 14
+    for y in range(body, HEIGHT):
+        colour = (base.mean(axis=0) * (1 - 0.25 * (y - body) / (HEIGHT - body))).astype(int)
+        d.rectangle((0, y * k, WIDTH * k, (y + 1) * k), fill=tuple(colour) + (255,))
+    depths = list(range(STRIP_TOP + 4, HEIGHT + 24, 7))
+    for i, foot_line in enumerate(depths):
+        near = i / (len(depths) - 1)
+        x = -4.0
+        while x < WIDTH + 4:
+            foot = foot_line + rng.uniform(-3, 3)
+            tall = rng.uniform(*BLADE_HEIGHT) * (0.7 + 0.5 * near) * (1.0 if i < 2 else 0.8)
+            half = rng.uniform(1.3, 2.4) * (0.8 + 0.5 * near)
+            lean = rng.uniform(-8, 8)
+            light = (0.72 + 0.28 * near) * rng.uniform(0.82, 1.15) * (1 - 0.2 * max(0.0, (foot - body) / (HEIGHT - body)))
+            fill = tuple(int(c) for c in (base[int(np.clip(x, 0, WIDTH - 1))] * light).clip(0, 255)) + (255,)
+            d.polygon([((x - half) * k, (foot + 6) * k), ((x + half) * k, (foot + 6) * k), ((x + lean) * k, (foot - tall) * k)], fill=fill)
+            x += rng.uniform(1.2, 3.0)
+    small = layer.convert("RGBa").resize((WIDTH, HEIGHT), Image.LANCZOS)
+    return small.filter(ImageFilter.GaussianBlur(0.6)).convert("RGBA")
+
+
 def background() -> Image.Image:
     sky = Image.open(SOURCE / "app_icon_bg_sky.png").convert("RGB")
     sky = sky.resize((WIDTH, round(sky.height * WIDTH / sky.width)), Image.LANCZOS)
@@ -95,15 +147,24 @@ def background() -> Image.Image:
 
 def compose() -> Image.Image:
     canvas = background()
-    for name, source, x, y, per_tile in CROPS:
+    placed = []
+    right = CROPS_RIGHT
+    for name, source, row in reversed(CROPS):
         rgba = crop(load_cut(source, **CUT.get(name, {})))
         h, w = rgba.shape[:2]
+        y, per_tile = ROWS[row]
         height = STAGES[name][2] * per_tile
         size = (max(1, round(w * height / h)), round(height))
-        sprite = premultiplied_resize(rgba, size)
-        left = round(x - foot_x(rgba, f"plant_{name}_stage3") * size[0])
-        ground_shadow(canvas, x, y, size[0] * 0.6)
-        canvas.alpha_composite(sprite, (left, y - size[1]))
+        left = right - size[0]
+        placed.append((row, premultiplied_resize(rgba, size), left, y, left + foot_x(rgba, f"plant_{name}_stage3") * size[0]))
+        right = left - CROPS_GAP
+    for row in ("back", "front"):
+        for r, sprite, left, y, _ in placed:
+            if r == row:
+                canvas.alpha_composite(sprite, (left, y - sprite.height))
+    canvas.alpha_composite(grass_strip(np.random.default_rng(7)))
+    for _, sprite, _, _, x in placed:
+        ground_shadow(canvas, x, STRIP_TOP + 8, sprite.width * 0.7)
     (cx, cy), width, turn = BUTTERFLY
     fly = crop(cut_creature("butterfly"))
     fh, fw = fly.shape[:2]
