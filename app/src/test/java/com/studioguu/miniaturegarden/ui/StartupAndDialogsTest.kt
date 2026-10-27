@@ -28,8 +28,9 @@ class StartupAndDialogsTest {
         assertEquals(0.55f, GardenCamera.START_SCALE, 0f)
         // The view kept from the last visit is no longer handed to the garden, so continuing
         // opens at the default zoom too.
+        // Only a debug build's showcase (docs/promo) hands it a view.
         val screen = source("ui/GardenScreen.kt")
-        assertFalse(screen.contains("savedView"))
+        assertEquals(listOf("savedView = showcase?.view"), Regex("savedView[^,\n]*").findAll(screen).map { it.value }.toList())
         assertFalse(screen.contains("onViewChanged"))
     }
 

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Debug builds only: sets up the garden for promotional pictures from adb
+             (docs/promo/README.md). Exported so that the shell can reach it. -->
+        <receiver
+            android:name=".debug.ShowcaseReceiver"
+            android:exported="true"
+            tools:ignore="ExportedReceiver"
+            xmlns:tools="http://schemas.android.com/tools">
+            <intent-filter>
+                <action android:name="com.studioguu.miniaturegarden.debug.SHOWCASE" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

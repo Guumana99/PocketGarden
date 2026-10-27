@@ -87,6 +87,7 @@ import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
 import com.studioguu.miniaturegarden.domain.usecase.UnveilBuildingUseCase
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
+import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
 import com.studioguu.miniaturegarden.ui.effects.plusEffect
 import com.studioguu.miniaturegarden.ui.render.TileCoord
@@ -178,7 +179,10 @@ class GardenViewModel @Inject constructor(
     val tutorialStep: StateFlow<TutorialStep?> = progress.map { it?.tutorialStep }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val season: StateFlow<Season> = progress.map { it?.season ?: Season.SPRING }
+    /** The garden's season, or the showcase's ([ShowcaseControls], debug builds only). */
+    val season: StateFlow<Season> = combine(progress, ShowcaseControls.showcase) { saved, showcase ->
+        showcase?.season ?: saved?.season ?: Season.SPRING
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
 
     /** Ticks at the turn of every minute: for what changes with the time of day, or the day. */
@@ -204,8 +208,8 @@ class GardenViewModel @Inject constructor(
      * The hour the garden is lit for (local time, 0 until 24, minutes as a fraction): the
      * device's own clock, wherever the player is, or an hour well inside the debug menu's time of day.
      */
-    val clockHour: StateFlow<Float> = combine(minutes, _debugTimeOfDay, season) { _, debug, season ->
-        debug?.typicalHour(season) ?: localHour()
+    val clockHour: StateFlow<Float> = combine(minutes, _debugTimeOfDay, season, ShowcaseControls.showcase) { _, debug, season, showcase ->
+        (showcase?.timeOfDay ?: debug)?.typicalHour(season) ?: localHour()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), localHour())
 
     /** Morning, day, evening or night, for how the garden looks and who visits it; nothing else goes by it. */
@@ -520,6 +524,14 @@ class GardenViewModel @Inject constructor(
         watchSeasonForMusic()
         watchToolLevels()
         watchFirstPlayWeather()
+        watchShowcaseWeather()
+    }
+
+    /** The showcase's weather (debug builds only) is shown as soon as it is set, and the day's once it is cleared. */
+    private fun watchShowcaseWeather() {
+        viewModelScope.launch {
+            ShowcaseControls.showcase.map { it?.weather }.distinctUntilChanged().collect { currentWeather(clock.now()) }
+        }
     }
 
     /** A word, and the celebration's sound, when the hoe or the watering can gets better. */
@@ -594,13 +606,15 @@ class GardenViewModel @Inject constructor(
         }
         viewModelScope.launch {
             initJob.join()
-            combine(gridObjects, _weather, gardenMap, combine(season, timeOfDay, ::Pair), periods) { objects, weather, map, (season, time), period ->
-                Visiting(objects, weather, map, season, time, period)
+            combine(gridObjects, _weather, gardenMap, combine(season, timeOfDay, ::Pair), combine(periods, ShowcaseControls.showcase, ::Pair)) {
+                    objects, weather, map, (season, time), (period, showcase) ->
+                Visiting(objects, weather, map, season, time, period) to showcase
             }
-                .collectLatest { visiting ->
+                .collectLatest { (visiting, showcase) ->
                     val now = System.currentTimeMillis()
                     val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay)
                         .filter { it.leavesAt > now }
+                        .let { showcase?.visitors(it, visiting.objects) ?: it }
                     _visitors.value = visits
                     coroutineScope {
                         for (visit in visits) {
@@ -1198,8 +1212,9 @@ class GardenViewModel @Inject constructor(
         return forecast
     }
 
-    /** The debug menu's weather, else the garden's own: sunny through its first play, then day by day. */
-    private fun gardenForecast(): WeatherForecast = debugWeather ?: WeatherForecast.forGarden(progress.value?.tutorialStep, diary)
+    /** The showcase's or the debug menu's weather, else the garden's own: sunny through its first play, then day by day. */
+    private fun gardenForecast(): WeatherForecast =
+        ShowcaseControls.showcase.value?.weather ?: debugWeather ?: WeatherForecast.forGarden(progress.value?.tutorialStep, diary)
 
     /**
      * Keeps the weather shown in step with the first play: a new game shows sunshine from its

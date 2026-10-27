@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -64,6 +65,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
@@ -94,6 +97,7 @@ import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.debug.DebugZoomReadout
+import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import com.studioguu.miniaturegarden.ui.effects.FloatingEffectsHost
 import com.studioguu.miniaturegarden.ui.effects.RainOverlay
 import com.studioguu.miniaturegarden.ui.effects.SnowOverlay
@@ -176,6 +180,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val inventorySort by viewModel.inventorySort.collectAsStateWithLifecycle()
     val levelUp by viewModel.levelUp.collectAsStateWithLifecycle()
     val toolLevels by viewModel.toolLevels.collectAsStateWithLifecycle()
+    // A fixed look for promotional pictures, set from a debug build only (docs/promo/README.md).
+    val showcase by ShowcaseControls.showcase.collectAsStateWithLifecycle()
+    val hideUi = showcase?.hideUi == true
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     // The bag's tab is kept while the app is open; its sort order is kept in the settings.
@@ -199,6 +206,14 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
+
+    // The showcase's pictures have nothing but the garden in them, not even the system bars.
+    DisposableEffect(hideUi) {
+        val window = context.findActivity()?.window
+        val bars = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+        if (hideUi) bars?.hide(WindowInsetsCompat.Type.systemBars())
+        onDispose { if (hideUi) bars?.show(WindowInsetsCompat.Type.systemBars()) }
+    }
 
     // Everything drawn inside the garden box below is also recorded into this layer, which is
     // what a shared screenshot is made from: the garden and the sky, none of the controls.
@@ -271,6 +286,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
                 onZoomChanged = if (BuildConfig.DEBUG) ({ debugZoom = it }) else null,
+                // The showcase's view (debug builds only), taken up afresh whenever it changes.
+                savedView = showcase?.view,
                 paused = showInventory || showShop,
                 season = season,
                 // Morning, evening and night by the device's clock, lanterns lit after dark.
@@ -300,7 +317,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             }
         }
 
-        if (cameraMode) {
+        if (hideUi) {
+            // Nothing but the garden.
+        } else if (cameraMode) {
             CameraOverlay(
                 shots = shots,
                 onShutter = {
@@ -601,13 +620,13 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     // A level-up waits on its board until OK; it holds back while another board is up, so two
     // never stack.
-    val levelUpNow = levelUp?.takeIf { openingCrate == null && tutorialStep != TutorialStep.FINISHED && !cameraMode }
+    val levelUpNow = levelUp?.takeIf { openingCrate == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideUi }
     if (levelUpNow != null) {
         LevelUpDialog(notice = levelUpNow, onOk = viewModel::acknowledgeLevelUp)
     }
     // Once, after the first steps, and only where the device needs the player's permission.
     val requestNotificationPermission = rememberNotificationPermissionRequest { }
-    val inviteNow = notificationInviteDue && openingCrate == null && !cameraMode && levelUpNow == null &&
+    val inviteNow = notificationInviteDue && openingCrate == null && !cameraMode && !hideUi && levelUpNow == null &&
         NotificationAccess.shouldInvite(Build.VERSION.SDK_INT, context.hasNotificationPermission(), enabledInGame = true, alreadyInvited = false)
     if (inviteNow) {
         NotificationInviteDialog(

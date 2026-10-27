@@ -235,13 +235,13 @@ fun GardenCanvas(
             viewMoved = true
         }
     }
-    // The view the player left the garden with, taken up once when it is known (it is read from
-    // storage, so it may come a moment after the first layout).
-    var viewRestored by remember { mutableStateOf(false) }
+    // The view to open with, taken up when it is known (it may be read from storage, and so come a
+    // moment after the first layout), and again whenever a different one is handed in.
+    var viewRestored by remember { mutableStateOf<GardenView?>(null) }
     LaunchedEffect(savedView, viewport, metrics) {
-        if (!viewRestored && savedView != null && viewport != Size.Zero) {
+        if (savedView != null && savedView != viewRestored && viewport != Size.Zero) {
             camera = GardenCamera.restored(savedView.scale, Offset(savedView.panX, savedView.panY), viewport, metrics)
-            viewRestored = true
+            viewRestored = savedView
         }
     }
     // And the view as it is now is handed back once the fingers have rested a moment, not at
