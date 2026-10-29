@@ -28,8 +28,8 @@
     <string name="label_nutrition">栄養</string>
     <string name="label_vitality">元気</string>
     <string name="hint_overripe">満開です。収穫しないまま置いておくと、やがて枯れてしまいます</string>
-    <string name="hint_withered">枯れています。コインで復活させるか、撤去するとたい肥になり、次に植える作物が少し育った状態で始まります</string>
-    <string name="hint_withered_log">枯れています。コインで復活させるか、撤去して片づけます（原木はたい肥になりません）</string>
+    <string name="hint_withered">枯れています。コインで復活させるか、抜くとたい肥になって、土の栄養になります</string>
+    <string name="hint_withered_log">枯れています。コインで復活させるか、抜いて片づけます（原木はたい肥になりません）</string>
     <string name="hint_repeatable">🔁 収穫しても株は残り、また実ります（2回目からの収穫は少なめ）</string>
     <string name="hint_composted">たい肥入りの土です。次に植える作物が少し育った状態で始まります</string>
     <string name="action_revive">🌱 復活 (🪙%1$d)</string>
@@ -43,6 +43,8 @@
     <string name="status_withered">枯れた</string>
     <string name="action_harvest">収穫</string>
     <string name="action_remove">撤去</string>
+    <string name="action_pull">抜く</string>
+    <string name="action_restore_ground">戻す</string>
     <string name="action_close">閉じる</string>
 
     <!-- Objects and items -->
@@ -110,14 +112,19 @@
     <string name="camera_shutter">撮影してシェア</string>
     <string name="object_struct_fence">ウッドフェンス</string>
     <string name="remove_title">%1$s を撤去</string>
-    <string name="remove_text_returnable">持ち物に戻すと、後でまた置けます。破棄すると元に戻せません。</string>
-    <string name="remove_text_plant">育てている作物は持ち物に戻せません。破棄すると元に戻せません。</string>
-    <string name="remove_text_withered">枯れた作物を破棄すると、たい肥になって土に残ります。</string>
-    <string name="remove_text_withered_log">枯れた原木を片づけます。原木はたい肥にはなりません。</string>
-    <string name="remove_text_soil">耕した土を芝生に戻します。</string>
+    <string name="remove_title_plant">%1$sを抜きますか？</string>
+    <string name="remove_title_withered">枯れた%1$sを抜きますか？</string>
+    <string name="remove_title_soil">%1$sを戻しますか？</string>
+    <string name="remove_text_returnable">持ち物に戻すと、後でまた置けます。撤去すると元に戻せません。</string>
+    <string name="remove_text_plant">育てている作物は持ち物に戻せません。抜くと元に戻せません。</string>
+    <string name="remove_text_withered">抜いた株はたい肥になって、土の栄養になります</string>
+    <string name="remove_text_withered_log">原木はたい肥にはなりません。</string>
+    <string name="remove_text_soil">1 つ前の地面に戻します。</string>
     <string name="remove_store">🎒 持ち物に戻す</string>
-    <string name="remove_discard">破棄する</string>
-    <string name="remove_soil">芝生に戻す</string>
+    <string name="remove_discard">撤去する</string>
+    <string name="remove_pull">抜く</string>
+    <string name="remove_soil">戻す</string>
+    <string name="remove_cancel">やめる</string>
     <string name="msg_stored">🎒 持ち物に戻しました</string>
     <string name="msg_not_returnable">これは持ち物に戻せません</string>
     <string name="msg_not_movable">これは移動できません</string>
@@ -445,7 +452,7 @@
     <string name="letter_tip_rain_title">☔ 雨の日のこと</string>
     <string name="letter_tip_rain_body">雨の日は、空が代わりにお庭じゅうに水をまいてくれます。のんびり雨音を楽しんでくださいね。</string>
     <string name="letter_tip_compost_title">🍂 たい肥のこと</string>
-    <string name="letter_tip_compost_body">枯れてしまった作物を片づけると、その土はたい肥入りのふかふかの土になります。次にまいた種は、少し育ったところから始まりますよ。</string>
+    <string name="letter_tip_compost_body">枯れてしまった作物を抜くと、その土はたい肥入りのふかふかの土になります。次にまいた種は、少し育ったところから始まりますよ。</string>
     <string name="letter_tip_store_title">📦 模様替えのこと</string>
     <string name="letter_tip_store_body">置いた家具や建物は、「持ち物に戻す」でしまって、好きな場所に置き直せます。気分に合わせて、お庭の模様替えをしてみませんか。</string>
     <string name="letter_tip_creatures_title">🐦 小さなお客さまのこと</string>

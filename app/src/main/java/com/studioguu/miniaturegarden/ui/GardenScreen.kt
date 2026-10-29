@@ -191,6 +191,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var debugZoom by remember { mutableFloatStateOf(0f) }
     var showPost by rememberSaveable { mutableStateOf(false) }
     var showWeather by rememberSaveable { mutableStateOf(false) }
+    val pulledIds by viewModel.pulled.collectAsStateWithLifecycle()
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCollection by rememberSaveable { mutableStateOf(false) }
     var confirmRain by rememberSaveable { mutableStateOf(false) }
@@ -291,6 +292,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 hourOfDay = clockHour,
                 lightByTimeOfDay = true,
                 clockOffset = clockOffset,
+                pulledIds = pulledIds,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
                 // the hoe), or when the selected cell is behind one of them.
                 fadedObjectIds = remember(gridObjects, selectedTile, placingSlot, hoeActive, movingObject, cameraMode) {

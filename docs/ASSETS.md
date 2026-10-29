@@ -12,7 +12,7 @@
 | `app/src/main/assets/atlas/creatures_0.png` + `creatures_manifest.json` | 生き物 6 種の絵 16 枚（#71。1009×459、約 480KB、1 タイル 960px）。作物のアトラスとは別（形は同じ。#73 で `creatures.png` から改名） | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
 | `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
 | `app/src/main/res/drawable-nodpi/{floor_cobblestone,floor_wood,ground_pebble,ground_flowers}.png` | 石畳・ウッドデッキ・小石・野の花（#74）。真上から見た 1 マス分の模様（512×512）で、並べると隣のマスへ続く。庭は 1 マスに 1 枚敷く（`drawGroundTexture`） | `tools/prepare_drawable_art.py`（`GROUND`）が板の原画の上面から作る |
-| `app/src/main/res/drawable-nodpi/icon_{struct_hut,struct_well,deco_rock,deco_bench,deco_lantern,deco_sprinkler,ground_pebble,ground_flowers,floor_wood,floor_cobblestone}.png` | 建物・飾り・地面の品物のアイコン（#74、256×256） | `tools/prepare_drawable_art.py`（`ITEM_ICONS`）が原画から切り抜く。地面は斜め上から見た板の形のまま |
+| `app/src/main/res/drawable-nodpi/icon_{struct_hut,struct_well,deco_rock,deco_bench,deco_lantern,deco_sprinkler,ground_pebble,ground_flowers,floor_wood,floor_cobblestone,ground_grass,struct_cottage,floor_greenhouse,struct_fence,deco_pond,struct_windmill,tile_river}.png` | 建物・飾り・地面の品物のアイコン（#74、残りの 7 つは #77。256×256） | `tools/prepare_drawable_art.py`（`ITEM_ICONS` は原画から、`CUT_ICONS` は切り抜き済みの絵から、風車は `windmill_icon`、小川は `river_icon`）。地面は斜め上から見た板の形のまま |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
 | `app/src/main/res/drawable/soil_tilled.png` | 耕した土（畝 3 本）の板（#57）。上面を畑の 1 マスに敷く | 受け取ったまま（1024×1024、白背景）。`GroundSlab.TILLED` |
 | `app/src/main/res/drawable/soil_revived.png` | 鍬で崩しかけた地面（畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
@@ -73,7 +73,7 @@
   アイコンは花穂の束に白っぽい麻ひものリボン。ふつうの切り抜きではひもが途切れたので、アイコンだけ絵全体で真っ白だけを背景として抜く（`ICON_CUT`、`white_parts=1.0`。#64 の `white_petals` を、効かせる範囲を指定できる `white_parts` にした。スノードロップは 0.8 で結果は同じ）。
   `crop_soil.SOILLESS` に `lavender` を追加。
 - しいたけ（#68、4 枚）：`plant_shiitake_stage{1..3}.png` と `_withered.png`（3 段階。#68 でカボチャと入れ替えた新しい作物）。原画は `crop_shiitake_stage{1..3}.png` と `crop_shiitake_withered.png`（Recraft、白背景）。
-  丸太は育たず、キノコだけが増えるので、どの絵も**丸太の長さ**で大きさを決める（`STAGES` の `("log", 0.6)`、`log_width`：絵の下 4 分の 1 でいちばん広い行）。丸太は全段階・枯れとも 0.6 マス、絵全体でも 0.62 マス以内（はじめ 0.85 にしたが、同じ列に並べると前の原木が後ろの原木を半分ほど隠したので縮めた）。
+  丸太は育たず、キノコだけが増えるので、どの絵も**丸太の長さ**で大きさを決める（`STAGES` の `("log", 0.5)`、`log_width`：絵の下 4 分の 1 でいちばん広い行）。丸太は全段階・枯れとも 0.5 マス（はじめ 0.85 にしたが、同じ列に並べると前の原木が後ろの原木を半分ほど隠したので 0.6 に、#77 で 0.5 に縮めた）。
   接地点は丸太の下端の真ん中（`log_anchor`）。`CropScale.LOGS` に入れ、苗の大きさの決まりや次の段階の高さで縮めない（縮めると丸太が伸び縮みする）。
   枯れの丸太は樹皮が白っぽい灰色で、ふつうの切り抜きでは樹皮の上の縁が背景とみなされて欠けたので、`white_parts=0.8`（スノードロップと同じ）で切り抜く。`crop_soil.SOILLESS` に `shiitake` を追加。仮の絵（`CropArt.kt`）は描かない。
 - ポインセチア（#69、4 枚）：`plant_poinsettia_stage{1..3}.png` と `_withered.png`（3 段階。#69 で 4 段階から 3 段階にし、コード描画をやめた。これで作物の絵はすべてそろい、作物の仮の絵の仕組み `ui/render/CropArt.kt` は削除した）。
@@ -91,7 +91,7 @@
 
 `domain/model/GardenItem.kt` の全 38 品（うち 3 品は絵が無く、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
 「確定アセット」は庭に置いたときの絵が受け取った画像素材のもの、「コード描画（仮置き）」は絵が無くプログラムで描いているもの。
-アイコンは、作物 18 種すべてが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`。#72 から）、建物・飾りは絵文字（`itemEmoji`。作物の絵文字は絵が無いときの予備）。
+アイコンは、ショップに出している品すべてが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`。作物は #72、建物・飾り・地面は #74 と #77）。絵文字（`itemEmoji`）は絵が無いときの予備で、いまはショップに出していない白菜・菜の花・風見鶏だけ。
 
 | 棚 | 品名（id） | 値段 | 解放 | 庭での絵 | 素材 |
 |---|---|---|---|---|---|
@@ -141,7 +141,7 @@
 ### 画像が無く、プログラムで描いているもの
 
 #74 で庭に置く物はすべて絵になった。残りは**演出としてコードで描く**もの（絵に替える予定は無い。`ASSET_LEDGER.md` の「演出としてコードで描くもの」）：
-工事現場（シート・足場）、たい肥の粒、芝生の育つ途中の苗床と葉、フェンスの横木と杭、スプリンクラーの水しぶき、木枠、背景（空・丘・茂み）、影、風の筋、天気。
+工事現場（シート・足場）、作物を抜いたときに崩れる演出（#77）、芝生の育つ途中の苗床と葉、フェンスの横木と杭、スプリンクラーの水しぶき、木枠、背景（空・丘・茂み）、影、風の筋、天気。
 すべて `ui/components/GardenCanvas.kt` と `ui/effects/GardenBackdrop.kt` にある。
 庭に置く物は、絵があればそれを描く（同じ assetId でアトラスに入れるだけで差し替わる）。絵が読めないとき、コテージだけはコードの図形で、ほかの建物と飾りは何も描かない（#74 で図形を削除）。
 

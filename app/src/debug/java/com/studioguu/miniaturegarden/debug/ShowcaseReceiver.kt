@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GardenView
@@ -29,6 +31,7 @@ import kotlinx.coroutines.launch
  *
  *     adb shell am broadcast -a com.studioguu.miniaturegarden.debug.SHOWCASE -p com.studioguu.miniaturegarden \
  *         --ez load true                      # replaces the saved garden with [ShowcaseGarden]
+ *         --es garden fb                      # ... or with [FeedbackGarden], with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
  *         --ef scale 0.32 --ef pan_x 0 --ef pan_y 0 \
@@ -53,38 +56,43 @@ class ShowcaseReceiver : BroadcastReceiver() {
             val pending = goAsync()
             scope.launch {
                 try {
-                    loadGarden()
+                    loadGarden(feedback = intent.getStringExtra(EXTRA_GARDEN) == "fb")
                     Log.i(TAG, "showcase garden loaded")
                 } finally {
                     pending.finish()
                 }
             }
         }
-        val keys = intent.extras?.keySet().orEmpty() - setOf(EXTRA_LOAD)
+        val keys = intent.extras?.keySet().orEmpty() - setOf(EXTRA_LOAD, EXTRA_GARDEN)
         if (keys.isEmpty()) return
         val showcase = showcaseOf(intent)
         ShowcaseControls.set(showcase)
         Log.i(TAG, "showcase set: $showcase")
     }
 
-    private suspend fun loadGarden() {
+    private suspend fun loadGarden(feedback: Boolean) {
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
         gardenRepository.runInTransaction {
             gardenRepository.getGridObjects().forEach { gardenRepository.deleteGridObject(it.instanceId) }
-            gardenRepository.upsertGridObjects(ShowcaseGarden.objects(now))
+            gardenRepository.upsertGridObjects(if (feedback) FeedbackGarden.objects(now) else ShowcaseGarden.objects(now))
             gardenRepository.saveProgress(
                 GardenProgress(
                     season = Season.AUTUMN,
                     tutorialStep = TutorialStep.DONE,
-                    gardenSize = ShowcaseGarden.SIZE,
+                    gardenSize = if (feedback) FeedbackGarden.SIZE else ShowcaseGarden.SIZE,
                     seasonStartedAt = now,
                 ),
             )
+            // The feedback garden's book has every page filled in, so that its pictures can be looked at.
+            if (feedback) {
+                CollectionEntry.entries.forEach { gardenRepository.upsertCollectionRecord(CollectionRecord(it.objectId, 1, now, revealed = true)) }
+            }
             val profile = gardenRepository.getUserProfile() ?: UserProfile()
+            val level = if (feedback) FeedbackGarden.PLAYER_LEVEL else PLAYER_LEVEL
             gardenRepository.saveUserProfile(
-                profile.copy(coins = 1_200L, playerLevel = PLAYER_LEVEL, currentXp = LevelTable.xpForLevel(PLAYER_LEVEL)),
+                profile.copy(coins = 1_200L, playerLevel = level, currentXp = LevelTable.xpForLevel(level)),
             )
         }
     }
@@ -93,6 +101,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
         const val TAG = "Showcase"
         const val EXTRA_LOAD = "load"
         const val EXTRA_CLEAR = "clear"
+        const val EXTRA_GARDEN = "garden"
 
         /** The level the showcase's player has: nothing from later levels is in the garden. */
         const val PLAYER_LEVEL = 5

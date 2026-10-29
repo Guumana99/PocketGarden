@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.ui.hud
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -224,7 +225,7 @@ fun ObjectStatusDialog(
                 Spacer(Modifier.weight(1f))
                 // Anything is cleared away in edit mode only (#49).
                 if (!guiding && GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
-                    OutlinedButton(onClick = onRemove) { Text(stringResource(R.string.action_remove)) }
+                    OutlinedButton(onClick = onRemove) { Text(stringResource(removeLabel(gridObject))) }
                 }
             }
         }
@@ -322,4 +323,12 @@ private fun LevelRow(label: String, level: Float) {
             modifier = Modifier.width(44.dp),
         )
     }
+}
+
+/** What taking [gridObject] off the garden is called: a crop is pulled up, a bed turned back into ground, anything else removed. */
+@StringRes
+fun removeLabel(gridObject: GridObject): Int = when {
+    gridObject.isTilledSoil -> R.string.action_restore_ground
+    gridObject.isPlant -> R.string.action_pull
+    else -> R.string.action_remove
 }

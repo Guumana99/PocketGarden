@@ -342,8 +342,13 @@ class AssetRepository @Inject constructor(
         const val POND_OWN_WATER_FROM = 0.25f
         const val POND_OWN_WATER_TO = 0.62f
 
-        /** Share of a bed picture's face left off each side: its lit rim. */
-        const val BED_INSET = 0.04f
+        /**
+         * Share of a bed picture's face left off each side: its lit rim, and on the far side of
+         * soil_tilled the white behind the furrows, which dip below the slab's edge there (it
+         * reaches 0.068 in; at 0.04 it showed as white flecks where two beds meet, device
+         * feedback after #75).
+         */
+        const val BED_INSET = 0.08f
 
         /** Pixels a side of a bed's face as unprojected ([TerrainTextures.tilled]). */
         const val BED_FACE_SIZE = 256

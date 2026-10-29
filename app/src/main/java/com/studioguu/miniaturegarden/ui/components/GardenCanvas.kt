@@ -83,7 +83,9 @@ import com.studioguu.miniaturegarden.ui.render.GustAxis
 import com.studioguu.miniaturegarden.ui.render.GustFront
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
+import com.studioguu.miniaturegarden.ui.render.GardenClip
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
+import com.studioguu.miniaturegarden.ui.render.RenderCommand
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.AtlasPages
 import com.studioguu.miniaturegarden.ui.render.FeatheredLawn
@@ -175,6 +177,8 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  *   and lights the lanterns and the windows at night. The title's garden goes without.
  * @param clockOffset how far the game's clock is ahead of the device's, for how far along
  *   building jobs are.
+ * @param pulledIds plants that have just been pulled up: when they leave the garden their leaves
+ *   crumble into the bed ([drawCrumbling]) instead of lifting off like a harvest.
  */
 @Composable
 fun GardenCanvas(
@@ -207,7 +211,9 @@ fun GardenCanvas(
     hourOfDay: Float? = null,
     lightByTimeOfDay: Boolean = false,
     clockOffset: Long = 0L,
+    pulledIds: Set<String> = emptySet(),
 ) {
+    val currentPulled by rememberUpdatedState(pulledIds)
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
     val metrics = remember(density, gardenMap.size) {
@@ -270,6 +276,7 @@ fun GardenCanvas(
     val routes = remember(visitors, grid) { visitors.map { CreatureRoutes.plan(it, grid) } }
     val currentRoutes by rememberUpdatedState(routes)
     val creatureImage = remember(atlas) { AtlasPages.of(atlas.creatures) }
+    val currentAtlas by rememberUpdatedState(atlas)
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
     val currentGrid by rememberUpdatedState(grid)
     val currentObjects by rememberUpdatedState(gridObjects)
@@ -321,13 +328,13 @@ fun GardenCanvas(
             }
         }
         for (gridObject in gone) {
-            val ghost = Ghost(gridObject)
+            val ghost = Ghost(gridObject, crumbles = gridObject.isPlant && gridObject.instanceId in currentPulled)
             ghosts += ghost
             // In a scope of their own rather than this effect's, which is cancelled at the next
             // change to the garden and would cut the fading short.
             ghostScope.launch(start = CoroutineStart.UNDISPATCHED) {
                 try {
-                    ghost.progress.animateTo(1f, tween(VANISH_MILLIS))
+                    ghost.progress.animateTo(1f, tween(if (ghost.crumbles) CRUMBLE_MILLIS else VANISH_MILLIS))
                 } finally {
                     ghosts -= ghost
                 }
@@ -356,8 +363,11 @@ fun GardenCanvas(
                 detectTapGestures { position ->
                     val transform = camera?.toTransform(metrics, size.toSize()) ?: return@detectTapGestures
                     // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
+                    val sprites = currentAtlas
+                    val scale = transform.tileWidth / sprites.manifest.tileWidth
                     val tile = TapTargets.resolve(
                         position, transform, currentGrid, currentObjects, currentEditing, minReach = BUBBLE_MIN_REACH.toPx(),
+                        plantTop = { obj -> sprites[TileSetDefinition.assetIdFor(obj)]?.let { it.anchorY * it.drawnHeight(scale) } },
                     )
                     currentOnTileTapped(tile)
                 }
@@ -424,7 +434,7 @@ fun GardenCanvas(
         for (ghost in ghosts) {
             submitObjects(
                 pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
-                vanish = ghost.progress.value, lawn = lawn,
+                vanish = ghost.progress.value, crumbles = ghost.crumbles, lawn = lawn,
             )
         }
         for (route in routes) {
@@ -461,12 +471,14 @@ fun GardenCanvas(
                 drawCompletionBurst(transform, burst.gridObject, progress)
             }
         }
-        pipeline.render(this)
+        // Nothing of the garden reaches out over its frame (device feedback, after #75).
+        val clip = gardenClip(transform, gardenMap.size.toFloat())
+        val drawn = pipeline.render(this, clip)
         if (lightByTimeOfDay) {
             val tint = SceneTint.at(hour, season)
             if (tint.alpha > 0f) drawRect(tint)
             val lamps = SceneTint.lampsAt(hour, season)
-            if (lamps > 0f) drawLamps(gridObjects, transform, atlas, spriteScale, lamps)
+            if (lamps > 0f) drawLamps(gridObjects, transform, atlas, spriteScale, lamps, drawn, clip)
         }
     }
 }
@@ -545,6 +557,8 @@ private fun submitObjects(
     waterTick: Int,
     ambience: Ambience,
     vanish: Float? = null,
+    /** With [vanish]: the plant is being pulled up, and crumbles into its bed ([drawCrumbling]). */
+    crumbles: Boolean = false,
     pops: Map<String, Float> = emptyMap(),
     fades: Map<String, Float> = emptyMap(),
     /** The feathered lawn, for a lawn sown on the bare earth ([LawnGrowth]). */
@@ -570,22 +584,32 @@ private fun submitObjects(
                 if (vanish != null) {
                     val footprint = obj.footprint
                     val pivot = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
-                    pipeline.submit(layer, depth) { drawVanishing(pivot, vanish, transform.tileHeight, site) }
+                    pipeline.submit(layer, depth, inGarden = true) { drawVanishing(pivot, vanish, transform.tileHeight, site) }
                 } else {
-                    pipeline.submit(layer, depth) { if (alpha != null) drawFaded(alpha, site) else site() }
+                    pipeline.submit(layer, depth, inGarden = true) { if (alpha != null) drawFaded(alpha, site) else site() }
                 }
             }
         } else if (vanish == null && pop != null && layer == RenderLayer.GRID_OBJECTS) {
             // Just unveiled: it pops up out of the ground, a little too big, and settles.
             val footprint = obj.footprint
             val pivot = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
-            pipeline.submit(layer, depth) { scale(popScale(pop), pivot) { draw() } }
+            pipeline.submit(layer, depth, inGarden = true) { scale(popScale(pop), pivot) { draw() } }
         } else if (vanish == null) {
-            pipeline.submit(layer, depth, draw)
+            pipeline.submit(layer, depth, inGarden = true, draw = draw)
+        } else if (crumbles) {
+            // Pulled up: the plant breaks up into its bed; its shadow goes at once.
+            if (layer == RenderLayer.GRID_OBJECTS) {
+                val pivot = transform.worldToScreen(obj.gridX + 0.5f, obj.gridY + 0.5f)
+                val seed = obj.instanceId.hashCode()
+                // As tall as its picture: a low herb crumbles from its own top, not from a tall crop's.
+                val tall = atlas[TileSetDefinition.assetIdFor(obj)]?.let { it.anchorY * it.drawnHeight(spriteScale) }
+                    ?: (transform.tileWidth * 0.6f)
+                pipeline.submit(layer, depth, inGarden = true) { drawCrumbling(pivot, vanish, transform.tileWidth, tall, seed, draw) }
+            }
         } else {
             val footprint = obj.footprint
             val pivot = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
-            pipeline.submit(layer, depth) { drawVanishing(pivot, vanish, transform.tileHeight, draw) }
+            pipeline.submit(layer, depth, inGarden = true) { drawVanishing(pivot, vanish, transform.tileHeight, draw) }
         }
     }
     for (obj in gridObjects) {
@@ -729,7 +753,9 @@ private fun submitObjects(
             // short panel, two posts and their rails; next to other fences it is a post with rails
             // reaching out to them. (The picket section was a run of five pales, which read as
             // fences already joined even when it stood alone, #55; it stays for an atlas without the panel.)
-            val mask = FenceAutotile.maskAt(obj.gridX, obj.gridY) { x, y -> grid.occupantAt(x, y)?.isFence == true }
+            // Only finished fences join (device feedback, after #75): one still going up is a work
+            // site, and rails reaching into it left the joined look behind when it was done.
+            val mask = FenceAutotile.maskAt(obj.gridX, obj.gridY) { x, y -> grid.occupantAt(x, y)?.let { it.isFence && !it.isWorking } == true }
             val section = atlas[FencePart.RAIL.objectId] ?: atlas[FencePart.SECTION.objectId]
             val post = atlas[FencePart.POST.objectId]
             val alone = mask == 0 && section != null && atlasImage != null
@@ -826,7 +852,9 @@ private fun submitObjects(
             }
         }
         if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
-            submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit) }
+            // Just over the top of the plant's picture, which is as tall as this crop at this stage.
+            val plantTop = sprite?.let { base.y - it.drawTop(base.y, spriteScale) }
+            submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit, plantTop) }
         }
         // A running sprinkler throws its water over the beds round it, on the garden's clock.
         if (obj.isSprinkler && obj.isOn && !obj.isWorking) {
@@ -1185,8 +1213,69 @@ private fun DrawScope.drawCompletionBurst(transform: IsometricTransform, obj: Gr
 private const val VANISH_MILLIS = 380
 
 /** Something that is no longer in the garden but is still being shown on its way out. */
-private class Ghost(val gridObject: GridObject) {
+private class Ghost(val gridObject: GridObject, val crumbles: Boolean = false) {
     val progress = Animatable(0f)
+}
+
+/** How long a pulled plant takes to crumble into its bed: under a second (device feedback, after #75). */
+private const val CRUMBLE_MILLIS = 800
+
+/** How many bands a crumbling plant breaks into, and how many bits of leaf fall from it. */
+private const val CRUMBLE_BANDS = 6
+private const val CRUMBLE_BITS = 14
+
+private val CRUMB_LEAF = Color(0xFF7E9E4A)
+private val CRUMB_EARTH = Color(0xFF5B4330)
+
+/**
+ * A plant pulled up, crumbling into its bed (device feedback, after #75, in place of the flecks of
+ * leaf and straw that used to lie on a composted bed): it breaks into bands from the top down,
+ * each sinking to the ground as it shrinks and fades, while bits of leaf fall out of it and turn
+ * the colour of the earth as they sink in. Drawn in code from the plant's own picture ([draw]).
+ *
+ * @param pivot the plant's foot.
+ * @param progress 0 (whole) to 1 (gone).
+ * @param unit a tile's width.
+ * @param tall how far the plant's picture reaches above its foot.
+ */
+private fun DrawScope.drawCrumbling(pivot: Offset, progress: Float, unit: Float, tall: Float, seed: Int, draw: DrawScope.() -> Unit) {
+    val height = tall * 1.05f
+    val band = height / CRUMBLE_BANDS
+    for (i in 0 until CRUMBLE_BANDS) {
+        // The top band (i = 0) goes first; each one below a little later.
+        val start = i * 0.06f
+        val t = ((progress - start) / (0.7f - start * 0.5f)).coerceIn(0f, 1f)
+        if (t >= 1f) continue
+        val bandTop = pivot.y - height + i * band
+        val drop = (pivot.y - bandTop - band) * t * t
+        val squash = 1f - 0.7f * t
+        val wobble = sin((seed + i * 37) * 0.7f) * unit * 0.03f * t
+        drawIntoCanvas { canvas ->
+            canvas.saveLayer(Rect(Offset.Zero, size), Paint().apply { alpha = 1f - t * t })
+            clipRect(left = 0f, top = bandTop + drop, right = size.width, bottom = bandTop + drop + band * squash + 1f) {
+                translate(left = wobble, top = drop) {
+                    scale(scaleX = 1f - 0.25f * t, scaleY = squash, pivot = Offset(pivot.x, bandTop)) { draw() }
+                }
+            }
+            canvas.restore()
+        }
+    }
+    // Bits of leaf falling into the bed and going dark as they mix into the earth.
+    var state = seed
+    repeat(CRUMBLE_BITS) { k ->
+        state = state * 1103515245 + 12345
+        val u = ((state ushr 16) and 0x7FFF) / 32767f
+        state = state * 1103515245 + 12345
+        val v = ((state ushr 16) and 0x7FFF) / 32767f
+        val t = ((progress - v * 0.35f) / 0.65f).coerceIn(0f, 1f)
+        if (t <= 0f || t >= 1f) return@repeat
+        // The first to fall come from the top, which breaks up first.
+        val from = Offset(pivot.x + (u - 0.5f) * unit * 0.4f, pivot.y - height * (0.85f - 0.6f * v))
+        val to = Offset(pivot.x + (u - 0.5f) * unit * 0.35f, pivot.y + (v - 0.5f) * unit * 0.12f)
+        val at = from + (to - from) * (t * t)
+        val colour = lerp(CRUMB_LEAF, CRUMB_EARTH, t)
+        drawCircle(colour.copy(alpha = 1f - t * 0.6f), unit * (0.012f + 0.01f * ((k % 3) / 2f)) * (1f - 0.5f * t), at)
+    }
 }
 
 /**
@@ -1293,6 +1382,12 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
 /** The lawn of a preview sits on a slab of soil this thick, in tile heights (see drawTerrain). */
 private const val PREVIEW_SOIL = 0.6f
 
+/**
+ * How much of a building's shadow the preview is fitted to (measured on the book's hut, cottage
+ * and windmill: the whole sheared rectangle threw them about as far off the middle the other way).
+ */
+private const val PREVIEW_SHADOW_SHARE = 0.3f
+
 /** Room left round a building that reaches past its patch of lawn, in tile widths. */
 private const val PREVIEW_MARGIN = 0.08f
 
@@ -1303,9 +1398,15 @@ private const val PREVIEW_MARGIN = 0.08f
  * than its patch (a windmill's sails reach well past its side), so the preview is fitted to this
  * rather than to the patch alone.
  *
+ * The picture is fitted to what is drawn (device feedback, after #75: the hut's, the cottage's and
+ * the windmill's stood off the middle of their frames): the sails as they stand, since they do
+ * not turn here (at rest, [WindmillSails.angleAt] without a clock), and the shadow a building
+ * casts in [light], which reaches well out to one side of it.
+ *
  * @param sprites the sprite for an asset id, or null when the atlas has none.
  * @param atlasTileWidth atlas pixels per tile width.
  * @param heightStep one height step, in tile widths.
+ * @param light the light the preview is drawn in, for its shadows; none counted when null.
  */
 internal data class PreviewExtent(val left: Float, val top: Float, val right: Float, val bottom: Float) {
     val width: Float get() = right - left
@@ -1319,12 +1420,13 @@ internal data class PreviewExtent(val left: Float, val top: Float, val right: Fl
             sprites: (String) -> AssetManifest?,
             atlasTileWidth: Float,
             heightStep: Float,
+            light: SunLight? = null,
         ): PreviewExtent {
             val n = gridSize.toFloat()
             var left = -n / 2f
             var right = n / 2f
             var top = -headroom
-            val bottom = (n + PREVIEW_SOIL) / 2f
+            var bottom = (n + PREVIEW_SOIL) / 2f
             val transform = IsometricTransform(tileWidth = 1f, tileHeight = 0.5f, heightStep = heightStep)
             val scale = 1f / atlasTileWidth
             fun reach(l: Float, t: Float, r: Float) {
@@ -1343,16 +1445,23 @@ internal data class PreviewExtent(val left: Float, val top: Float, val right: Fl
                     continue
                 }
                 val spriteLeft = sprite.drawLeft(base.x, scale)
-                reach(spriteLeft, sprite.drawTop(base.y, scale), spriteLeft + sprite.drawnWidth(scale))
+                val spriteRight = spriteLeft + sprite.drawnWidth(scale)
+                reach(spriteLeft, sprite.drawTop(base.y, scale), spriteRight)
                 val sails = if (obj.objectId == WindmillSails.MILL_OBJECT_ID) sprites(WindmillSails.SAILS_ASSET_ID) else null
                 val hub = sprite.attachmentAt(base.x, base.y, scale, obj.isFlipped)
                 if (sails != null && hub != null) {
-                    // Turning, the sails sweep a circle round the hub as wide as their furthest corner.
-                    val radius = hypot(
-                        max(sails.anchorX, 1f - sails.anchorX) * sails.drawnWidth(scale),
-                        max(sails.anchorY, 1f - sails.anchorY) * sails.drawnHeight(scale),
-                    )
-                    reach(hub.first - radius, hub.second - radius, hub.first + radius)
+                    // At rest, as they stand in a preview.
+                    val sailsLeft = sails.drawLeft(hub.first, scale)
+                    reach(sailsLeft, sails.drawTop(hub.second, scale), sailsLeft + sails.drawnWidth(scale))
+                }
+                if (light != null && light.alpha > 0f) {
+                    // The shadow: the picture above its foot laid down on the ground, sheared by the
+                    // light. Only its foot is as wide as the building; it narrows to the roof's
+                    // peak, so it counts for a share of the sheared rectangle's reach.
+                    val tall = sprite.anchorY * sprite.drawnHeight(scale) * PREVIEW_SHADOW_SHARE
+                    left = min(left, spriteLeft + min(0f, light.dx * tall))
+                    right = max(right, spriteRight + max(0f, light.dx * tall))
+                    bottom = max(bottom, base.y + light.dy * tall)
                 }
             }
             return PreviewExtent(left, top, right, bottom)
@@ -1385,6 +1494,7 @@ fun ObjectPreview(
         // in it. Sizes are in tile widths; a tile is half as tall as it is wide.
         val extent = PreviewExtent.of(
             scene.gridSize, scene.headroom, scene.objects, { atlas[it] }, atlas.manifest.tileWidth.toFloat(), HEIGHT_STEP / TILE_WIDTH,
+            light = Ambience.CALM.light,
         )
         val tileWidth = min(size.width / extent.width, size.height / extent.height)
         val transform = IsometricTransform(
@@ -1508,6 +1618,22 @@ private fun DrawScope.drawTerrain(
         }
     }
     if (wasteland == null) drawLawnShade(transform, gridSize)
+}
+
+/**
+ * What keeps the garden inside its frame ([GardenClip]): its diamond for what lies on the ground,
+ * and for what stands on it the diamond with everything above it, up to the top of the screen.
+ */
+private fun gardenClip(transform: IsometricTransform, max: Float): GardenClip {
+    val right = transform.worldToScreen(max, 0f)
+    val bottom = transform.worldToScreen(max, max)
+    val left = transform.worldToScreen(0f, max)
+    val sky = -100_000f
+    val standing = Path().apply {
+        moveTo(left.x, left.y); lineTo(bottom.x, bottom.y); lineTo(right.x, right.y)
+        lineTo(right.x, sky); lineTo(left.x, sky); close()
+    }
+    return GardenClip(ground = gardenOutline(transform, max), standing = standing)
 }
 
 /** The outline of the whole garden, a diamond [max] cells a side. */
@@ -1820,8 +1946,6 @@ private val DIRT_RIDGE = Color(SoilPalette.RIDGE)
 private val DIRT_DEEP = Color(SoilPalette.DEEP)
 private val DIRT_DRY = Color(SoilPalette.DRY)
 private val DIRT_DUST = Color(SoilPalette.DUST)
-private val COMPOST_LEAF = Color(0xFF8FB25A)
-private val COMPOST_STRAW = Color(0xFFE2C879)
 private const val FURROWS = 4
 
 /** How strongly the rim and clods are drawn round a bed laid with its picture (#57). */
@@ -1830,7 +1954,7 @@ private const val PICTURED_BED_EDGE = 0.45f
 /**
  * A tile the hoe has been over: dark, damp-looking earth with furrows running across it, set a
  * little in from the tile's edge so that a strip of grass still shows between two beds.
- * A [composted] bed is flecked with green and straw.
+ * A [composted] bed is darker.
  */
 /**
  * A bed of tilled soil on cell ([x], [y]). Its sides that [joins] carry on into the next bed run
@@ -1936,19 +2060,8 @@ private fun DrawScope.drawTilledSoil(
         }
     }
     drawBedEdges(transform, x, y, x0, x1, y0, y1, joins, onBareEarth, strength = if (face != null) PICTURED_BED_EDGE else 1f)
-    // A composted bed, pictured or drawn, is flecked with what was worked into it.
-    if (composted) {
-        // Bits of leaf and straw worked into the bed.
-        var seed = x * 73856093 xor y * 19349663
-        repeat(7) { i ->
-            seed = seed * 1103515245 + 12345
-            val u = ((seed ushr 16) and 0x7FFF) / 32767f
-            seed = seed * 1103515245 + 12345
-            val v = ((seed ushr 16) and 0x7FFF) / 32767f
-            val at = transform.worldToScreen(x0 + 0.12f + u * (x1 - x0 - 0.24f), y0 + 0.12f + v * (y1 - y0 - 0.24f))
-            drawCircle(if (i % 2 == 0) COMPOST_LEAF else COMPOST_STRAW, transform.tileWidth * 0.016f, at)
-        }
-    }
+    // A composted bed is only darker: the flecks of leaf and straw that marked it are gone (device
+    // feedback, after #75); the plant crumbling into it as it is pulled shows what went in.
 }
 
 /**
@@ -2626,8 +2739,8 @@ private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {
     if (!withered) drawCircle(Color(0xFFFFF8E1), bloomRadius * 0.35f, top)
 }
 
-private fun DrawScope.drawStatusBubble(obj: GridObject, base: Offset, unit: Float) {
-    val center = TapTargets.statusBubbleCentre(base, obj, unit)
+private fun DrawScope.drawStatusBubble(obj: GridObject, base: Offset, unit: Float, plantTop: Float?) {
+    val center = TapTargets.statusBubbleCentre(base, obj, unit, plantTop)
     val radius = unit * 0.085f
     val icon = if (obj.status == PlantStatus.THIRSTY) Color(0xFF42A5F5) else Color(0xFFFFA726)
     drawCircle(Color.White, radius, center)
@@ -2750,6 +2863,11 @@ private val LAMP_CORE = Color(0xFFFFF1C2)
  * and the windows of the hut and the cottage, each pane glowing warm with a halo round it, and a
  * pool of light on the ground below. Drawn over the darkness, so they shine through it. A
  * building still under construction is dark, and so is one whose picture cannot be read.
+ *
+ * A light is only seen where its lantern or building is (device feedback, after #75: the fire of a
+ * lantern behind a row of corn showed over the corn): each is drawn in a layer of its own, out of
+ * which everything [drawn] nearer the viewer than its owner is cut again, as the garden drew it
+ * ([clip] included).
  */
 private fun DrawScope.drawLamps(
     objects: List<GridObject>,
@@ -2757,6 +2875,8 @@ private fun DrawScope.drawLamps(
     atlas: SpriteAtlas,
     spriteScale: Float,
     strength: Float,
+    drawn: List<RenderCommand> = emptyList(),
+    clip: GardenClip? = null,
 ) {
     for (obj in objects) {
         if (obj.isWorking) continue
@@ -2768,49 +2888,99 @@ private fun DrawScope.drawLamps(
         val height = sprite.drawnHeight(spriteScale)
         val left = sprite.drawLeft(base.x, spriteScale)
         val top = sprite.drawTop(base.y, spriteScale)
-        for (light in lights) {
+        // A building turned round shows its picture mirrored about its foot.
+        val mirrored = obj.isFlipped && sprite.isFlippedAllowed
+        val panes = lights.map { light ->
             val x = left + light.x * width
-            // A building turned round shows its picture mirrored about its foot.
-            val center = Offset(if (obj.isFlipped && sprite.isFlippedAllowed) 2 * base.x - x else x, top + light.y * height)
-            val pane = Size(light.width * width, light.height * height)
-            drawLightPool(Offset(center.x, base.y), width * 0.3f, strength * 0.8f)
-            drawGlow(center, pane, maxOf(pane.width, pane.height) * 1.6f, strength)
+            Pane(
+                center = Offset(if (mirrored) 2 * base.x - x else x, top + light.y * height),
+                size = Size(light.width * width, light.height * height),
+                skew = (if (mirrored) -light.skew else light.skew) * height,
+            )
+        }
+        val pool = width * 0.3f
+        var bounds = Rect(base.x - pool, base.y - pool / 2f, base.x + pool, base.y + pool / 2f)
+        for (pane in panes) {
+            val halo = Rect(pane.center, pane.halo)
+            bounds = Rect(min(bounds.left, halo.left), min(bounds.top, halo.top), max(bounds.right, halo.right), max(bounds.bottom, halo.bottom))
+        }
+        // Everything drawn in front of it: nearer in the garden, and the effects over the garden.
+        val depth = LayerPipeline.depthOf(obj.gridX + footprint.width - 1, obj.gridY + footprint.height - 1, obj.heightLevel)
+        val inFront = drawn.filter {
+            (it.layer == RenderLayer.GRID_OBJECTS && it.depth > depth) ||
+                (it.layer == RenderLayer.TOP_EFFECTS && it.depth < Float.MAX_VALUE - 1f)
+        }
+        drawIntoCanvas { canvas ->
+            canvas.saveLayer(bounds, Paint())
+            for (pane in panes) {
+                drawLightPool(Offset(pane.center.x, base.y), pool, strength * 0.8f)
+                drawGlow(pane, strength)
+            }
+            if (inFront.isNotEmpty()) {
+                canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.DstOut })
+                for (command in inFront) LayerPipeline.draw(this, command, clip)
+                canvas.restore()
+            }
+            canvas.restore()
         }
     }
 }
 
 /**
  * A lit window or lantern fire, as a share of its picture: the middle of it ([x], [y] from the
- * picture's top left) and its size.
+ * picture's top left), its size, and how much lower its right side is than its left ([skew], a
+ * share of the picture's height): a window in a wall that runs away from the viewer is slanted.
  */
-private class Lamp(val x: Float, val y: Float, val width: Float, val height: Float)
+private class Lamp(val x: Float, val y: Float, val width: Float, val height: Float, val skew: Float = 0f)
 
-/** Where the lights are in each picture that has some (measured off tools/raw_assets). */
+/** One lamp where it is drawn on screen, [skew] in pixels; [halo] is the radius of its glow. */
+private class Pane(val center: Offset, val size: Size, val skew: Float) {
+    val halo: Float get() = maxOf(size.width, size.height) * 1.6f
+
+    /** The pane's outline: a rectangle, its right side [skew] lower than its left. */
+    fun outline(): Path = Path().apply {
+        val hw = size.width / 2f
+        val hh = size.height / 2f
+        val half = skew / 2f
+        moveTo(center.x - hw, center.y - hh - half)
+        lineTo(center.x + hw, center.y - hh + half)
+        lineTo(center.x + hw, center.y + hh + half)
+        lineTo(center.x - hw, center.y + hh - half)
+        close()
+    }
+}
+
+/**
+ * Where the lights are in each picture that has some, measured off tools/raw_assets (device
+ * feedback, after #75: the hut's light stood left of its window and square to it, and the
+ * cottage's three were larger than their panes; each is now the glass inside the frame).
+ */
 private val LAMPS: Map<String, List<Lamp>> = mapOf(
     // The fire box under the lantern's roof.
     "deco_lantern" to listOf(Lamp(0.505f, 0.39f, 0.3f, 0.09f)),
-    // The shuttered window on its left face.
-    StructureData.HUT.objectId to listOf(Lamp(0.303f, 0.45f, 0.13f, 0.17f)),
-    // Two windows on the long face, one on the gable end.
+    // The open window between the shutters, on its left face, which runs away down to the right.
+    StructureData.HUT.objectId to listOf(Lamp(0.314f, 0.457f, 0.104f, 0.164f, skew = 0.044f)),
+    // Two windows on the long face, one on the gable end (whose wall runs the other way).
     StructureData.COTTAGE.objectId to listOf(
-        Lamp(0.243f, 0.505f, 0.065f, 0.13f),
-        Lamp(0.367f, 0.535f, 0.055f, 0.12f),
-        Lamp(0.72f, 0.535f, 0.07f, 0.12f),
+        Lamp(0.243f, 0.494f, 0.043f, 0.098f, skew = 0.011f),
+        Lamp(0.3695f, 0.5475f, 0.037f, 0.092f, skew = 0.007f),
+        Lamp(0.718f, 0.5406f, 0.046f, 0.1006f, skew = -0.0104f),
     ),
 )
 
-/** A pane of [size] glowing warm round [center], in a soft halo of [radius]. */
-private fun DrawScope.drawGlow(center: Offset, size: Size, radius: Float, strength: Float) {
+/** A [pane] glowing warm, in a soft halo. */
+private fun DrawScope.drawGlow(pane: Pane, strength: Float) {
+    val radius = pane.halo
     drawCircle(
         brush = Brush.radialGradient(
             listOf(LAMP_GLOW.copy(alpha = 0.5f * strength), LAMP_GLOW.copy(alpha = 0f)),
-            center = center,
+            center = pane.center,
             radius = radius,
         ),
         radius = radius,
-        center = center,
+        center = pane.center,
     )
-    drawRect(LAMP_CORE.copy(alpha = 0.6f * strength), topLeft = center - Offset(size.width / 2f, size.height / 2f), size = size)
+    drawPath(pane.outline(), LAMP_CORE.copy(alpha = 0.6f * strength))
 }
 
 /** The light a lamp throws on the ground round [center]: a flat, soft oval. */
