@@ -12,8 +12,9 @@ import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import javax.inject.Inject
 
 /**
- * Grows the garden to its next size (see [GardenExpansion]): a ring of lawn is added all round
- * and everything already in the garden moves one cell along each axis, in one transaction.
+ * Grows the garden to its next size (see [GardenExpansion]): the price is paid, a ring of lawn is
+ * added all round and everything already in the garden moves one cell along each axis, in one
+ * transaction.
  */
 class ExpandGardenUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -22,12 +23,14 @@ class ExpandGardenUseCase @Inject constructor(
         val progress = gardenRepository.getProgress() ?: GardenProgress()
         val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
         val objects = gardenRepository.getGridObjects()
-        when (GardenExpansion.check(progress.gardenSize, objects, profile.playerLevel)) {
+        when (GardenExpansion.check(progress.gardenSize, profile.playerLevel, profile.coins)) {
             ExpansionCheck.AT_MAX_SIZE -> return@runInTransaction ActionResult.GARDEN_AT_MAX_SIZE
-            ExpansionCheck.NEEDS_SYMBOL, ExpansionCheck.NEEDS_LEVEL -> return@runInTransaction ActionResult.EXPANSION_LOCKED
+            ExpansionCheck.NEEDS_LEVEL -> return@runInTransaction ActionResult.EXPANSION_LOCKED
+            ExpansionCheck.NEEDS_COINS -> return@runInTransaction ActionResult.NOT_ENOUGH_COINS
             ExpansionCheck.READY -> Unit
         }
         val stage = GardenExpansion.nextStage(progress.gardenSize) ?: return@runInTransaction ActionResult.GARDEN_AT_MAX_SIZE
+        if (stage.price > 0) gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - stage.price))
         gardenRepository.upsertGridObjects(objects.map(GardenExpansion::shifted))
         gardenRepository.saveProgress(progress.copy(gardenSize = stage.size))
         ActionResult.SUCCESS

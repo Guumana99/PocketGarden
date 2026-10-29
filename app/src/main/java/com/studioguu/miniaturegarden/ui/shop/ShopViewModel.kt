@@ -12,13 +12,17 @@ import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
+import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
+import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
+import com.studioguu.miniaturegarden.domain.usecase.CoinBonus
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.PurchaseItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
@@ -54,6 +58,7 @@ class ShopViewModel @Inject constructor(
     private val grantReward: GrantRewardUseCase,
     private val rewardedAds: RewardedAdManager,
     rewardLimits: RewardLimitRepository,
+    private val expandGarden: ExpandGardenUseCase,
 ) : ViewModel() {
 
     private val _stage = MutableStateFlow(ShopStage.ENTRANCE)
@@ -99,6 +104,12 @@ class ShopViewModel @Inject constructor(
             { held: Map<GardenItem, Int> -> ShopShelves.shelves(ShopShelves.stock(stage, season, stats, coins, owns, held)) }
         }.combine(held) { build, counts -> build(counts) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Whether the garden can be grown now, and what it takes; offered in the workshop. */
+    val expansion: StateFlow<ExpansionOffer> =
+        combine(gardenRepository.observeProgress(), gardenRepository.observeUserProfile()) { progress, profile ->
+            ExpansionOffer.of(progress?.gardenSize ?: GridObject.GRID_SIZE, profile?.playerLevel ?: 1, profile?.coins ?: 0L)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExpansionOffer(ExpansionCheck.NEEDS_LEVEL))
 
     /** Walks to another shop down the lane. Whatever was in hand there is put back on its shelf. */
     fun goTo(stage: ShopStage) {
@@ -149,17 +160,18 @@ class ShopViewModel @Inject constructor(
     fun claimBonus(activity: Activity) {
         _feedback.value = null
         _notice.value = null
-        var grant: Deferred<RewardResult>? = null
+        var grant: Deferred<CoinBonus>? = null
         rewardedAds.show(
             activity,
             onEarned = { grant = viewModelScope.async { grantReward.coinBonus(todayEpochDay()) } },
             onClosed = { result ->
                 when (result) {
                     RewardedAdResult.EARNED -> viewModelScope.launch {
-                        val granted = grant?.await() == RewardResult.GRANTED
+                        val bonus = grant?.await()
+                        val granted = bonus?.result == RewardResult.GRANTED
                         if (granted) audio.play(SoundEffect.COIN)
                         _notice.value = if (granted) {
-                            ShopNotice(R.string.msg_bonus_done, RewardType.COIN_BONUS_AMOUNT, good = true)
+                            ShopNotice(R.string.msg_bonus_done, bonus?.coins, good = true)
                         } else {
                             ShopNotice(R.string.msg_reward_limit)
                         }
@@ -177,6 +189,21 @@ class ShopViewModel @Inject constructor(
             val result = purchaseItem(item)
             audio.play(if (result == ActionResult.SUCCESS) SoundEffect.COIN else SoundEffect.ERROR)
             _feedback.value = PurchaseFeedback(item, result)
+        }
+    }
+
+    /** Grows the garden by a ring, paying its price (asked about first, on the workshop's board). */
+    fun expand() {
+        _feedback.value = null
+        viewModelScope.launch {
+            val result = expandGarden()
+            audio.play(if (result == ActionResult.SUCCESS) SoundEffect.LEVEL_UP else SoundEffect.ERROR)
+            _notice.value = when (result) {
+                ActionResult.SUCCESS -> ShopNotice(R.string.msg_garden_expanded, good = true)
+                ActionResult.NOT_ENOUGH_COINS -> ShopNotice(R.string.msg_not_enough_coins)
+                ActionResult.GARDEN_AT_MAX_SIZE -> ShopNotice(R.string.msg_garden_at_max_size)
+                else -> ShopNotice(R.string.msg_expansion_locked)
+            }
         }
     }
 

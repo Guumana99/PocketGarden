@@ -5,7 +5,7 @@ package com.studioguu.miniaturegarden.domain.model
  *
  * @property growthHours healthy hours from seed to fully grown.
  * @property dryOutHours hours for full soil to dry out completely in sunny weather; shorter
- *   means the plant must be watered more often.
+ *   means the plant must be watered more often. Never under [MIN_DRY_OUT_HOURS].
  * @property harvestCoins coins paid for harvesting it fully grown.
  * @property harvestXp experience gained for harvesting it.
  * @property growthStages number of growth sprites, named `<objectId>_stage1` .. `_stage<N>`.
@@ -31,75 +31,87 @@ enum class PlantSpecies(
     val ground: PlantGround = PlantGround.BED,
 ) {
     /** The first flower: drawn in three stages (#58), and it never withers. */
-    TULIP("plant_tulip", growthHours = 48, dryOutHours = 24, harvestCoins = 50, harvestXp = 50, growthStages = 3, canWither = false),
-    SUNFLOWER("plant_sunflower", growthHours = 72, dryOutHours = 16, harvestCoins = 90, harvestXp = 80, growthStages = 3),
-    ROSE("plant_rose", growthHours = 120, dryOutHours = 36, harvestCoins = 160, harvestXp = 140),
+    TULIP("plant_tulip", growthHours = 6, dryOutHours = 24, harvestCoins = 22, harvestXp = 10, growthStages = 3, canWither = false),
+    SUNFLOWER("plant_sunflower", growthHours = 20, dryOutHours = 16, harvestCoins = 50, harvestXp = 22, growthStages = 3),
+    ROSE("plant_rose", growthHours = 36, dryOutHours = 36, harvestCoins = 105, harvestXp = 40),
 
     /** Autumn's own flower; light and quick to grow. */
-    COSMOS("plant_cosmos", growthHours = 60, dryOutHours = 20, harvestCoins = 64, harvestXp = 60, growthStages = 3),
+    COSMOS("plant_cosmos", growthHours = 10, dryOutHours = 20, harvestCoins = 22, harvestXp = 10, growthStages = 3),
 
     /** The winter flower: slow to dry out in the cold. */
-    SNOWDROP("plant_snowdrop", growthHours = 54, dryOutHours = 30, harvestCoins = 58, harvestXp = 55, growthStages = 3),
+    SNOWDROP("plant_snowdrop", growthHours = 10, dryOutHours = 30, harvestCoins = 22, harvestXp = 10, growthStages = 3),
 
-    /** A herb that grows in any season; quick, and worth a little less for it. */
-    MINT("plant_mint", growthHours = 36, dryOutHours = 18, harvestCoins = 35, harvestXp = 35, growthStages = 3),
+    /** A herb that grows in any season; the quickest of all, and worth the least for it. */
+    MINT("plant_mint", growthHours = 4, dryOutHours = 18, harvestCoins = 13, harvestXp = 7, growthStages = 3),
 
     /**
      * Summer's crop from the start: thirsty in the heat, like the sunflower. It goes on bearing:
      * after a harvest it is back at its second stage and ripens again in half the time.
      */
     TOMATO(
-        "plant_tomato", growthHours = 48, dryOutHours = 16, harvestCoins = 54, harvestXp = 52, growthStages = 3,
-        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 17, regrowXp = 26,
+        "plant_tomato", growthHours = 8, dryOutHours = 16, harvestCoins = 20, harvestXp = 15, growthStages = 3,
+        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 9, regrowXp = 8,
     ),
 
     /** A small spring fruit; quick to come, worth a little less for it. It goes on bearing, like the tomato. */
     STRAWBERRY(
-        "plant_strawberry", growthHours = 42, dryOutHours = 20, harvestCoins = 48, harvestXp = 44, growthStages = 3,
-        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 14, regrowXp = 22,
+        "plant_strawberry", growthHours = 6, dryOutHours = 20, harvestCoins = 16, harvestXp = 14, growthStages = 3,
+        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 8, regrowXp = 7,
     ),
 
-    /** A big summer fruit at Lv.3; it drinks a lot. */
-    WATERMELON("plant_watermelon", growthHours = 96, dryOutHours = 16, harvestCoins = 122, harvestXp = 110, growthStages = 3),
+    /** A big summer fruit at Lv.9; it drinks a lot. */
+    WATERMELON("plant_watermelon", growthHours = 30, dryOutHours = 16, harvestCoins = 100, harvestXp = 42, growthStages = 3),
 
-    /** A herb for every season at Lv.3; it keeps well between waterings. */
-    LAVENDER("plant_lavender", growthHours = 84, dryOutHours = 30, harvestCoins = 108, harvestXp = 96, growthStages = 3),
+    /** A herb for every season at Lv.5; it keeps well between waterings. */
+    LAVENDER("plant_lavender", growthHours = 24, dryOutHours = 30, harvestCoins = 52, harvestXp = 24, growthStages = 3),
 
     /**
-     * Autumn's crop at Lv.5 (#68, in the pumpkin's place, with its numbers for now): a log laid on
-     * the earth or on a bed, on which shiitake come up again and again. Not under glass.
+     * Autumn's crop at Lv.14 (#68): a log laid on the earth or on a bed, on which shiitake come up
+     * again and again. Not under glass.
      */
     SHIITAKE(
-        "plant_shiitake", growthHours = 132, dryOutHours = 30, harvestCoins = 190, harvestXp = 160, growthStages = 3,
-        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 57, regrowXp = 80, ground = PlantGround.LOG,
+        "plant_shiitake", growthHours = 48, dryOutHours = 30, harvestCoins = 100, harvestXp = 65, growthStages = 3,
+        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 50, regrowXp = 33, ground = PlantGround.LOG,
     ),
 
-    /** Winter's red leaves at Lv.5; slow to dry out in the cold. */
-    POINSETTIA("plant_poinsettia", growthHours = 120, dryOutHours = 36, harvestCoins = 180, harvestXp = 150, growthStages = 3),
+    /** Winter's red leaves at Lv.15; slow to dry out in the cold. */
+    POINSETTIA("plant_poinsettia", growthHours = 40, dryOutHours = 36, harvestCoins = 175, harvestXp = 67, growthStages = 3),
 
-    /** Summer's peppers at Lv.4: slow to come, then they keep coming. */
+    /** Summer's peppers at Lv.11: slow to come, then they keep coming. */
     PAPRIKA(
-        "plant_paprika", growthHours = 100, dryOutHours = 18, harvestCoins = 140, harvestXp = 118, growthStages = 3,
-        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 42, regrowXp = 59,
+        "plant_paprika", growthHours = 32, dryOutHours = 18, harvestCoins = 90, harvestXp = 58, growthStages = 3,
+        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 45, regrowXp = 29,
     ),
 
-    /** The cold months' root at Lv.2: pulled up whole, so it is harvested once. */
-    DAIKON("plant_daikon", growthHours = 64, dryOutHours = 26, harvestCoins = 80, harvestXp = 70, growthStages = 3),
+    /** The cold months' root at Lv.4: pulled up whole, so it is harvested once. */
+    DAIKON("plant_daikon", growthHours = 18, dryOutHours = 26, harvestCoins = 50, harvestXp = 23, growthStages = 3),
 
     /** A root for spring and autumn at Lv.2, a little quicker than the daikon: pulled up whole, harvested once. */
-    CARROT("plant_carrot", growthHours = 62, dryOutHours = 22, harvestCoins = 72, harvestXp = 68, growthStages = 3),
+    CARROT("plant_carrot", growthHours = 16, dryOutHours = 22, harvestCoins = 47, harvestXp = 22, growthStages = 3),
 
-    /** Summer's purple fruit at Lv.3: thirsty, and it keeps bearing, like the tomato. */
+    /** Summer's purple fruit at Lv.6: thirsty, and it keeps bearing, like the tomato. */
     EGGPLANT(
-        "plant_eggplant", growthHours = 78, dryOutHours = 16, harvestCoins = 102, harvestXp = 88, growthStages = 3,
-        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 30, regrowXp = 42,
+        "plant_eggplant", growthHours = 22, dryOutHours = 16, harvestCoins = 34, harvestXp = 25, growthStages = 3,
+        harvestType = HarvestType.REPEATABLE_HARVEST, regrowCoins = 17, regrowXp = 12,
     ),
 
-    /** Autumn's grain at Lv.4, a whole bed of it; it stands dry weather well. */
-    WHEAT("plant_wheat", growthHours = 98, dryOutHours = 32, harvestCoins = 128, harvestXp = 114, growthStages = 3),
+    /** Autumn's grain at Lv.7, a whole bed of it; it stands dry weather well. */
+    WHEAT("plant_wheat", growthHours = 30, dryOutHours = 32, harvestCoins = 90, harvestXp = 39, growthStages = 3),
 
-    /** Summer's tall crop at Lv.5: three stalks to a bed, slow to ripen. */
-    CORN("plant_corn", growthHours = 126, dryOutHours = 18, harvestCoins = 185, harvestXp = 155, growthStages = 3);
+    /** Summer's tall crop at Lv.13: three stalks to a bed, slow to ripen. */
+    CORN("plant_corn", growthHours = 42, dryOutHours = 18, harvestCoins = 165, harvestXp = 63, growthStages = 3),
+
+    /**
+     * Winter's leafy head at Lv.10: grown and pulled up like the daikon. It has no pictures yet, so
+     * it is not on sale ([GardenItem.SEED_HAKUSAI]).
+     */
+    HAKUSAI("plant_hakusai", growthHours = 30, dryOutHours = 26, harvestCoins = 105, harvestXp = 43, growthStages = 3),
+
+    /**
+     * Spring's yellow field flower at Lv.12, light like the cosmos. It has no pictures yet, so it
+     * is not on sale ([GardenItem.SEED_NANOHANA]).
+     */
+    NANOHANA("plant_nanohana", growthHours = 32, dryOutHours = 20, harvestCoins = 115, harvestXp = 45, growthStages = 3);
 
     /** Growth progress (0..1) gained per healthy hour. */
     val growthPerHour: Float get() = 1f / growthHours
@@ -142,6 +154,12 @@ enum class PlantSpecies(
         private val BLOOM_COLOURS: Map<PlantSpecies, List<String>> = mapOf(
             TULIP to listOf("red", "pink", "yellow", "white", "purple", "blue"),
         )
+
+        /**
+         * The shortest a bed may take to dry out: a player who looks in morning and evening finds
+         * it still damp overnight.
+         */
+        const val MIN_DRY_OUT_HOURS = 12
 
         /** Used for plant ids that have no entry here. */
         val DEFAULT = TULIP

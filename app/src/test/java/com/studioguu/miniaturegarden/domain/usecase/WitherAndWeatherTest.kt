@@ -95,16 +95,13 @@ class WitherAndWeatherTest {
 
     @Test
     fun `the time to go over is counted from the bloom, not from the planting`() {
-        // 0.5 grown: 36 healthy hours short of bloom for a sunflower. It dries out long before
-        // that unless it is watered, so it is, here, every 12 hours.
+        // 0.5 grown: 10 healthy hours short of bloom for a sunflower, before its soil goes dry.
         val halfway = flower(growth = 0.5f)
-        val atBloom = calc(halfway, t0 + 12 * hour, sunny).copy(moistureLevel = 1f)
-            .let { calc(it, t0 + 24 * hour, sunny).copy(moistureLevel = 1f) }
-            .let { calc(it, t0 + 36 * hour, sunny) }
+        val atBloom = calc(halfway, t0 + 10 * hour, sunny)
         assertEquals(1f, atBloom.growthProgress, 1e-4f)
         assertEquals(0f, atBloom.stressRate, 1e-3f)
 
-        val twoHoursOn = calc(atBloom.copy(moistureLevel = 1f), t0 + 38 * hour, sunny)
+        val twoHoursOn = calc(atBloom.copy(moistureLevel = 1f), t0 + 12 * hour, sunny)
         assertEquals(2f / OVERRIPE_HOURS, twoHoursOn.stressRate, 1e-3f)
     }
 
@@ -372,8 +369,8 @@ class WitherAndWeatherTest {
 
     @Test
     fun `a rainy day in the middle of an absence saves a plant that the sun alone would kill`() {
-        // A sunflower dries out in 16 hours and withers a day after it has gone thirsty.
-        val start = flower(growth = 0.1f)
+        // A rose dries out in 36 hours and withers a day after it has gone thirsty.
+        val start = flower(growth = 0.1f).copy(objectId = PlantSpecies.ROSE.objectId)
 
         val allSun = calc(start, t0 + 3 * day, days(sunny, sunny, sunny))
         val rainOnDay2 = calc(start, t0 + 3 * day, days(sunny, rainy, sunny))

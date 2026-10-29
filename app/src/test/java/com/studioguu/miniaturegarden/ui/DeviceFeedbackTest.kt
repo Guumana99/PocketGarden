@@ -88,17 +88,19 @@ class DeviceFeedbackTest {
     // --- 1.4 Growing the garden ---
 
     @Test
-    fun `growing the garden is asked about first, and goes 9 to 11 to 13`() {
-        assertEquals(listOf(11, 13), GardenExpansion.STAGES.map { it.size })
+    fun `growing the garden is asked about first, in the workshop, and goes 9 to 11 to 13`() {
+        assertEquals(listOf(11, 13), GardenExpansion.STAGES.filter { it.open }.map { it.size })
         assertEquals(13, GardenExpansion.nextStage(GridObject.GRID_SIZE)?.size)
         assertEquals(11, GardenExpansion.nextStage(GridObject.LEGACY_GRID_SIZE)?.size)
-        val screen = source("ui/GardenScreen.kt")
-        assertFalse(screen.contains("onExpand = viewModel::expand"))
-        assertTrue(screen.contains("onExpand = { confirmExpand = true }"))
-        val dialog = screen.substringAfter("if (confirmExpand && growTo != null) {").substringBefore("\n    }\n")
+        // Not from the garden (and its cottage) any more, but from the workshop's board.
+        assertFalse(source("ui/GardenScreen.kt").contains("ExpandConfirmDialog"))
+        val shop = source("ui/shop/ShopStageScreen.kt")
+        assertFalse(shop.contains("onExpand = viewModel::expand"))
+        assertTrue(shop.contains("onExpand = { confirmExpand = true }"))
+        val dialog = shop.substringAfter("if (confirmExpand && expansion.check == ExpansionCheck.READY) {").substringBefore("\n    }\n")
         assertTrue(dialog.contains("ExpandConfirmDialog("))
         assertTrue(dialog.contains("viewModel.expand()"))
-        assertTrue(strings.contains("<string name=\"expand_confirm_title\">お庭を広げますか？</string>"))
+        assertTrue(strings.contains("<string name=\"expand_confirm_title\">お庭を一回り広げますか？</string>"))
         assertTrue(strings.contains("name=\"expand_confirm_text\""))
         val confirm = source("ui/hud/ExpandConfirmDialog.kt")
         assertTrue(confirm.indexOf("R.string.action_cancel") < confirm.indexOf("R.string.expand_confirm_ok"))

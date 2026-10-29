@@ -67,8 +67,8 @@ class HarvestTypeTest {
     fun `the four new crops are on sale, in the book and named`() {
         assertEquals(PlantSpecies.PAPRIKA.objectId, GardenItem.SEED_PAPRIKA.objectId)
         assertEquals(PlantSpecies.DAIKON.objectId, GardenItem.SEED_DAIKON.objectId)
-        assertEquals(UnlockCondition.PlayerLevel(4), GardenItem.SEED_PAPRIKA.unlock)
-        assertEquals(UnlockCondition.PlayerLevel(2), GardenItem.SEED_DAIKON.unlock)
+        assertEquals(UnlockCondition.PlayerLevel(11), GardenItem.SEED_PAPRIKA.unlock)
+        assertEquals(UnlockCondition.PlayerLevel(4), GardenItem.SEED_DAIKON.unlock)
         assertEquals(setOf(Season.SUMMER), GardenItem.SEED_PAPRIKA.seasons)
         assertEquals(setOf(Season.AUTUMN, Season.WINTER), GardenItem.SEED_DAIKON.seasons)
         for (species in listOf(PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY, PlantSpecies.PAPRIKA, PlantSpecies.DAIKON)) {
@@ -133,21 +133,21 @@ class HarvestTypeTest {
         assertEquals(PlantSpecies.TOMATO.harvestCoins.toLong(), repo.profile?.coins) // the first harvest pays in full
         // Not ready again at once...
         assertEquals(ActionResult.NOT_READY, harvest("p1", t0, sunny))
-        // ...but half its growing time later, with the soil kept moist (by rain here), it is.
-        assertEquals(ActionResult.NOT_READY, harvest("p1", t0 + 18 * hour, WeatherType.RAINY))
-        assertEquals(ActionResult.SUCCESS, harvest("p1", t0 + 24 * hour, WeatherType.RAINY))
+        // ...but half its growing time (4 h) later, with the soil kept moist (by rain here), it is.
+        assertEquals(ActionResult.NOT_READY, harvest("p1", t0 + 3 * hour, WeatherType.RAINY))
+        assertEquals(ActionResult.SUCCESS, harvest("p1", t0 + 4 * hour, WeatherType.RAINY))
         assertEquals(2, repo.objects.getValue("p1").harvestCount)
         assertEquals((PlantSpecies.TOMATO.harvestCoins + PlantSpecies.TOMATO.regrowCoins).toLong(), repo.profile?.coins)
     }
 
     @Test
     fun `later harvests of a repeatable crop pay its smaller regrowth reward`() {
-        assertEquals(HarvestReward(54, 52), PlantSpecies.TOMATO.harvestReward(0))
-        assertEquals(HarvestReward(17, 26), PlantSpecies.TOMATO.harvestReward(1))
-        assertEquals(HarvestReward(17, 26), PlantSpecies.TOMATO.harvestReward(5))
+        assertEquals(HarvestReward(20, 15), PlantSpecies.TOMATO.harvestReward(0))
+        assertEquals(HarvestReward(9, 8), PlantSpecies.TOMATO.harvestReward(1))
+        assertEquals(HarvestReward(9, 8), PlantSpecies.TOMATO.harvestReward(5))
         // A single-harvest crop is never harvested twice, but would pay in full if it were.
-        assertEquals(HarvestReward(80, 70), PlantSpecies.DAIKON.harvestReward(0))
-        assertEquals(HarvestReward(80, 70), PlantSpecies.DAIKON.harvestReward(1))
+        assertEquals(HarvestReward(50, 23), PlantSpecies.DAIKON.harvestReward(0))
+        assertEquals(HarvestReward(50, 23), PlantSpecies.DAIKON.harvestReward(1))
     }
 
     @Test

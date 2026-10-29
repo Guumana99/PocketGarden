@@ -67,10 +67,10 @@ class ConstructionTest {
         }
         assertEquals(10, GardenItem.STRUCT_FENCE.demolishSeconds)
         assertEquals(5 * 60, GardenItem.STRUCT_COTTAGE.demolishSeconds)
-        // The bigger (and later, and dearer) the building, the longer it takes.
+        // The bigger the building, the longer it takes. (Since the progression change the cottage,
+        // at Lv.3, costs less than the windmill and the hut that come later.)
         val buildings = listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE)
         assertEquals(buildings, buildings.sortedBy { it.buildSeconds })
-        assertEquals(buildings, buildings.sortedBy { it.price })
     }
 
     @Test

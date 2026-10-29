@@ -43,7 +43,7 @@
 | ショップ・価格・解放・建物効果 | `ShopAndEffectsTest` `ProgressionTest` |
 | 図鑑 | `CollectionTest` |
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
-| 庭の拡張の導線（吹き出し・お便り・広げる） | `ExpansionGuideTest`（＋拡張の規則 `SymbolBuildingTest`、手紙 `PostTest`） |
+| 庭の拡張の導線（お便り・工房の板・広げる） | `ExpansionGuideTest`（＋拡張の規則 `SymbolBuildingTest` `ProgressionTest`、手紙 `PostTest`） |
 | ショップ（3 軒の店・棚・カード・購入・所持数・一言の枠・文言） | `ShopShelvesTest` `ShopStageContentTest`（Robolectric）（＋購入の規則 `ShopAndEffectsTest` `SymbolBuildingTest`） |
 | 編集モード・模様替えの規則・パネルのボタン | `GardenLayoutTest` `ObjectStatusPanelTest`（Robolectric）（＋グリッド表示 `CameraModeTest`） |
 | シンボル建物・庭の拡張 | `SymbolBuildingTest`（＋数を見る `ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`） |

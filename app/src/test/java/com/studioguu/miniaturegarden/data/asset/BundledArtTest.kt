@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.data.asset
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
@@ -200,10 +201,12 @@ class BundledArtTest {
 
     // --- Encyclopedia ---
 
+    private fun onSale(species: PlantSpecies) = GardenItem.entries.single { it.objectId == species.objectId }.inShop
+
     @Test
     fun `every crop page can show its plant in full bloom from the atlas`() {
-        // Every crop has its pictures since #69 (the poinsettia was the last drawn in code).
-        for (species in PlantSpecies.entries) {
+        // Every crop on sale has its pictures since #69 (the poinsettia was the last drawn in code).
+        for (species in PlantSpecies.entries.filter(::onSale)) {
             val bloom = "${species.objectId}_stage${species.growthStages}"
             assertTrue(bloom, manifest.assets.any { it.assetId == bloom })
         }
@@ -223,7 +226,8 @@ class BundledArtTest {
 
     @Test
     fun `every crop has an icon picture, cut out of its background (#72)`() {
-        for (species in PlantSpecies.entries) {
+        // Every crop on sale, that is: the hakusai and the nanohana wait for theirs.
+        for (species in PlantSpecies.entries.filter(::onSale)) {
             val file = File(main, "res/drawable-nodpi/icon_${species.objectId.removePrefix("plant_")}.png")
             assertTrue("${file.name} is missing", file.isFile)
             val icon = TestPng.read(file)

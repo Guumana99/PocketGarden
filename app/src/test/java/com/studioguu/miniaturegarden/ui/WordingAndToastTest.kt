@@ -46,12 +46,11 @@ class WordingAndToastTest {
     }
 
     @Test
-    fun `the cottage's page says how the garden really grows`() {
+    fun `the cottage's page no longer promises to grow the garden`() {
         val cottage = string("flavor_cottage")!!
-        // Growing is the player's choice from the finished cottage, not something smoke does.
+        // Growing is done in the workshop, for the level and the coins; the cottage has nothing to do with it.
         assertFalse(cottage.contains("煙"))
-        assertTrue(cottage.contains("完成"))
-        assertTrue(cottage.contains("広げられる"))
+        assertFalse(cottage.contains("広げ"))
     }
 
     @Test

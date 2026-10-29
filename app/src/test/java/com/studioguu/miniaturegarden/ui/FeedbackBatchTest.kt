@@ -173,6 +173,6 @@ class FeedbackBatchTest {
         assertTrue(PondWater.WATER_FROM > 0.1f && PondWater.WATER_TO < 0.9f)
         val canvas = source("ui/components/GardenCanvas.kt")
         assertTrue(canvas.contains("PondWater.frameAt(ambience.windMillis ?: 0L"))
-        assertTrue(canvas.contains("drawPondWater(transform, obj.gridX, obj.gridY, water)"))
+        assertTrue(canvas.contains("drawPondWater(transform, obj.gridX, obj.gridY, ripples)"))
     }
 }

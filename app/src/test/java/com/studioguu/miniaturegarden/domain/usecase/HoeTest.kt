@@ -108,9 +108,9 @@ class HoeTest {
     fun `seeds and seedlings go into tilled soil and nowhere else`() = runBlocking {
         // Every crop sown in a bed: the shiitake's log goes on open earth as well (#68, ShiitakeTest).
         val seeds = GardenItem.entries.filter { it.category == ItemCategory.SEED && PlantSpecies.forObjectId(it.objectId).ground == PlantGround.BED }
-        assertEquals(17, seeds.size)
+        assertEquals(19, seeds.size) // the hakusai and the nanohana among them, though not on sale yet
         seeds.forEachIndexed { slot, seed -> repo.putSlot(InventorySlot(slot, seed.itemId, 2)) }
-        // Two rows of tilled soil along the top, nine to a row.
+        // Three rows of tilled soil along the top, nine to a row.
         seeds.indices.forEach { hoe.till(it % 9, it / 9, t0) }
 
         seeds.indices.forEach { slot ->
@@ -121,7 +121,7 @@ class HoeTest {
         }
 
         assertEquals(PlantSpecies.entries.filter { it.ground == PlantGround.BED }.map { it.objectId }.toSet(), repo.plants.map { it.objectId }.toSet())
-        assertTrue(repo.plants.all { it.gridY <= 1 })
+        assertTrue(repo.plants.all { it.gridY <= 2 })
     }
 
     @Test

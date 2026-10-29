@@ -5,6 +5,9 @@
     <!-- Top status bar -->
     <string name="status_level">Lv.%1$d</string>
     <string name="status_level_max">Lv.%1$d　MAX</string>
+    <string name="weather_title">お天気</string>
+    <string name="weather_today">今日</string>
+    <string name="weather_tomorrow">明日</string>
     <string name="weather_sunny">晴れ</string>
     <string name="weather_cloudy">曇り</string>
     <string name="weather_rainy">雨</string>
@@ -55,6 +58,9 @@
     <string name="object_plant_lavender">ラベンダー</string>
     <string name="object_plant_shiitake">しいたけ</string>
     <string name="object_plant_poinsettia">ポインセチア</string>
+    <string name="object_plant_hakusai">白菜</string>
+    <string name="object_plant_nanohana">菜の花</string>
+    <string name="object_deco_weathervane">風見鶏</string>
     <string name="object_plant_paprika">パプリカ</string>
     <string name="object_plant_daikon">大根</string>
     <string name="object_plant_carrot">ニンジン</string>
@@ -125,7 +131,7 @@
     <string name="action_move">移動</string>
     <string name="move_banner">🚚 %1$s の移動先をタップ</string>
     <string name="edit_mode_button">編集モード</string>
-    <string name="msg_needs_edit_mode">✏️ 庭の模様替えは編集モードで行えます</string>
+    <string name="msg_needs_edit_mode">✏️ お庭の模様替えは編集モードで行えます</string>
     <string name="hint_edit_to_clear">✏️ 片づけ（撤去）は編集モードで行えます</string>
     <string name="hint_edit_to_arrange">✏️ 編集モードにすると、動かしたり持ち物に戻したりできます</string>
     <string name="work_building">🔨 建築中</string>
@@ -158,6 +164,8 @@
     <string name="item_seed_lavender">ラベンダーの苗</string>
     <string name="item_seed_shiitake">しいたけの原木</string>
     <string name="item_seed_poinsettia">ポインセチアの苗</string>
+    <string name="item_seed_hakusai">白菜の種</string>
+    <string name="item_seed_nanohana">菜の花の種</string>
     <string name="item_seed_paprika">パプリカの苗</string>
     <string name="item_seed_daikon">大根の種</string>
     <string name="item_seed_carrot">ニンジンの種</string>
@@ -205,7 +213,7 @@
     <string name="msg_needs_tilled_soil">種や苗は、クワで耕した土にだけ植えられます</string>
     <string name="msg_needs_open_ground">しいたけの原木は、土の地面（荒れ地・耕した土）に置けます。芝生や石畳、水辺、温室には置けません</string>
     <string name="msg_tile_not_buildable">川の上には置けません</string>
-    <string name="msg_out_of_bounds">庭の外には置けません</string>
+    <string name="msg_out_of_bounds">お庭の外には置けません</string>
     <string name="msg_slot_empty">アイテムがありません</string>
     <string name="msg_not_enough_coins">コインが足りません</string>
     <string name="msg_inventory_full">持ち物がいっぱいです</string>
@@ -228,7 +236,7 @@
     <string name="collection_number">No.%1$02d</string>
     <string name="collection_unknown">？？？</string>
     <string name="collection_hint_harvest">育てて収穫すると、図鑑に登録されます。</string>
-    <string name="collection_hint_placement">庭に置くと、図鑑に登録されます。</string>
+    <string name="collection_hint_placement">お庭に置くと、図鑑に登録されます。</string>
     <string name="flavor_cosmos">秋風に揺れる、淡い紅色の花。\n細い茎ながら、風にしなやかに耐える。</string>
     <string name="flavor_snowdrop">雪の下から顔を出す、白い小さな花。\nうつむいた鈴の形は、春を待つ合図。</string>
     <string name="flavor_tomato">夏の日差しを浴びて、真っ赤に実る。\n喉が渇きやすいので、水やりはこまめに。</string>
@@ -236,7 +244,7 @@
     <string name="flavor_watermelon">蔓を伸ばして、まん丸に育つ。\n夏の太陽と、たっぷりの水を好む。</string>
     <string name="flavor_lavender">紫の穂が、風にそよぐ。\n季節を問わず、やさしい香りを届けてくれる。</string>
     <string name="flavor_shiitake">秋の木陰で、原木からぽこりと顔を出す。\n摘んでも、また次のかさが育ってくる。</string>
-    <string name="flavor_poinsettia">冬を彩る、真紅の葉。\n寒い日にも、庭を温かく見せてくれる。</string>
+    <string name="flavor_poinsettia">冬を彩る、真紅の葉。\n寒い日にも、お庭を温かく見せてくれる。</string>
     <string name="flavor_paprika">艶やかな赤い実。\nひとつ摘んでも、また次の実がふくらんでくる。</string>
     <string name="flavor_daikon">土の中で、白く太っていく。\n寒さが増すほど、甘みも増す。</string>
     <string name="flavor_carrot">ふさふさの葉の下で、橙色の根が伸びていく。
@@ -249,7 +257,7 @@
 実るまでは、少し気長に。</string>
     <string name="flavor_mint">季節を選ばない、丈夫な葉。\n触れると、すっと涼やかな香りが立つ。</string>
     <string name="flavor_greenhouse">ガラスの中は、いつもぽかぽか。\n季節外れの花も、ここなら育つ。</string>
-    <string name="flavor_tulip">春の庭の定番。\n育てやすく、初めての人にもやさしい。</string>
+    <string name="flavor_tulip">春のお庭の定番。\n育てやすく、初めての人にもやさしい。</string>
     <string name="flavor_sunflower">太陽を追いかけて、背を伸ばす。\n喉が渇きやすいので、水やりはこまめに。</string>
     <string name="flavor_rose">花の女王。\n手間はかかるが、咲いたときの喜びはひとしお。</string>
     <string name="flavor_grass">ふかふかの、緑の絨毯。\n寝ころぶと、心地よい。</string>
@@ -257,22 +265,22 @@
     <string name="flavor_flowers">名も知らぬ、小さな野の花。\n風が吹くと、いっせいに揺れる。</string>
     <string name="flavor_deck">木の香りがする、板張りの床。\n素足で歩くと、心地よい。</string>
     <string name="flavor_pond">丸太と石で囲んだ、小さな池。\n睡蓮の葉に、光がゆれる。</string>
-    <string name="flavor_bench">ひと休みにちょうどいい。\n腰かけて、庭を眺めよう。</string>
+    <string name="flavor_bench">ひと休みにちょうどいい。\n腰かけて、お庭を眺めよう。</string>
     <string name="flavor_lantern">苔むした、石の灯り。\n夕暮れに、ぽっと灯る。</string>
     <string name="flavor_sprinkler">くるくる回って、まわりの畑に水をまく。\n止めておけば、ただの飾り。</string>
-    <string name="flavor_rock">どっしりと構えた、大きな岩。\nまるで庭の主のような顔をしている。</string>
-    <string name="flavor_river">さらさらと流れる小川。\n並べてつなげば、庭にせせらぎが生まれる。</string>
+    <string name="flavor_rock">どっしりと構えた、大きな岩。\nまるでお庭の主のような顔をしている。</string>
+    <string name="flavor_river">さらさらと流れる小川。\n並べてつなげば、お庭にせせらぎが生まれる。</string>
     <string name="flavor_path">丸い石を敷きつめた小径。\n雨の日も、足もとがぬかるまない。</string>
     <string name="flavor_fence">木を組んだ、素朴な柵。\n花畑をぐるりと囲もう。</string>
     <string name="flavor_well">冷たい水が、こんこんと湧く。\nのぞき込むと、自分の顔が揺れる。</string>
-    <string name="flavor_windmill">風を受けて、くるり、くるり。\n羽根の回る音が、庭に響く。</string>
+    <string name="flavor_windmill">風を受けて、くるり、くるり。\n羽根の回る音が、お庭に響く。</string>
     <string name="flavor_hut">小さいけれど、夢の詰まった小屋。\n道具の手入れも、昼寝も、ここで。</string>
-    <string name="flavor_cottage">庭の真ん中に建つ、灯りのともる家。\n完成すると、ここから庭を一回り広げられる。</string>
+    <string name="flavor_cottage">お庭の真ん中に建つ、灯りのともる家。\n窓の明かりが、お庭をやさしく照らす。</string>
     <string name="effect_discovery">📖 図鑑に登録できます！</string>
 
     <!-- Sharing -->
-    <string name="share_button">庭をシェア</string>
-    <string name="share_title">庭をシェア</string>
+    <string name="share_button">お庭をシェア</string>
+    <string name="share_title">お庭をシェア</string>
     <string name="share_text">#ぽけっと庭園</string>
     <string name="share_failed">画像を共有できませんでした</string>
 
@@ -281,9 +289,9 @@
     <string name="reward_rain_button">☔ 慈雨を降らせる</string>
     <string name="reward_rain_confirm" formatted="false">慈雨（じう）を降らせますか？\n（すべての作物に水がたっぷり行き渡り、成長時間を50%短縮します）</string>
     <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
-    <string name="reward_bonus_button">💰 臨時ボーナスを受け取る +%1$d 🪙（本日あと %2$d/%3$d回）</string>
-    <string name="reward_bonus_short">💰 臨時ボーナス +%1$d 🪙</string>
-    <string name="reward_bonus_confirm">臨時ボーナスを受け取りますか？\n（%1$dコインを獲得します）</string>
+    <string name="reward_bonus_button">💰 臨時ボーナスを受け取る（本日あと %1$d/%2$d回）</string>
+    <string name="reward_bonus_short">💰 臨時ボーナス</string>
+    <string name="reward_bonus_confirm">臨時ボーナスを受け取りますか？\n（コインを獲得します）</string>
     <string name="reward_bonus_confirm_ok">💰 受け取る</string>
     <string name="shop_short_by">あと %1$d コイン足りません。</string>
     <string name="msg_reward_cancelled">途中で終了したため、特典は付与されませんでした</string>
@@ -342,9 +350,9 @@
     <string name="title_start">はじめる</string>
     <string name="title_continue">つづきから</string>
     <string name="title_reset_title">最初から始めますか？</string>
-    <string name="title_reset_text">現在の庭、持ち物、図鑑はすべて消去され、元には戻せません。</string>
+    <string name="title_reset_text">現在のお庭、持ち物、図鑑はすべて消去され、元には戻せません。</string>
     <string name="title_reset_ok">最初から始める</string>
-    <string name="title_sample_garden">動いている庭の見本</string>
+    <string name="title_sample_garden">動いているお庭の見本</string>
 
     <!-- Seasons -->
     <string name="season_spring">春</string>
@@ -384,36 +392,36 @@
     <string name="tutorial_hint_water">種をタップして水をあげましょう</string>
     <!-- The closing board. Lines are broken by hand so that no phrase is split. -->
     <string name="tutorial_done_title">🎉 チュートリアルクリア！</string>
-    <string name="tutorial_done_text">ここから先は、あなただけの庭づくり。\n好きなものを、好きな場所へ。</string>
-    <string name="tutorial_done_ok">庭づくりを始める</string>
+    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\n好きなものを、好きな場所へ。</string>
+    <string name="tutorial_done_ok">お庭づくりを始める</string>
     <!-- Features handed over one by one after the first steps. -->
     <string name="reveal_title">新しい機能が使えるようになりました</string>
     <string name="reveal_badge">NEW</string>
     <string name="reveal_ok">OK</string>
     <string name="reveal_edit_name">✏️ 編集モード</string>
-    <string name="reveal_edit_text">芝生や柵、建物などを\n動かしたり持ち物に戻したりできます。\n編集中は庭に格子線が出ます。</string>
+    <string name="reveal_edit_text">芝生や柵、建物などを\n動かしたり持ち物に戻したりできます。\n編集中はお庭に格子線が出ます。</string>
     <string name="msg_not_this_step">🌱 今は案内の手順を進めましょう</string>
     <string name="reveal_rain_name">☔ 慈雨（じう）</string>
     <string name="reveal_rain_text">慈雨を降らせると、\n作物に水が行き渡り、成長時間が半分になります。</string>
     <string name="reveal_collection_name">📖 図鑑</string>
     <string name="reveal_collection_text">育てた作物や置いたものが、\n図鑑に少しずつ記されていきます。</string>
     <string name="reveal_camera_name">📷 カメラ</string>
-    <string name="reveal_camera_text">お気に入りの庭を写真に撮って、\n誰かに見せることができます。</string>
+    <string name="reveal_camera_text">お気に入りのお庭を写真に撮って、\n誰かに見せることができます。</string>
 
     <!-- Symbol building and garden expansion -->
     <string name="object_struct_cottage">コテージ</string>
     <string name="object_struct_windmill">風車</string>
-    <string name="shop_only_one">庭に一つだけ</string>
+    <string name="shop_only_one">お庭に一つだけ</string>
     <string name="shop_owned">✔ 所持済み</string>
     <string name="shop_stage_seeds">種と苗の店</string>
     <string name="shop_stage_workshop">大工の工房</string>
-    <string name="shop_stage_sundries">庭の雑貨店</string>
-    <string name="shop_leave">← 庭へ戻る</string>
+    <string name="shop_stage_sundries">お庭の雑貨店</string>
+    <string name="shop_leave">← お庭へ戻る</string>
     <string name="shop_put_back">棚に戻す</string>
-    <string name="msg_only_one_symbol">🏡 シンボル建物は庭に一つだけです</string>
-    <string name="msg_expansion_locked">まだ庭を広げられません</string>
-    <string name="msg_garden_at_max_size">庭はこれ以上広げられません</string>
-    <string name="msg_garden_expanded">🌱 庭が広がりました</string>
+    <string name="msg_only_one_symbol">🏡 シンボル建物はお庭に一つだけです</string>
+    <string name="msg_expansion_locked">まだお庭を広げられません</string>
+    <string name="msg_garden_at_max_size">お庭はこれ以上広げられません</string>
+    <string name="msg_garden_expanded">お庭が広がりました</string>
 
     <!-- Seasons, the post and the greenhouse -->
     <string name="msg_out_of_season">🌱 今は育てるのに適さない季節です。旬が来るまで、持ち物に取っておきましょう</string>
@@ -429,19 +437,19 @@
     <string name="post_button">ポスト</string>
     <string name="letter_arrived_title">%1$s %2$sがやってきました</string>
     <string name="letter_arrived_body">%1$sは、%2$sが育てられる季節です。ショップで種を手に入れて、さっそく育ててみませんか。</string>
-    <string name="letter_arrived_body_none">%1$sになりました。庭でのんびり過ごしてみませんか。</string>
+    <string name="letter_arrived_body_none">%1$sになりました。お庭でのんびり過ごしてみませんか。</string>
     <string name="letter_coming_title">%1$s もうすぐ%2$s</string>
     <string name="letter_coming_body">もうすぐ%1$sがやってきます。今の季節の種は、季節が変わるとショップから姿を消します。育てたい種があれば、今のうちに買っておくと安心です。季節外れの種も、ガラスの温室なら育てられます。</string>
     <string name="letter_tip_watering_title">💧 お水のこと</string>
     <string name="letter_tip_watering_body">作物がしおれて見えたら、水が足りていないのかもしれません。じょうろで水をあげると、また元気に育ち始めます。</string>
     <string name="letter_tip_rain_title">☔ 雨の日のこと</string>
-    <string name="letter_tip_rain_body">雨の日は、空が代わりに庭じゅうに水をまいてくれます。のんびり雨音を楽しんでくださいね。</string>
+    <string name="letter_tip_rain_body">雨の日は、空が代わりにお庭じゅうに水をまいてくれます。のんびり雨音を楽しんでくださいね。</string>
     <string name="letter_tip_compost_title">🍂 たい肥のこと</string>
     <string name="letter_tip_compost_body">枯れてしまった作物を片づけると、その土はたい肥入りのふかふかの土になります。次にまいた種は、少し育ったところから始まりますよ。</string>
     <string name="letter_tip_store_title">📦 模様替えのこと</string>
-    <string name="letter_tip_store_body">置いた家具や建物は、「持ち物に戻す」でしまって、好きな場所に置き直せます。気分に合わせて、庭の模様替えをしてみませんか。</string>
+    <string name="letter_tip_store_body">置いた家具や建物は、「持ち物に戻す」でしまって、好きな場所に置き直せます。気分に合わせて、お庭の模様替えをしてみませんか。</string>
     <string name="letter_tip_creatures_title">🐦 小さなお客さまのこと</string>
-    <string name="letter_tip_creatures_body">庭に置いたものの組み合わせや季節に誘われて、生き物たちが遊びに来ます。会えた生き物は、図鑑の「いきもの」に書き留められます。</string>
+    <string name="letter_tip_creatures_body">お庭に置いたものの組み合わせや季節に誘われて、生き物たちが遊びに来ます。会えた生き物は、図鑑の「いきもの」に書き留められます。</string>
     <string name="letter_tip_greenhouse_title">🏡 ガラスの温室のこと</string>
     <string name="letter_tip_greenhouse_body">温室を使うと、冬でも作物が育ちます。季節外れの種も、ガラスの温室の中ならぽかぽか。レベル18になると、ショップに並びます。</string>
     <string name="letter_tip_footer">― お庭のひとくちメモ ―</string>
@@ -451,26 +459,24 @@
     <string name="letter_stock_all_year">通年</string>
     <string name="letter_stock_footer">ぜひ、のぞいてみてくださいね。</string>
     <string name="letter_scene_spring">柔らかな日差しに、つぼみがほころび始めました。</string>
-    <string name="letter_scene_summer">まぶしい日差しに、庭の緑がいっそう濃くなりました。</string>
+    <string name="letter_scene_summer">まぶしい日差しに、お庭の緑がいっそう濃くなりました。</string>
     <string name="letter_scene_autumn">風が涼しくなって、葉っぱが色づき始めました。</string>
-    <string name="letter_scene_winter">庭がうっすらと雪化粧をしました。</string>
+    <string name="letter_scene_winter">お庭がうっすらと雪化粧をしました。</string>
     <string name="reveal_post_name">📮 ポスト</string>
     <string name="reveal_post_text">あなたのお庭に届いたお便りが読めます。</string>
     <string name="expand_button">お庭を広げる</string>
-    <string name="expand_needs_level">Lv.%1$d になると、お庭をもうひと回り広げられます</string>
-    <string name="expand_confirm_title">お庭を広げますか？</string>
-    <string name="expand_confirm_text">お庭がひと回り広がります。まわりに新しい土地が加わり、いま置いてあるものはそのまま真ん中に残ります。広げたお庭は元に戻せません。</string>
+    <string name="expand_needs_level">Lv.%1$d で広げられます</string>
+    <string name="expand_confirm_title">お庭を一回り広げますか？</string>
+    <string name="expand_confirm_text">🪙 %1$d\nまわりに新しい土地が加わります。広げたお庭は元に戻せません。</string>
+    <string name="expand_price">🪙 %1$d</string>
     <string name="expand_confirm_ok">広げる</string>
-    <string name="expand_max">庭が最大の広さになりました</string>
-    <string name="expand_after_unveil">🏡 完成してお披露目すると、ここから庭を広げられます</string>
-    <string name="msg_garden_can_grow">🏡 庭を広げられるようになりました。コテージの上の吹き出しをタップしてみましょう</string>
-    <string name="letter_grow_title">🏡 庭を広げられるようになりました</string>
-    <string name="letter_grow_body">お庭をもうひと回り広げられるようになりました。
-コテージをタップして「お庭を広げる」を押してください。広げるかどうかは、お好きなときに決めて大丈夫です。
-広がった外周は芝生になり、庭のものは今の並びのまま真ん中に残ります。</string>
+    <string name="expand_max">いまはこれ以上広げられません</string>
+    <string name="letter_grow_title">🏡 お庭を広げられるようになりました</string>
+    <string name="letter_grow_body">お庭を広げられるようになりました。
+大工の工房で「お庭を広げる」を選んでください。広げるかどうかは、お好きなときに決めて大丈夫です。
+広がったまわりは、芝生になります。</string>
     <string name="shop_held">所持数: %1$d個</string>
     <string name="shop_card_pages">📖 図鑑に%1$dページ登録すると、買えるようになります</string>
-    <string name="shop_card_symbol">🏡 完成すると、庭を一回り広げられます</string>
 
     <!-- Notifications -->
     <string name="notification_channel_name">お庭のようす</string>
@@ -518,10 +524,10 @@
     <string name="bloom_colour_other">ほかの色</string>
     <string name="msg_new_bloom_colour">🌷 図鑑に新しい色が書き加えられました</string>
     <string name="book_entered_on">登録日 %1$s</string>
-    <string name="nature_none_yet">まだ誰にも出会っていない。\n庭を整えて、待ってみよう。</string>
+    <string name="nature_none_yet">まだ誰にも出会っていない。\nお庭を整えて、待ってみよう。</string>
     <string name="creature_flavor_butterfly">咲きそろった花から花へと渡り歩く。\n羽をたたむと、木の葉によく似ている。</string>
     <string name="creature_flavor_ladybug">小さくて赤い、丸い虫。\nチューリップの葉の上で、日向ぼっこをする。</string>
-    <string name="creature_flavor_bird">ちょこちょこと跳ねて、辺りを見回す。\n静かな庭が好きらしい。</string>
+    <string name="creature_flavor_bird">ちょこちょこと跳ねて、辺りを見回す。\n静かなお庭が好きらしい。</string>
     <string name="creature_flavor_squirrel">大きな尻尾を揺らして、木の実をかじる。\n岩陰がお気に入り。</string>
     <string name="creature_flavor_frog">雨の日、川辺で喉をふくらませる。\nケロケロ。</string>
     <string name="creature_flavor_dragonfly">秋の川辺を、すいすいと飛ぶ。\n透きとおった翅が、光を返す。</string>
@@ -542,8 +548,8 @@
     <string name="combo_frog_well">雨の日の井戸</string>
     <string name="hint_butterfly_blooms">花がいくつも咲くころ、ひらひらとやって来るようだ</string>
     <string name="hint_ladybug_tulips">チューリップの葉と、草むらの近くを好むようだ</string>
-    <string name="hint_bird_bench">ベンチと柵のある、落ち着いた庭に来るらしい</string>
-    <string name="hint_bird_cottage">庭の家の屋根で、ひと休みするらしい</string>
+    <string name="hint_bird_bench">ベンチと柵のある、落ち着いたお庭に来るらしい</string>
+    <string name="hint_bird_cottage">お庭の家の屋根で、ひと休みするらしい</string>
     <string name="hint_squirrel_sunflower">ひまわりが実るころ、岩の辺りで見かけるという</string>
     <string name="hint_frog_rain">雨の日、川のそばで声がするらしい</string>
     <string name="hint_frog_summer">夏のあいだ、川辺でひと休みするらしい</string>
@@ -554,7 +560,7 @@
     <string name="hint_bird_hut">小さな小屋の屋根で、さえずる声がするらしい</string>
     <string name="hint_bird_winter_well">冬のあいだ、井戸の水を飲みに来るようだ</string>
     <string name="hint_squirrel_shiitake">原木にかさがふっくら開くと、そばで見かけるという</string>
-    <string name="hint_frog_well">川のない庭でも、雨の日は井戸のそばにいるらしい</string>
+    <string name="hint_frog_well">川のないお庭でも、雨の日は井戸のそばにいるらしい</string>
 
     <!-- Level-up board -->
     <string name="level_up_title">🎉 レベルが上がりました！</string>

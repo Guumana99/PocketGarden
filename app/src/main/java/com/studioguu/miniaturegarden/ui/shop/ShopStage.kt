@@ -1,5 +1,7 @@
 package com.studioguu.miniaturegarden.ui.shop
 
+import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
+import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
@@ -17,7 +19,10 @@ enum class ShopStage(val category: ItemCategory) {
     /** Seeds and seedlings, what is in season. */
     SEEDS(ItemCategory.SEED),
 
-    /** The carpenter's workshop: fences, the well, the windmill, the hut, the cottage, the greenhouse. */
+    /**
+     * The carpenter's workshop: fences, the well, the windmill, the hut, the cottage, the
+     * greenhouse; and where the garden is grown ([ExpansionOffer]).
+     */
     WORKSHOP(ItemCategory.STRUCTURE),
 
     /** The garden sundries: lawn, pebbles, paving, the river, benches and lanterns. */
@@ -91,4 +96,19 @@ object ShopShelves {
 
     /** The shop that sells [item]. */
     fun stageOf(item: GardenItem): ShopStage = ShopStage.entries.first { it.category == item.category }
+}
+
+/**
+ * Growing the garden, as the workshop offers it: [check] says whether it can be done now, and
+ * [level] and [price] are those of the next size (0 when there is none). The size itself is
+ * never shown to the player.
+ */
+data class ExpansionOffer(val check: ExpansionCheck, val level: Int = 0, val price: Int = 0) {
+    companion object {
+        /** The offer for a garden of [gardenSize] kept by a player at [playerLevel] with [coins]. */
+        fun of(gardenSize: Int, playerLevel: Int, coins: Long): ExpansionOffer {
+            val stage = GardenExpansion.nextStage(gardenSize) ?: return ExpansionOffer(ExpansionCheck.AT_MAX_SIZE)
+            return ExpansionOffer(GardenExpansion.check(gardenSize, playerLevel, coins), stage.playerLevel, stage.price)
+        }
+    }
 }

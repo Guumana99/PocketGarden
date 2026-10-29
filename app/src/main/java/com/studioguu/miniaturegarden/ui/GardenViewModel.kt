@@ -18,7 +18,6 @@ import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
-import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.model.GardenMap
@@ -65,7 +64,6 @@ import com.studioguu.miniaturegarden.domain.usecase.PostLettersUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ReadLettersUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CompleteWorkUseCase
-import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
 import com.studioguu.miniaturegarden.domain.usecase.NoteResult
 import com.studioguu.miniaturegarden.domain.usecase.RecordNatureNoteUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ScheduleGardenNotificationsUseCase
@@ -139,7 +137,6 @@ class GardenViewModel @Inject constructor(
     private val openStarterCrate: OpenStarterCrateUseCase,
     private val followTutorial: FollowTutorialUseCase,
     private val audio: AudioManager,
-    private val expandGarden: ExpandGardenUseCase,
     private val scheduleNotifications: ScheduleGardenNotificationsUseCase,
     private val recordNatureNote: RecordNatureNoteUseCase,
     private val advanceSeason: AdvanceSeasonUseCase,
@@ -287,10 +284,14 @@ class GardenViewModel @Inject constructor(
     private val _outlook = MutableStateFlow<WeatherOutlook?>(null)
 
     /**
-     * Today's and tomorrow's weather, as they will really be. Not shown in the garden yet: the
-     * weathervane will open it ([WeatherOutlook.isReadable]); for now the debug menu shows it.
+     * Today's and tomorrow's weather, as they will really be. Tapping the weather on the status
+     * bar shows today's; tomorrow's only while a weathervane stands ([forecastReadable]).
      */
     val outlook: StateFlow<WeatherOutlook?> = _outlook.asStateFlow()
+
+    /** Whether tomorrow's weather can be read: a finished weathervane stands in the garden ([WeatherOutlook.isReadable]). */
+    val forecastReadable: StateFlow<Boolean> = gridObjects.map(WeatherOutlook::isReadable)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     private val _clockOffset = MutableStateFlow(0L)
 
@@ -712,20 +713,12 @@ class GardenViewModel @Inject constructor(
     }
 
     /**
-     * The symbol building to point at while the garden can grow now ([GardenExpansion.growableFrom]):
-     * a bubble over it says so, and tapping the bubble selects it, whose panel has the button.
-     */
-    val growableBuilding: StateFlow<GridObject?> =
-        combine(gridObjects, gardenMap, profile) { objects, map, profile ->
-            GardenExpansion.growableFrom(map.size, objects, profile?.playerLevel ?: 1)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    /**
-     * Posts the letter saying the garden can grow, the first time it can grow to a size, and says
-     * so once on screen as well; after that the bubble over the symbol building keeps pointing.
+     * Posts the letter saying the garden can grow, the first time the level for a size is reached
+     * ([com.studioguu.miniaturegarden.domain.model.PostOffice.gardenCanGrow]). Only the letter: nothing comes up on screen, and the
+     * workshop is where the garden is grown from.
      */
     private suspend fun announceGrowthIfDue(now: Long) {
-        if (postLetters.gardenCanGrowIfDue(now) != null) _messages.trySend(R.string.msg_garden_can_grow)
+        postLetters.gardenCanGrowIfDue(now)
     }
 
     /** Advances every plant to the current time. Called on resume and on a timer while visible. */
@@ -815,7 +808,7 @@ class GardenViewModel @Inject constructor(
                     // that it is finished (and a new page, if any): no "+XP" on it or beside it.
                     showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
                 }
-            ) { now, _ -> unveilBuilding(site.instanceId, now).also { if (it == ActionResult.SUCCESS) announceGrowthIfDue(now) } }
+            ) { now, _ -> unveilBuilding(site.instanceId, now) }
         } else if (_hoeActive.value) {
             if (tile != null) {
                 act(
@@ -978,20 +971,6 @@ class GardenViewModel @Inject constructor(
 
     fun closeCrate() {
         _openingCrateId.value = null
-    }
-
-    /**
-     * Grows the garden by a ring of lawn. Everything in it moves one cell along, so the selection
-     * (which is a cell, not a thing) is let go of.
-     */
-    fun expand() {
-        act(
-            onSuccess = {
-                _selectedTile.value = null
-                audio.play(SoundEffect.LEVEL_UP)
-                _messages.trySend(R.string.msg_garden_expanded)
-            }
-        ) { _, _ -> expandGarden() }
     }
 
     fun fertilizeSelected() = withSelectedObject { obj ->

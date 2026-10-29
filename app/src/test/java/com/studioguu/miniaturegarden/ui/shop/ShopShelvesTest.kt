@@ -25,8 +25,8 @@ class ShopShelvesTest {
     }
 
     @Test
-    fun `every item is sold in exactly one shop, in some season`() {
-        for (item in GardenItem.entries) {
+    fun `every item on sale is sold in exactly one shop, in some season`() {
+        for (item in GardenItem.entries.filter { it.inShop }) {
             val shops = ShopStage.entries.filter { stage ->
                 Season.entries.any { season -> ShopShelves.stock(stage, season, veteran, 10_000, false).any { it.item == item } }
             }

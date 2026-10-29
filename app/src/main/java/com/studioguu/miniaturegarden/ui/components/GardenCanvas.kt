@@ -167,8 +167,6 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  *   view (the title's sample garden).
  * @param editing something is being placed or moved, or the hoe is in hand: taps are read on
  *   the ground only, since a cell is being looked for.
- * @param growableId the symbol building the garden can grow from now, if any: a bubble over it
- *   says so, and tapping the bubble picks it.
  * @param onZoomChanged told the zoom at every change, as it happens (the debug read-out).
  * @param bareGround what a cell with nothing laid on it looks like: the untilled wasteland of a
  *   garden being made, or the lawn of the title's garden in full swing.
@@ -199,7 +197,6 @@ fun GardenCanvas(
     initialZoom: Float = 1f,
     season: Season = Season.SPRING,
     editing: Boolean = false,
-    growableId: String? = null,
     onZoomChanged: ((Float) -> Unit)? = null,
     bareGround: BareGround = BareGround.WASTELAND,
     /**
@@ -277,7 +274,6 @@ fun GardenCanvas(
     val currentGrid by rememberUpdatedState(grid)
     val currentObjects by rememberUpdatedState(gridObjects)
     val currentEditing by rememberUpdatedState(editing)
-    val currentGrowableId by rememberUpdatedState(growableId)
     // The wind's clock. It is read while drawing only, so a new value redraws the garden without
     // recomposing anything. A breeze is slow: a modest frame rate is plenty and saves battery.
     // Held still while something covers the garden, so that a sheet sliding up over it has the
@@ -362,7 +358,6 @@ fun GardenCanvas(
                     // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
                     val tile = TapTargets.resolve(
                         position, transform, currentGrid, currentObjects, currentEditing, minReach = BUBBLE_MIN_REACH.toPx(),
-                        growableId = currentGrowableId,
                     )
                     currentOnTileTapped(tile)
                 }
@@ -426,12 +421,6 @@ fun GardenCanvas(
         val pops = if (bursts.isEmpty()) emptyMap() else bursts.associate { it.gridObject.instanceId to it.progress.value }
         val fades = if (fadeAlpha >= 1f) emptyMap() else fadingIds.associateWith { fadeAlpha }
         submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience, pops = pops, fades = fades, lawn = lawn)
-        // The garden can grow: a bubble over the building it is grown from.
-        gridObjects.firstOrNull { it.instanceId == growableId }?.let { building ->
-            pipeline.submit(RenderLayer.TOP_EFFECTS) {
-                drawGrowBubble(TapTargets.growBubbleTip(building, transform), transform.tileWidth, ambience.windMillis ?: 0L)
-            }
-        }
         for (ghost in ghosts) {
             submitObjects(
                 pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
@@ -996,25 +985,6 @@ private fun DrawScope.drawWorkSite(transform: IsometricTransform, obj: GridObjec
  *
  * @param tip where the bubble's tail points, just above the site.
  */
-/**
- * The "the garden can grow" bubble over the symbol building: the same round speech bubble as the
- * "✨ ！" one, edged in leaf green, with arrows pointing out to its corners.
- */
-private fun DrawScope.drawGrowBubble(tip: Offset, unit: Float, clock: Long) {
-    val (centre, radius) = drawSpeechBubble(tip, unit, clock, GROW_EDGE)
-    val reach = radius * 0.5f
-    val head = radius * 0.2f
-    val stroke = radius * 0.13f
-    for ((dx, dy) in listOf(1f to -1f, -1f to 1f, 1f to 1f, -1f to -1f)) {
-        val end = centre + Offset(dx * reach, dy * reach * 0.8f)
-        drawLine(GROW_EDGE, centre, end, stroke, StrokeCap.Round)
-        drawLine(GROW_EDGE, end, end - Offset(dx * head, 0f), stroke, StrokeCap.Round)
-        drawLine(GROW_EDGE, end, end - Offset(0f, dy * head), stroke, StrokeCap.Round)
-    }
-}
-
-private val GROW_EDGE = Color(0xFF6E9E3A)
-
 /**
  * A round speech bubble bobbing over [tip], its tail pointing down at it, edged in [edge].
  * @return its middle and its radius, for what is drawn inside it.

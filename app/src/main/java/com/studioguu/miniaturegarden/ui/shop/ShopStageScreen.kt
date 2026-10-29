@@ -62,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.RewardType
@@ -78,6 +79,7 @@ import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
+import com.studioguu.miniaturegarden.ui.hud.ExpandConfirmDialog
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.ItemIcon
 import com.studioguu.miniaturegarden.ui.seasonEmoji
@@ -107,7 +109,9 @@ fun ShopStageScreen(
     val notice by viewModel.notice.collectAsStateWithLifecycle()
     val bonusRemaining by viewModel.bonusRemaining.collectAsStateWithLifecycle()
     val adReady by viewModel.adReady.collectAsStateWithLifecycle()
+    val expansion by viewModel.expansion.collectAsStateWithLifecycle()
     var confirmBonus by rememberSaveable { mutableStateOf(false) }
+    var confirmExpand by rememberSaveable { mutableStateOf(false) }
     /** Price of the item the player could not afford, while that dialog is open. */
     var shortFor by rememberSaveable { mutableStateOf<Int?>(null) }
     val activity = LocalContext.current.findActivity()
@@ -135,8 +139,10 @@ fun ShopStageScreen(
         season = season,
         inHand = inHand,
         message = message,
-        bonusLabel = stringResource(R.string.reward_bonus_button, RewardType.COIN_BONUS_AMOUNT, bonusRemaining, RewardType.COIN_BONUS.dailyLimit),
+        bonusLabel = stringResource(R.string.reward_bonus_button, bonusRemaining, RewardType.COIN_BONUS.dailyLimit),
         bonusEnabled = bonusAvailable,
+        expansion = expansion,
+        onExpand = { confirmExpand = true },
         onGoTo = viewModel::goTo,
         onInspect = viewModel::inspect,
         onPutBack = viewModel::putBack,
@@ -153,7 +159,7 @@ fun ShopStageScreen(
             buttons = {
                 CarvedButton(text = stringResource(R.string.action_close), onClick = { shortFor = null })
                 WoodButton(
-                    text = stringResource(R.string.reward_bonus_short, RewardType.COIN_BONUS_AMOUNT),
+                    text = stringResource(R.string.reward_bonus_short),
                     onClick = {
                         shortFor = null
                         confirmBonus = true
@@ -168,13 +174,24 @@ fun ShopStageScreen(
 
     if (confirmBonus) {
         RewardConfirmDialog(
-            message = stringResource(R.string.reward_bonus_confirm, RewardType.COIN_BONUS_AMOUNT),
+            message = stringResource(R.string.reward_bonus_confirm),
             confirmLabel = stringResource(R.string.reward_bonus_confirm_ok),
             onConfirm = {
                 confirmBonus = false
                 activity?.let(viewModel::claimBonus)
             },
             onDismiss = { confirmBonus = false },
+        )
+    }
+
+    if (confirmExpand && expansion.check == ExpansionCheck.READY) {
+        ExpandConfirmDialog(
+            price = expansion.price,
+            onConfirm = {
+                confirmExpand = false
+                viewModel.expand()
+            },
+            onDismiss = { confirmExpand = false },
         )
     }
 }
@@ -205,6 +222,8 @@ fun ShopStageContent(
     onBonus: () -> Unit,
     onLeave: () -> Unit,
     modifier: Modifier = Modifier,
+    expansion: ExpansionOffer? = null,
+    onExpand: () -> Unit = {},
 ) {
     Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {
         // The room: each shop has its own walls. The new room fades in quickly over the old one,
@@ -235,6 +254,9 @@ fun ShopStageContent(
                 ) {
                     if (shown == ShopStage.SEEDS) {
                         ChalkNote(stringResource(R.string.shop_season_caption))
+                    }
+                    if (shown == ShopStage.WORKSHOP && expansion != null) {
+                        ExpansionBoard(expansion, onExpand)
                     }
                     // Shelves belong to the shop on show; while one fades out, the other's are not drawn twice.
                     if (shown == stage) {
@@ -370,6 +392,56 @@ private fun ChalkNote(text: String) {
         )
     }
 }
+
+/**
+ * The workshop's board for growing the garden. Before the level for it, it says at which level
+ * (and nothing of how far off that is); with the level but not the coins, it shows the price on a
+ * button that cannot be pressed (and nothing of how many are missing); with both, the button asks
+ * first ([ExpandConfirmDialog]). The garden's size is never written on it.
+ */
+@Composable
+private fun ExpansionBoard(offer: ExpansionOffer, onExpand: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = GardenColors.Parchment.copy(alpha = 0.95f),
+        shadowElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth().testTag(EXPANSION_BOARD_TAG),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text("🏡", fontSize = 26.sp)
+            Text(
+                text = stringResource(R.string.expand_button),
+                style = MaterialTheme.typography.titleSmall,
+                color = GardenColors.Ink,
+                modifier = Modifier.weight(1f),
+            )
+            when (offer.check) {
+                ExpansionCheck.NEEDS_LEVEL -> Text(
+                    text = stringResource(R.string.expand_needs_level, offer.level),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = GardenColors.InkSoft,
+                )
+                ExpansionCheck.AT_MAX_SIZE -> Text(
+                    text = stringResource(R.string.expand_max),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = GardenColors.InkSoft,
+                )
+                ExpansionCheck.NEEDS_COINS, ExpansionCheck.READY -> WoodButton(
+                    text = stringResource(R.string.expand_price, offer.price),
+                    onClick = onExpand,
+                    enabled = offer.check == ExpansionCheck.READY,
+                )
+            }
+        }
+    }
+}
+
+/** Test tag of the workshop's board for growing the garden. */
+const val EXPANSION_BOARD_TAG = "shop_expansion_board"
 
 /** One wooden shelf with up to [ShopShelves.PER_SHELF] things standing on it. */
 @Composable
@@ -569,8 +641,6 @@ private fun ItemCard(thing: ShelfItem, message: ShopMessage?, onBuy: (GardenItem
 private fun ItemFacts(item: GardenItem) {
     val facts = buildList {
         (item.unlock as? UnlockCondition.CollectionPages)?.let { add(stringResource(R.string.shop_card_pages, it.pages)) }
-        // What the symbol building is for: growing the garden.
-        if (item.isSymbol) add(stringResource(R.string.shop_card_symbol))
         when (StructureEffect.forObjectId(item.objectId)) {
             StructureEffect.WELL -> add(stringResource(R.string.hint_well_effect))
             StructureEffect.HUT -> add(stringResource(R.string.hint_hut_effect))

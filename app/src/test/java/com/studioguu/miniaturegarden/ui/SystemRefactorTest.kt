@@ -62,7 +62,7 @@ class SystemRefactorTest {
 
     @Test
     fun `growing the garden is asked about kindly and without cell counts`() {
-        assertEquals("お庭を広げますか？", string("expand_confirm_title"))
+        assertEquals("お庭を一回り広げますか？", string("expand_confirm_title"))
         for (name in listOf("expand_button", "expand_needs_level", "expand_confirm_title", "expand_confirm_text", "letter_grow_body")) {
             val text = string(name)
             assertFalse("$name shows a grid size", text.contains("×") || Regex("\\d+x\\d+").containsMatchIn(text))
@@ -76,10 +76,10 @@ class SystemRefactorTest {
     @Test
     fun `the gauge runs from empty at a new level to full at the next`() {
         assertEquals(0f, LevelTable.progressInLevel(0, 1), 0f)
-        assertEquals(0.5f, LevelTable.progressInLevel(50, 1), 1e-6f)
-        // Lv.2 at 100, Lv.3 at 300: 100 XP into Lv.2 is half way.
-        assertEquals(0f, LevelTable.progressInLevel(100, 2), 0f)
-        assertEquals(0.5f, LevelTable.progressInLevel(200, 2), 1e-6f)
+        assertEquals(0.5f, LevelTable.progressInLevel(40, 1), 1e-6f)
+        // Lv.2 at 80, Lv.3 at 380: 150 XP into Lv.2 is half way.
+        assertEquals(0f, LevelTable.progressInLevel(80, 2), 0f)
+        assertEquals(0.5f, LevelTable.progressInLevel(230, 2), 1e-6f)
         assertEquals(1f, LevelTable.progressInLevel(10_000, 2), 0f)
         assertEquals(1f, LevelTable.progressInLevel(0, LevelTable.MAX_LEVEL), 0f)
     }
@@ -114,7 +114,7 @@ class SystemRefactorTest {
         assertEquals(13, GardenExpansion.nextStage(GridObject.GRID_SIZE)?.size)
         assertEquals(11, GardenExpansion.nextStage(GridObject.LEGACY_GRID_SIZE)?.size)
         assertEquals(GridObject.LEGACY_GRID_SIZE, GardenProgress.EXISTING_GARDEN.gardenSize)
-        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(13, emptyList(), 99))
+        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(13, 99, 0L))
     }
 
     // --- 5. Fewer frames ---

@@ -53,21 +53,21 @@ class ShiitakeTest {
     fun `it takes the pumpkin's place in the shop, the book and its numbers`() {
         val shiitake = PlantSpecies.SHIITAKE
         assertEquals("plant_shiitake", shiitake.objectId)
-        assertEquals(listOf(132, 30, 190, 160), listOf(shiitake.growthHours, shiitake.dryOutHours, shiitake.harvestCoins, shiitake.harvestXp))
+        assertEquals(listOf(48, 30, 100, 65), listOf(shiitake.growthHours, shiitake.dryOutHours, shiitake.harvestCoins, shiitake.harvestXp))
         assertEquals(3, shiitake.growthStages)
         assertEquals(HarvestType.REPEATABLE_HARVEST, shiitake.harvestType)
         assertEquals(PlantGround.LOG, shiitake.ground)
         val seed = GardenItem.SEED_SHIITAKE
         assertEquals("seed_shiitake", seed.itemId)
-        assertEquals(70, seed.price)
-        assertEquals(UnlockCondition.PlayerLevel(5), seed.unlock)
+        assertEquals(45, seed.price)
+        assertEquals(UnlockCondition.PlayerLevel(14), seed.unlock)
         assertEquals(setOf(Season.AUTUMN), seed.seasons)
         assertEquals(90, CollectionEntry.SHIITAKE.discoveryCoins)
         assertNull(PlantSpecies.fromObjectId("plant_pumpkin"))
         assertNull(GardenItem.fromItemId("seed_pumpkin"))
-        // Its later harvests pay like the other crops that bear again: under a third of the coins, half the experience.
-        assertEquals(57, shiitake.regrowCoins)
-        assertEquals(80, shiitake.regrowXp)
+        // Its later harvests pay like the other crops that bear again: about half, in half the time.
+        assertEquals(50, shiitake.regrowCoins)
+        assertEquals(33, shiitake.regrowXp)
     }
 
     @Test
@@ -220,11 +220,11 @@ class ShiitakeTest {
         val log = repo.objects.getValue("log")
         assertEquals(PlantSpecies.SHIITAKE.regrowFrom, log.growthProgress, 1e-6f)
         assertEquals(0.5f, log.growthProgress, 1e-6f)
-        assertEquals(before + 190, repo.profile!!.coins)
+        assertEquals(before + 100, repo.profile!!.coins)
         // The next crop on it pays the smaller amount.
         repo.put(log.copy(growthProgress = 1f, lastUpdatedTimestamp = t0 + hour))
         assertEquals(ActionResult.SUCCESS, harvest("log", t0 + hour, WeatherType.SUNNY))
-        assertEquals(before + 190 + 57, repo.profile!!.coins)
+        assertEquals(before + 100 + 50, repo.profile!!.coins)
     }
 
     // --- Saved gardens from before ---

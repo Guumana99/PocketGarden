@@ -43,6 +43,10 @@ class GardenActionUseCasesTest {
     private val skip = SkipTimeUseCase(repo, calc)
     private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, security), calc)
 
+    /** A rose: 36 h to grow and 36 h to dry out, long enough to watch half a day go by. */
+    private fun rose(id: String = "p1", x: Int = 0, moisture: Float = 1f) =
+        tulip(id = id, x = x, moisture = moisture).copy(objectId = PlantSpecies.ROSE.objectId)
+
     private fun tulip(
         id: String = "p1",
         x: Int = 0,
@@ -61,27 +65,27 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `watering adds to moisture after applying the time already passed`() = runBlocking {
-        repo.put(tulip())
+        repo.put(rose())
 
-        assertEquals(ActionResult.SUCCESS, care.water("p1", t0 + 12 * hour, sunny))
+        assertEquals(ActionResult.SUCCESS, care.water("p1", t0 + 18 * hour, sunny))
 
         val watered = stored()
-        assertEquals(0.5f + CareForPlantUseCase.WATER_AMOUNT, watered.moistureLevel, 1e-4f) // 50% after 12 h, then +35
-        assertEquals(0.25f, watered.growthProgress, 1e-4f)  // the 12 h before watering still counted
-        assertEquals(t0 + 12 * hour, watered.lastUpdatedTimestamp)
+        assertEquals(0.5f + CareForPlantUseCase.WATER_AMOUNT, watered.moistureLevel, 1e-4f) // 50% after 18 of 36 h, then +35
+        assertEquals(0.5f, watered.growthProgress, 1e-4f)  // the 18 h before watering still counted
+        assertEquals(t0 + 18 * hour, watered.lastUpdatedTimestamp)
     }
 
     @Test
     fun `time before watering is not counted again by later offline progress`() = runBlocking {
-        repo.put(tulip())
-        care.water("p1", t0 + 12 * hour, sunny)
+        repo.put(rose())
+        care.water("p1", t0 + 18 * hour, sunny)
 
-        val later = calc(stored(), t0 + 24 * hour, sunny)
+        val later = calc(stored(), t0 + 27 * hour, sunny)
 
-        // 24 healthy hours in total -> half grown; 85% at the watering, 12 h of drying since.
-        assertEquals(0.5f, later.growthProgress, 1e-4f)
-        assertEquals(0.85f - 0.5f, later.moistureLevel, 1e-4f)
-        assertEquals(1f - 24f / 72f, later.nutritionLevel, 1e-4f)
+        // 27 healthy hours of 36 in total; 85% at the watering, 9 h of drying since.
+        assertEquals(0.75f, later.growthProgress, 1e-4f)
+        assertEquals(0.85f - 0.25f, later.moistureLevel, 1e-4f)
+        assertEquals(1f - 27f / 72f, later.nutritionLevel, 1e-4f)
     }
 
     @Test
@@ -228,33 +232,30 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `harvest pays the species' own coins and experience and can level the player up`() = runBlocking {
-        repo.profile = UserProfile(coins = 0, currentXp = 200, playerLevel = 2)
+        repo.profile = UserProfile(coins = 0, currentXp = 350, playerLevel = 2)
         repo.discover(CollectionEntry.ROSE)
         repo.put(tulip(growth = 1f).copy(objectId = PlantSpecies.ROSE.objectId))
 
         assertEquals(ActionResult.SUCCESS, harvest("p1", t0, sunny))
 
-        assertEquals(160L, repo.profile?.coins)
-        assertEquals(340L, repo.profile?.currentXp)
-        assertEquals(3, repo.profile?.playerLevel) // 340 XP is past the 300 needed for Lv.3
+        assertEquals(PlantSpecies.ROSE.harvestCoins.toLong(), repo.profile?.coins)
+        assertEquals(390L, repo.profile?.currentXp)
+        assertEquals(3, repo.profile?.playerLevel) // 390 XP is past the 380 needed for Lv.3
     }
 
     // --- Species ---
 
     @Test
     fun `each species grows and dries at its own pace`() {
-        fun after12h(species: PlantSpecies) =
-            calc(tulip().copy(objectId = species.objectId), t0 + 12 * hour, sunny)
+        fun after3h(species: PlantSpecies) =
+            calc(tulip().copy(objectId = species.objectId), t0 + 3 * hour, sunny)
 
         for (species in PlantSpecies.entries) {
-            val plant = after12h(species)
-            assertEquals(species.name, 12f / species.growthHours, plant.growthProgress, 1e-4f)
-            assertEquals(species.name, 1f - 12f / species.dryOutHours, plant.moistureLevel, 1e-4f)
+            val plant = after3h(species)
+            assertEquals(species.name, 3f / species.growthHours, plant.growthProgress, 1e-4f)
+            assertEquals(species.name, 1f - 3f / species.dryOutHours, plant.moistureLevel, 1e-4f)
         }
-        // Slower plants are worth more.
-        val byGrowth = PlantSpecies.entries.sortedBy { it.growthHours }
-        assertEquals(byGrowth, PlantSpecies.entries.sortedBy { it.harvestCoins })
-        assertEquals(byGrowth, PlantSpecies.entries.sortedBy { it.harvestXp })
+        // What each is worth for a bed and a day is ProgressionTest's business.
     }
 
     @Test
@@ -305,15 +306,15 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `skipping time advances plants exactly like waiting`() = runBlocking {
-        repo.put(tulip())
-        repo.put(tulip(id = "p2", x = 1, moisture = 0.3f))
+        repo.put(rose())
+        repo.put(rose(id = "p2", x = 1, moisture = 0.3f))
         val waited = listOf(calc(stored("p1"), t0 + 6 * hour, sunny), calc(stored("p2"), t0 + 6 * hour, sunny))
 
         assertEquals(ActionResult.SUCCESS, skip(6 * hour, t0, sunny))
 
         // Same levels as waiting six hours, but anchored at the present.
         assertEquals(waited.map { it.copy(lastUpdatedTimestamp = t0) }, listOf(stored("p1"), stored("p2")))
-        assertEquals(0.125f, stored("p1").growthProgress, 1e-4f)
+        assertEquals(6f / 36f, stored("p1").growthProgress, 1e-4f)
         assertEquals(0, repo.profileSaves)
     }
 
@@ -324,7 +325,7 @@ class GardenActionUseCasesTest {
 
         skip(hour, t0, sunny)
         skip(hour, t0, sunny)
-        assertEquals(2f / 48f, stored().growthProgress, 1e-4f)
+        assertEquals(2f / 6f, stored().growthProgress, 1e-4f)
 
         skip(30 * 24 * hour, t0, sunny)
         assertEquals(PlantStatus.WITHERED, stored("s").status)
@@ -517,7 +518,7 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.SUCCESS, harvest("p1", t0, sunny))
 
         assertTrue(repo.objects.isEmpty())
-        assertEquals(60L, repo.profile?.coins)
+        assertEquals(32L, repo.profile?.coins)
         assertEquals(1, repo.profileSaves)
     }
 
@@ -526,7 +527,8 @@ class GardenActionUseCasesTest {
         repo.profile = UserProfile()
         repo.put(tulip(growth = 0.9f))
 
-        assertEquals(ActionResult.NOT_READY, harvest("p1", t0 + hour, sunny))
+        // A tenth of a 6 h tulip is 36 minutes.
+        assertEquals(ActionResult.NOT_READY, harvest("p1", t0 + hour / 4, sunny))
         assertEquals(ActionResult.SUCCESS, harvest("p1", t0 + 6 * hour, sunny))
     }
 
@@ -568,7 +570,7 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.SUCCESS, purchase(GardenItem.SEED_TULIP))
 
         assertEquals(InventorySlot(1, GardenItem.SEED_TULIP.itemId, 1), repo.slots.getValue(1).contents())
-        assertEquals(80L, repo.profile?.coins)
+        assertEquals(90L, repo.profile?.coins)
         assertEquals(1, repo.profileSaves)
     }
 
@@ -588,7 +590,7 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `purchase fails without charging when coins or space run out`() = runBlocking {
-        repo.profile = UserProfile(coins = 19, inventoryCapacity = 1)
+        repo.profile = UserProfile(coins = 9, inventoryCapacity = 1)
         repo.putSlot(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1))
         // A slot beyond the unlocked capacity must not be used.
         repo.putSlot(InventorySlot(1))
@@ -622,10 +624,10 @@ class GardenActionUseCasesTest {
         repo.putSlot(InventorySlot(1))
 
         repo.profile = UserProfile(coins = 500, playerLevel = 2, currentXp = 100)
-        assertEquals(ActionResult.SUCCESS, purchase(GardenItem.SEED_SUNFLOWER))
+        assertEquals(ActionResult.SUCCESS, purchase(GardenItem.SEED_CARROT))
         assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.STRUCT_WELL))
 
-        repo.profile = repo.profile!!.gainXp(200) // 300 XP -> Lv.3
+        repo.profile = repo.profile!!.gainXp(2_480) // 2,580 XP -> Lv.5
         assertEquals(ActionResult.SUCCESS, purchase(GardenItem.STRUCT_WELL))
         assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.STRUCT_HUT))
     }
@@ -642,13 +644,13 @@ class GardenActionUseCasesTest {
     @Test
     fun `sync applies offline progress and re-stamps the profile`() = runBlocking {
         repo.profile = UserProfile()
-        repo.put(tulip())
+        repo.put(rose())
 
-        val integrity = sync(t0 + 12 * hour, sunny)
+        val integrity = sync(t0 + 9 * hour, sunny)
 
         assertTrue(integrity.isTrusted)
         assertEquals(0.25f, stored().growthProgress, 1e-4f)
-        assertEquals(0.5f, stored().moistureLevel, 1e-4f)
+        assertEquals(0.75f, stored().moistureLevel, 1e-4f)
         assertEquals(1, repo.profileSaves)
     }
 
