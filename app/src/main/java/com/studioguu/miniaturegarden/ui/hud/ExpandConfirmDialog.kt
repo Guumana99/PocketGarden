@@ -15,18 +15,18 @@ import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
 
 /**
- * Asked before the garden grows (#55): growing cannot be undone, and everything in the garden
- * moves one cell along to stay in the middle, so it is not done on a single tap of the symbol
- * building's panel. The wording speaks of the garden growing "one ring larger" rather than of a
- * grid size: the player never sees cell counts. Cancelling, or tapping outside, leaves the garden as it is.
+ * Asked before the garden grows (#55): growing costs [price] coins and cannot be undone, so it is
+ * not done on a single tap of the workshop's board. The wording speaks of the garden growing "one
+ * ring larger" rather than of a grid size: the player never sees cell counts. Cancelling, or
+ * tapping outside, leaves the garden as it is.
  */
 @Composable
-fun ExpandConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun ExpandConfirmDialog(price: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         modifier = Modifier.popIn(),
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.expand_confirm_title)) },
-        text = { Text(stringResource(R.string.expand_confirm_text)) },
+        text = { Text(stringResource(R.string.expand_confirm_text, price)) },
         // Side by side and centred, cancel first, like the other wooden dialogs.
         confirmButton = {
             Row(

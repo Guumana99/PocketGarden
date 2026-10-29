@@ -151,11 +151,11 @@ class RiverAndWeatherTest {
     fun `rain makes plants grow a fifth faster and keeps the soil moist`() {
         val start = tulip("p", 0, 0)
 
-        val sunny = calc(start, t0 + 10 * hour, WeatherType.SUNNY)
-        val rainy = calc(start, t0 + 10 * hour, WeatherType.RAINY)
+        val sunny = calc(start, t0 + 3 * hour, WeatherType.SUNNY)
+        val rainy = calc(start, t0 + 3 * hour, WeatherType.RAINY)
 
-        assertEquals(10f / 48f, sunny.growthProgress, 1e-4f)
-        assertEquals(10f / 48f * 1.2f, rainy.growthProgress, 1e-4f)
+        assertEquals(3f / 6f, sunny.growthProgress, 1e-4f)
+        assertEquals(3f / 6f * 1.2f, rainy.growthProgress, 1e-4f)
         assertEquals(1f, rainy.moistureLevel, 0f)
         assertTrue(sunny.moistureLevel < 1f)
     }

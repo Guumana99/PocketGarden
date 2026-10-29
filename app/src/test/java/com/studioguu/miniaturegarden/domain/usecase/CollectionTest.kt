@@ -40,7 +40,8 @@ class CollectionTest {
 
     @Test
     fun `the encyclopedia has a page for every object in the shop, keyed by object id`() {
-        val shopObjects = GardenItem.entries.map { it.objectId }.toSet()
+        // What waits for its pictures gets its page along with them.
+        val shopObjects = GardenItem.entries.filter { it.inShop }.map { it.objectId }.toSet()
         assertEquals(shopObjects, CollectionEntry.entries.map { it.objectId }.toSet())
         assertEquals(CollectionEntry.entries.size, CollectionEntry.entries.map { it.objectId }.toSet().size)
     }
@@ -288,18 +289,18 @@ class CollectionTest {
         repo.put(grown("b", PlantSpecies.TULIP, x = 1))
 
         harvest("a", t0, sunny)
-        assertEquals(50L, repo.profile?.coins)
-        assertEquals(50L, repo.profile?.currentXp)
+        assertEquals(22L, repo.profile?.coins)
+        assertEquals(10L, repo.profile?.currentXp)
         assertEquals(1, repo.profileSaves)
         assertFalse(repo.collection.getValue("plant_tulip").revealed)
 
         harvest("b", t0, sunny)
-        assertEquals(100L, repo.profile?.coins)
+        assertEquals(44L, repo.profile?.coins)
         assertEquals(2, repo.collection["plant_tulip"]?.count)
 
         // The discovery coins come when the player fills the page in.
         assertEquals(20, reveal(CollectionEntry.TULIP))
-        assertEquals(120L, repo.profile?.coins)
+        assertEquals(64L, repo.profile?.coins)
     }
 
     @Test

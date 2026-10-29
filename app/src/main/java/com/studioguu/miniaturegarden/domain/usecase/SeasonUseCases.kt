@@ -74,11 +74,11 @@ class PostLettersUseCase @Inject constructor(
         PostOffice.nextTip(gardenRepository.getLetters(), season, now)?.takeIf { gardenRepository.postLetter(it) }
     }
 
-    /** Posts word that the garden can grow, if it can now and that has not been said ([PostOffice.gardenCanGrow]). */
+    /** Posts word that the garden can grow, once the level for it is reached, if that has not been said ([PostOffice.gardenCanGrow]). */
     suspend fun gardenCanGrowIfDue(now: Long): Letter? = gardenRepository.runInTransaction {
         val progress = gardenRepository.getProgress() ?: return@runInTransaction null
         val level = gardenRepository.getUserProfile()?.playerLevel ?: return@runInTransaction null
-        PostOffice.gardenCanGrow(progress.gardenSize, gardenRepository.getGridObjects(), level, gardenRepository.getLetters(), progress.season, now)
+        PostOffice.gardenCanGrow(progress.gardenSize, level, gardenRepository.getLetters(), progress.season, now)
             ?.takeIf { gardenRepository.postLetter(it) }
     }
 

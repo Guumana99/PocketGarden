@@ -17,49 +17,48 @@ enum class ItemCategory {
  * put on the garden. A new item is added here and nowhere else; the shop's shelves, the
  * inventory and the placement rules all read from this list.
  *
- * At a glance (coins; a plant's own numbers live in [PlantSpecies]):
+ * At a glance (coins; a plant's own numbers live in [PlantSpecies]; "regrows" is each harvest
+ * after the first of a crop that bears again):
  *
  *     shelf        item         unlock        price  what it is for
- *     crops        tulip        from start      20   50 coins + 50 XP after 48 h
- *                  sunflower    Lv.2            35   90 coins + 80 XP after 72 h, dries out fast
- *                  rose         Lv.4            60   160 coins + 140 XP after 120 h
- *                  cosmos       from start      20   64 coins + 60 XP after 60 h (autumn only)
- *                  snowdrop     from start      20   58 coins + 55 XP after 54 h (winter only)
- *                  mint         from start      15   35 coins + 35 XP after 36 h (any season)
- *                  tomato       from start      20   54 coins + 52 XP after 48 h (summer only), dries out fast;
- *                                                    bears again: 17 coins + 26 XP every 24 h after that
- *                  strawberry   from start      20   48 coins + 44 XP after 42 h (spring only);
- *                                                    bears again: 14 coins + 22 XP every 21 h after that
- *                  daikon       Lv.2            30   80 coins + 70 XP after 64 h (autumn and winter)
- *                  watermelon   Lv.3            45   122 coins + 110 XP after 96 h (summer only), dries out fast
- *                  lavender     Lv.3            40   108 coins + 96 XP after 84 h (any season)
- *                  shiitake     Lv.5            70   190 coins + 160 XP after 132 h (autumn only), on a log laid on
- *                                                    open earth or a bed; bears again: 57 coins + 80 XP after that
- *                  poinsettia   Lv.5            70   180 coins + 150 XP after 120 h (winter only)
- *                  paprika      Lv.4            55   140 coins + 118 XP after 100 h (summer only);
- *                                                    bears again: 42 coins + 59 XP every 50 h after that
- *                  carrot       Lv.2            25   72 coins + 68 XP after 62 h (spring and autumn)
- *                  eggplant     Lv.3            40   102 coins + 88 XP after 78 h (summer only), dries out fast;
- *                                                    bears again: 30 coins + 42 XP after that
- *                  wheat        Lv.4            45   128 coins + 114 XP after 98 h (autumn only)
- *                  corn         Lv.5            60   185 coins + 155 XP after 126 h (summer only)
+ *     crops        mint         from start       5   13 coins + 7 XP after 4 h (any season)
+ *                  tulip        from start      10   22 coins + 10 XP after 6 h (spring)
+ *                  cosmos       from start      10   22 coins + 10 XP after 10 h (autumn)
+ *                  snowdrop     from start      10   22 coins + 10 XP after 10 h (winter)
+ *                  strawberry   from start       5   16 coins + 14 XP after 6 h (spring); regrows 8 + 7 in 3 h
+ *                  tomato       from start      10   20 coins + 15 XP after 8 h (summer); regrows 9 + 8 in 4 h
+ *                  carrot       Lv.2            20   47 coins + 22 XP after 16 h (spring and autumn)
+ *                  sunflower    Lv.3            20   50 coins + 22 XP after 20 h (summer)
+ *                  daikon       Lv.4            20   50 coins + 23 XP after 18 h (autumn and winter)
+ *                  lavender     Lv.5            20   52 coins + 24 XP after 24 h (any season)
+ *                  eggplant     Lv.6            15   34 coins + 25 XP after 22 h (summer); regrows 17 + 12 in 11 h
+ *                  wheat        Lv.7            35   90 coins + 39 XP after 30 h (autumn)
+ *                  rose         Lv.8            40   105 coins + 40 XP after 36 h (spring and autumn)
+ *                  watermelon   Lv.9            40   100 coins + 42 XP after 30 h (summer)
+ *                  hakusai      Lv.10           40   105 coins + 43 XP after 30 h (winter)      not on sale yet
+ *                  paprika      Lv.11           40   90 coins + 58 XP after 32 h (summer); regrows 45 + 29 in 16 h
+ *                  nanohana     Lv.12           45   115 coins + 45 XP after 32 h (spring)      not on sale yet
+ *                  corn         Lv.13           65   165 coins + 63 XP after 42 h (summer)
+ *                  shiitake     Lv.14           45   100 coins + 65 XP after 48 h (autumn), on a log; regrows 50 + 33 in 24 h
+ *                  poinsettia   Lv.15           70   175 coins + 67 XP after 40 h (winter)
  *     structures   fence        from start      15   joins its neighbours; 20 s to build
- *                  well         Lv.3            80   30 XP; soil round it dries half as fast; 30 min to build
- *                  windmill     Lv.4           120   45 XP; 2x2, its sails turn; soil within two cells dries a little slower; 45 min
- *                  hut          Lv.5           150   60 XP; plants round it grow 10 % faster; 1 h
- *                  cottage      Lv.6           300   100 XP; symbol building (one per garden, 3x3); lets the garden grow; 2 h
- *                  greenhouse   Lv.18          300   40 XP; one cell of soil under glass, sown in any season
+ *                  cottage      Lv.3           800   100 XP; symbol building (one per garden, 3x3); 2 h
+ *                  well         Lv.5           400   30 XP; soil round it dries half as fast; 30 min to build
+ *                  windmill     Lv.9         1,200   45 XP; 2x2, its sails turn; soil within two cells dries a little slower; 45 min
+ *                  hut          Lv.11        2,000   60 XP; plants round it grow 10 % faster; 1 h
+ *                  greenhouse   Lv.18        3,000   40 XP; one cell of soil under glass, sown in any season
  *     decorations  grass        from start      10   ground cover
  *                  pebble       from start      10   ground cover
  *                  cobblestone  from start      10   paving; things can stand on it
  *                  river tile   from start      10   terrain; nothing can stand on it
  *                  flowers      from start      15   ground cover
  *                  wooden deck  2 book pages    12   paving; things can stand on it
- *                  rock         Lv.2            30   ornament
- *                  bench        Lv.2            40   ornament
+ *                  rock         Lv.2            60   ornament
+ *                  bench        Lv.3           100   ornament
+ *                  pond         Lv.4           120   water; ponds side by side are one pool
  *                  lantern      4 book pages    60   ornament
- *                  sprinkler    Lv.3            70   while on, the soil round it hardly dries
- *                  pond         Lv.4            75   water; ponds side by side are one pool
+ *                  weathervane  Lv.6           500   ornament; tomorrow's weather can be read      not on sale yet
+ *                  sprinkler    Lv.7           450   while on, the soil round it hardly dries
  *
  * Which of these have finished pictures and which are drawn in code for now: docs/ASSETS.md,
  * "ショップの取扱一覧". Keep the two in step.
@@ -68,18 +67,17 @@ enum class ItemCategory {
  * season has a crop of its own open from the start (summer's is the tomato), and mint grows in all.
  *
  * How the prices hang together:
- * - A new player has 100 coins and one tulip seed, from the starter crate. Everything "from start" costs 20 or less,
- *   so the first session can already shape the garden, and two tulip harvests buy anything on
- *   the first tier several times over.
- * - Each plant earns more per hour than the one before it, which is what makes the next level
- *   worth reaching. A crop that bears again pays less for each later harvest, at the same rate
- *   per hour as its first one: no seed to buy and no sowing is its whole advantage.
+ * - A new player has 100 coins and one tulip seed, from the starter crate. Everything "from start" costs 15 or less,
+ *   so the first session can already shape the garden.
+ * - A crop opened later earns at least as much for a bed and a day as anything sown in the same
+ *   season before it, for a player who looks in three times a day (a crop that bears again is
+ *   counted by its later harvests): that is what makes the next level worth reaching.
  * - Things that only look nice get dearer as they get later; the two that are opened by the
  *   encyclopedia instead of by level reward the player who places and registers a little of
  *   everything, and are within reach of a first-day garden (the pages of the from-start items
  *   are enough to open both).
- * - The well and the hut are the only purchases that pay for themselves, through the plants
- *   round them; they are the dearest and come last.
+ * - The well, the windmill and the hut pay for themselves, through the plants round them; they
+ *   are the dearest of what stands in the garden and come late.
  *
  * How long the buildings take (#43): long enough to be something to come back to, the way a
  * crop is, and short enough to be ready within one sitting's day. A fence goes up while you watch
@@ -97,6 +95,8 @@ enum class ItemCategory {
  * @property placeXp experience earned for placing it; seeds pay out at harvest instead.
  * @property buildSeconds how long it takes to build once placed; 0 for things that are simply
  *   put down. Until then it stands on the garden as a work site.
+ * @property inShop false for something registered ahead of its pictures: it is never on a shelf
+ *   or in a level-up's news until it has them (docs/ASSET_LEDGER.md).
  */
 /** A minute and an hour, in seconds: for [GardenItem.buildSeconds]. */
 private const val MINUTE = 60
@@ -113,27 +113,28 @@ enum class GardenItem(
     val unlock: UnlockCondition = UnlockCondition.None,
     val placeXp: Int = 0,
     val buildSeconds: Int = 0,
+    val inShop: Boolean = true,
 ) {
-    SEED_TULIP("seed_tulip", price = 20, objectId = PlantSpecies.TULIP.objectId, category = ItemCategory.SEED),
+    SEED_TULIP("seed_tulip", price = 10, objectId = PlantSpecies.TULIP.objectId, category = ItemCategory.SEED),
     SEED_SUNFLOWER(
-        "seed_sunflower", price = 35, objectId = PlantSpecies.SUNFLOWER.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(2),
+        "seed_sunflower", price = 20, objectId = PlantSpecies.SUNFLOWER.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(3),
     ),
     SEED_ROSE(
-        "seed_rose", price = 60, objectId = PlantSpecies.ROSE.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(4),
+        "seed_rose", price = 40, objectId = PlantSpecies.ROSE.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(8),
     ),
     DECO_ROCK(
-        "deco_rock", price = 30, objectId = "deco_rock", category = ItemCategory.DECORATION,
+        "deco_rock", price = 60, objectId = "deco_rock", category = ItemCategory.DECORATION,
         unlock = UnlockCondition.PlayerLevel(2),
     ),
     STRUCT_HUT(
-        "struct_hut", price = 150, objectId = StructureData.HUT.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(5), placeXp = 60, buildSeconds = HOUR,
+        "struct_hut", price = 2000, objectId = StructureData.HUT.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(11), placeXp = 60, buildSeconds = HOUR,
     ),
     STRUCT_WELL(
-        "struct_well", price = 80, objectId = StructureData.WELL.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(3), placeXp = 30, buildSeconds = 30 * MINUTE,
+        "struct_well", price = 400, objectId = StructureData.WELL.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(5), placeXp = 30, buildSeconds = 30 * MINUTE,
     ),
     GROUND_GRASS("ground_grass", price = 10, objectId = "ground_grass", category = ItemCategory.DECORATION),
     GROUND_PEBBLE("ground_pebble", price = 10, objectId = "ground_pebble", category = ItemCategory.DECORATION),
@@ -163,8 +164,8 @@ enum class GardenItem(
 
     /** A garden bench. */
     DECO_BENCH(
-        "deco_bench", price = 40, objectId = "deco_bench", category = ItemCategory.DECORATION,
-        unlock = UnlockCondition.PlayerLevel(2),
+        "deco_bench", price = 100, objectId = "deco_bench", category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(3),
     ),
 
     /** A stone lantern. */
@@ -179,7 +180,7 @@ enum class GardenItem(
      * finished thing, bought whole, and pays a little experience for being put down.
      */
     DECO_POND(
-        "deco_pond", price = 75, objectId = GridObject.POND_OBJECT_ID, category = ItemCategory.DECORATION,
+        "deco_pond", price = 120, objectId = GridObject.POND_OBJECT_ID, category = ItemCategory.DECORATION,
         unlock = UnlockCondition.PlayerLevel(4), placeXp = 20,
     ),
 
@@ -188,95 +189,117 @@ enum class GardenItem(
      * ([Sprinkler]). A thing in the garden, not a tool in the hand.
      */
     DECO_SPRINKLER(
-        "deco_sprinkler", price = 70, objectId = Sprinkler.OBJECT_ID, category = ItemCategory.DECORATION,
-        unlock = UnlockCondition.PlayerLevel(3),
+        "deco_sprinkler", price = 450, objectId = Sprinkler.OBJECT_ID, category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(7),
     ),
 
-    /** The symbol building: a cottage. One per garden; with it standing, the garden can grow. */
+    /** The symbol building: a cottage. One per garden. */
     STRUCT_COTTAGE(
-        "struct_cottage", price = 300, objectId = StructureData.COTTAGE.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(6), placeXp = 100, buildSeconds = 2 * HOUR,
+        "struct_cottage", price = 800, objectId = StructureData.COTTAGE.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(3), placeXp = 100, buildSeconds = 2 * HOUR,
     ),
 
     /** A windmill with turning sails, between the well and the hut. */
     STRUCT_WINDMILL(
-        "struct_windmill", price = 120, objectId = StructureData.WINDMILL.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(4), placeXp = 45, buildSeconds = 45 * MINUTE,
+        "struct_windmill", price = 1200, objectId = StructureData.WINDMILL.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(9), placeXp = 45, buildSeconds = 45 * MINUTE,
     ),
 
     /** Autumn's flower. */
-    SEED_COSMOS("seed_cosmos", price = 20, objectId = PlantSpecies.COSMOS.objectId, category = ItemCategory.SEED),
+    SEED_COSMOS("seed_cosmos", price = 10, objectId = PlantSpecies.COSMOS.objectId, category = ItemCategory.SEED),
 
     /** Winter's flower, so that there is always something to sow. */
-    SEED_SNOWDROP("seed_snowdrop", price = 20, objectId = PlantSpecies.SNOWDROP.objectId, category = ItemCategory.SEED),
+    SEED_SNOWDROP("seed_snowdrop", price = 10, objectId = PlantSpecies.SNOWDROP.objectId, category = ItemCategory.SEED),
 
     /** A herb for every season. */
-    SEED_MINT("seed_mint", price = 15, objectId = PlantSpecies.MINT.objectId, category = ItemCategory.SEED),
+    SEED_MINT("seed_mint", price = 5, objectId = PlantSpecies.MINT.objectId, category = ItemCategory.SEED),
 
     /** Summer's crop from the start, so that the first summer has something of its own to sow. */
-    SEED_TOMATO("seed_tomato", price = 20, objectId = PlantSpecies.TOMATO.objectId, category = ItemCategory.SEED),
+    SEED_TOMATO("seed_tomato", price = 10, objectId = PlantSpecies.TOMATO.objectId, category = ItemCategory.SEED),
 
     /** Spring's fruit. */
-    SEED_STRAWBERRY("seed_strawberry", price = 20, objectId = PlantSpecies.STRAWBERRY.objectId, category = ItemCategory.SEED),
+    SEED_STRAWBERRY("seed_strawberry", price = 5, objectId = PlantSpecies.STRAWBERRY.objectId, category = ItemCategory.SEED),
 
     /** Summer's big fruit. */
     SEED_WATERMELON(
-        "seed_watermelon", price = 45, objectId = PlantSpecies.WATERMELON.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(3),
+        "seed_watermelon", price = 40, objectId = PlantSpecies.WATERMELON.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(9),
     ),
 
     /** A herb for every season, a step up from mint. */
     SEED_LAVENDER(
-        "seed_lavender", price = 40, objectId = PlantSpecies.LAVENDER.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(3),
+        "seed_lavender", price = 20, objectId = PlantSpecies.LAVENDER.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(5),
     ),
 
     /** Autumn's log of shiitake (#68): laid on open earth or a bed, not under glass. */
     SEED_SHIITAKE(
-        "seed_shiitake", price = 70, objectId = PlantSpecies.SHIITAKE.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(5),
+        "seed_shiitake", price = 45, objectId = PlantSpecies.SHIITAKE.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(14),
     ),
 
     /** Winter's red. */
     SEED_POINSETTIA(
         "seed_poinsettia", price = 70, objectId = PlantSpecies.POINSETTIA.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(5),
+        unlock = UnlockCondition.PlayerLevel(15),
     ),
 
     /** Summer's peppers, a step up from the tomato; they keep bearing. */
     SEED_PAPRIKA(
-        "seed_paprika", price = 55, objectId = PlantSpecies.PAPRIKA.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(4),
+        "seed_paprika", price = 40, objectId = PlantSpecies.PAPRIKA.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(11),
     ),
 
     /** The cold months' root. */
     SEED_DAIKON(
-        "seed_daikon", price = 30, objectId = PlantSpecies.DAIKON.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(2),
+        "seed_daikon", price = 20, objectId = PlantSpecies.DAIKON.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(4),
     ),
 
     /** Spring's and autumn's root, a quicker one than the daikon. */
     SEED_CARROT(
-        "seed_carrot", price = 25, objectId = PlantSpecies.CARROT.objectId, category = ItemCategory.SEED,
+        "seed_carrot", price = 20, objectId = PlantSpecies.CARROT.objectId, category = ItemCategory.SEED,
         unlock = UnlockCondition.PlayerLevel(2),
     ),
 
     /** Summer's eggplant; it keeps bearing. */
     SEED_EGGPLANT(
-        "seed_eggplant", price = 40, objectId = PlantSpecies.EGGPLANT.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(3),
+        "seed_eggplant", price = 15, objectId = PlantSpecies.EGGPLANT.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(6),
     ),
 
     /** Autumn's wheat. */
     SEED_WHEAT(
-        "seed_wheat", price = 45, objectId = PlantSpecies.WHEAT.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(4),
+        "seed_wheat", price = 35, objectId = PlantSpecies.WHEAT.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(7),
     ),
 
     /** Summer's corn. */
     SEED_CORN(
-        "seed_corn", price = 60, objectId = PlantSpecies.CORN.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(5),
+        "seed_corn", price = 65, objectId = PlantSpecies.CORN.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(13),
+    ),
+
+    /** Winter's leafy head. No pictures yet: registered, but not on sale ([inShop]). */
+    SEED_HAKUSAI(
+        "seed_hakusai", price = 40, objectId = PlantSpecies.HAKUSAI.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(10), inShop = false,
+    ),
+
+    /** Spring's field of yellow. No pictures yet: registered, but not on sale ([inShop]). */
+    SEED_NANOHANA(
+        "seed_nanohana", price = 45, objectId = PlantSpecies.NANOHANA.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(12), inShop = false,
+    ),
+
+    /**
+     * A weathervane: a one-cell ornament. While a finished one stands in the garden, tomorrow's
+     * weather can be read as well as today's ([WeatherOutlook.isReadable]). No picture yet:
+     * registered, but not on sale ([inShop]).
+     */
+    DECO_WEATHERVANE(
+        "deco_weathervane", price = 500, objectId = WeatherOutlook.WEATHERVANE_OBJECT_ID, category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(6), inShop = false,
     ),
 
     /**
@@ -284,7 +307,7 @@ enum class GardenItem(
      * whatever the season. Paving-like: it lies in the cell's floor layer.
      */
     FLOOR_GREENHOUSE(
-        "floor_greenhouse", price = 300, objectId = GridObject.GREENHOUSE_OBJECT_ID, category = ItemCategory.STRUCTURE,
+        "floor_greenhouse", price = 3000, objectId = GridObject.GREENHOUSE_OBJECT_ID, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(18), placeXp = 40,
     );
 
@@ -322,6 +345,8 @@ enum class GardenItem(
             SEED_EGGPLANT -> setOf(Season.SUMMER)
             SEED_WHEAT -> setOf(Season.AUTUMN)
             SEED_CORN -> setOf(Season.SUMMER)
+            SEED_HAKUSAI -> setOf(Season.WINTER)
+            SEED_NANOHANA -> setOf(Season.SPRING)
             else -> emptySet()
         }
 
@@ -348,15 +373,17 @@ enum class GardenItem(
 
         /**
          * The items of one shelf of the shop, in the order they are shown: soonest first, then
-         * cheapest. With a [season], only what is in season is on it (see [isInSeason]).
+         * cheapest. With a [season], only what is in season is on it (see [isInSeason]). What is
+         * not on sale yet ([inShop]) is never on it.
          */
         fun shelf(category: ItemCategory, season: Season? = null): List<GardenItem> =
-            entries.filter { it.category == category && (season == null || it.isInSeason(season)) }
+            entries.filter { it.inShop && it.category == category && (season == null || it.isInSeason(season)) }
                 .sortedWith(compareBy({ it.openingRank }, { it.price }))
 
         /** Items that are locked at [previousLevel] and for sale at [newLevel]. */
         fun unlockedBetween(previousLevel: Int, newLevel: Int): List<GardenItem> = entries.filter {
-            !it.isUnlockedFor(PlayerStats(previousLevel, LevelTable.xpForLevel(previousLevel))) &&
+            it.inShop &&
+                !it.isUnlockedFor(PlayerStats(previousLevel, LevelTable.xpForLevel(previousLevel))) &&
                 it.isUnlockedFor(PlayerStats(newLevel, LevelTable.xpForLevel(newLevel)))
         }
     }

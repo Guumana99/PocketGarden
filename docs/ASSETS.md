@@ -87,51 +87,54 @@
 
 作物の段階・枯れ・アイコン、建物、装飾、生き物、音の状態は `ASSET_LEDGER.md` に移した（#61 時点の表を 1 枠ずつに細かくしたもの）。
 
-### ショップの取扱一覧（#61 時点）
+### ショップの取扱一覧（プログレッション改定時点）
 
-`domain/model/GardenItem.kt` の全 35 品。並びはショップの棚（種・建物・飾り）ごと。
+`domain/model/GardenItem.kt` の全 38 品（うち 3 品は絵が無く、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
 「確定アセット」は庭に置いたときの絵が受け取った画像素材のもの、「コード描画（仮置き）」は絵が無くプログラムで描いているもの。
 アイコンは、作物 18 種すべてが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`。#72 から）、建物・飾りは絵文字（`itemEmoji`。作物の絵文字は絵が無いときの予備）。
 
 | 棚 | 品名（id） | 値段 | 解放 | 庭での絵 | 素材 |
 |---|---|---|---|---|---|
-| 種 | チューリップの種（`seed_tulip`） | 20 | 最初から | 確定アセット | `plant_tulip_*`（#58、6 色）、アイコン画像あり（#72） |
-| 種 | ひまわりの種（`seed_sunflower`） | 35 | Lv2 | 確定アセット | `plant_sunflower_*`（#58）、アイコン画像あり（#72） |
-| 種 | バラの苗（`seed_rose`） | 60 | Lv4 | 確定アセット（旧画風） | `plant_rose_*`（4 段階）、アイコン画像あり（#72） |
-| 種 | コスモスの種（`seed_cosmos`） | 20 | 最初から | 確定アセット | `plant_cosmos_*`（#63、3 段階）、アイコン画像あり |
-| 種 | スノードロップの球根（`seed_snowdrop`） | 20 | 最初から | 確定アセット | `plant_snowdrop_*`（#64、3 段階）、アイコン画像あり（#66） |
-| 種 | ミントの苗（`seed_mint`） | 15 | 最初から | 確定アセット | `plant_mint_*`（#62、3 段階）、アイコン画像あり |
-| 種 | トマトの苗（`seed_tomato`） | 20 | 最初から | 確定アセット | `plant_tomato_*`（#57）、アイコン画像あり |
-| 種 | イチゴの苗（`seed_strawberry`） | 20 | 最初から | 確定アセット | `plant_strawberry_*`（#57）、アイコン画像あり |
-| 種 | スイカの種（`seed_watermelon`） | 45 | Lv3 | 確定アセット | `plant_watermelon_*`（#65、3 段階）、アイコン画像あり |
-| 種 | ラベンダーの苗（`seed_lavender`） | 40 | Lv3 | 確定アセット | `plant_lavender_*`（#67、3 段階）、アイコン画像あり |
-| 種 | しいたけの原木（`seed_shiitake`） | 70 | Lv5 | 確定アセット | `plant_shiitake_*`（#68、3 段階。カボチャと入れ替え）、アイコン画像あり |
-| 種 | ポインセチアの苗（`seed_poinsettia`） | 70 | Lv5 | 確定アセット | `plant_poinsettia_*`（#69、3 段階）、アイコン画像あり |
-| 種 | パプリカの苗（`seed_paprika`） | 55 | Lv4 | 確定アセット（旧画風） | `plant_paprika_*`（#39）、アイコン画像あり（#72） |
-| 種 | 大根の種（`seed_daikon`） | 30 | Lv2 | 確定アセット（旧画風） | `plant_daikon_*`（#39）、アイコン画像あり（#72） |
-| 種 | ニンジンの種（`seed_carrot`） | 25 | Lv2 | 確定アセット | `plant_carrot_*`（#57、2 段階目は 3 段階目から作成）、アイコン画像あり |
-| 種 | ナスの苗（`seed_eggplant`） | 40 | Lv3 | 確定アセット | `plant_eggplant_*`（#57）、アイコン画像あり |
-| 種 | 小麦の種（`seed_wheat`） | 45 | Lv4 | 確定アセット | `plant_wheat_*`（#57）、アイコン画像あり |
-| 種 | トウモロコシの種（`seed_corn`） | 60 | Lv5 | 確定アセット | `plant_corn_*`（#57）、アイコン画像あり |
+| 種 | チューリップの種（`seed_tulip`） | 10 | 最初から | 確定アセット | `plant_tulip_*`（#58、6 色）、アイコン画像あり（#72） |
+| 種 | ひまわりの種（`seed_sunflower`） | 20 | Lv3 | 確定アセット | `plant_sunflower_*`（#58）、アイコン画像あり（#72） |
+| 種 | バラの苗（`seed_rose`） | 40 | Lv8 | 確定アセット（旧画風） | `plant_rose_*`（4 段階）、アイコン画像あり（#72） |
+| 種 | コスモスの種（`seed_cosmos`） | 10 | 最初から | 確定アセット | `plant_cosmos_*`（#63、3 段階）、アイコン画像あり |
+| 種 | スノードロップの球根（`seed_snowdrop`） | 10 | 最初から | 確定アセット | `plant_snowdrop_*`（#64、3 段階）、アイコン画像あり（#66） |
+| 種 | ミントの苗（`seed_mint`） | 5 | 最初から | 確定アセット | `plant_mint_*`（#62、3 段階）、アイコン画像あり |
+| 種 | トマトの苗（`seed_tomato`） | 10 | 最初から | 確定アセット | `plant_tomato_*`（#57）、アイコン画像あり |
+| 種 | イチゴの苗（`seed_strawberry`） | 5 | 最初から | 確定アセット | `plant_strawberry_*`（#57）、アイコン画像あり |
+| 種 | スイカの種（`seed_watermelon`） | 40 | Lv9 | 確定アセット | `plant_watermelon_*`（#65、3 段階）、アイコン画像あり |
+| 種 | ラベンダーの苗（`seed_lavender`） | 20 | Lv5 | 確定アセット | `plant_lavender_*`（#67、3 段階）、アイコン画像あり |
+| 種 | しいたけの原木（`seed_shiitake`） | 45 | Lv14 | 確定アセット | `plant_shiitake_*`（#68、3 段階。カボチャと入れ替え）、アイコン画像あり |
+| 種 | ポインセチアの苗（`seed_poinsettia`） | 70 | Lv15 | 確定アセット | `plant_poinsettia_*`（#69、3 段階）、アイコン画像あり |
+| 種 | パプリカの苗（`seed_paprika`） | 40 | Lv11 | 確定アセット（旧画風） | `plant_paprika_*`（#39）、アイコン画像あり（#72） |
+| 種 | 大根の種（`seed_daikon`） | 20 | Lv4 | 確定アセット（旧画風） | `plant_daikon_*`（#39）、アイコン画像あり（#72） |
+| 種 | ニンジンの種（`seed_carrot`） | 20 | Lv2 | 確定アセット | `plant_carrot_*`（#57、2 段階目は 3 段階目から作成）、アイコン画像あり |
+| 種 | ナスの苗（`seed_eggplant`） | 15 | Lv6 | 確定アセット | `plant_eggplant_*`（#57）、アイコン画像あり |
+| 種 | 小麦の種（`seed_wheat`） | 35 | Lv7 | 確定アセット | `plant_wheat_*`（#57）、アイコン画像あり |
+| 種 | 白菜の種（`seed_hakusai`） | 40 | Lv10 | コード描画（仮置き） | **未作成**。ショップに出していない（`inShop = false`） |
+| 種 | 菜の花の種（`seed_nanohana`） | 45 | Lv12 | コード描画（仮置き） | **未作成**。ショップに出していない（`inShop = false`） |
+| 種 | トウモロコシの種（`seed_corn`） | 65 | Lv13 | 確定アセット | `plant_corn_*`（#57）、アイコン画像あり |
 | 建物 | ウッドフェンス（`struct_fence`） | 15 | 最初から | 確定アセット＋コード | `struct_fence` `struct_fence_post`。斜めにつなぐ横木はコード |
-| 建物 | 井戸（`struct_well`） | 80 | Lv3 | 確定アセット | `struct_well`（#74、1×1）、アイコン画像あり |
-| 建物 | 風車（`struct_windmill`） | 120 | Lv4 | 確定アセット | `struct_windmill` `struct_windmill_blades` |
-| 建物 | 小屋（`struct_hut`） | 150 | Lv5 | 確定アセット | `struct_hut`（#74）、アイコン画像あり |
-| 建物 | コテージ（`struct_cottage`） | 300 | Lv6 | 確定アセット | `struct_cottage` |
-| 建物 | ガラスの温室（`floor_greenhouse`） | 300 | Lv18 | 確定アセット | `floor_greenhouse`、床は `floor_tilled` |
+| 建物 | 井戸（`struct_well`） | 400 | Lv5 | 確定アセット | `struct_well`（#74、1×1）、アイコン画像あり |
+| 建物 | 風車（`struct_windmill`） | 1200 | Lv9 | 確定アセット | `struct_windmill` `struct_windmill_blades` |
+| 建物 | 小屋（`struct_hut`） | 2000 | Lv11 | 確定アセット | `struct_hut`（#74）、アイコン画像あり |
+| 建物 | コテージ（`struct_cottage`） | 800 | Lv3 | 確定アセット | `struct_cottage` |
+| 建物 | ガラスの温室（`floor_greenhouse`） | 3000 | Lv18 | 確定アセット | `floor_greenhouse`、床は `floor_tilled` |
 | 飾り | 芝生（`ground_grass`） | 10 | 最初から | 確定アセット＋コード | 育ちきると `tile_grass`。育つ途中の苗床と葉の切り抜きはコード（#61） |
 | 飾り | 小石（`ground_pebble`） | 10 | 最初から | 確定アセット | `ground_pebble.png`（#74）、アイコン画像あり |
 | 飾り | 石畳（`floor_cobblestone`） | 10 | 最初から | 確定アセット | `floor_cobblestone.png`（#74 で差し替え）、アイコン画像あり |
 | 飾り | 小川のかけら（`tile_river`） | 10 | 最初から | 生成アセット | `tile_river_autotile.png`（スクリプトで生成）。庭・図鑑での名前は「せせらぎ」 |
 | 飾り | 野の花（`ground_flowers`） | 15 | 最初から | 確定アセット | `ground_flowers.png`（#74）、アイコン画像あり |
 | 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 2 ページ | 確定アセット | `floor_wood.png`（#74）、アイコン画像あり |
-| 飾り | 岩（`deco_rock`） | 30 | Lv2 | 確定アセット | `deco_rock`（#74）、アイコン画像あり |
-| 飾り | ベンチ（`deco_bench`） | 40 | Lv2 | 確定アセット | `deco_bench`（#74）、アイコン画像あり |
+| 飾り | 岩（`deco_rock`） | 60 | Lv2 | 確定アセット | `deco_rock`（#74）、アイコン画像あり |
+| 飾り | ベンチ（`deco_bench`） | 100 | Lv3 | 確定アセット | `deco_bench`（#74）、アイコン画像あり |
 | 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 4 ページ | 確定アセット | `deco_lantern`（#74）、アイコン画像あり |
-| 飾り | スプリンクラー（`deco_sprinkler`） | 70 | Lv3 | 確定アセット＋コード | `deco_sprinkler`（#74）、アイコン画像あり。水しぶきは `SprinklerSpray` のコードで、絵の腕の軸から出る |
-| 飾り | 池（`deco_pond`） | 75 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |
+| 飾り | スプリンクラー（`deco_sprinkler`） | 450 | Lv7 | 確定アセット＋コード | `deco_sprinkler`（#74）、アイコン画像あり。水しぶきは `SprinklerSpray` のコードで、絵の腕の軸から出る |
+| 飾り | 風見鶏（`deco_weathervane`） | 500 | Lv6 | コード描画（仮置き） | **未作成**。ショップに出していない（`inShop = false`）。置くと明日の天気が見られる |
+| 飾り | 池（`deco_pond`） | 120 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |
 
-集計：確定アセット 34（うちコード併用 3、旧画風 3）、生成アセット 1、コード描画（仮置き） 0。
+集計：確定アセット 34（うちコード併用 3、旧画風 3）、生成アセット 1、コード描画（仮置き） 0、未作成（ショップに出していない） 3。
 ショップに出ないもの：耕した土（鍬で作る。`soil_tilled.png`）、崩しかけた地面（`soil_revived.png`）、最初の木箱（`deco_starter_crate`、#74 から絵）。
 品を足したり絵を入れたりしたら、この表と `GardenItem.kt` 冒頭の一覧と `ASSET_LEDGER.md` を直すこと。
 

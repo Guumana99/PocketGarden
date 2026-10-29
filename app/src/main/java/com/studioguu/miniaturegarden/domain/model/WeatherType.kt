@@ -81,8 +81,8 @@ class WeatherDiary(val days: Map<Long, WeatherType>, private val zone: ZoneId = 
 data class WeatherOutlook(val today: WeatherType, val tomorrow: WeatherType) {
     companion object {
         /**
-         * The object id of the weathervane, the ornament that lets the player read the forecast.
-         * It has no item, picture or level yet; until it does, the forecast is for the debug menu.
+         * The object id of the weathervane ([GardenItem.DECO_WEATHERVANE]), the ornament that lets
+         * the player read tomorrow's weather. Without one, only today's is shown.
          */
         const val WEATHERVANE_OBJECT_ID = "deco_weathervane"
 

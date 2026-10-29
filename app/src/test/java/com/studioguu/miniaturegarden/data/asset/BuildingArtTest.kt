@@ -300,11 +300,11 @@ class BuildingArtTest {
     // --- The windmill as a building ---
 
     @Test
-    fun `the windmill is a 2x2 building on sale from level 4, with its own page in the book`() {
+    fun `the windmill is a 2x2 building on sale from level 9, with its own page in the book`() {
         assertEquals(2, StructureData.WINDMILL.footprint.width)
         assertEquals(2, StructureData.WINDMILL.footprint.height)
         assertFalse(StructureData.WINDMILL.isSymbol)
-        assertEquals(UnlockCondition.PlayerLevel(4), GardenItem.STRUCT_WINDMILL.unlock)
+        assertEquals(UnlockCondition.PlayerLevel(9), GardenItem.STRUCT_WINDMILL.unlock)
         assertTrue(GardenItem.STRUCT_WINDMILL.buildSeconds > 0)
         val page = CollectionEntry.entries.single { it.objectId == StructureData.WINDMILL.objectId }
         assertEquals(CollectionCategory.STRUCTURES, page.category)

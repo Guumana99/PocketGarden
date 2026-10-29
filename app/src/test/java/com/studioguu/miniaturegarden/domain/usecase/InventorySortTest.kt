@@ -92,9 +92,9 @@ class InventorySortTest {
     fun `by level, what opens earliest first`() {
         val sorted = items(arranged(InventorySort.LEVEL)).filterNotNull()
         assertEquals(sorted.sortedBy { it.unlockLevel }, sorted)
-        // From the start: newest first among them; then the Lv.2 things, again newest first.
+        // From the start: newest first among them; then the Lv.2 rock, then the Lv.3 sunflower.
         assertEquals(
-            listOf(GardenItem.STRUCT_FENCE, GardenItem.GROUND_GRASS, GardenItem.FLOOR_COBBLESTONE, GardenItem.SEED_TULIP, GardenItem.SEED_SUNFLOWER, GardenItem.DECO_ROCK),
+            listOf(GardenItem.STRUCT_FENCE, GardenItem.GROUND_GRASS, GardenItem.FLOOR_COBBLESTONE, GardenItem.SEED_TULIP, GardenItem.DECO_ROCK, GardenItem.SEED_SUNFLOWER),
             sorted,
         )
         // What the encyclopedia opens comes after everything a level opens.

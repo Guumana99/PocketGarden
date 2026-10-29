@@ -248,7 +248,7 @@ class SeasonsTest {
         repeat(5) { assertEquals(ActionResult.SUCCESS, purchase(GardenItem.SEED_TULIP)) }
         assertEquals(ActionResult.OUT_OF_SEASON, purchase(GardenItem.SEED_COSMOS))
         assertEquals(ActionResult.SUCCESS, purchase(GardenItem.SEED_MINT))
-        assertEquals(1_000L - 5 * 20 - 15, repo.profile?.coins)
+        assertEquals(1_000L - 5 * 10 - 5, repo.profile?.coins)
 
         // The season turns: the tulips bought are still in the bag.
         repo.progress = repo.progress!!.copy(season = Season.SUMMER)
@@ -287,7 +287,9 @@ class SeasonsTest {
         for ((i, s) in Season.entries.withIndex()) {
             repo.progress = repo.progress!!.copy(season = s)
             // Anything sown in a bed, that is: the shiitake's log goes on the open earth, never under glass (#68).
-            val sown = GardenItem.entries.filter { it.category == ItemCategory.SEED && PlantSpecies.forObjectId(it.objectId).ground.allows(Ground.GREENHOUSE) }
+            val sown = GardenItem.entries.filter {
+                it.inShop && it.category == ItemCategory.SEED && PlantSpecies.forObjectId(it.objectId).ground.allows(Ground.GREENHOUSE)
+            }
             assertFalse(GardenItem.SEED_SHIITAKE in sown)
             for ((j, seed) in sown.withIndex()) {
                 assertEquals("$seed in $s", ActionResult.SUCCESS, sow(seed, j % 9, i + 4 * (j / 9), inGreenhouse = true))
@@ -326,6 +328,8 @@ class SeasonsTest {
     fun `the new crops are crops like the others`() {
         for (species in PlantSpecies.entries - PlantSpecies.TULIP - PlantSpecies.SUNFLOWER - PlantSpecies.ROSE) {
             assertTrue(GardenItem.entries.any { it.objectId == species.objectId && it.category == ItemCategory.SEED })
+            // The hakusai and the nanohana get their page and drawing along with their pictures.
+            if (!GardenItem.entries.single { it.objectId == species.objectId }.inShop) continue
             assertTrue(CollectionEntry.fromObjectId(species.objectId)?.category == CollectionCategory.CROPS)
             assertTrue(species.objectId in TileSetDefinition.objectIds)
         }

@@ -52,8 +52,10 @@ class ShopAndEffectsTest {
     fun `every shelf of the shop is stocked and every item is on exactly one`() {
         val shelves = ItemCategory.entries.associateWith(GardenItem::shelf)
         assertTrue(shelves.values.none { it.isEmpty() })
-        assertEquals(GardenItem.entries.toSet(), shelves.values.flatten().toSet())
-        assertEquals(GardenItem.entries.size, shelves.values.sumOf { it.size })
+        // Everything on sale, that is: what waits for its pictures is on no shelf.
+        val onSale = GardenItem.entries.filter { it.inShop }
+        assertEquals(onSale.toSet(), shelves.values.flatten().toSet())
+        assertEquals(onSale.size, shelves.values.sumOf { it.size })
 
         assertEquals(18, shelves.getValue(ItemCategory.SEED).size)
         assertEquals(6, shelves.getValue(ItemCategory.STRUCTURE).size)
@@ -66,6 +68,9 @@ class ShopAndEffectsTest {
         assertEquals(GardenItem.entries.size, GardenItem.entries.map { it.objectId }.toSet().size)
         for (item in GardenItem.entries) {
             assertEquals(item.name, item, GardenItem.fromItemId(item.itemId))
+            assertTrue(item.name, item.price > 0)
+            // What waits for its pictures gets its drawing and its page along with them.
+            if (!item.inShop) continue
             assertTrue(item.name, item.objectId in TileSetDefinition.objectIds)
             assertTrue(item.name, CollectionEntry.fromObjectId(item.objectId) != null)
             assertTrue(item.name, item.price > 0)
@@ -80,19 +85,19 @@ class ShopAndEffectsTest {
         assertEquals(5, fromStart.size)
         assertEquals(fromStart.map { it.price }.sorted(), fromStart.map { it.price })
         // ... then what a level opens, then what the encyclopedia opens.
-        assertEquals(listOf(GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_SPRINKLER, GardenItem.DECO_POND), decorations.subList(5, 9))
+        assertEquals(listOf(GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_POND, GardenItem.DECO_SPRINKLER), decorations.subList(5, 9))
         assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(9, 11))
 
         assertEquals(
-            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE),
+            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.FLOOR_GREENHOUSE),
             GardenItem.shelf(ItemCategory.STRUCTURE),
         )
         assertEquals(
             listOf(
-                GardenItem.SEED_MINT, GardenItem.SEED_TULIP, GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP,
-                GardenItem.SEED_TOMATO, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_CARROT, GardenItem.SEED_DAIKON, GardenItem.SEED_SUNFLOWER,
-                GardenItem.SEED_LAVENDER, GardenItem.SEED_EGGPLANT, GardenItem.SEED_WATERMELON, GardenItem.SEED_WHEAT, GardenItem.SEED_PAPRIKA,
-                GardenItem.SEED_ROSE, GardenItem.SEED_CORN, GardenItem.SEED_SHIITAKE, GardenItem.SEED_POINSETTIA,
+                GardenItem.SEED_MINT, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_TULIP, GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP,
+                GardenItem.SEED_TOMATO, GardenItem.SEED_CARROT, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_DAIKON,
+                GardenItem.SEED_LAVENDER, GardenItem.SEED_EGGPLANT, GardenItem.SEED_WHEAT, GardenItem.SEED_ROSE, GardenItem.SEED_WATERMELON,
+                GardenItem.SEED_PAPRIKA, GardenItem.SEED_CORN, GardenItem.SEED_SHIITAKE, GardenItem.SEED_POINSETTIA,
             ),
             GardenItem.shelf(ItemCategory.SEED),
         )
@@ -140,21 +145,15 @@ class ShopAndEffectsTest {
     }
 
     @Test
-    fun `what opens later costs more than what opens earlier, shelf by shelf`() {
-        for (category in ItemCategory.entries) {
-            val byLevel = GardenItem.shelf(category).filter { it.unlock !is UnlockCondition.CollectionPages }
-            val dearestSoFar = byLevel.runningFold(0) { dearest, item -> maxOf(dearest, item.price) }.drop(1)
-            // Going along the shelf, the dearest item so far only ever gets dearer at a new level.
-            byLevel.zipWithNext().forEachIndexed { i, (earlier, later) ->
-                if (later.unlockLevel > earlier.unlockLevel) assertTrue("${later.name} after ${earlier.name}", later.price >= dearestSoFar[i])
-            }
-        }
-        // Nothing costs more than the symbol building (the late greenhouse costs as much); after
-        // those two come the buildings that pay for themselves, with their effects.
+    fun `the dearest things are the late buildings, the greenhouse dearest of all`() {
+        // Since the progression change a crop is priced for what a bed earns in a day
+        // (ProgressionTest), not to climb with its level: the eggplant's seed is cheaper than the
+        // lavender's, and the cottage, at Lv.3, dearer than the well at Lv.5.
         val byPrice = GardenItem.entries.sortedByDescending { it.price }
-        assertTrue(GardenItem.entries.all { it.price <= GardenItem.STRUCT_COTTAGE.price })
-        assertEquals(setOf(GardenItem.STRUCT_COTTAGE, GardenItem.FLOOR_GREENHOUSE), byPrice.take(2).toSet())
-        assertEquals(setOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_WELL), byPrice.drop(2).take(3).toSet())
+        assertEquals(
+            listOf(GardenItem.FLOOR_GREENHOUSE, GardenItem.STRUCT_HUT, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_COTTAGE),
+            byPrice.take(4),
+        )
     }
 
     @Test
@@ -211,10 +210,10 @@ class ShopAndEffectsTest {
     fun `level-locked items are as before, whatever the encyclopedia holds`() = runBlocking {
         CollectionEntry.entries.forEach { repo.discover(it, revealed = true) }
 
-        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.DECO_BENCH))   // Lv.2
-        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.STRUCT_WELL))  // Lv.3
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.DECO_BENCH))   // Lv.3
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.STRUCT_WELL))  // Lv.5
 
-        repo.profile = UserProfile(coins = 1_000).gainXp(100) // Lv.2
+        repo.profile = UserProfile(coins = 1_000).gainXp(380) // Lv.3
         assertEquals(ActionResult.SUCCESS, purchase(GardenItem.DECO_BENCH))
         assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.STRUCT_WELL))
     }
@@ -280,15 +279,16 @@ class ShopAndEffectsTest {
 
     @Test
     fun `a well keeps a plant alive that the sun would have withered`() {
-        val garden = listOf(obj("well", "struct_well", 4, 4), tulip("near", 5, 5), tulip("far", 8, 8))
+        val rose = PlantSpecies.ROSE.objectId
+        val garden = listOf(obj("well", "struct_well", 4, 4), obj("near", rose, 5, 5), obj("far", rose, 8, 8))
 
-        val (_, near, far) = calc(garden, t0 + 44 * hour, sunny)
+        val (_, near, far) = calc(garden, t0 + 60 * hour, sunny)
 
-        // In the open: dry after 19 h, and 24 h after that as stressed as a tulip ever gets (it
-        // never withers, #58). Beside the well: only just thirsty.
-        assertEquals(CalculateOfflineProgressUseCase.NEVER_WITHERED_STRESS, far.stressRate.toDouble(), 1e-6)
+        // In the open a rose is dry after 29 h, before it blooms, and withered a day after that.
+        // Beside the well its soil lasts twice as long: it blooms, and is only just thirsty.
+        assertEquals(PlantStatus.WITHERED, far.status)
         assertFalse(near.status == PlantStatus.WITHERED)
-        assertTrue(near.stressRate < 0.3f)
+        assertTrue(near.stressRate < 0.5f)
         assertTrue(near.growthProgress > far.growthProgress)
     }
 
@@ -296,7 +296,7 @@ class ShopAndEffectsTest {
     fun `a plant beside a hut grows a tenth faster and dries as usual`() {
         val garden = listOf(obj("hut", "struct_hut", 2, 2), tulip("near", 4, 3), tulip("far", 7, 7))
 
-        val (_, near, far) = calc(garden, t0 + 10 * hour, sunny)
+        val (_, near, far) = calc(garden, t0 + 3 * hour, sunny)
 
         assertEquals(far.growthProgress * 1.1f, near.growthProgress, 1e-4f)
         assertEquals(far.moistureLevel, near.moistureLevel, 1e-6f)

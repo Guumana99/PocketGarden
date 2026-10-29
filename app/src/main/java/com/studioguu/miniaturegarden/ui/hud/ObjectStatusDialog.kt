@@ -23,8 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
-import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
-import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -72,9 +70,6 @@ fun ObjectStatusDialog(
     onFlip: () -> Unit = {},
     modifier: Modifier = Modifier,
     surroundings: PlantSurroundings = PlantSurroundings.OPEN_GROUND,
-    gardenSize: Int = GridObject.GRID_SIZE,
-    playerLevel: Int = 1,
-    onExpand: () -> Unit = {},
     editing: Boolean = false,
     guiding: Boolean = false,
     bedQuality: Int = 0,
@@ -192,17 +187,6 @@ fun ObjectStatusDialog(
                 )
             }
 
-            // The symbol building is where the garden is made larger from.
-            if (gridObject.isSymbol && !gridObject.isWorking) {
-                ExpansionRow(gardenSize, playerLevel, gridObject, onExpand)
-            } else if (gridObject.isSymbol) {
-                // Still going up, or waiting to be unveiled: say what it will be for.
-                Text(
-                    text = stringResource(R.string.expand_after_unveil),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                )
-            }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 // Edit mode keeps to rearranging (#50): no watering, harvesting or reviving there.
@@ -261,32 +245,6 @@ private fun StatusTag(status: PlantStatus) {
             color = colour,
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
-    }
-}
-
-/** Growing the garden: the button when it can grow now, otherwise what it still needs. */
-@Composable
-private fun ExpansionRow(gardenSize: Int, playerLevel: Int, symbol: GridObject, onExpand: () -> Unit) {
-    val stage = GardenExpansion.nextStage(gardenSize)
-    when (GardenExpansion.check(gardenSize, listOf(symbol), playerLevel)) {
-        ExpansionCheck.READY -> WoodButton(
-            text = stringResource(R.string.expand_button),
-            onClick = onExpand,
-        )
-        ExpansionCheck.NEEDS_LEVEL -> if (stage != null) {
-            Text(
-                text = stringResource(R.string.expand_needs_level, stage.playerLevel),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        ExpansionCheck.AT_MAX_SIZE -> Text(
-            text = stringResource(R.string.expand_max),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        // Not possible here: the panel is the symbol building's own.
-        ExpansionCheck.NEEDS_SYMBOL -> Unit
     }
 }
 

@@ -70,7 +70,6 @@ import androidx.core.view.WindowInsetsCompat
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
-import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.Sprinkler
 import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -103,12 +102,12 @@ import com.studioguu.miniaturegarden.ui.effects.RainOverlay
 import com.studioguu.miniaturegarden.ui.effects.SnowOverlay
 import com.studioguu.miniaturegarden.ui.effects.RainStyle
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
-import com.studioguu.miniaturegarden.ui.hud.ExpandConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.LevelUpDialog
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.RemoveConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
+import com.studioguu.miniaturegarden.ui.hud.WeatherDialog
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
 import com.studioguu.miniaturegarden.ui.notifications.NotificationInviteDialog
 import com.studioguu.miniaturegarden.ui.notifications.hasNotificationPermission
@@ -162,7 +161,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
     val brokenGround by viewModel.brokenGround.collectAsStateWithLifecycle()
     val editMode by viewModel.editMode.collectAsStateWithLifecycle()
-    val growableBuilding by viewModel.growableBuilding.collectAsStateWithLifecycle()
     val gardenMap by viewModel.gardenMap.collectAsStateWithLifecycle()
     val notificationInviteDue by viewModel.notificationInviteDue.collectAsStateWithLifecycle()
     val visitors by viewModel.visitors.collectAsStateWithLifecycle()
@@ -192,12 +190,12 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // The garden's zoom as it is now, for the debug read-out; 0 until the garden is laid out.
     var debugZoom by remember { mutableFloatStateOf(0f) }
     var showPost by rememberSaveable { mutableStateOf(false) }
+    var showWeather by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCollection by rememberSaveable { mutableStateOf(false) }
     var confirmRain by rememberSaveable { mutableStateOf(false) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
     // Growing the garden is asked about first (#55).
-    var confirmExpand by rememberSaveable { mutableStateOf(false) }
     // Camera mode: nothing on screen but the garden, a viewfinder and a shutter.
     var cameraMode by rememberSaveable { mutableStateOf(false) }
     var shots by remember { mutableStateOf(0) }
@@ -273,7 +271,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 // While a cell is being looked for, taps read the ground only.
                 editing = placingSlot != null || hoeActive || movingObject != null,
                 // While the garden can grow, a bubble over the cottage says so (not in a photograph).
-                growableId = if (cameraMode) null else growableBuilding?.instanceId,
                 atlas = atlas,
                 terrain = terrain,
                 gardenMap = gardenMap,
@@ -355,6 +352,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 season = season,
                 phase = seasonPhase,
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
+                onWeatherTap = { showWeather = true },
             ) }
 
             // Greyed out when today's rains are used up or none is ready to be shown. Put away
@@ -474,7 +472,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     canCare = placing == null && !hoeActive && target?.isPlant == true && target.status != PlantStatus.WITHERED,
                     onFertilize = viewModel::fertilizeSelected,
                     onOpenInventory = { if (viewModel.onBagTapped()) showInventory = true },
-                    onOpenShop = { showShop = true },
+                    // Nothing stays picked across the walk: the garden may grow while in the workshop.
+                    onOpenShop = {
+                        viewModel.clearSelection()
+                        showShop = true
+                    },
                     // During the first steps only the tool the step asks for can be tapped; in edit
                     // mode only the shop (#50). A tool in hand can always be put down again.
                     allows = { tool ->
@@ -535,9 +537,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 onFlip = viewModel::flipSelected,
                                 modifier = Modifier.fillMaxWidth(),
                                 surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },
-                                gardenSize = gardenMap.size,
-                                playerLevel = profile?.playerLevel ?: 1,
-                                onExpand = { confirmExpand = true },
                                 editing = editMode,
                                 // During the first steps the panel keeps to what the step is about.
                                 guiding = tutorialStep?.isGuiding == true,
@@ -648,16 +647,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onDismiss = { confirmRain = false },
         )
     }
-    val growTo = GardenExpansion.nextStage(gardenMap.size)?.size
-    if (confirmExpand && growTo != null) {
-        ExpandConfirmDialog(
-            onConfirm = {
-                confirmExpand = false
-                viewModel.expand()
-            },
-            onDismiss = { confirmExpand = false },
-        )
-    }
     // Nothing leaves the garden on a single tap: the choice is made here first.
     val removing = selectedObject
     if (confirmRemove && removing != null) {
@@ -693,6 +682,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             zoomScale = debugZoom.takeIf { it > 0f },
             onDismiss = { showDebugMenu = false },
         )
+    }
+    if (showWeather) {
+        val outlook by viewModel.outlook.collectAsStateWithLifecycle()
+        val forecastReadable by viewModel.forecastReadable.collectAsStateWithLifecycle()
+        outlook?.let { WeatherDialog(outlook = it, readable = forecastReadable, onDismiss = { showWeather = false }) }
     }
     if (showPost) {
         PostDialog(letters = letters, onRead = viewModel::markLetterRead, onDismiss = { showPost = false })

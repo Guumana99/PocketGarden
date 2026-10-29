@@ -4,6 +4,7 @@ import com.studioguu.miniaturegarden.data.asset.AtlasManifest
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
+import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import java.io.File
 import org.junit.Assert.assertEquals
@@ -122,7 +123,8 @@ class CodeArtTest {
     @Test
     fun `every crop has all its sprites`() {
         // #69: the poinsettia was the last crop drawn in code; there are no drawn stand-ins any more.
-        for (species in PlantSpecies.entries) {
+        // A crop registered ahead of its pictures is not on sale until it has them.
+        for (species in PlantSpecies.entries.filter(::onSale)) {
             val missing = TileSetDefinition.spriteIdsFor(species).filter { it !in sprites }
             assertTrue("${species.name} is missing $missing", missing.isEmpty())
         }
@@ -144,7 +146,8 @@ class CodeArtTest {
         for (id in missing) {
             val species = PlantSpecies.entries.firstOrNull { id in TileSetDefinition.spriteIdsFor(it) }
             when {
-                species != null -> throw AssertionError("$id: every crop has its pictures since #69")
+                species != null && onSale(species) -> throw AssertionError("$id: every crop on sale has its pictures since #69")
+                species != null -> Unit
                 // A running sprinkler's water is drawn in code from SprinklerSpray, frame by frame.
                 id in sprayFrames -> Unit
                 // Everything else in a cell has a placeholder shape (drawPlaceholder, drawStructure).
@@ -155,6 +158,8 @@ class CodeArtTest {
         val tomato = TileSetDefinition.spriteIdsFor(PlantSpecies.TOMATO)
         assertEquals(listOf("plant_tomato_stage1", "plant_tomato_stage2", "plant_tomato_stage3", "plant_tomato_withered"), tomato)
     }
+
+    private fun onSale(species: PlantSpecies) = GardenItem.entries.single { it.objectId == species.objectId }.inShop
 
     @Test
     fun `no crop is drawn in code any more`() {

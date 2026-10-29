@@ -45,6 +45,9 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "plant_lavender" -> R.string.object_plant_lavender
     "plant_shiitake" -> R.string.object_plant_shiitake
     "plant_poinsettia" -> R.string.object_plant_poinsettia
+    "plant_hakusai" -> R.string.object_plant_hakusai
+    "plant_nanohana" -> R.string.object_plant_nanohana
+    "deco_weathervane" -> R.string.object_deco_weathervane
     "floor_greenhouse" -> R.string.object_floor_greenhouse
     "deco_rock" -> R.string.object_deco_rock
     "struct_hut" -> R.string.object_struct_hut
@@ -92,6 +95,8 @@ fun itemDisplayName(item: GardenItem): String = when (item) {
     GardenItem.SEED_LAVENDER -> stringResource(R.string.item_seed_lavender)
     GardenItem.SEED_SHIITAKE -> stringResource(R.string.item_seed_shiitake)
     GardenItem.SEED_POINSETTIA -> stringResource(R.string.item_seed_poinsettia)
+    GardenItem.SEED_HAKUSAI -> stringResource(R.string.item_seed_hakusai)
+    GardenItem.SEED_NANOHANA -> stringResource(R.string.item_seed_nanohana)
     GardenItem.TILE_RIVER -> stringResource(R.string.item_tile_river)
     else -> objectDisplayName(item.objectId)
 }
@@ -134,6 +139,9 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_WHEAT -> "🌾"
     GardenItem.SEED_CORN -> "🌽"
     GardenItem.FLOOR_GREENHOUSE -> "🪴"
+    GardenItem.SEED_HAKUSAI -> "🥬"
+    GardenItem.SEED_NANOHANA -> "🌼"
+    GardenItem.DECO_WEATHERVANE -> "🐓"
 }
 
 /**

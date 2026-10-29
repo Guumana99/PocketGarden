@@ -5,6 +5,7 @@ import com.studioguu.miniaturegarden.data.reward.RewardLimitRepositoryImpl
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.RewardUsage
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -46,21 +47,33 @@ class RewardTest {
     // --- Limits and counts ---
 
     @Test
-    fun `the daily limits are three rains and five bonuses`() {
-        assertEquals(3, RewardType.BLESSED_RAIN.dailyLimit)
+    fun `the daily limits are one rain and five bonuses`() {
+        assertEquals(1, RewardType.BLESSED_RAIN.dailyLimit)
         assertEquals(5, RewardType.COIN_BONUS.dailyLimit)
-        assertEquals(50, RewardType.COIN_BONUS_AMOUNT)
+    }
+
+    @Test
+    fun `a coin bonus is 40 + 10 a level, times a luck from 0_8 to 1_3, in whole coins`() {
+        assertEquals(50, RewardType.coinBonusBase(1))
+        assertEquals(240, RewardType.coinBonusBase(20))
+        val atTen = (1..2_000).map { RewardType.coinBonusAmount(10, kotlin.random.Random(it)) }
+        assertTrue(atTen.all { it in 112..182 })
+        // The luck really spreads over the range.
+        assertTrue(atTen.min() <= 115 && atTen.max() >= 178)
+        // The extremes, exactly.
+        val low = object : kotlin.random.Random() { override fun nextBits(bitCount: Int) = 0 }
+        assertEquals(40, RewardType.coinBonusAmount(1, low))
     }
 
     @Test
     fun `remaining counts down for today only`() {
-        val usage = RewardUsage(epochDay = today, used = mapOf(RewardType.BLESSED_RAIN to 2, RewardType.COIN_BONUS to 5))
-        assertEquals(1, usage.remaining(RewardType.BLESSED_RAIN, today))
+        val usage = RewardUsage(epochDay = today, used = mapOf(RewardType.BLESSED_RAIN to 1, RewardType.COIN_BONUS to 5))
+        assertEquals(0, usage.remaining(RewardType.BLESSED_RAIN, today))
         assertEquals(0, usage.remaining(RewardType.COIN_BONUS, today))
         // The next day everything is available again.
-        assertEquals(3, usage.remaining(RewardType.BLESSED_RAIN, today + 1))
+        assertEquals(1, usage.remaining(RewardType.BLESSED_RAIN, today + 1))
         assertEquals(5, usage.remaining(RewardType.COIN_BONUS, today + 1))
-        assertEquals(3, RewardUsage().remaining(RewardType.BLESSED_RAIN, today))
+        assertEquals(1, RewardUsage().remaining(RewardType.BLESSED_RAIN, today))
     }
 
     // --- Blessed rain ---
@@ -101,14 +114,14 @@ class RewardTest {
 
     @Test
     fun `the time already passed is counted before the rain is applied`() = runBlocking {
-        repo.put(plant("a", 0, growth = 0f))
+        repo.put(plant("a", 0, growth = 0f, species = PlantSpecies.CORN))
 
-        // 12 healthy hours of a 48 h tulip = 25%; the rain then halves the remaining 75%.
-        grant.blessedRain(t0 + 12 * hour, sunny, today)
+        // 10.5 healthy hours of a 42 h corn = 25%; the rain then halves the remaining 75%.
+        grant.blessedRain(t0 + 21 * hour / 2, sunny, today)
 
         val after = repo.objects.getValue("a")
         assertEquals(0.625f, after.growthProgress, 1e-4f)
-        assertEquals(t0 + 12 * hour, after.lastUpdatedTimestamp)
+        assertEquals(t0 + 21 * hour / 2, after.lastUpdatedTimestamp)
     }
 
     @Test
@@ -128,15 +141,15 @@ class RewardTest {
     }
 
     @Test
-    fun `the fourth rain of the day is refused and changes nothing`() = runBlocking {
+    fun `the second rain of the day is refused and changes nothing`() = runBlocking {
         repo.put(plant("a", 0, growth = 0f))
 
-        repeat(3) { assertEquals(RewardResult.GRANTED, grant.blessedRain(t0, sunny, today)) }
-        val afterThree = repo.objects.getValue("a").growthProgress
-        assertEquals(0.875f, afterThree, 1e-5f)
+        assertEquals(RewardResult.GRANTED, grant.blessedRain(t0, sunny, today))
+        val afterOne = repo.objects.getValue("a").growthProgress
+        assertEquals(0.5f, afterOne, 1e-5f)
 
         assertEquals(RewardResult.LIMIT_REACHED, grant.blessedRain(t0, sunny, today))
-        assertEquals(afterThree, repo.objects.getValue("a").growthProgress, 0f)
+        assertEquals(afterOne, repo.objects.getValue("a").growthProgress, 0f)
 
         // A new day brings new rain.
         assertEquals(RewardResult.GRANTED, grant.blessedRain(t0, sunny, today + 1))
@@ -144,8 +157,8 @@ class RewardTest {
 
     @Test
     fun `rain does not use up the bonus count and the bonus does not use up the rain`() = runBlocking {
-        repeat(3) { grant.blessedRain(t0, sunny, today) }
-        assertEquals(RewardResult.GRANTED, grant.coinBonus(today))
+        grant.blessedRain(t0, sunny, today)
+        assertEquals(RewardResult.GRANTED, grant.coinBonus(today).result)
         assertEquals(0, limits.usage.first().remaining(RewardType.BLESSED_RAIN, today))
         assertEquals(4, limits.usage.first().remaining(RewardType.COIN_BONUS, today))
     }
@@ -172,7 +185,7 @@ class RewardTest {
     fun `the encyclopedia bonus has its own count`() = runBlocking {
         grant.bookOpen(today)
 
-        assertEquals(3, limits.usage.first().remaining(RewardType.BLESSED_RAIN, today))
+        assertEquals(1, limits.usage.first().remaining(RewardType.BLESSED_RAIN, today))
         assertEquals(5, limits.usage.first().remaining(RewardType.COIN_BONUS, today))
         assertEquals(0, limits.usage.first().remaining(RewardType.BOOK_OPEN, today))
     }
@@ -180,28 +193,32 @@ class RewardTest {
     // --- Coin bonus ---
 
     @Test
-    fun `the coin bonus pays 50 coins through one signed save`() = runBlocking {
-        assertEquals(RewardResult.GRANTED, grant.coinBonus(today))
+    fun `the coin bonus pays what it says, for the level, through one signed save`() = runBlocking {
+        repo.profile = UserProfile(coins = 100, playerLevel = 10, currentXp = LevelTable.xpForLevel(10))
+        val bonus = grant.coinBonus(today, kotlin.random.Random(7))
+        assertEquals(RewardResult.GRANTED, bonus.result)
+        assertEquals(RewardType.coinBonusAmount(10, kotlin.random.Random(7)), bonus.coins)
+        assertTrue(bonus.coins in 112..182)
 
-        assertEquals(150L, repo.profile?.coins)
-        assertEquals(0L, repo.profile?.currentXp)
+        assertEquals(100L + bonus.coins, repo.profile?.coins)
+        assertEquals(LevelTable.xpForLevel(10), repo.profile?.currentXp)
         assertEquals(1, repo.profileSaves)
     }
 
     @Test
     fun `the sixth bonus of the day is refused and pays nothing`() = runBlocking {
-        repeat(5) { assertEquals(RewardResult.GRANTED, grant.coinBonus(today)) }
-        assertEquals(350L, repo.profile?.coins)
+        val paid = (1..5).sumOf { grant.coinBonus(today).also { assertEquals(RewardResult.GRANTED, it.result) }.coins }
+        assertEquals(100L + paid, repo.profile?.coins)
 
-        assertEquals(RewardResult.LIMIT_REACHED, grant.coinBonus(today))
-        assertEquals(350L, repo.profile?.coins)
+        assertEquals(CoinBonus(RewardResult.LIMIT_REACHED, 0), grant.coinBonus(today))
+        assertEquals(100L + paid, repo.profile?.coins)
         assertEquals(5, repo.profileSaves)
     }
 
     @Test
     fun `an abandoned ad costs nothing, because nothing is consumed until a reward is granted`() = runBlocking {
         // The ad layer simply never calls the use case when the ad is closed early.
-        assertEquals(3, limits.usage.first().remaining(RewardType.BLESSED_RAIN, today))
+        assertEquals(1, limits.usage.first().remaining(RewardType.BLESSED_RAIN, today))
         assertEquals(5, limits.usage.first().remaining(RewardType.COIN_BONUS, today))
         assertEquals(100L, repo.profile?.coins)
     }
@@ -225,15 +242,15 @@ class RewardTest {
     @Test
     fun `stored counts go up to the limit and no further`() = runBlocking {
         val (store, _) = openStore()
-        assertEquals(3, store.usage.first().remaining(RewardType.BLESSED_RAIN, today))
+        assertEquals(1, store.usage.first().remaining(RewardType.BLESSED_RAIN, today))
 
-        repeat(3) { assertTrue(store.tryConsume(RewardType.BLESSED_RAIN, today)) }
+        assertTrue(store.tryConsume(RewardType.BLESSED_RAIN, today))
         assertFalse(store.tryConsume(RewardType.BLESSED_RAIN, today))
         assertFalse(store.tryConsume(RewardType.BLESSED_RAIN, today))
 
         val usage = store.usage.first()
         assertEquals(0, usage.remaining(RewardType.BLESSED_RAIN, today))
-        assertEquals(3, usage.usedOn(today, RewardType.BLESSED_RAIN))
+        assertEquals(1, usage.usedOn(today, RewardType.BLESSED_RAIN))
         assertEquals(5, usage.remaining(RewardType.COIN_BONUS, today))
     }
 
@@ -246,13 +263,13 @@ class RewardTest {
 
         val (second, _) = openStore()
         assertEquals(3, second.usage.first().remaining(RewardType.COIN_BONUS, today))
-        assertEquals(2, second.usage.first().remaining(RewardType.BLESSED_RAIN, today))
+        assertEquals(0, second.usage.first().remaining(RewardType.BLESSED_RAIN, today))
 
         // The first claim of the next day starts both counters over.
         assertTrue(second.tryConsume(RewardType.COIN_BONUS, today + 1))
         val nextDay = second.usage.first()
         assertEquals(4, nextDay.remaining(RewardType.COIN_BONUS, today + 1))
-        assertEquals(3, nextDay.remaining(RewardType.BLESSED_RAIN, today + 1))
+        assertEquals(1, nextDay.remaining(RewardType.BLESSED_RAIN, today + 1))
     }
 }
 

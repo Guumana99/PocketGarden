@@ -143,7 +143,7 @@ class PondAndWastelandTest {
         val pond = GardenItem.DECO_POND
         assertEquals(GridObject.POND_OBJECT_ID, pond.objectId)
         assertEquals(ItemCategory.DECORATION, pond.category)
-        assertEquals(75, pond.price)
+        assertEquals(120, pond.price)
         assertEquals(20, pond.placeXp)
         assertEquals(0, pond.buildSeconds)
         assertEquals(UnlockCondition.PlayerLevel(4), pond.unlock)

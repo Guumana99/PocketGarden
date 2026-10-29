@@ -142,7 +142,7 @@ class SymbolBuildingTest {
     // --- Growing the garden ---
 
     @Test
-    fun `the garden grows 9 to 11 to 13 and no further`() {
+    fun `the garden grows 9 to 11 to 13 and no further for now`() {
         assertEquals(GridObject.GRID_SIZE, GardenProgress().gardenSize)
         assertEquals(11, GardenExpansion.nextStage(9)?.size)
         assertEquals(13, GardenExpansion.nextStage(11)?.size)
@@ -151,20 +151,12 @@ class SymbolBuildingTest {
     }
 
     @Test
-    fun `growing needs a finished symbol building, and the last step a higher level`() {
-        val built = listOf(cottage(3, 3))
-        assertEquals(ExpansionCheck.NEEDS_SYMBOL, GardenExpansion.check(9, emptyList(), 99))
-        assertEquals(ExpansionCheck.NEEDS_SYMBOL, GardenExpansion.check(9, listOf(cottage(3, 3, WorkKind.BUILDING)), 99))
-        assertEquals(ExpansionCheck.NEEDS_SYMBOL, GardenExpansion.check(9, listOf(cottage(3, 3, WorkKind.READY)), 99))
-        // A hut is a building, but not a symbol.
-        assertEquals(
-            ExpansionCheck.NEEDS_SYMBOL,
-            GardenExpansion.check(9, listOf(cottage(3, 3).copy(objectId = StructureData.HUT.objectId)), 99),
-        )
-        assertEquals(ExpansionCheck.READY, GardenExpansion.check(9, built, 1))
-        assertEquals(ExpansionCheck.NEEDS_LEVEL, GardenExpansion.check(11, built, 7))
-        assertEquals(ExpansionCheck.READY, GardenExpansion.check(11, built, 8))
-        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(13, built, 99))
+    fun `growing needs the level and the coins, and no symbol building`() {
+        assertEquals(ExpansionCheck.READY, GardenExpansion.check(9, 1, 0))
+        assertEquals(ExpansionCheck.NEEDS_LEVEL, GardenExpansion.check(11, 7, 99_999))
+        assertEquals(ExpansionCheck.NEEDS_COINS, GardenExpansion.check(11, 8, 2_999))
+        assertEquals(ExpansionCheck.READY, GardenExpansion.check(11, 8, 3_000))
+        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(13, 99, 99_999))
     }
 
     @Test
@@ -188,21 +180,20 @@ class SymbolBuildingTest {
     @Test
     fun `the garden does not grow before it may`() = runBlocking {
         repo.till(4, 4)
-        assertEquals(ActionResult.EXPANSION_LOCKED, expand())
-        assertEquals(9, repo.progress?.gardenSize)
-        assertEquals(4 to 4, repo.objects["soil_4_4"]!!.let { it.gridX to it.gridY })
-
-        repo.put(cottage(0, 0))
+        // A garden begun at 9 x 9 grows to 11 for nothing, cottage or not.
         assertEquals(ActionResult.SUCCESS, expand())
+        assertEquals(11, repo.progress?.gardenSize)
+        assertEquals(5 to 5, repo.objects["soil_4_4"]!!.let { it.gridX to it.gridY })
         // Lv.6 is not enough for 13 x 13.
         assertEquals(ActionResult.EXPANSION_LOCKED, expand())
         assertEquals(11, repo.progress?.gardenSize)
 
-        repo.profile = repo.profile!!.copy(playerLevel = 8, currentXp = LevelTable.xpForLevel(8))
+        repo.profile = repo.profile!!.copy(playerLevel = 8, currentXp = LevelTable.xpForLevel(8), coins = 3_000)
         assertEquals(ActionResult.SUCCESS, expand())
         assertEquals(ActionResult.GARDEN_AT_MAX_SIZE, expand())
         assertEquals(13, repo.progress?.gardenSize)
-        assertEquals(2 to 2, repo.objects["cottage"]!!.let { it.gridX to it.gridY })
+        assertEquals(0L, repo.profile?.coins)
+        assertEquals(6 to 6, repo.objects["soil_4_4"]!!.let { it.gridX to it.gridY })
     }
 
     @Test

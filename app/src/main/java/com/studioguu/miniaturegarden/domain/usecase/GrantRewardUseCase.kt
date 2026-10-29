@@ -6,6 +6,7 @@ import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import javax.inject.Inject
+import kotlin.random.Random
 
 enum class RewardResult {
     GRANTED,
@@ -13,6 +14,9 @@ enum class RewardResult {
     /** Today's claims are used up; nothing was given. */
     LIMIT_REACHED,
 }
+
+/** What a coin bonus came to: the [coins] paid, none when [result] is [RewardResult.LIMIT_REACHED]. */
+data class CoinBonus(val result: RewardResult, val coins: Int)
 
 /**
  * Hands out the rewards that are limited per day. Each call uses up one of the day's claims; if
@@ -60,9 +64,21 @@ class GrantRewardUseCase @Inject constructor(
         return RewardResult.GRANTED
     }
 
-    /** Coin bonus: [RewardType.COIN_BONUS_AMOUNT] coins, through a signed profile save. */
-    suspend fun coinBonus(today: Long): RewardResult =
-        payCoins(RewardType.COIN_BONUS, RewardType.COIN_BONUS_AMOUNT, today)
+    /**
+     * Coin bonus: an amount for the player's level, with some luck in it
+     * ([RewardType.coinBonusAmount]), through a signed profile save.
+     */
+    suspend fun coinBonus(today: Long, random: Random = Random.Default): CoinBonus {
+        if (!rewardLimits.tryConsume(RewardType.COIN_BONUS, today)) return CoinBonus(RewardResult.LIMIT_REACHED, 0)
+        val paid = gardenRepository.runInTransaction {
+            gardenRepository.getUserProfile()?.let {
+                val amount = RewardType.coinBonusAmount(it.playerLevel, random)
+                gardenRepository.saveUserProfile(it.copy(coins = it.coins + amount))
+                amount
+            } ?: 0
+        }
+        return CoinBonus(RewardResult.GRANTED, paid)
+    }
 
     /**
      * Opening the encyclopedia: [RewardType.BOOK_OPEN_AMOUNT] coins, the first time each day.

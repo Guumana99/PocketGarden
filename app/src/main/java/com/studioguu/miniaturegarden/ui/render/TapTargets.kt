@@ -52,11 +52,10 @@ object TapTargets {
         objects: List<GridObject>,
         editing: Boolean,
         minReach: Float = 0f,
-        growableId: String? = null,
     ): TileCoord? {
         val ground = TilePicker.pick(screen, transform, grid.map.size)
         if (editing) return ground
-        bubbleAt(screen, transform, objects, minReach, growableId)?.let { return TileCoord(it.gridX, it.gridY) }
+        bubbleAt(screen, transform, objects, minReach)?.let { return TileCoord(it.gridX, it.gridY) }
         if (ground != null && grid.objectAt(ground.x, ground.y) != null) return ground
         buildingAt(screen, transform, objects)?.let { return TileCoord(it.gridX, it.gridY) }
         return ground
@@ -68,24 +67,18 @@ object TapTargets {
         transform: IsometricTransform,
         objects: List<GridObject>,
         minReach: Float = 0f,
-        growableId: String? = null,
     ): GridObject? {
         val reach = maxOf(transform.tileWidth * BUBBLE_REACH, minReach)
         return objects
-            .mapNotNull { obj -> bubbleCentre(obj, transform, obj.instanceId == growableId)?.let { obj to (it - screen).getDistance() } }
+            .mapNotNull { obj -> bubbleCentre(obj, transform)?.let { obj to (it - screen).getDistance() } }
             .filter { (_, distance) -> distance <= reach }
             .minByOrNull { (_, distance) -> distance }
             ?.first
     }
 
-    /**
-     * Where [obj]'s bubble is drawn (at rest, without its bob), or null when it has none.
-     *
-     * @param growable [obj] is the symbol building the garden can grow from now (its bubble says so).
-     */
-    fun bubbleCentre(obj: GridObject, transform: IsometricTransform, growable: Boolean = false): Offset? = when {
+    /** Where [obj]'s bubble is drawn (at rest, without its bob), or null when it has none. */
+    fun bubbleCentre(obj: GridObject, transform: IsometricTransform): Offset? = when {
         obj.workKind == WorkKind.READY -> readyBubbleCentre(obj, transform)
-        growable -> growBubbleTip(obj, transform) - Offset(0f, transform.tileWidth * READY_BUBBLE_RADIUS * READY_BUBBLE_LIFT)
         obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED) ->
             statusBubbleCentre(transform.worldToScreen(obj.gridX + 0.5f, obj.gridY + 0.5f, obj.heightLevel.toFloat()), obj, transform.tileWidth)
         else -> null
@@ -142,17 +135,6 @@ object TapTargets {
 
     /** How far above its tip the ready bubble's middle is, in bubble radii. */
     const val READY_BUBBLE_LIFT = 1.35f
-
-    /**
-     * Where the tail of the "the garden can grow" bubble points: just over the top of the
-     * finished building, which stands [StructureData.heightSteps] tall.
-     */
-    fun growBubbleTip(obj: GridObject, transform: IsometricTransform): Offset {
-        val footprint = obj.footprint
-        val centre = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
-        val steps = StructureData.fromObjectId(obj.objectId)?.heightSteps ?: 0f
-        return centre - Offset(0f, steps * transform.heightStep * 1.05f)
-    }
 
     /** The middle of the little water or food bubble over a crop standing on [base]. */
     fun statusBubbleCentre(base: Offset, obj: GridObject, unit: Float): Offset =

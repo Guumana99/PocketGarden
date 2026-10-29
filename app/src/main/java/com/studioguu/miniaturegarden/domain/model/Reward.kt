@@ -1,5 +1,7 @@
 package com.studioguu.miniaturegarden.domain.model
 
+import kotlin.random.Random
+
 /**
  * Bonuses that can only be claimed so many times a day. The first two are earned by watching a
  * rewarded ad to the end; the last is simply for opening the encyclopedia.
@@ -8,16 +10,30 @@ package com.studioguu.miniaturegarden.domain.model
  */
 enum class RewardType(val dailyLimit: Int) {
     /** Halves the remaining growth time of every plant in the garden. */
-    BLESSED_RAIN(dailyLimit = 3),
+    BLESSED_RAIN(dailyLimit = 1),
 
-    /** Pays [COIN_BONUS_AMOUNT] coins. */
+    /** Pays some coins, more as the player's level grows ([coinBonusAmount]). */
     COIN_BONUS(dailyLimit = 5),
 
     /** Pays [BOOK_OPEN_AMOUNT] coins the first time the encyclopedia is opened each day. */
     BOOK_OPEN(dailyLimit = 1);
 
     companion object {
-        const val COIN_BONUS_AMOUNT = 50
+        /** The coin bonus at [level] before its luck: 40 + 10 a level. */
+        fun coinBonusBase(level: Int): Int = 40 + 10 * level
+
+        /** The luck of a coin bonus: the base is multiplied by somewhere from this ... */
+        const val COIN_BONUS_LUCK_LOW = 0.8
+
+        /** ... to this. */
+        const val COIN_BONUS_LUCK_HIGH = 1.3
+
+        /**
+         * What one coin bonus pays a player at [level]: [coinBonusBase] times a luck drawn from
+         * [COIN_BONUS_LUCK_LOW] to [COIN_BONUS_LUCK_HIGH] by [random], rounded to whole coins.
+         */
+        fun coinBonusAmount(level: Int, random: Random): Int =
+            Math.round(coinBonusBase(level) * (COIN_BONUS_LUCK_LOW + random.nextDouble() * (COIN_BONUS_LUCK_HIGH - COIN_BONUS_LUCK_LOW))).toInt()
 
         const val BOOK_OPEN_AMOUNT = 10
 

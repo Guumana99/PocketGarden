@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.ui.hud
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.LevelTable
@@ -46,8 +48,9 @@ private const val GAUGE_FILL_MILLIS = 450
  * The experience itself is never written out as numbers: the gauge fills as it grows, and empties
  * again when the level goes up.
  *
- * Deliberately built without Surface or any clickable: those install pointer-input handlers
- * that swallow touches, and this bar must let drags and taps fall through to the garden below.
+ * Deliberately built without Surface, and with only the season and weather taking taps (they open
+ * the weather, [onWeatherTap]): a pointer-input handler swallows touches, and the rest of this
+ * bar must let drags and taps fall through to the garden below.
  */
 @Composable
 fun TopStatusBar(
@@ -58,6 +61,7 @@ fun TopStatusBar(
     modifier: Modifier = Modifier,
     season: Season = Season.SPRING,
     phase: SeasonPhase = SeasonPhase.EARLY,
+    onWeatherTap: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier,
@@ -66,7 +70,10 @@ fun TopStatusBar(
     ) {
         StatusChip("🪙 $coins")
         LevelChip(playerLevel, currentXp)
-        StatusChip("${seasonEmoji(season)}${stringResource(seasonPhaseLabel(season, phase))} ${weatherEmoji(weather)} ${stringResource(weatherLabel(weather))}")
+        StatusChip(
+            text = "${seasonEmoji(season)}${stringResource(seasonPhaseLabel(season, phase))} ${weatherEmoji(weather)} ${stringResource(weatherLabel(weather))}",
+            onClick = onWeatherTap,
+        )
     }
 }
 
@@ -125,12 +132,14 @@ private val LEVEL_GAUGE_WIDTH = 56.dp
 private val LEVEL_GAUGE_HEIGHT = 5.dp
 
 @Composable
-private fun StatusChip(text: String) {
+private fun StatusChip(text: String, onClick: (() -> Unit)? = null) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurface,
         modifier = Modifier
+            .clip(CircleShape)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     )
