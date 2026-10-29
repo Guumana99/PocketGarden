@@ -230,11 +230,21 @@ class StoreObjectTest {
     }
 
     @Test
-    fun `removing asks first and offers the bag or the bin`() {
+    fun `removing asks first and offers the bag or taking it away, in one word for each kind of thing`() {
         for (name in listOf("remove_title", "remove_store", "remove_discard", "remove_text_returnable")) {
             assertTrue(name, strings.contains("name=\"$name\""))
         }
         assertTrue(string("remove_store").contains("持ち物に戻す"))
-        assertTrue(string("remove_discard").contains("破棄する"))
+        // Things are taken away, crops pulled up, beds turned back (device feedback, after #75).
+        assertEquals("撤去する", string("remove_discard"))
+        assertEquals("抜く", string("remove_pull"))
+        assertEquals("戻す", string("remove_soil"))
+        assertEquals("やめる", string("remove_cancel"))
+        assertEquals("枯れた%1\$sを抜きますか？", string("remove_title_withered"))
+        assertEquals("抜いた株はたい肥になって、土の栄養になります", string("remove_text_withered"))
+        assertEquals("1 つ前の地面に戻します。", string("remove_text_soil"))
+        assertTrue(string("hint_withered").contains("抜くとたい肥になって、土の栄養になります"))
+        // The word for throwing away is used nowhere in the app.
+        assertFalse(strings.contains("破棄"))
     }
 }

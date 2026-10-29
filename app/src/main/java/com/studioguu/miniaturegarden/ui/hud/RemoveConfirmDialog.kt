@@ -24,8 +24,9 @@ import com.studioguu.miniaturegarden.ui.objectDisplayName
  * Asked before anything is taken off the garden, so that a stray tap on "remove" costs nothing.
  *
  * What can be put back into the bag (everything that was placed from an item) offers that as the
- * first choice, and throwing it away as the second. Plants and tilled soil can only be cleared.
- * Cancelling, or tapping outside, leaves everything as it is.
+ * first choice, and taking it away ("撤去") as the second. A crop can only be pulled up ("抜く"),
+ * and tilled soil only turned back into the ground it was ("戻す") (device feedback, after #75: one
+ * word for each, and no word of throwing away). Cancelling, or tapping outside, leaves everything as it is.
  */
 @Composable
 fun RemoveConfirmDialog(
@@ -46,10 +47,17 @@ fun RemoveConfirmDialog(
         gridObject.status == PlantStatus.WITHERED -> R.string.remove_text_withered_log
         else -> R.string.remove_text_plant
     }
+    val name = objectDisplayName(gridObject.objectId)
+    val title = when {
+        gridObject.isTilledSoil -> stringResource(R.string.remove_title_soil, name)
+        gridObject.isPlant && gridObject.status == PlantStatus.WITHERED -> stringResource(R.string.remove_title_withered, name)
+        gridObject.isPlant -> stringResource(R.string.remove_title_plant, name)
+        else -> stringResource(R.string.remove_title, name)
+    }
     AlertDialog(
         modifier = Modifier.popIn(),
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.remove_title, objectDisplayName(gridObject.objectId))) },
+        title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(stringResource(explanation))
@@ -75,12 +83,18 @@ fun RemoveConfirmDialog(
                     )
                 }
                 WoodButton(
-                    text = stringResource(if (gridObject.isTilledSoil) R.string.remove_soil else R.string.remove_discard),
+                    text = stringResource(
+                        when {
+                            gridObject.isTilledSoil -> R.string.remove_soil
+                            gridObject.isPlant -> R.string.remove_pull
+                            else -> R.string.remove_discard
+                        },
+                    ),
                     onClick = onDiscard,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 WoodButton(
-                    text = stringResource(R.string.action_cancel),
+                    text = stringResource(R.string.remove_cancel),
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                 )

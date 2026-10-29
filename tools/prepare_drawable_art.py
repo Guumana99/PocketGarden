@@ -92,7 +92,7 @@ STAGES: dict[str, list] = {
     "snowdrop": [0.3, 0.48, 0.62],
     "watermelon": [0.3, ("w", 0.7), ("w", 0.85)],
     "lavender": [0.3, 0.5, 0.66],
-    "shiitake": [("log", 0.6), ("log", 0.6), ("log", 0.6)],
+    "shiitake": [("log", 0.5), ("log", 0.5), ("log", 0.5)],
     "poinsettia": [0.3, 0.55, 0.7],
 }
 
@@ -149,8 +149,18 @@ ANCHORS = {
     "plant_eggplant_withered": {"anchorX": 0.5, "anchorY": 0.83, "isFlippedAllowed": True},
 }
 
-#: How much of the carrot's root shows above its bed at stage 3 (#60), as a share of the root.
+#: How much of the carrot's root shows above its bed at stage 3 (#60), as a share of the root,
+#: at the front of the root (where the soil line is lowest).
 CARROT_SHOULDER = 0.22
+
+#: Where the root goes into the bed (device feedback, after #75): not a level cut but the near half
+#: of the ring where round root meets flat earth, so the line dips at the front by this share of the
+#: root's half-width, and wanders a little ([CARROT_SOIL_WANDER] px) as crumbled earth does. Just
+#: above it the root is stained with the earth ([CARROT_EARTH], over [CARROT_EARTH_ROWS] rows).
+CARROT_SOIL_DIP = 0.35
+CARROT_SOIL_WANDER = 3.0
+CARROT_EARTH = (78, 56, 40)
+CARROT_EARTH_ROWS = 14
 
 #: Each withered picture's size in tiles, as in STAGES (#58: drawn ones replaced those made by
 #: browning the last stage in #57, and the tomato's and strawberry's from #39).
@@ -167,7 +177,7 @@ WITHERED: dict[str, object] = {
     "snowdrop": 0.62,
     "watermelon": ("w", 0.85),
     "lavender": 0.66,
-    "shiitake": ("log", 0.6),
+    "shiitake": ("log", 0.5),
     "poinsettia": 0.7,
 }
 
@@ -319,14 +329,28 @@ def carrot_stages() -> list[np.ndarray]:
     rgb = grown[:, :, :3].astype(int)
     orange = (rgb[:, :, 0] > 170) & (rgb[:, :, 1] < 150) & (rgb[:, :, 2] < 90) & (grown[:, :, 3] > 128)
     rows = np.where(orange.sum(axis=1) > 6)[0]
-    # Stage 3: the leaves and the shoulder of the root, fading into the bed below it (#60).
+    # Stage 3: the leaves and the shoulder of the root, going into the bed below it (#60). The
+    # bed's edge round the root is a curve, lower at the front, and ragged (CARROT_SOIL_DIP).
     cut = rows.min() + int((rows.max() - rows.min()) * CARROT_SHOULDER)
-    ready = grown[:cut].copy()
-    fade = min(10, cut - rows.min())
-    ramp = np.linspace(1.0, 0.0, fade + 2)[1:-1]
-    for i, k in enumerate(ramp):
-        row = cut - fade + i
-        ready[row, :, 3] = (ready[row, :, 3] * k).astype(ready.dtype)
+    columns = np.where(orange[cut - 2])[0]
+    left, right = columns.min(), columns.max()
+    centre, half = (left + right) / 2, max(1.0, (right - left) / 2)
+    width = grown.shape[1]
+    x = np.arange(width)
+    across = np.clip((x - centre) / half, -1.0, 1.0)
+    dip = CARROT_SOIL_DIP * half * np.sqrt(1.0 - across ** 2)
+    rng = np.random.default_rng(60)
+    wander = np.convolve(rng.normal(0.0, 1.0, width + 8), np.ones(9) / 9, mode="valid")[:width]
+    wander = wander / max(1e-6, np.abs(wander).max()) * CARROT_SOIL_WANDER
+    line = (cut - CARROT_SOIL_DIP * half) + dip + wander          # the soil line, row by column
+    ready = grown[: int(np.ceil(line.max())) + 1].copy()
+    rows_below = np.arange(ready.shape[0])[:, None] - line[None, :]  # > 0 under the soil
+    alpha = np.clip(1.0 - (rows_below + 1.5) / 3.0, 0.0, 1.0)      # a soft edge 3 px wide
+    ready[:, :, 3] = (ready[:, :, 3] * alpha).astype(ready.dtype)
+    stain = np.clip(1.0 + rows_below / CARROT_EARTH_ROWS, 0.0, 1.0) ** 2 * 0.7
+    for c in range(3):
+        channel = ready[:, :, c].astype(float)
+        ready[:, :, c] = np.clip(channel + (CARROT_EARTH[c] - channel) * stain, 0, 255).astype(ready.dtype)
     # Stage 2 came in #74: its leaves, with a thin ring of the root's top at their foot. (Until
     # then it was stage 3's leaves cut off above the root.)
     return [crop(load_cut(f"crop_carrot_stage{n}.png")) for n in (1, 2)] + [crop(ready)]
@@ -464,6 +488,10 @@ def prepare_icons() -> dict[str, np.ndarray]:
         out[path.stem] = to_icon(crop(load_cut(path.name, **ICON_CUT.get(name, CUT.get(name, {})))))
     for item_id, source in ITEM_ICONS.items():
         out[f"icon_{item_id}"] = item_icon(source)
+    for item_id, path in CUT_ICONS.items():
+        out[f"icon_{item_id}"] = to_icon(crop(np.array(Image.open(path).convert("RGBA"))))
+    out["icon_struct_windmill"] = windmill_icon()
+    out["icon_tile_river"] = river_icon()
     return out
 
 
@@ -502,6 +530,20 @@ ITEM_ICONS: dict[str, str] = {
     "ground_flowers": "tile_flowers_iso.png",
     "floor_wood": "tile_wood_deck_iso.png",
     "floor_cobblestone": "tile_cobblestone_iso.png",
+    # Device feedback (after #75): the rest of what the shop sells, so that no shelf mixes pictures
+    # and emoji. The grass as the slab it came as, like the other ground.
+    "ground_grass": "tile_grass_iso.png",
+}
+
+#: Icons cut from pictures that are already cut out (transparent), as the garden draws them: the
+#: cottage and the greenhouse from their sprites, the pond from its own picture. The windmill is
+#: put together from its body and its sails ([windmill_icon]).
+CUT_ICONS: dict[str, Path] = {
+    "struct_cottage": RAW / "struct_cottage.png",
+    "floor_greenhouse": RAW / "floor_greenhouse.png",
+    "deco_pond": SOURCE / "pond.png",
+    # The panel of fence the garden draws for one standing alone (item_fence_wood.png is a sheet of parts).
+    "struct_fence": RAW / "struct_fence.png",
 }
 
 
@@ -575,6 +617,37 @@ def item_icon(name: str) -> np.ndarray:
     """An icon from [name] (on white), cut out of its plain white only, as the pictures of #74 are."""
     rgba = crop(cut_out(np.array(Image.open(SOURCE / name).convert("RGB")), white_parts=1.0))
     return to_icon(rgba)
+
+
+def windmill_icon() -> np.ndarray:
+    """The windmill's icon: its body with the sails on their hub, where the garden puts them
+    (atlas_overrides.json: the body's attachX/attachY, the sails' anchor)."""
+    overrides = json.loads((ROOT / "tools/atlas_overrides.json").read_text(encoding="utf-8"))
+    body = np.array(Image.open(RAW / "struct_windmill.png").convert("RGBA"))
+    sails = np.array(Image.open(RAW / "struct_windmill_blades.png").convert("RGBA"))
+    hub_x = overrides["struct_windmill"]["attachX"] * body.shape[1]
+    hub_y = overrides["struct_windmill"]["attachY"] * body.shape[0]
+    sx = int(round(hub_x - overrides["struct_windmill_blades"]["anchorX"] * sails.shape[1]))
+    sy = int(round(hub_y - overrides["struct_windmill_blades"]["anchorY"] * sails.shape[0]))
+    left, top = min(0, sx), min(0, sy)
+    width = max(body.shape[1], sx + sails.shape[1]) - left
+    height = max(body.shape[0], sy + sails.shape[0]) - top
+    canvas = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    canvas.alpha_composite(Image.fromarray(body), (-left, -top))
+    canvas.alpha_composite(Image.fromarray(sails), (sx - left, sy - top))
+    return to_icon(crop(np.array(canvas)))
+
+
+def river_icon() -> np.ndarray:
+    """The river's icon: a straight stretch (north to south) out of the garden's own river tiles
+    (tile_river_autotile.png, made by build_terrain_assets.py: 4 x 4 joins, 128 px each, seen from
+    straight above), laid down as a cell of the garden is: a diamond twice as wide as it is tall."""
+    tiles = Image.open(ROOT / "app/src/main/res/drawable-nodpi/tile_river_autotile.png").convert("RGBA")
+    mask = 1 | 4
+    piece = tiles.crop(((mask % 4) * 128, (mask // 4) * 128, (mask % 4 + 1) * 128, (mask // 4 + 1) * 128))
+    # Screen (x, y) of the 256 x 128 diamond from the tile's (u, v): x = u - v + 128, y = (u + v) / 2.
+    diamond = piece.transform((256, 128), Image.AFFINE, (0.5, 1.0, -64.0, -0.5, 1.0, 64.0), resample=Image.BICUBIC)
+    return to_icon(crop(np.array(diamond)))
 
 
 def to_icon(rgba: np.ndarray) -> np.ndarray:

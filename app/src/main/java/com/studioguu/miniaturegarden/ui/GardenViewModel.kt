@@ -997,6 +997,8 @@ class GardenViewModel @Inject constructor(
 
     fun removeSelected() = withSelectedObject { obj ->
         if (refused(GardenLayout.check(LayoutAction.DISCARD, obj, _editMode.value))) return@withSelectedObject
+        // A plant pulled up crumbles into its bed as it goes, rather than lifting off like a harvest.
+        if (obj.isPlant) markPulled(obj.instanceId)
         // A withered plant standing on tilled soil is dug in as compost; say so.
         val composts = RemoveObjectUseCase.leavesCompost(obj) &&
             GardenGrid(gardenMap.value, gridObjects.value).isTilled(obj.gridX, obj.gridY)
@@ -1008,6 +1010,19 @@ class GardenViewModel @Inject constructor(
                 if (takesTime) _messages.trySend(R.string.work_started_demolition)
             }
         ) { now, _ -> startRemoval(obj.instanceId, toBag = false, now) }
+    }
+
+    private val _pulled = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Plants just pulled up ([removeSelected]): the garden draws them crumbling as they go. */
+    val pulled: StateFlow<Set<String>> = _pulled.asStateFlow()
+
+    private fun markPulled(instanceId: String) {
+        _pulled.update { it + instanceId }
+        viewModelScope.launch {
+            delay(PULLED_MEMORY_MILLIS)
+            _pulled.update { it - instanceId }
+        }
     }
 
     /** Whether removing [obj] starts a job instead of happening at once. */
@@ -1212,6 +1227,9 @@ class GardenViewModel @Inject constructor(
         if (tile == null) null else GardenGrid(gardenMap.value, this).objectAt(tile.x, tile.y)
 
     private companion object {
+        /** How long a pulled plant is remembered as pulled: long enough for the garden to see it go. */
+        const val PULLED_MEMORY_MILLIS = 3_000L
+
         const val BLESSED_RAIN_SHOWER_MILLIS = 4_000L
 
         const val MINUTE_MILLIS = 60_000L

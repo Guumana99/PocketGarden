@@ -44,6 +44,8 @@ object TapTargets {
      * @param editing something is being placed or moved, or the hoe is in hand: read the ground only.
      * @param minReach the least distance round a bubble that counts, in pixels: a finger's
      *   half-width, so that a bubble stays easy to hit when the garden is zoomed out.
+     * @param plantTop how far above its foot a plant's picture reaches, in pixels, where it is
+     *   known: its water or food bubble sits just over it ([statusBubbleCentre]).
      */
     fun resolve(
         screen: Offset,
@@ -52,10 +54,11 @@ object TapTargets {
         objects: List<GridObject>,
         editing: Boolean,
         minReach: Float = 0f,
+        plantTop: (GridObject) -> Float? = { null },
     ): TileCoord? {
         val ground = TilePicker.pick(screen, transform, grid.map.size)
         if (editing) return ground
-        bubbleAt(screen, transform, objects, minReach)?.let { return TileCoord(it.gridX, it.gridY) }
+        bubbleAt(screen, transform, objects, minReach, plantTop)?.let { return TileCoord(it.gridX, it.gridY) }
         if (ground != null && grid.objectAt(ground.x, ground.y) != null) return ground
         buildingAt(screen, transform, objects)?.let { return TileCoord(it.gridX, it.gridY) }
         return ground
@@ -67,20 +70,25 @@ object TapTargets {
         transform: IsometricTransform,
         objects: List<GridObject>,
         minReach: Float = 0f,
+        plantTop: (GridObject) -> Float? = { null },
     ): GridObject? {
         val reach = maxOf(transform.tileWidth * BUBBLE_REACH, minReach)
         return objects
-            .mapNotNull { obj -> bubbleCentre(obj, transform)?.let { obj to (it - screen).getDistance() } }
+            .mapNotNull { obj -> bubbleCentre(obj, transform, plantTop(obj))?.let { obj to (it - screen).getDistance() } }
             .filter { (_, distance) -> distance <= reach }
             .minByOrNull { (_, distance) -> distance }
             ?.first
     }
 
-    /** Where [obj]'s bubble is drawn (at rest, without its bob), or null when it has none. */
-    fun bubbleCentre(obj: GridObject, transform: IsometricTransform): Offset? = when {
+    /**
+     * Where [obj]'s bubble is drawn (at rest, without its bob), or null when it has none.
+     *
+     * @param plantTop see [resolve].
+     */
+    fun bubbleCentre(obj: GridObject, transform: IsometricTransform, plantTop: Float? = null): Offset? = when {
         obj.workKind == WorkKind.READY -> readyBubbleCentre(obj, transform)
         obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED) ->
-            statusBubbleCentre(transform.worldToScreen(obj.gridX + 0.5f, obj.gridY + 0.5f, obj.heightLevel.toFloat()), obj, transform.tileWidth)
+            statusBubbleCentre(transform.worldToScreen(obj.gridX + 0.5f, obj.gridY + 0.5f, obj.heightLevel.toFloat()), obj, transform.tileWidth, plantTop)
         else -> null
     }
 
@@ -136,9 +144,21 @@ object TapTargets {
     /** How far above its tip the ready bubble's middle is, in bubble radii. */
     const val READY_BUBBLE_LIFT = 1.35f
 
-    /** The middle of the little water or food bubble over a crop standing on [base]. */
-    fun statusBubbleCentre(base: Offset, obj: GridObject, unit: Float): Offset =
-        base - Offset(0f, unit * (0.55f * plantScale(obj) + 0.3f))
+    /**
+     * The middle of the little water or food bubble over a crop standing on [base]: just over the
+     * top of its picture, [plantTop] pixels above its foot (device feedback, after #75: a guess
+     * from its growth alone left it floating well above a low plant). Without the picture's
+     * height, the guess.
+     */
+    fun statusBubbleCentre(base: Offset, obj: GridObject, unit: Float, plantTop: Float? = null): Offset =
+        if (plantTop != null) {
+            base - Offset(0f, plantTop + unit * STATUS_BUBBLE_GAP)
+        } else {
+            base - Offset(0f, unit * (0.55f * plantScale(obj) + 0.3f))
+        }
+
+    /** How far the middle of a water or food bubble is over the top of its plant, in tile widths: its radius and a little. */
+    const val STATUS_BUBBLE_GAP = 0.1f
 }
 
 /** How large a crop is drawn, from a sprout (0.35) to fully grown (1). */

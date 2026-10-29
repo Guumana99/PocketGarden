@@ -179,6 +179,14 @@ fun itemIconRes(item: GardenItem): Int? = when (item) {
     GardenItem.GROUND_FLOWERS -> R.drawable.icon_ground_flowers
     GardenItem.FLOOR_WOOD -> R.drawable.icon_floor_wood
     GardenItem.FLOOR_COBBLESTONE -> R.drawable.icon_floor_cobblestone
+    // The rest of the shop (device feedback, after #75): cut from the garden's own pictures.
+    GardenItem.STRUCT_COTTAGE -> R.drawable.icon_struct_cottage
+    GardenItem.STRUCT_WINDMILL -> R.drawable.icon_struct_windmill
+    GardenItem.FLOOR_GREENHOUSE -> R.drawable.icon_floor_greenhouse
+    GardenItem.STRUCT_FENCE -> R.drawable.icon_struct_fence
+    GardenItem.DECO_POND -> R.drawable.icon_deco_pond
+    GardenItem.GROUND_GRASS -> R.drawable.icon_ground_grass
+    GardenItem.TILE_RIVER -> R.drawable.icon_tile_river
     else -> null
 }
 

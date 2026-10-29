@@ -263,8 +263,9 @@ class BundledArtTest {
         assertEquals(listOf("plant_shiitake_stage1", "plant_shiitake_stage2", "plant_shiitake_stage3", "plant_shiitake_withered"), ids)
         val normalized = CropScale.normalized(manifest)
         val widths = ids.map { id -> normalized.assets.single { it.assetId == id }.let { it.width * it.drawScale / manifest.tileWidth } }
-        // The log is 0.6 of a cell (#68: at 0.85 the one in front hid half of the one behind it).
-        for (w in widths) assertTrue("$w", w in 0.59f..0.65f)
+        // The log is half a cell (#68: at 0.85 the one in front hid half of the one behind it; 0.6
+        // until the device feedback after #75).
+        for (w in widths) assertTrue("$w", w in 0.49f..0.55f)
         assertTrue("$widths", widths.max() - widths.min() < 0.02f)
         for (id in ids) assertTrue(id, manifest.assets.single { it.assetId == id }.anchorY >= 0.99f)
         assertTrue(File(main, "res/drawable-nodpi/icon_shiitake.png").isFile)

@@ -77,10 +77,34 @@ object StandardPlayer {
      * @param ads the player also takes the day's ad rewards: the blessed rain once, at the evening
      *   visit, and the five coin bonuses at the morning one.
      */
-    fun daysToLevel(targetLevel: Int, beds: Int, ads: Boolean): Double {
+    fun daysToLevel(targetLevel: Int, beds: Int, ads: Boolean): Double = play(targetLevel, ads, BedPlan.fixed(beds)).days
+
+    /**
+     * How many beds the player keeps: [start] on the first morning, then one more each morning
+     * ([perDay]) up to as many as the garden's size holds ([bySize]). The garden grows as soon
+     * as the level and the coins for its next size are there (all of [GardenExpansion.STAGES],
+     * the planned sizes included), keeping [seedMoney] back for the next sowing.
+     */
+    class BedPlan(val start: Int, val bySize: Map<Int, Int>, val perDay: Int = 1, val seedMoney: Long = 100) {
+        companion object {
+            fun fixed(beds: Int) = BedPlan(beds, emptyMap(), perDay = 0)
+
+            /** 6 to start with, 20 at 11 x 11, 28 at 13 x 13, 37 at 15 x 15, 48 at 17 x 17. */
+            val GROWING = BedPlan(6, mapOf(11 to 20, 13 to 28, 15 to 37, 17 to 48))
+        }
+    }
+
+    /** How a game went: when the target level came, and on which day the garden grew to each size. */
+    class Pace(val days: Double, val grewTo: List<Pair<Int, Double>>, val levels: Map<Int, Double>)
+
+    /** [daysToLevel], with the beds as [plan] has them. */
+    fun play(targetLevel: Int, ads: Boolean, plan: BedPlan): Pace {
         class Bed(var crop: PlantSpecies? = null, var growth: Double = 0.0, var moisture: Double = 0.0, var harvested: Int = 0)
 
-        val garden = List(beds) { Bed() }
+        val garden = MutableList(plan.start) { Bed() }
+        var size = GridObject.GRID_SIZE
+        val grewTo = mutableListOf<Pair<Int, Double>>()
+        val levels = sortedMapOf<Int, Double>()
         var profile = UserProfile(coins = UserProfile.STARTING_COINS)
         var lastVisit = VISIT_HOURS.first().toDouble()
         val water = CalculateOfflineProgressUseCase.THIRSTY_THRESHOLD
@@ -103,6 +127,17 @@ object StandardPlayer {
                     repeat(RewardType.COIN_BONUS.dailyLimit) {
                         profile = profile.copy(coins = profile.coins + RewardType.coinBonusBase(profile.playerLevel) * 105 / 100)
                     }
+                }
+                if (hour == VISIT_HOURS.first() && plan.bySize.isNotEmpty()) {
+                    // The garden grows when it can, and a bed or so is dug each morning while there is room.
+                    val next = GardenExpansion.STAGES.firstOrNull { it.size > size }
+                    if (next != null && profile.playerLevel >= next.playerLevel && profile.coins >= next.price + plan.seedMoney) {
+                        profile = profile.copy(coins = profile.coins - next.price)
+                        size = next.size
+                        grewTo += size to now / 24.0
+                    }
+                    val room = (plan.bySize[size] ?: garden.size) - garden.size
+                    repeat(minOf(plan.perDay, room.coerceAtLeast(0))) { garden += Bed() }
                 }
                 for (bed in garden) {
                     val crop = bed.crop
@@ -137,7 +172,8 @@ object StandardPlayer {
                         bed.moisture = 1.0
                     }
                 }
-                if (profile.playerLevel >= targetLevel) return now / 24.0
+                levels.putIfAbsent(profile.playerLevel, now / 24.0)
+                if (profile.playerLevel >= targetLevel) return Pace(now / 24.0, grewTo, levels)
             }
         }
         error("Lv.$targetLevel not reached")
