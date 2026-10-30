@@ -1,4 +1,4 @@
-# ぽけっと庭園 — 作業ガイド
+# ポケット庭園 — 作業ガイド
 
 11×11 マス（Lv.8 から工房でコインを払うと 13×13 まで広がる。#56 より前に始めた庭は 9×9 から 9→11→13）の箱庭で作物を育て、建物や装飾を置いて眺める Android ゲーム。
 Kotlin / Jetpack Compose / Hilt / Room(SQLCipher)。パッケージは `com.studioguu.miniaturegarden`。
