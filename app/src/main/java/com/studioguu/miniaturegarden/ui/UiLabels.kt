@@ -17,6 +17,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.SoilGrade
 import com.studioguu.miniaturegarden.domain.model.SeasonPhase
 import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -27,6 +28,7 @@ import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 /** The string resource naming a grid object; null for an id that has none. */
 @StringRes
 fun objectNameRes(objectId: String): Int? = when (objectId) {
+    "floor_loose" -> R.string.object_floor_loose
     "plant_tulip" -> R.string.object_plant_tulip
     "plant_sunflower" -> R.string.object_plant_sunflower
     "plant_rose" -> R.string.object_plant_rose
@@ -296,6 +298,8 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.INVENTORY_FULL -> R.string.msg_inventory_full
     ActionResult.ITEM_LOCKED -> R.string.msg_item_locked
     ActionResult.NEEDS_TILLED_SOIL -> R.string.msg_needs_tilled_soil
+    ActionResult.NEEDS_RIDGE -> R.string.msg_needs_ridge
+    ActionResult.NO_SOIL -> R.string.msg_no_soil
     ActionResult.NEEDS_OPEN_GROUND -> R.string.msg_needs_open_ground
     ActionResult.NOT_WITHERED -> R.string.msg_not_withered
     ActionResult.NOT_RETURNABLE -> R.string.msg_not_returnable
@@ -312,19 +316,6 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.HOE_STRUCK -> R.string.msg_hoe_struck
     ActionResult.NOT_SWITCHABLE -> R.string.msg_not_switchable
 }
-
-/** A tool's level as a rank, "見習い" (1) to "名人" (5). */
-@StringRes
-fun toolRank(level: Int): Int = when (level.coerceIn(1, 5)) {
-    1 -> R.string.tool_rank_1
-    2 -> R.string.tool_rank_2
-    3 -> R.string.tool_rank_3
-    4 -> R.string.tool_rank_4
-    else -> R.string.tool_rank_5
-}
-
-/** A tool's level as the stars on its button: one for each step past the first, none for a new tool. */
-fun toolStars(level: Int): String = "★".repeat((level - 1).coerceAtLeast(0))
 
 @StringRes
 fun creatureName(creature: Creature): Int = when (creature) {
@@ -396,4 +387,21 @@ fun combinationHint(rule: VisitRule): Int = when (rule) {
     VisitRule.BIRD_WINTER_WELL -> R.string.hint_bird_winter_well
     VisitRule.SQUIRREL_SHIITAKE -> R.string.hint_squirrel_shiitake
     VisitRule.FROG_WELL -> R.string.hint_frog_well
+}
+
+/** What a grade of soil is called. */
+@StringRes
+fun soilGradeName(grade: SoilGrade): Int = when (grade) {
+    SoilGrade.PLAIN -> R.string.soil_grade_plain
+    SoilGrade.GOOD -> R.string.soil_grade_good
+    SoilGrade.FLUFFY -> R.string.soil_grade_fluffy
+}
+
+/** The word that a seed out of season can go in when [season] comes. */
+@StringRes
+fun plantInSeasonMessage(season: Season): Int = when (season) {
+    Season.SPRING -> R.string.msg_plant_in_spring
+    Season.SUMMER -> R.string.msg_plant_in_summer
+    Season.AUTUMN -> R.string.msg_plant_in_autumn
+    Season.WINTER -> R.string.msg_plant_in_winter
 }

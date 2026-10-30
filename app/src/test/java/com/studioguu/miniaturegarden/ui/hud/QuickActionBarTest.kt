@@ -45,7 +45,7 @@ class QuickActionBarTest {
             }
         }
         compose.onNode(hasText(text(R.string.action_hoe)) and hasClickAction()).assertIsNotEnabled()
-        compose.onNode(hasText(text(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST)) and hasClickAction()).assertIsNotEnabled()
+        compose.onNode(hasText(text(R.string.action_fertilize, 15)) and hasClickAction()).assertIsNotEnabled()
         compose.onNode(hasText(text(R.string.action_inventory)) and hasClickAction()).assertIsNotEnabled()
         compose.onNode(hasText(text(R.string.action_shop)) and hasClickAction()).assertIsEnabled()
     }

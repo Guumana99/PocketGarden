@@ -150,7 +150,8 @@ class WitherAndWeatherTest {
         assertEquals(PlantStatus.HEALTHY, revived.status)
         assertEquals(0f, revived.stressRate, 0f)
         assertEquals(1f, revived.moistureLevel, 0f)
-        assertEquals(1f, revived.nutritionLevel, 0f)
+        // The food is the soil's: reviving a plant does not fill it.
+        assertEquals(0.05f, revived.nutritionLevel, 0f)
         assertEquals(0.6f, revived.growthProgress, 0f)
         assertEquals(t0 + hour, revived.lastUpdatedTimestamp)
         assertEquals(100L - CareForPlantUseCase.REVIVE_COST, repo.profile?.coins)
@@ -205,7 +206,6 @@ class WitherAndWeatherTest {
         repo.put(flower(moisture = 0f, stress = 1f, status = PlantStatus.WITHERED))
 
         assertEquals(ActionResult.WITHERED, care.water("p", t0, sunny))
-        assertEquals(ActionResult.WITHERED, care.fertilize("p", t0, sunny))
         assertEquals(100L, repo.profile?.coins)
     }
 
@@ -214,51 +214,32 @@ class WitherAndWeatherTest {
     @Test
     fun `a withered plant that is cleared away becomes compost in its bed`() = runBlocking {
         repo.till(0, 0)
+        repo.put(repo.objects.getValue("soil_0_0").copy(nutritionLevel = 0f))
         repo.put(flower(stress = 1f, status = PlantStatus.WITHERED))
-        val soil = repo.objects.getValue("soil_0_0")
-        assertFalse(soil.isComposted)
 
         assertEquals(ActionResult.SUCCESS, remove("p"))
 
         assertTrue(repo.plants.isEmpty())
-        assertTrue(repo.objects.getValue("soil_0_0").isComposted)
+        assertEquals(1f / 3f, repo.objects.getValue("soil_0_0").nutritionLevel, 1e-4f)
         assertEquals(100L, repo.profile?.coins) // free, and nothing refunded
     }
 
     @Test
-    fun `the next seed in composted soil starts ahead and uses the compost up`() = runBlocking {
-        repo.till(0, 0)
-        repo.put(flower(stress = 1f, status = PlantStatus.WITHERED))
-        repo.putSlot(InventorySlot(0, GardenItem.SEED_SUNFLOWER.itemId, 2))
-        remove("p")
-
-        assertEquals(ActionResult.SUCCESS, place(0, 0, 0, t0))
-
-        val first = repo.plants.single()
-        assertEquals(GridObject.COMPOST_GROWTH_BONUS, first.growthProgress, 0f)
-        assertFalse(repo.objects.getValue("soil_0_0").isComposted)
-
-        // The one after that starts from nothing again.
-        repo.put(first.copy(growthProgress = 1f))
-        harvest(first.instanceId, t0, sunny)
-        place(0, 0, 0, t0)
-        assertEquals(0f, repo.plants.single().growthProgress, 0f)
-    }
-
-    @Test
-    fun `only withered plants make compost`() = runBlocking {
+    fun `only crops make compost`() = runBlocking {
         repo.till(0, 0)
         repo.till(1, 0)
+        repo.put(repo.objects.getValue("soil_0_0").copy(nutritionLevel = 0f))
+        repo.put(repo.objects.getValue("soil_1_0").copy(nutritionLevel = 0f))
         repo.put(flower("alive", growth = 0.4f))
         repo.put(GridObject(instanceId = "rock", gridX = 1, gridY = 0, objectId = "deco_rock", lastUpdatedTimestamp = t0))
 
         remove("alive")
         remove("rock")
 
-        assertFalse(repo.objects.getValue("soil_0_0").isComposted)
-        assertFalse(repo.objects.getValue("soil_1_0").isComposted)
+        assertTrue(repo.objects.getValue("soil_0_0").nutritionLevel > 0f)
+        assertEquals(0f, repo.objects.getValue("soil_1_0").nutritionLevel, 0f)
         assertTrue(RemoveObjectUseCase.leavesCompost(flower(stress = 1f, status = PlantStatus.WITHERED)))
-        assertFalse(RemoveObjectUseCase.leavesCompost(flower()))
+        assertTrue(RemoveObjectUseCase.leavesCompost(flower()))
     }
 
     @Test
@@ -268,21 +249,6 @@ class WitherAndWeatherTest {
         assertEquals(ActionResult.SUCCESS, remove("p"))
 
         assertTrue(repo.objects.isEmpty())
-    }
-
-    @Test
-    fun `compost keeps, and does nothing for things that are not seeds`() = runBlocking {
-        repo.till(0, 0)
-        repo.put(flower(stress = 1f, status = PlantStatus.WITHERED))
-        remove("p")
-        repo.putSlot(InventorySlot(0, GardenItem.DECO_ROCK.itemId, 1))
-
-        // A month goes by.
-        val soil = calc(repo.objects.getValue("soil_0_0"), t0 + 30 * day, days(sunny, rainy, WeatherType.CLOUDY))
-        assertTrue(soil.isComposted)
-
-        place(0, 0, 0, t0)
-        assertTrue(repo.objects.getValue("soil_0_0").isComposted)
     }
 
     // --- Rain ---
@@ -431,10 +397,10 @@ class WitherAndWeatherTest {
         val result = calc(start, t0 + 10 * day, forecast)
 
         assertEquals(t0 + 10 * day, result.lastUpdatedTimestamp)
-        // Seven days of rain: hungry by now, but watered and no closer to withering.
+        // Seven days of rain: watered and no closer to withering.
         assertEquals(0f, result.stressRate, 0f)
         assertEquals(1f, result.moistureLevel, 0f)
-        assertEquals(PlantStatus.UNNOURISHED, result.status)
+        assertEquals(PlantStatus.HEALTHY, result.status)
         // Had the three sunny days counted as well, it would have gone over a little.
         assertTrue(calc(start, t0 + 10 * day, days(sunny)).stressRate > 0f)
     }

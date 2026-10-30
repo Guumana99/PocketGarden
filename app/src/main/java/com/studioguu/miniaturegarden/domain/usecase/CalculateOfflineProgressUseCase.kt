@@ -5,6 +5,7 @@ import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import javax.inject.Inject
@@ -19,14 +20,14 @@ import kotlin.math.min
  * carried over by leaving it in `lastUpdatedTimestamp`, so frequent short sessions lose nothing.
  *
  * A stretch of one weather is computed in O(1) per plant instead of looping over ticks. That
- * works because nothing waters or feeds a plant while offline: moisture and nutrition only fall,
- * so the ticks always split into a healthy phase followed by a deficient phase, and a plant
+ * works because nothing waters a plant while offline: moisture only falls, so the ticks always
+ * split into a healthy phase followed by a deficient phase, and a plant
  * that comes into full bloom stays there; each phase's contribution is a plain multiplication.
  * Time away that spans several kinds of weather is cut at the changes and computed stretch by
  * stretch.
  *
  * How a plant withers:
- * - thirst and lack of nutrition add stress, as long as they last;
+ * - thirst adds stress, as long as it lasts;
  * - a plant left standing in full bloom goes over: from the moment it is fully grown it gains
  *   stress too, and withers [OVERRIPE_HOURS] later if it is not harvested;
  * - at full stress it is withered. It is never removed: it stays where it is until the player
@@ -110,15 +111,13 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         // Rain waters the plant before anything else happens.
         val startMoisture = if (protected) 1f else gridObject.moistureLevel
         // A well nearby slows the drying, a hut nearby quickens the growing.
-        val moistureDrain = weather.moistureDrainMultiplier * surroundings.moistureDrainFactor /
+        val moistureDrain = weather.moistureDrainMultiplier * surroundings.moistureDrainFactor * surroundings.soilDrainFactor /
             (species.dryOutHours * TICKS_PER_HOUR)
         val growthPerTick = weather.growthMultiplier * surroundings.growthFactor /
             (species.growthHours * TICKS_PER_HOUR)
         val hydratedTicks = ticksAbove(startMoisture, THIRSTY_THRESHOLD, moistureDrain, ticks)
-        val nourishedTicks = ticksAbove(gridObject.nutritionLevel, UNNOURISHED_THRESHOLD, NUTRITION_DRAIN_PER_TICK, ticks)
-        val healthyTicks = min(hydratedTicks, nourishedTicks)
+        val healthyTicks = hydratedTicks
         val thirstyTicks = ticks - hydratedTicks
-        val starvedTicks = ticks - nourishedTicks
 
         // Growing happens in the healthy phase, which comes first. Once the plant is fully grown
         // it is in bloom for every tick that is left, healthy or not.
@@ -128,7 +127,6 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         val growingTicks = min(healthyTicks, ticksToBloom)
 
         val moisture = (startMoisture - moistureDrain * ticks).coerceIn(0.0, 1.0)
-        val nutrition = (gridObject.nutritionLevel - NUTRITION_DRAIN_PER_TICK * ticks).coerceIn(0.0, 1.0)
         val growth = (gridObject.growthProgress + growthPerTick * healthyTicks).coerceIn(0.0, 1.0)
         // A healthy plant that is still growing gets over earlier hardship; one in bloom does
         // not, it only ever goes over. Recovery is applied first, as the healthy phase is first.
@@ -136,17 +134,15 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         val gained = if (protected) {
             0.0
         } else {
-            STRESS_THIRSTY_PER_TICK * thirstyTicks + STRESS_UNNOURISHED_PER_TICK * starvedTicks +
-                STRESS_OVERRIPE_PER_TICK * bloomTicks
+            STRESS_THIRSTY_PER_TICK * thirstyTicks + STRESS_OVERRIPE_PER_TICK * bloomTicks
         }
         val stress = (recovered + gained).coerceIn(0.0, if (species.canWither) 1.0 else NEVER_WITHERED_STRESS)
 
-        val status = statusOf(moisture, nutrition, stress)
+        val status = statusOf(moisture, gridObject.nutritionLevel.toDouble(), stress)
 
         return gridObject.copy(
             growthProgress = growth.toFloat(),
             moistureLevel = moisture.toFloat(),
-            nutritionLevel = nutrition.toFloat(),
             stressRate = stress.toFloat(),
             status = status,
             lastUpdatedTimestamp = newTimestamp,
@@ -175,7 +171,7 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         fun statusOf(moisture: Double, nutrition: Double, stress: Double): PlantStatus = when {
             stress >= 1.0 -> PlantStatus.WITHERED
             moisture <= THIRSTY_THRESHOLD -> PlantStatus.THIRSTY
-            nutrition <= UNNOURISHED_THRESHOLD -> PlantStatus.UNNOURISHED
+            Soil.isEmpty(nutrition.toFloat()) -> PlantStatus.UNNOURISHED
             else -> PlantStatus.HEALTHY
         }
 
@@ -184,16 +180,14 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
 
         const val TICKS_PER_HOUR = 60.0
 
-        /** At or below these levels a plant counts as thirsty / unnourished and gains stress. */
+        /** At or below this level a plant counts as thirsty and gains stress. */
         const val THIRSTY_THRESHOLD = 0.2
-        const val UNNOURISHED_THRESHOLD = 0.2
 
-        /** Nutrition lasts 72 h. Growth and drying speed are per plant, see [PlantSpecies]. */
-        const val NUTRITION_DRAIN_PER_TICK = 1.0 / (72 * TICKS_PER_HOUR)
-
-        /** A thirsty plant withers after 24 h, an unnourished one after 48 h; both stack. */
+        /**
+         * A thirsty plant withers after 24 h. Lack of food never withers anything: it is the
+         * soil's ([Soil]), runs out by harvests rather than by the hour, and only weakens a crop.
+         */
         const val STRESS_THIRSTY_PER_TICK = 1.0 / (24 * TICKS_PER_HOUR)
-        const val STRESS_UNNOURISHED_PER_TICK = 1.0 / (48 * TICKS_PER_HOUR)
         const val STRESS_RECOVERY_PER_TICK = 1.0 / (48 * TICKS_PER_HOUR)
 
         /** A plant left in full bloom withers this many hours after it finished growing. */

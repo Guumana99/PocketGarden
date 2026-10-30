@@ -31,15 +31,15 @@ enum class PlantSpecies(
     val ground: PlantGround = PlantGround.BED,
 ) {
     /** The first flower: drawn in three stages (#58), and it never withers. */
-    TULIP("plant_tulip", growthHours = 6, dryOutHours = 24, harvestCoins = 22, harvestXp = 10, growthStages = 3, canWither = false),
-    SUNFLOWER("plant_sunflower", growthHours = 20, dryOutHours = 16, harvestCoins = 50, harvestXp = 22, growthStages = 3),
-    ROSE("plant_rose", growthHours = 36, dryOutHours = 36, harvestCoins = 105, harvestXp = 40),
+    TULIP("plant_tulip", growthHours = 6, dryOutHours = 24, harvestCoins = 22, harvestXp = 10, growthStages = 3, canWither = false, ground = PlantGround.FLOWER_BED),
+    SUNFLOWER("plant_sunflower", growthHours = 20, dryOutHours = 16, harvestCoins = 50, harvestXp = 22, growthStages = 3, ground = PlantGround.FLOWER_BED),
+    ROSE("plant_rose", growthHours = 36, dryOutHours = 36, harvestCoins = 105, harvestXp = 40, ground = PlantGround.FLOWER_BED),
 
     /** Autumn's own flower; light and quick to grow. */
-    COSMOS("plant_cosmos", growthHours = 10, dryOutHours = 20, harvestCoins = 22, harvestXp = 10, growthStages = 3),
+    COSMOS("plant_cosmos", growthHours = 10, dryOutHours = 20, harvestCoins = 22, harvestXp = 10, growthStages = 3, ground = PlantGround.FLOWER_BED),
 
     /** The winter flower: slow to dry out in the cold. */
-    SNOWDROP("plant_snowdrop", growthHours = 10, dryOutHours = 30, harvestCoins = 22, harvestXp = 10, growthStages = 3),
+    SNOWDROP("plant_snowdrop", growthHours = 10, dryOutHours = 30, harvestCoins = 22, harvestXp = 10, growthStages = 3, ground = PlantGround.FLOWER_BED),
 
     /** A herb that grows in any season; the quickest of all, and worth the least for it. */
     MINT("plant_mint", growthHours = 4, dryOutHours = 18, harvestCoins = 13, harvestXp = 7, growthStages = 3),
@@ -63,7 +63,7 @@ enum class PlantSpecies(
     WATERMELON("plant_watermelon", growthHours = 30, dryOutHours = 16, harvestCoins = 100, harvestXp = 42, growthStages = 3),
 
     /** A herb for every season at Lv.5; it keeps well between waterings. */
-    LAVENDER("plant_lavender", growthHours = 24, dryOutHours = 30, harvestCoins = 52, harvestXp = 24, growthStages = 3),
+    LAVENDER("plant_lavender", growthHours = 24, dryOutHours = 30, harvestCoins = 52, harvestXp = 24, growthStages = 3, ground = PlantGround.FLOWER_BED),
 
     /**
      * Autumn's crop at Lv.14 (#68): a log laid on the earth or on a bed, on which shiitake come up
@@ -75,7 +75,7 @@ enum class PlantSpecies(
     ),
 
     /** Winter's red leaves at Lv.15; slow to dry out in the cold. */
-    POINSETTIA("plant_poinsettia", growthHours = 40, dryOutHours = 36, harvestCoins = 175, harvestXp = 67, growthStages = 3),
+    POINSETTIA("plant_poinsettia", growthHours = 40, dryOutHours = 36, harvestCoins = 175, harvestXp = 67, growthStages = 3, ground = PlantGround.FLOWER_BED),
 
     /** Summer's peppers at Lv.11: slow to come, then they keep coming. */
     PAPRIKA(
@@ -111,7 +111,7 @@ enum class PlantSpecies(
      * Spring's yellow field flower at Lv.12, light like the cosmos. It has no pictures yet, so it
      * is not on sale ([GardenItem.SEED_NANOHANA]).
      */
-    NANOHANA("plant_nanohana", growthHours = 32, dryOutHours = 20, harvestCoins = 115, harvestXp = 45, growthStages = 3);
+    NANOHANA("plant_nanohana", growthHours = 32, dryOutHours = 20, harvestCoins = 115, harvestXp = 45, growthStages = 3, ground = PlantGround.FLOWER_BED);
 
     /** Growth progress (0..1) gained per healthy hour. */
     val growthPerHour: Float get() = 1f / growthHours

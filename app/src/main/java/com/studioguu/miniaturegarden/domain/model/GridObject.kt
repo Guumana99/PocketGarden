@@ -20,10 +20,16 @@ data class GridObject(
     val workEndsAt: Long = 0L,
     /** How many times this plant has been harvested; only a repeatable crop is ever above 0. */
     val harvestCount: Int = 0,
-    /** How rich a tilled bed is ([SoilQuality]), set by the hoe that tilled it; 0 for anything else. */
+    /** The grade of a cell of soil ([SoilGrade]): 0 plain, 1 good, 2 fluffy. 0 for anything else. */
     val soilQuality: Int = 0,
     /** Whether a thing that can be switched (the sprinkler) is running. True for everything else. */
     val isOn: Boolean = true,
+    /** Of a cell of soil: the points towards its next grade ([Soil.POINTS_PER_GRADE]). */
+    val soilProgress: Int = 0,
+    /** Of a cell of soil: the crop last harvested from it, to tell when crops change. */
+    val lastCropId: String? = null,
+    /** Of a cell of soil: how long it has lain with nothing growing, as [Soil.afterTime] counts it. */
+    val idleMillis: Long = 0L,
 ) {
     /** Whether this is a work site: being built (or built and not yet unveiled), taken apart or packed up. */
     val isWorking: Boolean get() = workKind != WorkKind.NONE
@@ -57,21 +63,27 @@ data class GridObject(
     /** Laid on the earth as cover: pebbles, wild flowers, a lawn ([GROUND_COVER_ID_PREFIX]). */
     val isGroundCover: Boolean get() = objectId.startsWith(GROUND_COVER_ID_PREFIX)
 
-    /** Ground the player has broken up with the hoe, where most seeds go ([PlantGround]). */
+    /**
+     * Ridged soil (畝): ground the hoe has been over twice, where any seed can go ([PlantGround]).
+     * Its id is the one every bed had before there were two kinds, which is why a bed in an older
+     * save is ridged, as all of them could be sown with anything.
+     */
     val isTilledSoil: Boolean get() = objectId == TILLED_SOIL_OBJECT_ID
+
+    /** Tilled earth (耕した土): ground the hoe has been over once, flat, where flowers can go. */
+    val isLooseSoil: Boolean get() = objectId == LOOSE_SOIL_OBJECT_ID
+
+    /** Ground the hoe has made, tilled or ridged. It can be turned back ([Soil.groundBelow]). */
+    val isHoedSoil: Boolean get() = isLooseSoil || isTilledSoil
+
+    /** A cell of soil, with its food and grade ([Soil]): what the hoe made, or a greenhouse bed. */
+    val isSoil: Boolean get() = isHoedSoil || isGreenhouse
 
     /**
      * A glass greenhouse bed: tilled soil under glass. Seeds can be sown in it like in tilled
      * soil, and in any season.
      */
     val isGreenhouse: Boolean get() = objectId == GREENHOUSE_OBJECT_ID
-
-    /**
-     * Tilled soil that a withered plant was dug into. The next seed planted here starts off
-     * ahead (see [COMPOST_GROWTH_BONUS]), which uses the compost up. Soil has no growth of its
-     * own, so its otherwise unused [growthProgress] holds this.
-     */
-    val isComposted: Boolean get() = isTilledSoil && growthProgress > 0f
 
     /** A fence, under whichever of its ids. Fences join up with the fences next to them. */
     val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
@@ -126,10 +138,9 @@ data class GridObject(
         const val TILLED_SOIL_OBJECT_ID = "floor_tilled"
 
         /** A bed of soil under a small glass house; see [isGreenhouse]. */
+        const val LOOSE_SOIL_OBJECT_ID = "floor_loose"
         const val GREENHOUSE_OBJECT_ID = "floor_greenhouse"
 
-        /** Growth a seed starts with when it is planted in composted soil. */
-        const val COMPOST_GROWTH_BONUS = 0.2f
         const val FENCE_OBJECT_ID = "struct_fence"
 
         /**

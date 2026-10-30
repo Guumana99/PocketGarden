@@ -90,7 +90,8 @@ object InventoryOrder {
      * The filled slots that [filter] lets through, sorted by [sort], with the empty slots after
      * them. Under a tab other than [InventoryFilter.ALL] the slots holding other items are left
      * out but the empty ones are kept, so that the bag keeps its size whichever tab is open.
-     * Ties are settled by what came last, then by slot, so the order never jumps about.
+     * Ties are settled by what came last, then by slot, so the order never jumps about. Whatever
+     * the sort, seeds out of their season wait at the back ([isOutOfSeason]).
      */
     fun arrange(
         slots: List<InventorySlot>,
@@ -110,8 +111,17 @@ object InventoryOrder {
             InventorySort.SEASON -> compareBy<Pair<InventorySlot, GardenItem>> { seasonRank(it.second, season) }.then(newestFirst)
             InventorySort.LEVEL -> compareBy<Pair<InventorySlot, GardenItem>> { it.second.openingRank }.then(newestFirst)
         }
-        return filled.sortedWith(order).map { it.first } + slots.filter { it.isEmpty }.sortedBy { it.slotIndex }
+        val resting = compareBy<Pair<InventorySlot, GardenItem>> { isOutOfSeason(it.second, season) }
+        return filled.sortedWith(resting.then(order)).map { it.first } + slots.filter { it.isEmpty }.sortedBy { it.slotIndex }
     }
+
+    /** Whether [item] is a seed that cannot be sown in [season], other than under glass. */
+    fun isOutOfSeason(item: GardenItem, season: Season): Boolean =
+        item.category == ItemCategory.SEED && !item.isInSeason(season)
+
+    /** The soonest season after [now] that [item] can be sown in. */
+    fun nextSeason(item: GardenItem, now: Season): Season =
+        item.seasons.minByOrNull { Math.floorMod(it.ordinal - now.ordinal, Season.entries.size) } ?: now
 
     /**
      * 0 for an item in season, 1 for one that grows all year, then 2 and up for the other seasons:

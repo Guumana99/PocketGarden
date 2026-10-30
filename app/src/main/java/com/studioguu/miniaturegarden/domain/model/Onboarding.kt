@@ -121,15 +121,9 @@ data class GardenProgress(
     val gardenSize: Int = GridObject.GRID_SIZE,
     /** When the current season began (epoch millis); 0 until the season clock has started. */
     val seasonStartedAt: Long = 0L,
-    /** How often the hoe has tilled a bed: its level ([FarmTool.HOE]). */
-    val hoeXp: Int = 0,
-    /** How often the watering can has watered: its level ([FarmTool.WATERING_CAN]). */
-    val wateringCanXp: Int = 0,
     /** Where the garden's own weather comes from ([WeatherPlanner]); 0 until it has been chosen. */
     val weatherSeed: Long = 0L,
 ) {
-    val hoeLevel: Int get() = FarmTool.HOE.levelFor(hoeXp)
-    val wateringCanLevel: Int get() = FarmTool.WATERING_CAN.levelFor(wateringCanXp)
 
     companion object {
         /** A garden made just now: spring, with the first steps ahead. */
@@ -175,7 +169,7 @@ object TutorialGuide {
             TutorialStep.OPEN_CRATE -> objects.filter { it.isStarterCrate }.map { GridCell(it.gridX, it.gridY) }.toSet()
             TutorialStep.TILL_SOIL -> emptySet()
             TutorialStep.PLANT_SEED -> nearestMiddle(
-                objects.filter { it.isTilledSoil && grid.occupantAt(it.gridX, it.gridY) == null }.map { GridCell(it.gridX, it.gridY) },
+                objects.filter { it.isHoedSoil && grid.occupantAt(it.gridX, it.gridY) == null }.map { GridCell(it.gridX, it.gridY) },
             )
             TutorialStep.WATER_SEEDLING -> tutorialPlant(objects)?.let { setOf(GridCell(it.gridX, it.gridY)) } ?: emptySet()
             else -> emptySet()

@@ -43,7 +43,7 @@ object TileSetDefinition {
     val objectIds: List<String> =
         PlantSpecies.entries.map { it.objectId } + Decoration.entries.map { it.objectId } +
             GroundCover.entries.map { it.objectId } + StructureData.entries.map { it.objectId } +
-            GridObject.RIVER_OBJECT_ID + GridObject.COBBLESTONE_OBJECT_ID + GridObject.WOOD_DECK_OBJECT_ID + GridObject.TILLED_SOIL_OBJECT_ID + GridObject.GREENHOUSE_OBJECT_ID +
+            GridObject.RIVER_OBJECT_ID + GridObject.COBBLESTONE_OBJECT_ID + GridObject.WOOD_DECK_OBJECT_ID + GridObject.TILLED_SOIL_OBJECT_ID + GridObject.LOOSE_SOIL_OBJECT_ID + GridObject.GREENHOUSE_OBJECT_ID +
             FencePart.entries.map { it.objectId } + GridObject.STARTER_CRATE_OBJECT_ID
 
     /**

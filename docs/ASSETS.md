@@ -15,7 +15,7 @@
 | `app/src/main/res/drawable-nodpi/icon_{struct_hut,struct_well,deco_rock,deco_bench,deco_lantern,deco_sprinkler,ground_pebble,ground_flowers,floor_wood,floor_cobblestone,ground_grass,struct_cottage,floor_greenhouse,struct_fence,deco_pond,struct_windmill,tile_river}.png` | 建物・飾り・地面の品物のアイコン（#74、残りの 7 つは #77。256×256） | `tools/prepare_drawable_art.py`（`ITEM_ICONS` は原画から、`CUT_ICONS` は切り抜き済みの絵から、風車は `windmill_icon`、小川は `river_icon`）。地面は斜め上から見た板の形のまま |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
 | `app/src/main/res/drawable/soil_tilled.png` | 耕した土（畝 3 本）の板（#57）。上面を畑の 1 マスに敷く | 受け取ったまま（1024×1024、白背景）。`GroundSlab.TILLED` |
-| `app/src/main/res/drawable/soil_revived.png` | 鍬で崩しかけた地面（畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
+| `app/src/main/res/drawable/soil_revived.png` | 耕した土（#78。畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
 | `app/src/main/res/drawable/pond_center.png` | 水面だけの 1 マス（#57）。池どうしのつなぎ目の水と、#61 から四方を池に囲まれた池（池の真ん中）の水面 | 受け取ったまま（1024×1024、白背景）。`GroundSlab.POND_CENTER`、`TerrainTextures.pondWater`。色は池の絵の水にそろえて使う |
 | `app/src/main/res/drawable-nodpi/icon_<作物>.png`（作物 18 種すべて） | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
 | `app/src/main/res/drawable/pond.png` | 池（`deco_pond`） | `tools/source_art/pond.png` をそのままコピー（1536×768）。上面の位置は `GroundSlab.POND` |
@@ -135,7 +135,7 @@
 | 飾り | 池（`deco_pond`） | 120 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |
 
 集計：確定アセット 34（うちコード併用 3、旧画風 3）、生成アセット 1、コード描画（仮置き） 0、未作成（ショップに出していない） 3。
-ショップに出ないもの：耕した土（鍬で作る。`soil_tilled.png`）、崩しかけた地面（`soil_revived.png`）、最初の木箱（`deco_starter_crate`、#74 から絵）。
+ショップに出ないもの：畝のある土（鍬で作る。`soil_tilled.png`）、耕した土（鍬で作る。`soil_revived.png`）、最初の木箱（`deco_starter_crate`、#74 から絵）。
 品を足したり絵を入れたりしたら、この表と `GardenItem.kt` 冒頭の一覧と `ASSET_LEDGER.md` を直すこと。
 
 ### 画像が無く、プログラムで描いているもの

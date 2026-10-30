@@ -28,7 +28,7 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
-import com.studioguu.miniaturegarden.domain.model.SoilQuality
+import com.studioguu.miniaturegarden.domain.model.SoilGrade
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.usecase.GardenLayout
@@ -38,7 +38,7 @@ import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.objectDisplayName
 import com.studioguu.miniaturegarden.ui.statusLabel
-import com.studioguu.miniaturegarden.ui.toolStars
+import com.studioguu.miniaturegarden.ui.soilGradeName
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -52,12 +52,12 @@ import kotlinx.coroutines.delay
  *   here only then ([GardenLayout]); otherwise the panel says where that is done.
  * @param guiding the first steps are under way: the panel shows the plant and its watering
  *   only, without harvesting, clearing away or the notes underneath.
- * @param bedQuality how rich the bed under it is ([SoilQuality]); shown, with what it adds to a
+ * @param soil the cell of soil it is, or that it stands in: its grade is shown ([SoilGrade]).
+ * @param endsAtHarvest it is past its season, and its next harvest will be its last.
+ * @param onTurnBackGround turns the ground under a plant back a step, in edit mode.
  *   harvest, when above 0.
  * @param sprinkled a running sprinkler waters it.
  * @param onToggleSprinkler switches the sprinkler on or off; its button is shown for a sprinkler.
- * @param wateringCanLevel how far the watering can has come with use: its stars ([toolStars])
- *   follow the word on the watering button, the one place a plant is watered from.
  */
 @Composable
 fun ObjectStatusDialog(
@@ -73,10 +73,11 @@ fun ObjectStatusDialog(
     surroundings: PlantSurroundings = PlantSurroundings.OPEN_GROUND,
     editing: Boolean = false,
     guiding: Boolean = false,
-    bedQuality: Int = 0,
+    soil: GridObject? = null,
+    endsAtHarvest: Boolean = false,
+    onTurnBackGround: () -> Unit = {},
     sprinkled: Boolean = false,
     onToggleSprinkler: () -> Unit = {},
-    wateringCanLevel: Int = 1,
     /** How far the game's clock is ahead of the device's: the time a job has left goes by the game's. */
     clockOffset: Long = 0L,
 ) {
@@ -114,9 +115,9 @@ fun ObjectStatusDialog(
                     color = if (gridObject.isOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (bedQuality > 0 && !guiding) {
+            if (soil != null && !guiding) {
                 Text(
-                    text = stringResource(R.string.soil_quality, "★".repeat(bedQuality) + "☆".repeat(SoilQuality.MAX - bedQuality), SoilQuality.bonusPercent(bedQuality)),
+                    text = stringResource(soilGradeName(SoilGrade.of(soil.soilQuality))),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.secondary,
                 )
@@ -124,16 +125,24 @@ fun ObjectStatusDialog(
             if (gridObject.isPlant) {
                 LevelRow(stringResource(R.string.label_growth), gridObject.growthProgress)
                 LevelRow(stringResource(R.string.label_moisture), gridObject.moistureLevel)
-                LevelRow(stringResource(R.string.label_nutrition), gridObject.nutritionLevel)
+                // The food in its soil; a log takes none.
+                if (PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil) {
+                    LevelRow(stringResource(R.string.label_nutrition), gridObject.nutritionLevel)
+                }
                 // What is left before it withers.
                 LevelRow(stringResource(R.string.label_vitality), 1f - gridObject.stressRate)
+            } else if (gridObject.isSoil) {
+                LevelRow(stringResource(R.string.label_nutrition), gridObject.nutritionLevel)
             }
             val hint = when {
                 // A log (#68) only lay on the soil: cleared away, it leaves no compost.
                 gridObject.isPlant && gridObject.status == PlantStatus.WITHERED ->
                     if (PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil) R.string.hint_withered else R.string.hint_withered_log
+                endsAtHarvest -> R.string.hint_season_over
                 gridObject.isPlant && gridObject.growthProgress >= 1f -> R.string.hint_overripe
-                gridObject.isComposted -> R.string.hint_composted
+                gridObject.status == PlantStatus.UNNOURISHED -> R.string.hint_weak
+                gridObject.isLooseSoil -> R.string.hint_loose_soil
+                gridObject.isTilledSoil -> R.string.hint_ridged_soil
                 gridObject.isPlant && PlantSpecies.forObjectId(gridObject.objectId).isRepeatable -> R.string.hint_repeatable
                 else -> null
             }
@@ -179,7 +188,7 @@ fun ObjectStatusDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            } else if (!editing && !guiding && (gridObject.isTilledSoil || (gridObject.isPlant && gridObject.status == PlantStatus.WITHERED))) {
+            } else if (!editing && !guiding && (gridObject.isHoedSoil || (gridObject.isPlant && gridObject.status == PlantStatus.WITHERED))) {
                 // What there is to clear away (a withered crop, an empty bed) is cleared in edit mode.
                 Text(
                     text = stringResource(R.string.hint_edit_to_clear),
@@ -206,8 +215,7 @@ fun ObjectStatusDialog(
                 } else if (gridObject.isPlant) {
                     val alive = gridObject.status != PlantStatus.WITHERED
                     FilledTonalButton(onClick = onWater, enabled = alive) {
-                        val stars = toolStars(wateringCanLevel)
-                        Text(stringResource(R.string.action_water) + if (stars.isEmpty()) "" else " $stars")
+                        Text(stringResource(R.string.action_water))
                     }
                     if (!guiding) {
                         Button(onClick = onHarvest, enabled = alive && gridObject.growthProgress >= 1f) {
@@ -225,6 +233,10 @@ fun ObjectStatusDialog(
                 Spacer(Modifier.weight(1f))
                 // Anything is cleared away in edit mode only (#49).
                 if (!guiding && GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
+                    // The ground under a plant is turned back from here too, with or without it.
+                    if (gridObject.isPlant && soil?.isHoedSoil == true) {
+                        OutlinedButton(onClick = onTurnBackGround) { Text(stringResource(R.string.action_turn_back_ground)) }
+                    }
                     OutlinedButton(onClick = onRemove) { Text(stringResource(removeLabel(gridObject))) }
                 }
             }
@@ -328,7 +340,7 @@ private fun LevelRow(label: String, level: Float) {
 /** What taking [gridObject] off the garden is called: a crop is pulled up, a bed turned back into ground, anything else removed. */
 @StringRes
 fun removeLabel(gridObject: GridObject): Int = when {
-    gridObject.isTilledSoil -> R.string.action_restore_ground
+    gridObject.isHoedSoil -> R.string.action_restore_ground
     gridObject.isPlant -> R.string.action_pull
     else -> R.string.action_remove
 }

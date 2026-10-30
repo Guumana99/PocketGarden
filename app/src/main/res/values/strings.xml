@@ -26,12 +26,18 @@
     <string name="label_growth">成長</string>
     <string name="label_moisture">水分</string>
     <string name="label_nutrition">栄養</string>
+    <string name="soil_grade_plain">🌱 ふつうの土</string>
+    <string name="soil_grade_good">🌱 よい土</string>
+    <string name="soil_grade_fluffy">🌱 ふかふかの土</string>
+    <string name="hint_weak">栄養がありません。ふつうの収穫はできます。肥料をまくと、栄養が満タンになります</string>
+    <string name="hint_season_over">旬が過ぎました。次の収穫でおしまいです</string>
+    <string name="hint_loose_soil">花を植えられます。もう一度クワを入れると畝になり、野菜も植えられます</string>
+    <string name="hint_ridged_soil">どの作物も植えられます</string>
     <string name="label_vitality">元気</string>
     <string name="hint_overripe">満開です。収穫しないまま置いておくと、やがて枯れてしまいます</string>
     <string name="hint_withered">枯れています。コインで復活させるか、抜くとたい肥になって、土の栄養になります</string>
     <string name="hint_withered_log">枯れています。コインで復活させるか、抜いて片づけます（原木はたい肥になりません）</string>
     <string name="hint_repeatable">🔁 収穫しても株は残り、また実ります（2回目からの収穫は少なめ）</string>
-    <string name="hint_composted">たい肥入りの土です。次に植える作物が少し育った状態で始まります</string>
     <string name="action_revive">🌱 復活 (🪙%1$d)</string>
     <string name="msg_revived">🌱 元気になりました</string>
     <string name="msg_composted">🍂 たい肥になりました</string>
@@ -39,12 +45,14 @@
     <string name="label_percent">%1$d%%</string>
     <string name="status_healthy">元気</string>
     <string name="status_thirsty">水不足</string>
-    <string name="status_unnourished">栄養不足</string>
+    <string name="status_unnourished">弱っています</string>
     <string name="status_withered">枯れた</string>
     <string name="action_harvest">収穫</string>
     <string name="action_remove">撤去</string>
     <string name="action_pull">抜く</string>
     <string name="action_restore_ground">戻す</string>
+    <string name="action_turn_back_ground">地面を戻す</string>
+    <string name="turn_back_title">植わっている%1$sは無くなります。戻しますか？</string>
     <string name="action_close">閉じる</string>
 
     <!-- Objects and items -->
@@ -77,7 +85,8 @@
     <string name="object_ground_pebble">小石</string>
     <string name="object_terrain_river">せせらぎ</string>
     <string name="object_floor_cobblestone">石畳</string>
-    <string name="object_floor_tilled">耕した土</string>
+    <string name="object_floor_loose">耕した土</string>
+    <string name="object_floor_tilled">畝のある土</string>
     <string name="object_floor_wood">ウッドデッキ</string>
     <string name="object_deco_pond">池</string>
     <string name="object_ground_flowers">野の花</string>
@@ -91,17 +100,9 @@
     <string name="hint_sprinkler_effect">💦 動いている間、まわり1マスの土がほとんど乾きません</string>
     <string name="hint_sprinkler_stopped">止めている間は、水をまきません</string>
     <string name="hint_near_sprinkler">💦 スプリンクラーのそば：土がほとんど乾かない</string>
-    <string name="soil_quality">🌱 土の質 %1$s（収穫コイン +%2$d%%）</string>
     <string name="book_to_contents">📖 もくじ</string>
-    <string name="tool_rank_1">見習い</string>
-    <string name="tool_rank_2">慣れた手つき</string>
-    <string name="tool_rank_3">一人前</string>
-    <string name="tool_rank_4">熟練</string>
-    <string name="tool_rank_5">名人</string>
     <string name="msg_hoe_struck">⛏️ 地面が固いようです。もう一度耕しましょう</string>
     <string name="msg_not_switchable">これは止めたり動かしたりできません</string>
-    <string name="effect_hoe_level_up">⛏️ クワさばきが上達しました：%1$s</string>
-    <string name="effect_can_level_up">💧 水やりが上達しました：%1$s</string>
     <string name="hint_near_well">💧 井戸や風車のそば：土が乾きにくい</string>
     <string name="hint_near_hut">🛖 小屋のそば：少し早く育つ</string>
     <string name="hint_well_effect">💧 周りの作物の土が乾きにくくなります</string>
@@ -116,7 +117,6 @@
     <string name="remove_title_withered">枯れた%1$sを抜きますか？</string>
     <string name="remove_title_soil">%1$sを戻しますか？</string>
     <string name="remove_text_returnable">持ち物に戻すと、後でまた置けます。撤去すると元に戻せません。</string>
-    <string name="remove_text_plant">育てている作物は持ち物に戻せません。抜くと元に戻せません。</string>
     <string name="remove_text_withered">抜いた株はたい肥になって、土の栄養になります</string>
     <string name="remove_text_withered_log">原木はたい肥にはなりません。</string>
     <string name="remove_text_soil">1 つ前の地面に戻します。</string>
@@ -213,11 +213,17 @@
     <string name="msg_not_a_plant">作物ではありません</string>
     <string name="msg_withered">枯れてしまっています</string>
     <string name="msg_not_ready">まだ収穫できません</string>
-    <string name="msg_already_fed">まだ栄養は足りています（栄養50%未満で肥料をあげられます）</string>
+    <string name="msg_already_fed">栄養は満タンです</string>
     <string name="msg_edit_mode_tools">✏️ 編集モード中は、並べ替えと片づけだけができます</string>
     <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やりできます）</string>
     <string name="msg_tile_occupied">他の物があるため置けません</string>
-    <string name="msg_needs_tilled_soil">種や苗は、クワで耕した土にだけ植えられます</string>
+    <string name="msg_needs_ridge">野菜は畝に植えられます。耕した土にもう一度クワを入れると畝になります</string>
+    <string name="msg_no_soil">ここには肥料をまけません</string>
+    <string name="msg_plant_in_spring">春になったら植えられます</string>
+    <string name="msg_plant_in_summer">夏になったら植えられます</string>
+    <string name="msg_plant_in_autumn">秋になったら植えられます</string>
+    <string name="msg_plant_in_winter">冬になったら植えられます</string>
+    <string name="msg_needs_tilled_soil">花は、クワで耕した土か畝に植えられます</string>
     <string name="msg_needs_open_ground">しいたけの原木は、土の地面（荒れ地・耕した土）に置けます。芝生や石畳、水辺、温室には置けません</string>
     <string name="msg_tile_not_buildable">川の上には置けません</string>
     <string name="msg_out_of_bounds">お庭の外には置けません</string>
@@ -229,6 +235,7 @@
 
     <!-- Floating effects -->
     <string name="effect_harvest">+%1$d 🪙</string>
+    <string name="effect_harvest_bounty">よい実り！ +%1$d 🪙</string>
 
     <!-- Garden encyclopedia. Its pages read as calm, ordinary Japanese with kanji; only the short tab labels stay in kana. The book is always written 図鑑, never ずかん. -->
     <string name="collection_title">ガーデン図鑑</string>
@@ -442,6 +449,7 @@
     <string name="post_unread_count">未読のお便り：%1$d 通</string>
     <string name="post_all_read">お便りはすべて読みました</string>
     <string name="post_button">ポスト</string>
+    <string name="letter_ending_crops">%1$sは旬が過ぎたので、次の収穫でおしまいです。</string>
     <string name="letter_arrived_title">%1$s %2$sがやってきました</string>
     <string name="letter_arrived_body">%1$sは、%2$sが育てられる季節です。ショップで種を手に入れて、さっそく育ててみませんか。</string>
     <string name="letter_arrived_body_none">%1$sになりました。お庭でのんびり過ごしてみませんか。</string>
@@ -452,7 +460,7 @@
     <string name="letter_tip_rain_title">☔ 雨の日のこと</string>
     <string name="letter_tip_rain_body">雨の日は、空が代わりにお庭じゅうに水をまいてくれます。のんびり雨音を楽しんでくださいね。</string>
     <string name="letter_tip_compost_title">🍂 たい肥のこと</string>
-    <string name="letter_tip_compost_body">枯れてしまった作物を抜くと、その土はたい肥入りのふかふかの土になります。次にまいた種は、少し育ったところから始まりますよ。</string>
+    <string name="letter_tip_compost_body">作物を抜くと、株はたい肥になって土の栄養になります。収穫を重ねた土には肥料をまいて、栄養を満たしてあげましょう。</string>
     <string name="letter_tip_store_title">📦 模様替えのこと</string>
     <string name="letter_tip_store_body">置いた家具や建物は、「持ち物に戻す」でしまって、好きな場所に置き直せます。気分に合わせて、お庭の模様替えをしてみませんか。</string>
     <string name="letter_tip_creatures_title">🐦 小さなお客さまのこと</string>
@@ -488,12 +496,12 @@
     <!-- Notifications -->
     <string name="notification_channel_name">お庭のようす</string>
     <string name="notification_channel_description">作物や建物のようすを、そっとお知らせします</string>
-    <string name="notification_harvest">お庭の%1$sが実ったようです 🌷</string>
-    <string name="notification_harvest_many">お庭の%1$sなど、%2$dつの作物が実ったようです 🌷</string>
-    <string name="notification_water">%1$sが水を欲しがっているようです 💧</string>
-    <string name="notification_water_many">%1$sなど、%2$dつの作物が水を欲しがっているようです 💧</string>
-    <string name="notification_building">%1$sが完成したようです。お披露目を待っています ✨</string>
-    <string name="notification_building_many">%1$sなど、%2$dつの建物が完成したようです ✨</string>
+    <string name="notification_harvest">お庭の%1$sが収穫できます</string>
+    <string name="notification_harvest_many">お庭の%1$sなど %2$d つの作物が収穫できます</string>
+    <string name="notification_water">%1$sの土が乾いてきました。水やりができます</string>
+    <string name="notification_water_many">%1$sなど %2$d つの作物の土が乾いてきました。水やりができます</string>
+    <string name="notification_building">%1$sが完成しました。お披露目できます</string>
+    <string name="notification_building_many">%1$sなど %2$d つの建物が完成しました。お披露目できます</string>
     <string name="notification_invite_title">お庭のようすをお知らせしましょうか？</string>
     <string name="notification_invite_text">作物が実ったときや、建物が完成したときに、そっとお知らせします。音は鳴らしません。設定からいつでも変えられます。</string>
     <string name="notification_invite_ok">お知らせを受け取る</string>

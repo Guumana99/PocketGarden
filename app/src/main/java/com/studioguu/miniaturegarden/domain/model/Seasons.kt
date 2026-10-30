@@ -117,6 +117,9 @@ data class Letter(
     val tip: LetterTip? get() = if (kind == LetterKind.TIP) LetterTip.fromName(topic) else null
 
     /** For a [LetterKind.NEW_STOCK]: the level before and after. */
+    /** For a [LetterKind.SEASON_ARRIVED]: the crops whose next harvest is their last. */
+    val endingCrops: List<String> get() = if (kind == LetterKind.SEASON_ARRIVED && topic.isNotEmpty()) topic.split(',') else emptyList()
+
     /** For a [LetterKind.GARDEN_CAN_GROW]: the size the garden can grow to. */
     val growSize: Int? get() = if (kind == LetterKind.GARDEN_CAN_GROW) topic.toIntOrNull() else null
 
@@ -127,7 +130,9 @@ data class Letter(
     }
 
     companion object {
-        fun arrived(season: Season, at: Long) = Letter("arrived:${season.name}:$at", LetterKind.SEASON_ARRIVED, season, at)
+        /** [season] has come; [ending] are the crops past theirs, whose next harvest is the last. */
+        fun arrived(season: Season, at: Long, ending: List<String> = emptyList()) =
+            Letter("arrived:${season.name}:$at", LetterKind.SEASON_ARRIVED, season, at, topic = ending.joinToString(","))
 
         /** About [season], which comes at [comesAt]; posted at [sentAt]. */
         fun coming(season: Season, comesAt: Long, sentAt: Long) =

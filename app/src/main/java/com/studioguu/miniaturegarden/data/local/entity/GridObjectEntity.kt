@@ -32,10 +32,18 @@ data class GridObjectEntity(
     /** Times a repeatable crop has been harvested. Added in schema version 13. */
     @ColumnInfo(defaultValue = "0")
     val harvestCount: Int = 0,
-    /** How rich a tilled bed is, 0 to 4. Added in schema version 14. */
+    /** The grade of a cell of soil, 0 to 2. Added in schema version 14 (as 0 to 4). */
     @ColumnInfo(defaultValue = "0")
     val soilQuality: Int = 0,
     /** Whether a switchable thing (the sprinkler) is running. Added in schema version 14. */
     @ColumnInfo(defaultValue = "1")
     val isOn: Boolean = true,
+    /** Of a cell of soil: points towards its next grade. Added in schema version 17. */
+    @ColumnInfo(defaultValue = "0")
+    val soilProgress: Int = 0,
+    /** Of a cell of soil: the crop last harvested from it. Added in schema version 17. */
+    val lastCropId: String? = null,
+    /** Of a cell of soil: how long it has lain idle. Added in schema version 17. */
+    @ColumnInfo(defaultValue = "0")
+    val idleMillis: Long = 0L,
 )

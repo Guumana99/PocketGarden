@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -49,6 +50,7 @@ import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.ItemIcon
+import com.studioguu.miniaturegarden.ui.seasonLabel
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 private const val COLUMNS = 4
@@ -103,12 +105,12 @@ fun InventoryBottomSheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(arranged, key = { it.slotIndex }) { slot ->
-                    SlotCell(slot, onClick = { onSlotSelected(slot.slotIndex) })
+                    SlotCell(slot, season, onClick = { onSlotSelected(slot.slotIndex) })
                 }
                 // The places of the items another tab holds, left as plain cells, so that the grid
                 // stays whole and the same size under every tab.
                 items(slots.size - arranged.size, key = { "hidden_$it" }) {
-                    SlotCell(InventorySlot(slotIndex = -1), onClick = {})
+                    SlotCell(InventorySlot(slotIndex = -1), season, onClick = {})
                 }
             }
         }
@@ -211,8 +213,10 @@ private fun FilterTabs(filter: InventoryFilter, onFilterChange: (InventoryFilter
 }
 
 @Composable
-private fun SlotCell(slot: InventorySlot, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun SlotCell(slot: InventorySlot, season: Season, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val item = if (slot.isEmpty) null else GardenItem.fromItemId(slot.itemId)
+    // A seed out of its season rests in the bag, with the season it waits for beside it.
+    val resting = item != null && InventoryOrder.isOutOfSeason(item, season)
     val name = item?.let { itemDisplayName(it) }
     Box(
         modifier = modifier
@@ -232,7 +236,15 @@ private fun SlotCell(slot: InventorySlot, onClick: () -> Unit, modifier: Modifie
         contentAlignment = Alignment.Center,
     ) {
         if (item != null) {
-            ItemIcon(item, 30.sp)
+            ItemIcon(item, 30.sp, modifier = if (resting) Modifier.alpha(RESTING_ALPHA) else Modifier)
+            if (resting) {
+                Text(
+                    text = stringResource(seasonLabel(InventoryOrder.nextSeason(item, season))),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.TopStart).padding(5.dp),
+                )
+            }
             Text(
                 text = "×${slot.amount}",
                 style = MaterialTheme.typography.labelMedium,
@@ -241,3 +253,6 @@ private fun SlotCell(slot: InventorySlot, onClick: () -> Unit, modifier: Modifie
         }
     }
 }
+
+/** How faint a seed out of its season is drawn. */
+private const val RESTING_ALPHA = 0.45f

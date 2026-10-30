@@ -176,14 +176,13 @@ class HarvestTypeTest {
     }
 
     @Test
-    fun `a withered crop cannot be harvested, watered or fed, and does not go away by itself`() = runBlocking {
+    fun `a withered crop cannot be harvested or watered, and does not go away by itself`() = runBlocking {
         repo.put(soil())
         repo.put(plant(PlantSpecies.TOMATO, stress = 1f, status = PlantStatus.WITHERED, harvests = 1))
         repo.profile = UserProfile(coins = 100)
 
         assertEquals(ActionResult.WITHERED, harvest("p1", t0, sunny))
         assertEquals(ActionResult.WITHERED, care.water("p1", t0, sunny))
-        assertEquals(ActionResult.WITHERED, care.fertilize("p1", t0, sunny))
         // Days later it is still there, still withered.
         calc(repo.objects.getValue("p1"), t0 + 72 * hour, sunny).let {
             assertEquals(PlantStatus.WITHERED, it.status)
@@ -202,7 +201,6 @@ class HarvestTypeTest {
         assertNull(repo.objects["p1"])
         val freed = repo.objects.getValue("soil")
         assertTrue(freed.isTilledSoil)
-        assertTrue(freed.isComposted)
     }
 
     // --- Storage ---

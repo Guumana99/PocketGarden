@@ -76,13 +76,13 @@ class UiBalanceAndGroundTest {
     // --- 1.5 and 2.3 ---
 
     @Test
-    fun `the bar has no watering can, and the plant panel's button carries its stars`() {
+    fun `the bar has no watering can, and the tools have no levels`() {
         val bar = source("ui/hud/QuickActionBar.kt")
         assertFalse(bar.contains("\"💧\""))
         assertFalse(bar.contains("onWater"))
         val panel = source("ui/hud/ObjectStatusDialog.kt")
-        assertTrue(panel.contains("toolStars(wateringCanLevel)"))
-        assertTrue(source("ui/GardenScreen.kt").contains("wateringCanLevel = toolLevels.wateringCan,\n"))
+        assertFalse(panel.contains("toolStars"))
+        assertFalse(source("ui/GardenScreen.kt").contains("toolLevels"))
     }
 
     @Test

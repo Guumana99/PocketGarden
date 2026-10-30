@@ -21,12 +21,11 @@ import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.model.GardenMap
-import com.studioguu.miniaturegarden.domain.model.ToolLevels
-import com.studioguu.miniaturegarden.domain.model.SoilQuality
-import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.InventoryOrder
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.InventorySort
@@ -126,6 +125,7 @@ class GardenViewModel @Inject constructor(
     private val placeItem: PlaceItemUseCase,
     private val harvestPlant: HarvestPlantUseCase,
     private val startRemoval: StartRemovalUseCase,
+    private val removeObject: RemoveObjectUseCase,
     private val completeWork: CompleteWorkUseCase,
     private val moveObject: MoveObjectUseCase,
     private val flipObject: FlipObjectUseCase,
@@ -214,20 +214,16 @@ class GardenViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TimeOfDay.at(localHour(), Season.SPRING))
 
-    /** The hoe's and the watering can's levels ([FarmTool]), for the tool bar. */
-    val toolLevels: StateFlow<ToolLevels> = progress.map { ToolLevels(it?.hoeLevel ?: 1, it?.wateringCanLevel ?: 1) }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ToolLevels())
-
     /**
-     * Strikes the hoe has given each cell of hard ground that is not broken up yet. Kept while the
-     * app is open only: a few taps in a row are what it is for, not a chore to come back to.
+     * Strikes the hoe has given each cell that has not changed to the next ground yet
+     * ([Soil.HOE_STRIKES]). Kept while the app is open only: a cell left half done stays half done
+     * while the player is at something else, and starts over after a restart.
      */
     private val hoeStrikes = MutableStateFlow<Map<GridCell, Int>>(emptyMap())
 
     /**
-     * The cells of hard ground the hoe has struck but not yet broken into a bed: drawn as loose,
-     * turned earth (`soil_revived.png`), the step between the dry wasteland and a furrowed bed.
+     * The cells the hoe has struck once: the garden draws the next ground coming through in
+     * patches, over the ground they are still.
      */
     val brokenGround: StateFlow<Set<GridCell>> = hoeStrikes.map { it.keys }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
@@ -523,7 +519,6 @@ class GardenViewModel @Inject constructor(
         watchWork()
         watchVisitors()
         watchSeasonForMusic()
-        watchToolLevels()
         watchFirstPlayWeather()
         watchShowcaseWeather()
     }
@@ -533,30 +528,6 @@ class GardenViewModel @Inject constructor(
         viewModelScope.launch {
             ShowcaseControls.showcase.map { it?.weather }.distinctUntilChanged().collect { currentWeather(clock.now()) }
         }
-    }
-
-    /** A word, and the celebration's sound, when the hoe or the watering can gets better. */
-    private fun watchToolLevels() {
-        viewModelScope.launch {
-            var last: ToolLevels? = null
-            gardenRepository.observeProgress().map { p -> p?.let { ToolLevels(it.hoeLevel, it.wateringCanLevel) } }
-                .filterNotNull()
-                .distinctUntilChanged()
-                .collect { levels ->
-                    val before = last
-                    last = levels
-                    if (before == null) return@collect
-                    if (levels.hoe > before.hoe) toolLevelUp(FarmTool.HOE, levels.hoe)
-                    if (levels.wateringCan > before.wateringCan) toolLevelUp(FarmTool.WATERING_CAN, levels.wateringCan)
-                }
-        }
-    }
-
-    private fun toolLevelUp(tool: FarmTool, level: Int) {
-        // A tool whose level is kept out of sight gets better without a word (#55).
-        if (!tool.showsLevel) return
-        audio.play(SoundEffect.LEVEL_UP)
-        showEffect { GardenEffect.ToolLevelUp(it, tool, level) }
     }
 
     /** The garden's season as last read, for its music; null until the garden has been read. */
@@ -926,6 +897,13 @@ class GardenViewModel @Inject constructor(
     fun startPlacing(slotIndex: Int) {
         // Things are put down in the everyday garden, not in edit mode (#50).
         if (lockedByEditMode()) return
+        // A seed out of its season waits in the bag; only under glass can it go in now.
+        val item = inventorySlots.value.firstOrNull { it.slotIndex == slotIndex }?.let { GardenItem.fromItemId(it.itemId) }
+        val season = progress.value?.season
+        if (item != null && season != null && InventoryOrder.isOutOfSeason(item, season) && gridObjects.value.none { it.isGreenhouse }) {
+            _messages.trySend(plantInSeasonMessage(InventoryOrder.nextSeason(item, season)))
+            return
+        }
         // Each thing taken out of the bag starts facing the usual way.
         _placingFlipped.value = false
         _hoeActive.value = false
@@ -982,24 +960,33 @@ class GardenViewModel @Inject constructor(
 
     fun harvestSelected() = withSelectedObject { obj ->
         if (lockedByEditMode()) return@withSelectedObject
-        // A crop that bears again pays less from its second harvest on, and a rich bed pays more.
-        val base = PlantSpecies.forObjectId(obj.objectId).harvestReward(obj.harvestCount)
-        val quality = HarvestPlantUseCase.bedUnder(obj, gridObjects.value)?.soilQuality ?: 0
-        val reward = base.copy(coins = SoilQuality.harvestCoins(base.coins, quality))
+        // Past its season a crop that bears again gives its last: it crumbles into the soil, in silence.
+        val underGlass = GardenGrid(gardenMap.value, gridObjects.value).isUnderGlass(obj.gridX, obj.gridY)
+        if (HarvestPlantUseCase.endsAtHarvest(obj, progress.value?.season, underGlass)) markPulled(obj.instanceId)
+        var coins = 0
+        var bounty = false
         act(
             onSuccess = {
                 clearSelection()
                 audio.play(SoundEffect.HARVEST)
-                showEffect { GardenEffect.Harvest(it, reward.coins) }
+                showEffect { GardenEffect.Harvest(it, coins, bounty) }
             }
-        ) { now, weather -> harvestPlant(obj.instanceId, now, weather) }
+        ) { now, weather ->
+            harvestPlant(
+                obj.instanceId, now, weather,
+                onPaid = { reward, good ->
+                    coins = reward.coins
+                    bounty = good
+                },
+            )
+        }
     }
 
     fun removeSelected() = withSelectedObject { obj ->
         if (refused(GardenLayout.check(LayoutAction.DISCARD, obj, _editMode.value))) return@withSelectedObject
         // A plant pulled up crumbles into its bed as it goes, rather than lifting off like a harvest.
         if (obj.isPlant) markPulled(obj.instanceId)
-        // A withered plant standing on tilled soil is dug in as compost; say so.
+        // A crop goes into its soil as compost; say so.
         val composts = RemoveObjectUseCase.leavesCompost(obj) &&
             GardenGrid(gardenMap.value, gridObjects.value).isTilled(obj.gridX, obj.gridY)
         val takesTime = takesTimeToRemove(obj)
@@ -1010,6 +997,19 @@ class GardenViewModel @Inject constructor(
                 if (takesTime) _messages.trySend(R.string.work_started_demolition)
             }
         ) { now, _ -> startRemoval(obj.instanceId, toBag = false, now) }
+    }
+
+    /** Turns the ground under the selected plant back a step (asked about first if the plant goes with it). */
+    fun turnBackGroundSelected() = withSelectedObject { obj ->
+        if (refused(GardenLayout.check(LayoutAction.DISCARD, obj, _editMode.value))) return@withSelectedObject
+        val soil = Soil.under(obj, gridObjects.value)
+        if (soil != null && Soil.takesPlantBack(soil, obj)) markPulled(obj.instanceId)
+        act(
+            onSuccess = {
+                clearSelection()
+                audio.play(SoundEffect.PLANT)
+            }
+        ) { _, _ -> removeObject.turnBackUnder(obj.instanceId) }
     }
 
     private val _pulled = MutableStateFlow<Set<String>>(emptySet())

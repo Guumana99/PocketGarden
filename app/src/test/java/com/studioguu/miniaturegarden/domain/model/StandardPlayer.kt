@@ -108,7 +108,7 @@ object StandardPlayer {
         var profile = UserProfile(coins = UserProfile.STARTING_COINS)
         var lastVisit = VISIT_HOURS.first().toDouble()
         val water = CalculateOfflineProgressUseCase.THIRSTY_THRESHOLD
-        val pour = WateringCanSkill.waterAmount(1).toDouble()
+        val pour = CareForPlantUseCase.WATER_AMOUNT.toDouble()
         for (day in 0 until 10 * 365) {
             val season = generateSequence(Season.SPRING, ::next).elementAt((day / SeasonClock.DAYS_PER_SEASON) % 4)
             for (hour in VISIT_HOURS) {

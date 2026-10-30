@@ -23,10 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
-import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.objectDisplayName
-import com.studioguu.miniaturegarden.ui.toolRank
 
 /** A short-lived piece of feedback. [id] must be unique among the effects on screen. */
 sealed interface GardenEffect {
@@ -34,15 +32,12 @@ sealed interface GardenEffect {
 
     /**
      * The coins a harvest brought. Experience is not floated up, from a harvest or anything else:
-     * it fills the gauge in the top bar instead (TopStatusBar).
+     * it fills the gauge in the top bar instead (TopStatusBar). [bounty]: it was a good harvest.
      */
-    data class Harvest(override val id: Long, val coins: Int) : GardenEffect
+    data class Harvest(override val id: Long, val coins: Int, val bounty: Boolean = false) : GardenEffect
 
     /** A page of the encyclopedia became ready to be filled in. */
     data class Discovery(override val id: Long) : GardenEffect
-
-    /** The hoe or the watering can got better with use ([FarmTool]). */
-    data class ToolLevelUp(override val id: Long, val tool: FarmTool, val level: Int) : GardenEffect
 
     /**
      * A building was finished, or taking one apart was. [newPage]: finishing it also made a page
@@ -81,8 +76,6 @@ fun List<GardenEffect>.plusEffect(effect: GardenEffect): List<GardenEffect> {
                 effect.copy(coins = effect.coins + filterIsInstance<GardenEffect.Harvest>().sumOf { it.coins })
         effect is GardenEffect.Discovery && any { it is GardenEffect.Discovery } ->
             filterNot { it is GardenEffect.Discovery } + effect
-        effect is GardenEffect.ToolLevelUp && any { it is GardenEffect.ToolLevelUp && it.tool == effect.tool } ->
-            filterNot { it is GardenEffect.ToolLevelUp && it.tool == effect.tool } + effect
         else -> this + effect
     }
 }
@@ -100,8 +93,6 @@ data class EffectTiming(val durationMillis: Int, val visibleShare: Float, val ri
 
 fun effectTiming(effect: GardenEffect): EffectTiming = when (effect) {
     is GardenEffect.WorkDone -> EffectTiming(durationMillis = 3_600, visibleShare = 0.8f, riseShare = 0.35f)
-    // A tool getting better is news, read like a new page of the book.
-    is GardenEffect.ToolLevelUp -> EffectTiming(durationMillis = 3_200, visibleShare = 0.78f, riseShare = 0.45f)
     // A new page for the book is news too: it stays nearly as long as a building's (#52).
     is GardenEffect.Discovery -> EffectTiming(durationMillis = 3_200, visibleShare = 0.78f, riseShare = 0.45f)
     // The sums of a harvest: readable for about two seconds before they fade (#52: one was too quick).
@@ -118,8 +109,6 @@ private fun liftSteps(effect: GardenEffect): Int = when (effect) {
     is GardenEffect.Harvest -> 0
     is GardenEffect.Discovery -> 1
     is GardenEffect.WorkDone -> 1
-    // Above a harvest's sums and a page's news, which can come from the same tap.
-    is GardenEffect.ToolLevelUp -> 2
 }
 
 /**
@@ -154,15 +143,8 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
     val isBig = effect is GardenEffect.WorkDone && effect.kind == WorkKind.BUILDING
     val lift = LIFT_STEP * liftSteps(effect)
     val text = when (effect) {
-        is GardenEffect.Harvest -> stringResource(R.string.effect_harvest, effect.coins)
+        is GardenEffect.Harvest -> stringResource(if (effect.bounty) R.string.effect_harvest_bounty else R.string.effect_harvest, effect.coins)
         is GardenEffect.Discovery -> stringResource(R.string.effect_discovery)
-        is GardenEffect.ToolLevelUp -> stringResource(
-            when (effect.tool) {
-                FarmTool.HOE -> R.string.effect_hoe_level_up
-                FarmTool.WATERING_CAN -> R.string.effect_can_level_up
-            },
-            stringResource(toolRank(effect.level)),
-        )
         is GardenEffect.WorkDone -> stringResource(
             when (effect.kind) {
                 WorkKind.DEMOLISHING -> R.string.effect_demolished

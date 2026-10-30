@@ -358,6 +358,8 @@ class ConstructionTest {
         assertEquals(ActionResult.SUCCESS, startRemoval("rock", toBag = true, t0))
         assertEquals(ActionResult.SUCCESS, startRemoval("tulip", toBag = false, t0))
         assertEquals(ActionResult.SUCCESS, startRemoval("stone", toBag = false, t0))
+        // Ridges go back a step at a time, to tilled earth and then to the ground.
+        assertEquals(ActionResult.SUCCESS, startRemoval("soil_1_1", toBag = false, t0))
         assertEquals(ActionResult.SUCCESS, startRemoval("soil_1_1", toBag = false, t0))
 
         assertTrue(repo.objects.isEmpty())

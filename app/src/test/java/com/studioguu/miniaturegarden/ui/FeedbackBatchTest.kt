@@ -112,24 +112,6 @@ class FeedbackBatchTest {
 
     // --- 5. The hoe takes its time, and shows a rank ---
 
-    @Test
-    fun `a tool shows stars and a rank, never a bare level number`() {
-        assertEquals("", toolStars(1))
-        assertEquals("★", toolStars(2))
-        assertEquals("★★★★", toolStars(5))
-        assertEquals(null, string("tool_level"))
-        assertEquals("見習い", string("tool_rank_1"))
-        assertEquals("名人", string("tool_rank_5"))
-        for (name in listOf("effect_hoe_level_up", "effect_can_level_up")) {
-            val text = string(name)!!
-            assertFalse(name, text.contains("Lv"))
-            assertTrue(name, text.contains("%1\$s"))
-        }
-        val bar = source("ui/hud/QuickActionBar.kt")
-        assertTrue(bar.contains("toolStars(level)"))
-        assertFalse(bar.contains("R.string.tool_level"))
-    }
-
     // --- 6 and 7. The book ---
 
     @Test
