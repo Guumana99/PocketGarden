@@ -53,8 +53,15 @@ fun DrawScope.drawTurningSprite(pages: AtlasPages, asset: AssetManifest, pivot: 
     drawTurningSprite(pages[asset], asset, pivot, scale, degrees, flipped)
 
 /** [drawSwayingSprite] from the page of [pages] that [asset] is on. */
-fun DrawScope.drawSwayingSprite(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, lean: Float, flipped: Boolean = false) =
-    drawSwayingSprite(pages[asset], asset, anchor, scale, lean, flipped)
+fun DrawScope.drawSwayingSprite(
+    pages: AtlasPages,
+    asset: AssetManifest,
+    anchor: Offset,
+    scale: Float,
+    lean: Float,
+    flipped: Boolean = false,
+    colorFilter: ColorFilter? = null,
+) = drawSwayingSprite(pages[asset], asset, anchor, scale, lean, flipped, colorFilter)
 
 /** [drawSpriteSnow] from the page of [pages] that [asset] is on. */
 fun DrawScope.drawSpriteSnow(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, lean: Float, flipped: Boolean = false) =
@@ -147,13 +154,14 @@ fun DrawScope.drawSwayingSprite(
     scale: Float,
     lean: Float,
     flipped: Boolean = false,
+    colorFilter: ColorFilter? = null,
 ) {
     if (lean == 0f) {
-        drawSprite(atlasImage, asset, anchor, scale, flipped)
+        drawSprite(atlasImage, asset, anchor, scale, flipped, colorFilter = colorFilter)
         return
     }
     withTransform({ transform(shearAbout(anchor, lean, -1f)) }) {
-        drawSprite(atlasImage, asset, anchor, scale, flipped)
+        drawSprite(atlasImage, asset, anchor, scale, flipped, colorFilter = colorFilter)
     }
 }
 

@@ -71,8 +71,8 @@ class GardenGrid(
     /** The paving on (x, y), if any. */
     fun floorAt(x: Int, y: Int): GridObject? = floors[GridCell(x, y)]
 
-    /** Whether (x, y) is soil a seed can go into: tilled, or a greenhouse bed. */
-    fun isTilled(x: Int, y: Int): Boolean = floorAt(x, y)?.let { it.isTilledSoil || it.isGreenhouse } == true
+    /** Whether (x, y) is soil ([GridObject.isSoil]): what the hoe made, or a greenhouse bed. */
+    fun isTilled(x: Int, y: Int): Boolean = floorAt(x, y)?.isSoil == true
 
     /**
      * What the ground of (x, y) is, for what may be planted there ([PlantGround]): water, then
@@ -88,6 +88,7 @@ class GardenGrid(
             !map.isBuildable(x, y) || thing?.isTerrain == true || thing?.isPond == true -> Ground.WATER
             floor?.isGreenhouse == true -> Ground.GREENHOUSE
             floor?.isTilledSoil == true -> Ground.TILLED_SOIL
+            floor?.isLooseSoil == true -> Ground.LOOSE_SOIL
             floor != null -> Ground.PAVING
             cell in lawns -> Ground.LAWN
             thing?.isGroundCover == true -> Ground.GROUND_COVER

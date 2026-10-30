@@ -49,7 +49,8 @@ class InventorySortTest {
     fun `by default the newest things come first`() {
         assertEquals(InventorySort.ACQUIRED, InventorySort.DEFAULT)
         assertEquals(
-            listOf(GardenItem.SEED_SUNFLOWER, GardenItem.STRUCT_FENCE, GardenItem.GROUND_GRASS, GardenItem.FLOOR_COBBLESTONE, GardenItem.SEED_TULIP, GardenItem.DECO_ROCK, null, null),
+            // The sunflower came last, but it is spring: its seeds wait at the back.
+            listOf(GardenItem.STRUCT_FENCE, GardenItem.GROUND_GRASS, GardenItem.FLOOR_COBBLESTONE, GardenItem.SEED_TULIP, GardenItem.DECO_ROCK, GardenItem.SEED_SUNFLOWER, null, null),
             items(arranged(InventorySort.ACQUIRED)),
         )
     }
@@ -57,7 +58,7 @@ class InventorySortTest {
     @Test
     fun `by kind, crops then furniture then greenery then ground, newest first within each`() {
         assertEquals(
-            listOf(GardenItem.SEED_SUNFLOWER, GardenItem.SEED_TULIP, GardenItem.STRUCT_FENCE, GardenItem.DECO_ROCK, GardenItem.GROUND_GRASS, GardenItem.FLOOR_COBBLESTONE, null, null),
+            listOf(GardenItem.SEED_TULIP, GardenItem.STRUCT_FENCE, GardenItem.DECO_ROCK, GardenItem.GROUND_GRASS, GardenItem.FLOOR_COBBLESTONE, GardenItem.SEED_SUNFLOWER, null, null),
             items(arranged(InventorySort.KIND)),
         )
     }
@@ -65,7 +66,7 @@ class InventorySortTest {
     @Test
     fun `by amount, the biggest stacks first`() {
         val sorted = arranged(InventorySort.AMOUNT).filter { !it.isEmpty }
-        assertEquals(listOf(12, 8, 5, 3, 2, 1), sorted.map { it.amount })
+        assertEquals(listOf(12, 8, 5, 3, 1, 2), sorted.map { it.amount })
     }
 
     @Test
@@ -106,7 +107,7 @@ class InventorySortTest {
     @Test
     fun `a tab narrows the bag down and the order applies to what is left`() {
         assertEquals(
-            listOf(GardenItem.SEED_SUNFLOWER, GardenItem.SEED_TULIP),
+            listOf(GardenItem.SEED_TULIP, GardenItem.SEED_SUNFLOWER),
             items(arranged(InventorySort.ACQUIRED, InventoryFilter.SEEDS)).filterNotNull(),
         )
         assertEquals(

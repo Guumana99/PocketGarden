@@ -46,7 +46,7 @@ class HoeTest {
         assertEquals(ActionResult.SUCCESS, hoe.till(3, 4, t0))
 
         val soil = repo.objects.values.single()
-        assertEquals(GridObject.TILLED_SOIL_OBJECT_ID, soil.objectId)
+        assertEquals(GridObject.LOOSE_SOIL_OBJECT_ID, soil.objectId)
         assertEquals(3 to 4, soil.gridX to soil.gridY)
         assertEquals(t0, soil.lastUpdatedTimestamp)
         assertTrue(grid().isTilled(3, 4))
@@ -87,7 +87,8 @@ class HoeTest {
     }
 
     @Test
-    fun `tilling the same cell twice changes nothing the second time`() = runBlocking {
+    fun `past ridges the hoe changes nothing`() = runBlocking {
+        assertEquals(ActionResult.SUCCESS, hoe.till(4, 4, t0))
         assertEquals(ActionResult.SUCCESS, hoe.till(4, 4, t0))
         assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(4, 4, t0 + 1))
         assertEquals(1, repo.objects.size)
@@ -106,21 +107,25 @@ class HoeTest {
 
     @Test
     fun `seeds and seedlings go into tilled soil and nowhere else`() = runBlocking {
-        // Every crop sown in a bed: the shiitake's log goes on open earth as well (#68, ShiitakeTest).
-        val seeds = GardenItem.entries.filter { it.category == ItemCategory.SEED && PlantSpecies.forObjectId(it.objectId).ground == PlantGround.BED }
+        // Every crop sown in the soil: the shiitake's log goes on open earth as well (#68, ShiitakeTest).
+        val seeds = GardenItem.entries.filter { it.category == ItemCategory.SEED && PlantSpecies.forObjectId(it.objectId).ground != PlantGround.LOG }
         assertEquals(19, seeds.size) // the hakusai and the nanohana among them, though not on sale yet
         seeds.forEachIndexed { slot, seed -> repo.putSlot(InventorySlot(slot, seed.itemId, 2)) }
-        // Three rows of tilled soil along the top, nine to a row.
-        seeds.indices.forEach { hoe.till(it % 9, it / 9, t0) }
+        // Three rows of ridged soil along the top, nine to a row.
+        seeds.indices.forEach {
+            hoe.till(it % 9, it / 9, t0)
+            hoe.till(it % 9, it / 9, t0)
+        }
 
-        seeds.indices.forEach { slot ->
-            assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(slot, slot % 9, 5 + slot / 9, t0)) // open ground
+        seeds.forEachIndexed { slot, seed ->
+            val told = if (PlantSpecies.forObjectId(seed.objectId).ground == PlantGround.BED) ActionResult.NEEDS_RIDGE else ActionResult.NEEDS_TILLED_SOIL
+            assertEquals(told, place(slot, slot % 9, 5 + slot / 9, t0))                            // open ground
             assertEquals(2, repo.slots.getValue(slot).amount)                                      // nothing used up
             assertEquals(ActionResult.SUCCESS, place(slot, slot % 9, slot / 9, t0))               // tilled
             assertEquals(1, repo.slots.getValue(slot).amount)
         }
 
-        assertEquals(PlantSpecies.entries.filter { it.ground == PlantGround.BED }.map { it.objectId }.toSet(), repo.plants.map { it.objectId }.toSet())
+        assertEquals(PlantSpecies.entries.filter { it.ground.usesSoil }.map { it.objectId }.toSet(), repo.plants.map { it.objectId }.toSet())
         assertTrue(repo.plants.all { it.gridY <= 2 })
     }
 
@@ -182,7 +187,7 @@ class HoeTest {
     fun `a tap on a planted bed means the plant, and on an empty one the soil`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.SEED_TULIP.itemId, 1))
         hoe.till(2, 2, t0)
-        assertTrue(grid().objectAt(2, 2)!!.isTilledSoil)
+        assertTrue(grid().objectAt(2, 2)!!.isLooseSoil)
 
         place(0, 2, 2, t0)
         assertTrue(grid().objectAt(2, 2)!!.isPlant)
@@ -190,7 +195,7 @@ class HoeTest {
         // Pulling the plant up leaves the bed; removing the bed turns it back into open ground.
         assertEquals(ActionResult.SUCCESS, remove(grid().objectAt(2, 2)!!.instanceId))
         val soil = grid().objectAt(2, 2)!!
-        assertTrue(soil.isTilledSoil)
+        assertTrue(soil.isLooseSoil)
         assertEquals(ActionResult.SUCCESS, remove(soil.instanceId))
         assertNull(grid().objectAt(2, 2))
         assertFalse(grid().isTilled(2, 2))
@@ -204,7 +209,7 @@ class HoeTest {
         val later = CalculateOfflineProgressUseCase()(soil, t0 + 30L * 24 * 3_600_000, sunny)
 
         assertEquals(soil.copy(lastUpdatedTimestamp = later.lastUpdatedTimestamp), later)
-        assertEquals(GridObject.TILLED_SOIL_OBJECT_ID, later.objectId)
+        assertEquals(GridObject.LOOSE_SOIL_OBJECT_ID, later.objectId)
     }
 
     // --- Gardens from before the hoe ---

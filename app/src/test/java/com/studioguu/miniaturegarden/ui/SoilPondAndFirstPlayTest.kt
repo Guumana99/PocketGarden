@@ -66,7 +66,7 @@ class SoilPondAndFirstPlayTest {
     // --- Broken ground ---
 
     @Test
-    fun `ground the hoe has struck is drawn as broken earth until it is a bed`() {
+    fun `ground the hoe has struck shows the next ground in patches until it is that ground`() {
         val assets = source("data/asset/AssetRepository.kt")
         assertTrue(assets.contains("val broken = async(Dispatchers.Default) { bedFace(R.drawable.soil_revived, GroundSlab.REVIVED) }"))
         assertFalse(assets.contains("composted ?: tilled"))
@@ -75,11 +75,12 @@ class SoilPondAndFirstPlayTest {
         assertTrue(viewModel.contains("if (it == ActionResult.HOE_STRUCK) all + (cell to strikes + 1) else all - cell"))
         assertTrue(source("ui/GardenScreen.kt").contains("brokenCells = brokenGround,"))
         val canvas = source("ui/components/GardenCanvas.kt")
-        assertTrue(canvas.contains("drawBrokenGround(transform, cell.x, cell.y, terrain.broken)"))
-        // Not over a bed that has been made there since.
-        assertTrue(canvas.contains("grid.floorAt(cell.x, cell.y) != null) continue"))
-        // A composted bed is the tilled picture, darkened and flecked.
-        assertTrue(canvas.contains("if (composted) drawPath(bed, COMPOST_TINT, blendMode = BlendMode.Multiply)"))
+        assertTrue(canvas.contains("drawHalfTurnedGround(transform, cell.x, cell.y, if (floor == null) terrain.broken else terrain.tilled)"))
+        // Not over ridges or anything else that has been made there since.
+        assertTrue(canvas.contains("(floor != null && !floor.isLooseSoil)) continue"))
+        // Tilled earth is the flat picture, ridges the furrowed one; better soil is deeper in colour.
+        assertTrue(canvas.contains("face = if (obj.isLooseSoil) terrain.broken else terrain.tilled"))
+        assertTrue(canvas.contains("soilTint(quality)?.let { drawPath(bed, it, blendMode = BlendMode.Multiply) }"))
     }
 
     // --- The middle of a pool ---

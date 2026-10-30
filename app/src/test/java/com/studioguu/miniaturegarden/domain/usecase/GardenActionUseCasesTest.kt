@@ -12,6 +12,7 @@ import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.NatureNote
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
@@ -42,6 +43,12 @@ class GardenActionUseCasesTest {
     private val purchase = PurchaseItemUseCase(repo)
     private val skip = SkipTimeUseCase(repo, calc)
     private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, security), calc)
+
+    /** A cell of ridged soil on the top row. */
+    private fun bed(x: Int, nutrition: Float = 1f) = GridObject(
+        instanceId = "bed_$x", gridX = x, gridY = 0, objectId = GridObject.TILLED_SOIL_OBJECT_ID,
+        nutritionLevel = nutrition, lastUpdatedTimestamp = t0,
+    )
 
     /** A rose: 36 h to grow and 36 h to dry out, long enough to watch half a day go by. */
     private fun rose(id: String = "p1", x: Int = 0, moisture: Float = 1f) =
@@ -85,7 +92,7 @@ class GardenActionUseCasesTest {
         // 27 healthy hours of 36 in total; 85% at the watering, 9 h of drying since.
         assertEquals(0.75f, later.growthProgress, 1e-4f)
         assertEquals(0.85f - 0.25f, later.moistureLevel, 1e-4f)
-        assertEquals(1f - 27f / 72f, later.nutritionLevel, 1e-4f)
+        assertEquals(1f, later.nutritionLevel, 0f)
     }
 
     @Test
@@ -106,7 +113,9 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `fertilizer refills nutrition and leaves growth alone`() = runBlocking {
-        repo.put(tulip(growth = 0.5f, nutrition = 0.1f, status = PlantStatus.UNNOURISHED))
+        repo.put(bed(0, nutrition = 0f))
+        repo.put(bed(1, nutrition = 0.3f))
+        repo.put(tulip(growth = 0.5f, nutrition = 0f, status = PlantStatus.UNNOURISHED))
         repo.put(tulip(id = "p2", x = 1, growth = 0.99f, nutrition = 0.3f))
 
         assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
@@ -122,6 +131,7 @@ class GardenActionUseCasesTest {
     @Test
     fun `fertilizer cannot rush a crop - a well-fed plant is not fed again`() = runBlocking {
         repo.profile = repo.profile!!.copy(coins = 1_000)
+        repo.put(bed(0, nutrition = 0.3f))
         repo.put(tulip(growth = 0.2f, nutrition = 0.3f))
         assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
         val once = stored("p1").growthProgress
@@ -129,9 +139,6 @@ class GardenActionUseCasesTest {
         repeat(20) { assertEquals(ActionResult.ALREADY_FED, care.fertilize("p1", t0, sunny)) }
         assertEquals(once, stored("p1").growthProgress, 0f)
         assertTrue(once < 0.3f)
-        // Once it has used up half its food (a day and a half), it can be fed again.
-        assertEquals(ActionResult.ALREADY_FED, care.fertilize("p1", t0 + 30 * hour, sunny))
-        assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0 + 37 * hour, sunny))
     }
 
     @Test
@@ -204,6 +211,7 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `watering and fertilizing earn experience`() = runBlocking {
+        repo.put(bed(0, nutrition = 0.3f))
         repo.put(tulip(moisture = 0.5f, nutrition = 0.3f))
 
         care.water("p1", t0, sunny)
@@ -215,15 +223,17 @@ class GardenActionUseCasesTest {
     @Test
     fun `fertilizer costs coins and is refused without them`() = runBlocking {
         repo.profile = UserProfile(coins = 15)
+        repo.put(bed(0, nutrition = 0.3f))
+        repo.put(bed(1, nutrition = 0.3f))
         repo.put(tulip(growth = 0.2f, nutrition = 0.3f))
         repo.put(tulip(id = "p2", x = 1, growth = 0.2f, nutrition = 0.3f))
 
         assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
-        assertEquals(5L, repo.profile?.coins)
+        assertEquals(0L, repo.profile?.coins)
         // Another hungry plant, but the coins have run out.
         assertEquals(ActionResult.NOT_ENOUGH_COINS, care.fertilize("p2", t0, sunny))
 
-        assertEquals(5L, repo.profile?.coins)
+        assertEquals(0L, repo.profile?.coins)
         assertEquals(0.2f, stored().growthProgress, 1e-4f)
         assertEquals(6L, repo.profile?.currentXp)
     }
@@ -280,7 +290,8 @@ class GardenActionUseCasesTest {
     @Test
     fun `fertilizer refills nutrition only and leaves growth where it was`() = runBlocking {
         repo.profile = UserProfile(coins = 1_000)
-        PlantSpecies.entries.forEachIndexed { index, species ->
+        PlantSpecies.entries.filter { it.ground.usesSoil }.forEachIndexed { index, species ->
+            repo.put(bed(index, nutrition = 0.3f))
             repo.put(tulip(id = species.name, x = index, nutrition = 0.3f).copy(objectId = species.objectId, growthProgress = 0.4f))
             val before = calc(stored(species.name), t0, sunny)
             assertEquals(species.name, ActionResult.SUCCESS, care.fertilize(species.name, t0, sunny))
@@ -294,9 +305,8 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `fertilizer stays a help, never a shortcut or a money maker`() {
-        // Cheaper than before, and its experience no more per coin than it was (10 for 15).
-        assertEquals(10, CareForPlantUseCase.FERTILIZER_COST)
-        assertTrue(CareForPlantUseCase.FERTILIZE_XP.toFloat() / CareForPlantUseCase.FERTILIZER_COST <= 10f / 15f)
+        // Its experience is no more per coin than it was (10 for 15), at any level.
+        assertTrue(CareForPlantUseCase.FERTILIZE_XP.toFloat() / Soil.fertilizerCost(1) <= 10f / 15f)
         val care = File(listOf(File("src/main"), File("app/src/main")).first { it.isDirectory },
             "java/com/studioguu/miniaturegarden/domain/usecase/GardenActionUseCases.kt").readText()
         assertFalse(care.contains("fertilizerBoost"))

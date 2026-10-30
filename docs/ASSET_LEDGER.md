@@ -84,9 +84,9 @@
 | 物（id） | 状態 | 出所 | 素材・メモ |
 |---|---|---|---|
 | 荒れ地（何も敷いていないマス） | ✅ | Recraft | `res/drawable/soil_wasteland.png` |
-| 崩しかけた地面（荒れ地と畑のあいだ） | ✅ | Recraft | `res/drawable/soil_revived.png`（#61 からこの用途） |
-| 耕した土（畑） | ✅ | Recraft | `res/drawable/soil_tilled.png` |
-| たい肥入りの畑 | ⬜ | — | `soil_tilled.png` を暗くする（#61）。#77 で葉とわらの粒をやめ、抜いたときに株が崩れて土に混ざる演出（`drawCrumbling`、コード）に替えた |
+| 耕した土（`floor_loose`、畝の無い平らな土） | ✅ | Recraft | `res/drawable/soil_revived.png`（#78 からこの用途。#61〜#77 は崩しかけた地面）。クワ 1 回目の「まだらに重なる」のもこの絵 |
+| 畝のある土（`floor_tilled`） | ✅ | Recraft | `res/drawable/soil_tilled.png` |
+| 土の質の色（よい土・ふかふかの土） | ⬜ | — | 土の絵に色を掛ける（`soilTint`、乗算。#78）。たい肥は物として残さず、抜いたときの崩れる演出（`drawCrumbling`、コード）だけ |
 | 芝生（`ground_grass`） | ✅＋⬜ | Recraft | 育ちきると `tile_grass`（原画 `tile_grass_iso.png`）。育つ途中の苗床と葉の切り抜きは演出としてコードで描く（#61）。`tile_grass_dark` は 📦 |
 | 小石（`ground_pebble`） | ✅ | Recraft | `res/drawable-nodpi/ground_pebble.png`（原画 `tile_pebble_iso.png`、Recraft（#74。C2PA を grep で確認））。板の上面を真上から見た模様にし、マスどうしが続くようにして 1 マスに 1 枚敷く |
 | 野の花（`ground_flowers`） | ✅ | Recraft | `res/drawable-nodpi/ground_flowers.png`（原画 `tile_flowers_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方 |

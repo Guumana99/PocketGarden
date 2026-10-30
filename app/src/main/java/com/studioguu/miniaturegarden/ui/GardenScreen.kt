@@ -84,6 +84,8 @@ import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.collection.CollectionDialog
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
@@ -106,6 +108,7 @@ import com.studioguu.miniaturegarden.ui.hud.LevelUpDialog
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.RemoveConfirmDialog
+import com.studioguu.miniaturegarden.ui.hud.TurnBackConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
 import com.studioguu.miniaturegarden.ui.hud.WeatherDialog
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
@@ -177,7 +180,6 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val gardenReady by viewModel.gardenReady.collectAsStateWithLifecycle()
     val inventorySort by viewModel.inventorySort.collectAsStateWithLifecycle()
     val levelUp by viewModel.levelUp.collectAsStateWithLifecycle()
-    val toolLevels by viewModel.toolLevels.collectAsStateWithLifecycle()
     // A fixed look for promotional pictures, set from a debug build only (docs/promo/README.md).
     val showcase by ShowcaseControls.showcase.collectAsStateWithLifecycle()
     val hideUi = showcase?.hideUi == true
@@ -191,6 +193,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var debugZoom by remember { mutableFloatStateOf(0f) }
     var showPost by rememberSaveable { mutableStateOf(false) }
     var showWeather by rememberSaveable { mutableStateOf(false) }
+    var confirmTurnBack by rememberSaveable { mutableStateOf(false) }
     val pulledIds by viewModel.pulled.collectAsStateWithLifecycle()
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showCollection by rememberSaveable { mutableStateOf(false) }
@@ -470,8 +473,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     // Lit while something from the bag is in hand; tapping it again puts that down.
                     bagActive = placing != null,
                     onToggleHoe = viewModel::toggleHoe,
-                    hoeLevel = toolLevels.hoe,
-                    canCare = placing == null && !hoeActive && target?.isPlant == true && target.status != PlantStatus.WITHERED,
+                    canCare = placing == null && !hoeActive && target != null && (
+                        target.isSoil || (target.isPlant && PlantSpecies.forObjectId(target.objectId).ground.usesSoil)
+                        ),
+                    fertilizerCost = Soil.fertilizerCost(profile?.playerLevel ?: 1),
                     onFertilize = viewModel::fertilizeSelected,
                     onOpenInventory = { if (viewModel.onBagTapped()) showInventory = true },
                     // Nothing stays picked across the walk: the garden may grow while in the workshop.
@@ -542,12 +547,16 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 editing = editMode,
                                 // During the first steps the panel keeps to what the step is about.
                                 guiding = tutorialStep?.isGuiding == true,
-                                bedQuality = remember(it, gridObjects) {
-                                    if (it.isTilledSoil) it.soilQuality else HarvestPlantUseCase.bedUnder(it, gridObjects)?.soilQuality ?: 0
+                                soil = remember(it, gridObjects) { if (it.isSoil) it else Soil.under(it, gridObjects) },
+                                endsAtHarvest = remember(it, gridObjects, season) {
+                                    HarvestPlantUseCase.endsAtHarvest(it, season, Soil.under(it, gridObjects)?.isGreenhouse == true)
+                                },
+                                onTurnBackGround = {
+                                    val under = Soil.under(it, gridObjects)
+                                    if (under != null && Soil.takesPlantBack(under, it)) confirmTurnBack = true else viewModel.turnBackGroundSelected()
                                 },
                                 sprinkled = remember(it, gridObjects) { it.isPlant && Sprinkler.waters(it, gridObjects) },
                                 onToggleSprinkler = viewModel::toggleSprinklerSelected,
-                                wateringCanLevel = toolLevels.wateringCan,
                                 clockOffset = clockOffset,
                             )
                         }
@@ -665,8 +674,23 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onDismiss = { confirmRemove = false },
         )
     }
+    if (confirmTurnBack && removing != null) {
+        TurnBackConfirmDialog(
+            plant = removing,
+            onConfirm = {
+                confirmTurnBack = false
+                viewModel.turnBackGroundSelected()
+            },
+            onDismiss = { confirmTurnBack = false },
+        )
+    }
     // If the selection goes away under the dialog, the question goes with it.
-    LaunchedEffect(removing == null) { if (removing == null) confirmRemove = false }
+    LaunchedEffect(removing == null) {
+        if (removing == null) {
+            confirmRemove = false
+            confirmTurnBack = false
+        }
+    }
     if (showCollection) {
         CollectionDialog(onDismiss = { showCollection = false })
     }

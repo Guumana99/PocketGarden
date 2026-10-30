@@ -59,6 +59,9 @@ fun GridObjectEntity.toDomain() = GridObject(
     harvestCount = harvestCount,
     soilQuality = soilQuality,
     isOn = isOn,
+    soilProgress = soilProgress,
+    lastCropId = lastCropId,
+    idleMillis = idleMillis,
 )
 
 fun GridObject.toEntity() = GridObjectEntity(
@@ -80,6 +83,9 @@ fun GridObject.toEntity() = GridObjectEntity(
     harvestCount = harvestCount,
     soilQuality = soilQuality,
     isOn = isOn,
+    soilProgress = soilProgress,
+    lastCropId = lastCropId,
+    idleMillis = idleMillis,
 )
 
 fun InventorySlotEntity.toDomain() = InventorySlot(
@@ -115,8 +121,6 @@ fun GardenProgressEntity.toDomain() = GardenProgress(
     tutorialStep = TutorialStep.fromName(tutorialStep),
     gardenSize = gardenSize,
     seasonStartedAt = seasonStartedAt,
-    hoeXp = hoeXp,
-    wateringCanXp = wateringCanXp,
     weatherSeed = weatherSeed,
 )
 
@@ -125,8 +129,6 @@ fun GardenProgress.toEntity() = GardenProgressEntity(
     tutorialStep = tutorialStep.name,
     gardenSize = gardenSize,
     seasonStartedAt = seasonStartedAt,
-    hoeXp = hoeXp,
-    wateringCanXp = wateringCanXp,
     weatherSeed = weatherSeed,
 )
 

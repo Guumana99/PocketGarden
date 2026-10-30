@@ -3,7 +3,6 @@ package com.studioguu.miniaturegarden.ui
 import com.studioguu.miniaturegarden.data.asset.AtlasManifest
 import com.studioguu.miniaturegarden.data.asset.TestPng
 import com.studioguu.miniaturegarden.data.local.AppDatabase
-import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
@@ -39,17 +38,6 @@ class DeviceFeedbackTest {
     private val strings by lazy { File(main, "res/values/strings.xml").readText() }
 
     // --- 1.1 The hoe's level ---
-
-    @Test
-    fun `the hoe keeps its level out of sight, the watering can still shows its own`() {
-        assertFalse(FarmTool.HOE.showsLevel)
-        assertTrue(FarmTool.WATERING_CAN.showsLevel)
-        // It still learns: the level is kept and does its work.
-        assertEquals(2, FarmTool.HOE.levelFor(15))
-        assertTrue(source("ui/hud/QuickActionBar.kt").contains("badge = levelBadge(hoeLevel).takeIf { FarmTool.HOE.showsLevel }"))
-        val levelUp = source("ui/GardenViewModel.kt").substringAfter("private fun toolLevelUp(").substringBefore("\n    }\n")
-        assertTrue(levelUp.indexOf("if (!tool.showsLevel) return") < levelUp.indexOf("audio.play"))
-    }
 
     // --- 1.2 The book ---
 

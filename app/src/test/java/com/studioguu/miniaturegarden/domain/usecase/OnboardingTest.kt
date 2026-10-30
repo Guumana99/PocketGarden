@@ -209,7 +209,7 @@ class OnboardingTest {
         follow()
         assertEquals(ActionResult.SUCCESS, hoe.till(7, 1, t0))
         assertEquals(ActionResult.NOT_THIS_STEP, hoe.till(2, 2, t0))
-        assertEquals(1, repo.objects.values.count { it.isTilledSoil })
+        assertEquals(1, repo.objects.values.count { it.isHoedSoil })
         // Once the first steps are over, the hoe is free again.
         repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.FINISHED)
         assertEquals(ActionResult.SUCCESS, hoe.till(2, 2, t0))

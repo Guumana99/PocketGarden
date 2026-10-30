@@ -25,13 +25,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
-import com.studioguu.miniaturegarden.domain.model.FarmTool
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
-import com.studioguu.miniaturegarden.ui.toolStars
 
 /**
  * Floating tool bar. Fertilizer acts on the currently selected plant and is disabled while none
@@ -44,9 +42,7 @@ import com.studioguu.miniaturegarden.ui.toolStars
  *   asks for, in edit mode only the shop; the others are greyed out and cannot be tapped.
  * @param bagActive something from the bag is in hand: the bag's button is lit, and tapping it
  *   puts that down again, as the hoe's does for the hoe (#50).
- * @param hoeLevel how far the hoe has come with use ([FarmTool]),
- *   shown on its button as small gold stars from level 2 ([toolStars]) while the hoe shows its
- *   level ([FarmTool.showsLevel]; hidden for now). The watering can's stars are on the panel's
+ * @param fertilizerCost what fertilizer costs this player.
  *   watering button.
  */
 @Composable
@@ -60,7 +56,7 @@ fun QuickActionBar(
     modifier: Modifier = Modifier,
     allows: (TutorialTool) -> Boolean = { true },
     bagActive: Boolean = false,
-    hoeLevel: Int = 1,
+    fertilizerCost: Int = 15,
 ) {
     Surface(
         modifier = modifier,
@@ -74,10 +70,9 @@ fun QuickActionBar(
         ) {
             ActionButton(
                 "⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive, enabled = allows(TutorialTool.HOE),
-                badge = levelBadge(hoeLevel).takeIf { FarmTool.HOE.showsLevel },
             )
             ActionButton(
-                "🧪", stringResource(R.string.action_fertilize, CareForPlantUseCase.FERTILIZER_COST), onFertilize,
+                "🧪", stringResource(R.string.action_fertilize, fertilizerCost), onFertilize,
                 enabled = canCare && allows(TutorialTool.FERTILIZE),
             )
             ActionButton("🎒", stringResource(R.string.action_inventory), onOpenInventory, enabled = allows(TutorialTool.BAG), selected = bagActive)
@@ -85,9 +80,6 @@ fun QuickActionBar(
         }
     }
 }
-
-/** A tool's level as its button shows it: stars from level 2 on; a new tool shows none. */
-private fun levelBadge(level: Int): String? = toolStars(level).takeIf { it.isNotEmpty() }
 
 @Composable
 private fun ActionButton(

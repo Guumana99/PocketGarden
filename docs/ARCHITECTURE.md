@@ -43,7 +43,7 @@ di/       Hilt の束ね
   `StructureData` は高さ（`heightSteps`、裏が隠れるかの判定用）と、シンボル建物かどうか（`isSymbol`）も持つ。
 - 庭の大きさは固定ではない（下の「庭の拡張」）。`GridObject.GRID_SIZE` は新しい庭の**始まりの大きさ** 11 のこと（#56 まで 9。それ以前の庭は `GridObject.LEGACY_GRID_SIZE` = 9 のまま残り、そこから広がる）。
 - **種・苗は耕した土の上にしか置けない**（`PlaceItemUseCase`）。耕すのは `HoeUseCase`。
-- 空きフィールドの流用が 1 つある：耕した土の `growthProgress > 0` は「たい肥入り」。
+- 土のマス（`isSoil`：耕した土 `floor_loose`・畝 `floor_tilled`・温室）は、栄養を `nutritionLevel`（満タン 3 回分に対する割合）、質を `soilQuality`（0〜2）に持つ。
 
 ## ショップのマスター
 
@@ -118,6 +118,24 @@ di/       Hilt の束ね
 - 自動では広がらない。縮める手段は無い。
 - **導線**：次の広さの Lv に届いたら、**お便り**を 1 通だけ届ける（`LetterKind.GARDEN_CAN_GROW`、id `grow:11` / `grow:13`、サイズごとに 1 通。`PostOffice.gardenCanGrow`、`PostLettersUseCase.gardenCanGrowIfDue`。コインは見ない）。
   送るのはレベルアップ時と 30 秒ごとの同期。その場でトーストや確認は出さない。#45 のコテージの上の吹き出しとパネルのボタンは #76 で外した。
+
+## 土（#78）
+
+`Soil`（`domain/model/Soil.kt`）。**肥料・たい肥・土で成長は早くならない**（効くのは元気と実りだけ）。
+
+- **地面**：元の地面 → 耕した土 → 畝のある土。旧セーブの耕した土は id が `floor_tilled` のままなので畝として読まれる（どの作物も植わっていた場所なので、作物も置いた物もそのまま）。
+- **植えられる地面**（`PlantSpecies.ground`）：野菜 `BED` は畝だけ、花 `FLOWER_BED` は耕した土と畝、原木 `LOG` は荒れ地・耕した土・畝。温室は `BED` `FLOWER_BED`。
+- **戻す**（`RemoveObjectUseCase`）：畝 → 耕した土 → 元の地面。無料ですぐ。戻した先に育たない作物は一緒に無くなる（`Soil.takesPlantBack`、先に確認）。育つ作物はそのまま。編集モードの作物のパネルの「地面を戻す」からも。
+- **栄養（短いサイクル）**：満タンで 3 回分（`Soil.SERVINGS`）。収穫で減り、肥料で満タン、抜いたときのたい肥で 1 回分増える。時間では減らない。作物の `nutritionLevel` はそのマスの値の写しで、変わるたびに両方を書く（パネルの棒と `PlantStatus.UNNOURISHED` はこれを読む）。0 のとき作物は弱る：`WEAK_PLANT_FILTER`（彩度 0.55）と 0.93 倍、オレンジの丸。枯れない、育つ速さも変わらない、ふつうの収穫はできる、よい実りは出ない。
+- **質（長いサイクル）**：`SoilGrade`。下の表。栄養のある収穫で点が入り（同じ作物 12 点、前回と違う作物 15 点、60 点で 1 段階。つまり 5 回 / 4 回）、栄養 0 の収穫では増えも減りもしない。何も育っていない（枯れた株だけも同じ）時間が 14 日たつと 1 段階戻る。1 回の不在は 7 日まで数える（`Soil.afterTime`、同期のたび）。
+- **肥料**：`10 + Lv × 5`。そのマス（作物でも空の土でも）を満タンに。満タンなら `ALREADY_FED`、土が無ければ（原木）`NO_SOIL`。
+- **季節**：旬の外の種は植えられない（温室を除く）。持ち物の後ろへ回り、薄く、植えられる季節を添える。タップで「春になったら植えられます」（温室があれば持てる）。くり返し収穫する作物は、旬の外の収穫で「おしまい」（`HarvestPlantUseCase.endsAtHarvest`。温室の中は続く）：崩れる演出で土に混ざり、たい肥になる。トーストは出さない。季節が変わった便りと作物のパネルで知らせる。
+
+| 質 | 収穫 1 回で減る栄養 | 乾くまでの時間 | よい実り（コイン・XP 1.5 倍） |
+|---|---|---|---|
+| ふつうの土 | 1 回分 | そのまま | なし |
+| よい土 | 1.25 回分 | 1.15 倍 | 10% |
+| ふかふかの土 | 1.5 回分 | 1.3 倍 | 20% |
 
 ## 編集モード（#42）
 
@@ -303,7 +321,7 @@ di/       Hilt の束ね
 - ストレス 100% で `WITHERED`。復活は 30 コイン（`CareForPlantUseCase.revive`）。
 - **チューリップは枯れない（#58、`PlantSpecies.canWither = false`）**：ストレスは `NEVER_WITHERED_STRESS`（0.99）で止まり、水切れ・栄養切れ・満開のままでも `WITHERED` にならない（のどが渇いた等の状態にはなる）。
   それより前に枯れたまま保存されたチューリップは、次の計算で生き返る。枯れた絵も無い（`spriteIdsFor` に `_withered` を含めない）。
-  枯れた作物を撤去すると土がたい肥入りになり、次の種は成長 20% から始まる。
+  作物を抜くと、株はたい肥になって、そのマスの栄養が 1 回分増える（#78。成長の先取りは廃止）。
 - **天候**は `WeatherType`（晴れ・くもり・雨・雪）。決め方と保存は「天気（#75）」。
   ただし**初回プレイ中は晴れに固定**（#61、`WeatherForecast.forGarden(tutorialStep, diary)`）：導きの段階と完了の札（`TutorialStep.isFirstPlay` = `FINISHED` まで）の間は、保存した天気に関係なく晴れ。
   季節は新しい庭がいつも春から始まる（`GardenProgress.NEW_GARDEN`、季節の時計は最初の同期で動き出す）。`GardenViewModel` は `gardenForecast()` を通して天気を決め、`watchFirstPlayWeather` で初回プレイの終わりに表示を切り替える。
@@ -450,7 +468,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
   - 開いている辺だけに濃い縁取り・草地へこぼれた土・土くれと草。手前（東・南）の開いた辺には低い土の側面（畑が芝生より少し高い）。
   - 耕した土は `floor_tilled` の絵を使わない（1 マスの絵は四方に縁のある塊で、つなげられないため）。ガラスの温室の床は従来どおり絵。
 - **畑の絵（#57）**：畑の土・畝・粒は `res/drawable/soil_tilled.png` の上面を真上から見た正方形
-  （`AssetRepository.bedFace`：`GroundSlab.TILLED` の上面の 4%〜96%、256 px、`TerrainTextures.tilled`）。たい肥入りは #61 から同じ絵を `COMPOST_TINT` で暗くする（乗算）。#77 で葉とわらの粒はやめた。
+  （`AssetRepository.bedFace`：`GroundSlab.TILLED` の上面の 8%〜92%、256 px、`TerrainTextures.tilled`）。たい肥入りは #61 から同じ絵を `COMPOST_TINT` で暗くする（乗算）。#77 で葉とわらの粒はやめた。
   `BED_INSET` は #77 から 0.08：`soil_tilled.png` の奥の辺は畝が板の縁より低く、白い背景が 0.068 まで入り込んでいて、0.04 では畑と畑の境目に白い欠けが出ていた。
 - **崩しかけた地面（#61）**：固い地面（`SoilHardness`）はクワを何度か打たないと畑にならない。打った回数は `GardenViewModel.hoeStrikes`（アプリを開いている間だけ）にあり、
   1 回でも打ったマスは `brokenGround` として `GardenCanvas(brokenCells = …)` に渡り、`soil_revived.png` の上面（`GroundSlab.REVIVED`、`TerrainTextures.broken`）を、畝の無いほぐれた土としてマスに敷く（`drawBrokenGround`、縁 0.06 内側、土くれ 6 個）。
@@ -628,10 +646,10 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
 - 満開でなくなるので、収穫した株に「満開のまま 72 時間で枯れる」時計は動かない。放っておけば水切れなどでほかの作物と同じように枯れる。
 - **肥料**（#50）：栄養が 50% 未満（`FERTILIZING_THRESHOLD`）のときだけ。10 コイン・経験値 6。栄養を満タンにするだけで、成長（`growthProgress`）には一切触れない（#59：以前は育つ時間の 5% ぶん成長も進めていて、栄養と成長が絡み合っていた）。栄養は 3 日で尽きるので、あげられるのは 1 日半に 1 回ほど
   （それまでは何度でもあげられ、連打で一気に実った）。足りているときは `ALREADY_FED`「まだ栄養は足りています」。
-- **農具の腕前（スタミナなし）**：キャラクターを動かすゲームではないので、道具を使っても何も減らない。代わりにクワとジョウロは使うほど上達する（`FarmTool`、経験は `garden_progress.hoeXp`／`wateringCanXp`、スキーマ v14）。クワは耕した区画 1 つで 1、ジョウロは水やり 1 回で 1。Lv5 まで（クワ 15/40/90/180、ジョウロ 25/70/150/300 回。最初の 5/15/30/50 では数列耕すだけで極まってしまったので、庭の一生をかけて身につく腕前にした）。画面では数字の Lv は出さず、位（見習い・慣れた手つき・一人前・熟練・名人、`toolRank`）と星で見せる：上がると「⛏️ クワさばきが上達しました：一人前」が浮かび、ツールバーのボタンに金色の星（Lv2 で ★、Lv5 で ★★★★、`toolStars`）が付く。#54 でツールバーの 💧（水やり）を外したので、ジョウロの星は作物のパネルの「水やり ★★」に付く
-- **荒れ地の硬さとクワ**：何もないマスには硬さ 1〜3（`SoilHardness.at`、マスごとに決まっていて変わらない）。耕すのに必要な回数は「硬さ −（クワの Lv − 1）」、最低 1（`HoeSkill.strikesNeeded`。新品で硬さ 3 は 3 回、Lv3 からはどこも 1 回）。足りないうちは `HOE_STRUCK`（「地面が固いようです」の一言だけ。#54 から**音は鳴らさない**。それまでのにぶい音は不自然だった）で何も保存しない。叩いた回数はアプリを開いている間だけ覚える（`GardenViewModel.hoeStrikes`）。はじめの一歩の 1 マスはどこでも 1 回
-- **土の質**：耕した土はそのときのクワの Lv で質 0〜4（`HoeSkill.soilQualityFor`、`grid_objects.soilQuality`）。そこで育った作物の収穫コインは質 1 につき +5%（`SoilQuality.harvestCoins`、最大 +20%）。経験値は変わらない。詳細パネルに「🌱 土の質 ★★☆☆（収穫コイン +10%）」
-- **ジョウロの Lv**：1 回の水やりで足す水分は 35 + 10×(Lv−1) ポイント（`WateringCanSkill.waterAmount`、Lv5 で 75）。カラカラから水やりラインまで、新品は 3 回、Lv3 からは 2 回
+- **農具**（#78）：ジョウロ・クワのレベルはやめた（`FarmTools.kt` を削除。`garden_progress` の `hoeXp` `wateringCanXp` も v17 で削除）。スタミナも無い。
+- **クワ**（#78）：元の地面 →（2 回）→ 耕した土（`floor_loose`）→（2 回）→ 畝のある土（`floor_tilled`）。回数は `Soil.HOE_STRIKES`。1 回目は `HOE_STRUCK` を返すだけで保存せず、回数は `GardenViewModel.hoeStrikes`（アプリを開いている間だけ）。その間は次の地面の絵をまだらに重ね（`drawHalfTurnedGround`）、土の粒が跳ねる（`drawHoppingCrumbs`）。はじめの一歩の 1 マスだけは 1 回で耕せる。クワでは戻せない。
+- **土の栄養と質**（#78、`Soil`・`SoilGrade`）：下の「土」の節。
+- **水やり**：1 回 35 ポイント（`CareForPlantUseCase.WATER_AMOUNT`）。カラカラから水やりラインまで 3 回。
 - **荒れ地（未耕作の地面）**：何も敷いていないマスは `res/drawable/soil_wasteland.png` の土。`AssetRepository.loadTerrainTextures` が `R.drawable.soil_wasteland` を読み、読み込み時に平らな正方形のテクスチャにする（`FlatGround.flatten`）：絵の上面（`GroundSlab.WASTELAND`、上面の中心 0.502, 0.519、幅は絵の 88.4%）を真上から見た正方形（512 px）に戻し、各辺 20% を切り落とす（`FlatGround.INSET`。#54 で 14% から広げた：崩れた縁・白い枯れ草・板の側面に加えて、縁の内側の明るく茶色い土も除く）。#54 からは次の 3 段で「線も模様も見えない地面」にする（以前の「半分ずらした写しと重ねる」方式は、土の斑が 1 枚に 2 回ずつ現れ、縁の茶色い土が 1.5 マスごとの帯になって、庭全体に格子・縞が見えていた）。①`FlatGround.seamless`：奥の端の 96 px（`MARGIN`）を手前の端に重ねて 416 px（`TILE_SIZE`）のつながるタイルにする。重みは sin²（`FlatGround.weight`）、混ぜた所は平均色からの差を 1/√(重みの二乗和) 倍に戻して土の粒を薄めない。②`FlatGround.evenOut`：土くれより大きい明暗（半径 32 px のぼかし 3 回、端は折り返し）を引き、色の差を 45% に寄せる（`COLOUR_KEPT`）。③`FlatGround.field`：そのタイルから 1024 px（`FIELD_SIZE`）の地面を、6×6 の区画（`FIELD_CELLS`）ごとにタイルの別の場所を取って、隣の区画となめらかに混ぜて作る（端は折り返すので、この地面自体もつながる）。中でタイルの繰り返しは見えない。庭ではそれを約 3.7 マスに 1 枚（`FLAT_GROUND_CELLS` = 1.5 × 1024 / 416）、庭の x・y 方向に沿って一度に敷く（`drawFlatGround`、`BitmapShader` の REPEAT）。その上に大きな明暗のむら（`FlatGround.variation`、64 px のつながるノイズ、中間の灰色 128 を中心に ±46）を 4.3 マスに 1 枚・庭の軸から 0.41 rad 傾けてオーバーレイで重ねる（`GROUND_VARIATION_CELLS` `GROUND_VARIATION_TURN`、`PorterDuff.Mode.OVERLAY`）。周期も向きもそろわないので、3.7 マスごとの繰り返しも同じに見えない。作るのに時間がかかる（遅いエミュレータで十数秒）ので、**インストールした版ごとに 1 回だけ作り**、`cacheDir/ground/wasteland-<FIELD_VERSION>-<更新時刻>.png` に保存して次からは読むだけにする（`AssetRepository.loadWasteland`。作り方を変えたら `FlatGround.FIELD_VERSION` を上げる）。マスごとの境目は出ない。荒れ地があるときは芝（`FeatheredLawn`）は敷かない。絵が読めないときは今までどおり芝。タイトルの見本の庭は「育ちきった庭」なので芝のまま（`GardenCanvas(bareGround = BareGround.LAWN)`）。ショップや図鑑の小さな絵も芝のまま。荒れ地の上では、物の足もとの草（`drawGrassAtFoot`）・畑の縁の草は描かず、土くれにする（`Ambience.bareGround`）
 - **池**（`deco_pond`、`GardenItem.DECO_POND`）：ショップの「かざり」、Lv4、75 コイン、置くと経験値 20（建物以外で経験値が入るのは池だけ）、図鑑の「ちけい」、持ち物では「地面」の仲間。川と同じく 1 マスを丸ごと使う（`PlacementKind.TERRAIN`：下に舗装は敷けず、上に何も置けず、クワも入らない。`GardenGrid.checkPlacement` が池のマスを `OCCUPIED` にする）。川と違って動かせて、持ち物に戻せる。絵は `res/drawable/pond.png`（`R.drawable.pond`、`TerrainTextures.pond`、上面は `GroundSlab.POND`、マスの 98%）を地面の物と同じ層（`BOTTOM_OBJECTS`）に描く。アトラスには探しに行かない（`TileSetDefinition.DRAWABLE_OBJECT_IDS`）。絵が読めないときは石の縁と水色の菱形をコードで描く。水面は動く（`PondWater`：庭の時計で、きらめき 5 つがそれぞれ明るくなっては消えて場所を変え、輪が 2 つ広がりながら薄れる。丸太の内側の水面＝マスの 0.2〜0.7 に切り抜いて描く。池ごとに位置と時刻をずらすので並んだ池がそろって動かない）。**隣り合う池は一つの池になる**（#54、`ui/render/PondJoin.kt`）：上下左右で辺を共有する 2 つの池のあいだは、両方の丸太の上に水を塗って水面をつなぐ（`PondJoin.Bridge`、つなぎ目の手前のマスの 0.6 から奥のマスの 0.27 まで＝`JOIN_FROM`〜`JOIN_TO`、両端 0.08 で絵の水へぼかす（`saveLayer` と `BlendMode.DstIn`）。奥の岸の下に影）。
   水は #57 から `pond_center.png`（水面だけの 1 マス）の上面の 0.08〜0.92 を真上から見た正方形に戻し（`FlatGround.region`、`GroundSlab.POND_CENTER`）、平均の色を池の絵の水（`pond.png` の上面の 0.25〜0.62）にそろえ（`FlatGround.matchMean`。そのままでは白っぽく青い帯に見えた）、荒れ地と同じ手順でつながるタイルにしたもの（`FlatGround.tileable`）を、

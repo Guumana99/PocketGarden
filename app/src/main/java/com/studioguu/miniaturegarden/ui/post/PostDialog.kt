@@ -229,9 +229,10 @@ private fun letterTitle(letter: Letter): String {
 private fun letterBody(letter: Letter): String {
     val name = stringResource(seasonLabel(letter.season))
     return when (letter.kind) {
-        LetterKind.SEASON_ARRIVED -> listOf(
+        LetterKind.SEASON_ARRIVED -> listOfNotNull(
             stringResource(seasonScene(letter.season)),
             inSeasonLine(letter.season, name),
+            endingLine(letter),
         ).joinToString("\n")
         LetterKind.SEASON_COMING -> stringResource(R.string.letter_coming_body, name)
         LetterKind.TIP -> listOfNotNull(
@@ -252,6 +253,14 @@ private fun inSeasonLine(season: Season, seasonName: String): String {
     val crops = GardenItem.entries.filter { it.category == ItemCategory.SEED && season in it.seasons }
     if (crops.isEmpty()) return stringResource(R.string.letter_arrived_body_none, seasonName)
     return stringResource(R.string.letter_arrived_body, seasonName, cropList(crops.map { objectDisplayName(it.objectId) }))
+}
+
+/** What the crops past their season have left in them: "トマトなどは旬が過ぎたので、…". */
+@Composable
+private fun endingLine(letter: Letter): String? {
+    val crops = letter.endingCrops.takeIf { it.isNotEmpty() } ?: return null
+    val first = objectDisplayName(crops.first())
+    return stringResource(R.string.letter_ending_crops, if (crops.size > 1) first + "など" else first)
 }
 
 /** Names run together the way a letter would: "A", "AやB", "AやB、Cなど". */

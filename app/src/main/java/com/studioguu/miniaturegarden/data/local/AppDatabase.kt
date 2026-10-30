@@ -32,7 +32,7 @@ import com.studioguu.miniaturegarden.data.local.entity.WeatherDayEntity
         LetterEntity::class,
         WeatherDayEntity::class,
     ],
-    version = 16,
+    version = 17,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -197,6 +197,35 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("CREATE TABLE IF NOT EXISTS `weather_days` (`day` INTEGER NOT NULL, `weather` TEXT NOT NULL, PRIMARY KEY(`day`))")
                 db.execSQL("ALTER TABLE garden_progress ADD COLUMN weatherSeed INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * The soil of each cell, and no more tool levels. What was there stands as it stood: a bed
+         * keeps `floor_tilled`, which now means ridged soil, where anything can be sown. Every cell
+         * starts over with its food full and as plain soil, which also wipes the old richness
+         * (0 to 4, from the hoe's level) and the old compost mark (a bed's growthProgress).
+         * A plant's food was its own and ran down by the hour; now it copies its cell's.
+         */
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN soilProgress INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN lastCropId TEXT")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN idleMillis INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE grid_objects SET soilQuality = 0, nutritionLevel = 1")
+                db.execSQL("UPDATE grid_objects SET growthProgress = 0 WHERE objectId = 'floor_tilled'")
+                db.execSQL("UPDATE grid_objects SET status = 'HEALTHY' WHERE status = 'UNNOURISHED'")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `garden_progress_new` (`id` INTEGER NOT NULL, `season` TEXT NOT NULL, " +
+                        "`tutorialStep` TEXT NOT NULL, `gardenSize` INTEGER NOT NULL DEFAULT 9, " +
+                        "`seasonStartedAt` INTEGER NOT NULL DEFAULT 0, `weatherSeed` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`))",
+                )
+                db.execSQL(
+                    "INSERT INTO garden_progress_new (id, season, tutorialStep, gardenSize, seasonStartedAt, weatherSeed) " +
+                        "SELECT id, season, tutorialStep, gardenSize, seasonStartedAt, weatherSeed FROM garden_progress",
+                )
+                db.execSQL("DROP TABLE garden_progress")
+                db.execSQL("ALTER TABLE garden_progress_new RENAME TO garden_progress")
             }
         }
     }

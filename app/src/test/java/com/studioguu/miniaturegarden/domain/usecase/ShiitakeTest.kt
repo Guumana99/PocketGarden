@@ -71,10 +71,10 @@ class ShiitakeTest {
     }
 
     @Test
-    fun `every other crop is sown in a bed, as before`() {
-        for (species in PlantSpecies.entries - PlantSpecies.SHIITAKE) assertEquals(species.name, PlantGround.BED, species.ground)
+    fun `every other crop is sown in the soil`() {
+        for (species in PlantSpecies.entries - PlantSpecies.SHIITAKE) assertTrue(species.name, species.ground.usesSoil)
         assertEquals(setOf(Ground.TILLED_SOIL, Ground.GREENHOUSE), PlantGround.BED.grounds)
-        assertEquals(setOf(Ground.BARE_EARTH, Ground.TILLED_SOIL), PlantGround.LOG.grounds)
+        assertEquals(setOf(Ground.BARE_EARTH, Ground.LOOSE_SOIL, Ground.TILLED_SOIL), PlantGround.LOG.grounds)
     }
 
     // --- Where it can go ---
@@ -173,28 +173,29 @@ class ShiitakeTest {
     // --- The soil ---
 
     @Test
-    fun `a log on a composted bed gets no head start and leaves the compost be`() {
+    fun `a log on a bed takes nothing from the soil, whatever food it has`() {
         repo.till(5, 5)
         val bed = repo.objects.values.single { it.isTilledSoil }
-        repo.put(bed.copy(growthProgress = 1f))
+        repo.put(bed.copy(nutritionLevel = 0f))
         assertEquals(ActionResult.SUCCESS, lay(GardenItem.SEED_SHIITAKE, 5, 5))
-        assertEquals(0f, repo.plants.single().growthProgress, 0f)
-        assertTrue(repo.objects.getValue(bed.instanceId).isComposted)
+        assertEquals(1f, repo.plants.single().nutritionLevel, 0f)
+        assertEquals(0f, repo.objects.getValue(bed.instanceId).nutritionLevel, 0f)
     }
 
     @Test
     fun `a withered log is only taken away, and leaves no compost, unlike a crop of the bed`() = runBlocking {
         repo.till(5, 5)
-        val bed = repo.objects.values.single { it.isTilledSoil }
+        val bed = repo.objects.values.single { it.isTilledSoil }.copy(nutritionLevel = 0f)
+        repo.put(bed)
         repo.put(at("log", 5, 5, PlantSpecies.SHIITAKE.objectId, growth = 0.7f).copy(status = PlantStatus.WITHERED))
         assertFalse(RemoveObjectUseCase.leavesCompost(repo.objects.getValue("log")))
         assertEquals(ActionResult.SUCCESS, RemoveObjectUseCase(repo)("log"))
         assertTrue(repo.plants.isEmpty())
-        assertFalse(repo.objects.getValue(bed.instanceId).isComposted)
+        assertEquals(0f, repo.objects.getValue(bed.instanceId).nutritionLevel, 0f)
         // A withered tomato on the same bed still does.
         repo.put(at("tomato", 5, 5, PlantSpecies.TOMATO.objectId).copy(status = PlantStatus.WITHERED))
         assertEquals(ActionResult.SUCCESS, RemoveObjectUseCase(repo)("tomato"))
-        assertTrue(repo.objects.getValue(bed.instanceId).isComposted)
+        assertTrue(repo.objects.getValue(bed.instanceId).nutritionLevel > 0f)
     }
 
     @Test

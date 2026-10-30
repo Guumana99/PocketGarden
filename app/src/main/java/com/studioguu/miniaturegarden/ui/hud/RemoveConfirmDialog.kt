@@ -41,15 +41,15 @@ fun RemoveConfirmDialog(
     val seconds = if (gridObject.isWorking) 0 else item?.demolishSeconds ?: 0
     val explanation = when {
         returnable -> R.string.remove_text_returnable
-        gridObject.isTilledSoil -> R.string.remove_text_soil
+        gridObject.isHoedSoil -> R.string.remove_text_soil
         // What clearing it really does: a withered crop of the bed becomes compost; a log (#68) does not.
         RemoveObjectUseCase.leavesCompost(gridObject) -> R.string.remove_text_withered
         gridObject.status == PlantStatus.WITHERED -> R.string.remove_text_withered_log
-        else -> R.string.remove_text_plant
+        else -> null
     }
     val name = objectDisplayName(gridObject.objectId)
     val title = when {
-        gridObject.isTilledSoil -> stringResource(R.string.remove_title_soil, name)
+        gridObject.isHoedSoil -> stringResource(R.string.remove_title_soil, name)
         gridObject.isPlant && gridObject.status == PlantStatus.WITHERED -> stringResource(R.string.remove_title_withered, name)
         gridObject.isPlant -> stringResource(R.string.remove_title_plant, name)
         else -> stringResource(R.string.remove_title, name)
@@ -60,7 +60,7 @@ fun RemoveConfirmDialog(
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(explanation))
+                if (explanation != null) Text(stringResource(explanation))
                 if (seconds > 0) {
                     Text(stringResource(R.string.remove_text_takes_time, durationText(seconds)))
                 } else if (gridObject.workKind == WorkKind.BUILDING) {
@@ -85,7 +85,7 @@ fun RemoveConfirmDialog(
                 WoodButton(
                     text = stringResource(
                         when {
-                            gridObject.isTilledSoil -> R.string.remove_soil
+                            gridObject.isHoedSoil -> R.string.remove_soil
                             gridObject.isPlant -> R.string.remove_pull
                             else -> R.string.remove_discard
                         },
@@ -98,6 +98,27 @@ fun RemoveConfirmDialog(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+        },
+    )
+}
+
+/** Asked before the ground under [plant] is turned back, when the plant goes with it ([Soil.takesPlantBack]). */
+@Composable
+fun TurnBackConfirmDialog(plant: GridObject, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        modifier = Modifier.popIn(),
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.turn_back_title, objectDisplayName(plant.objectId))) },
+        text = { Text(stringResource(R.string.remove_text_soil)) },
+        confirmButton = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                WoodButton(text = stringResource(R.string.remove_soil), onClick = onConfirm, modifier = Modifier.fillMaxWidth())
+                WoodButton(text = stringResource(R.string.remove_cancel), onClick = onDismiss, modifier = Modifier.fillMaxWidth())
             }
         },
     )

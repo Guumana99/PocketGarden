@@ -19,11 +19,11 @@ import com.studioguu.miniaturegarden.domain.model.WorkKind
  *      3  . . . . . . . . . . K     K carrot (grown) on a bed along the edge
  *      4  . . . . F f F F . . K     F fence, f a fence still going up between two finished ones
  *      5  . L U . . . . . . . t     L stone lantern, U sunflower and Z corn standing in front of it
- *      6  . U Z . . . . . . . e     t thirsty tomato, e hungry eggplant, a lavender, r rose
+ *      6  . U Z . . . . . . . e     t thirsty tomato, e weak eggplant (no food), a lavender, r a well one
  *      7  . . . . m m m m . . a     m mint on a block of beds (the seams between beds)
  *      8  . . . . m _ _ m . . r     _ an empty bed
- *      9  . . . . . . . . . . _
- *     10  . . c c _ S K K s . .     c composted bed, S shiitake log, s thirsty strawberry
+ *      9  . . 2 1 0 . . . . . _     2 1 0 tilled earth, fluffy, good and plain
+ *     10  . . 2 1 0 S K K s . .     2 1 0 ridges, the same; S shiitake log, s thirsty strawberry
  *
  * Every other cell is lawn, the edge cells included (lawn over the garden's frame).
  */
@@ -42,18 +42,23 @@ object FeedbackGarden {
         )
         fun crop(x: Int, y: Int, species: PlantSpecies, growth: Float = 1f) = at(x, y, species.objectId, growth)
 
+        // The three grades of soil side by side, ridged and tilled.
+        val grade = mapOf(2 to 2, 3 to 1, 4 to 0)
         val beds = (cells(10..10, 3..9) + cells(4..7, 7..8) + cells(2..8, 10..10)).map { cell ->
-            // Two beds along the bottom have had a crop pulled up on them: compost.
-            val composted = cell.y == 10 && cell.x in 2..3
-            at(cell.x, cell.y, GridObject.TILLED_SOIL_OBJECT_ID, growth = if (composted) 0.5f else 0f)
+            at(cell.x, cell.y, GridObject.TILLED_SOIL_OBJECT_ID).copy(
+                soilQuality = if (cell.y == 10) grade[cell.x] ?: 0 else 0,
+                nutritionLevel = if (cell.x == 10 && cell.y == 6) 0f else 1f,
+            )
+        } + cells(2..4, 9..9).map { cell ->
+            at(cell.x, cell.y, GridObject.LOOSE_SOIL_OBJECT_ID).copy(soilQuality = grade[cell.x] ?: 0)
         }
         val crops = listOf(
             crop(10, 3, PlantSpecies.CARROT),
             crop(10, 4, PlantSpecies.CARROT),
             crop(10, 5, PlantSpecies.TOMATO, 0.6f).copy(moistureLevel = 0.1f, status = PlantStatus.THIRSTY),
-            crop(10, 6, PlantSpecies.EGGPLANT, 0.6f).copy(nutritionLevel = 0.1f, status = PlantStatus.UNNOURISHED),
+            crop(10, 6, PlantSpecies.EGGPLANT, 0.6f).copy(nutritionLevel = 0f, status = PlantStatus.UNNOURISHED),
             crop(10, 7, PlantSpecies.LAVENDER),
-            crop(10, 8, PlantSpecies.ROSE, 0.5f),
+            crop(10, 8, PlantSpecies.EGGPLANT, 0.6f),
             crop(1, 6, PlantSpecies.SUNFLOWER),
             crop(2, 5, PlantSpecies.SUNFLOWER),
             crop(2, 6, PlantSpecies.CORN),

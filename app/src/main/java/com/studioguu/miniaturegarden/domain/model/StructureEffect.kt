@@ -49,12 +49,14 @@ enum class StructureEffect(
 }
 
 /**
- * What the place a plant stands in does to it: the sum of the buildings in whose reach it is.
- * With nothing near, both factors are 1 and the plant fares as it would in the open.
+ * What the place a plant stands in does to it: the sum of the buildings in whose reach it is,
+ * and how long its soil keeps water ([soilDrainFactor]: never how fast it grows).
+ * With nothing near, all the factors are 1 and the plant fares as it would in the open.
  */
 data class PlantSurroundings(
     val moistureDrainFactor: Float = 1f,
     val growthFactor: Float = 1f,
+    val soilDrainFactor: Float = 1f,
 ) {
     /** Whether anything nearby makes a difference. */
     val helps: Boolean get() = moistureDrainFactor < 1f || growthFactor > 1f
@@ -84,7 +86,8 @@ data class PlantSurroundings(
                 growth = maxOf(growth, effect.growthFactor)
             }
             if (Sprinkler.waters(plant, garden)) drain = minOf(drain, Sprinkler.MOISTURE_DRAIN_FACTOR)
-            return if (drain == 1f && growth == 1f) OPEN_GROUND else PlantSurroundings(drain, growth)
+            val soil = 1f / (Soil.under(plant, garden)?.let { SoilGrade.of(it.soilQuality).dryOutFactor } ?: 1f)
+            return if (drain == 1f && growth == 1f && soil == 1f) OPEN_GROUND else PlantSurroundings(drain, growth, soil)
         }
     }
 }

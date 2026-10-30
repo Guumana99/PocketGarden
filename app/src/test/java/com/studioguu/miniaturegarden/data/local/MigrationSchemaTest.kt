@@ -36,6 +36,7 @@ class MigrationSchemaTest {
             MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14,
             MIGRATION_14_15,
             MIGRATION_15_16,
+            MIGRATION_16_17,
         )
     }
 
@@ -50,7 +51,7 @@ class MigrationSchemaTest {
             val entity = element.jsonObject
             val columns = entity.getValue("fields").jsonArray.associate {
                 val field = it.jsonObject
-                field.string("columnName") to Column(field.string("affinity"), field.getValue("notNull").jsonPrimitive.boolean, field["defaultValue"]?.jsonPrimitive?.content)
+                field.string("columnName") to Column(field.string("affinity"), field["notNull"]?.jsonPrimitive?.boolean ?: false, field["defaultValue"]?.jsonPrimitive?.content)
             }
             val primaryKey = entity.getValue("primaryKey").jsonObject.getValue("columnNames").jsonArray.map { it.jsonPrimitive.content }
             val indices = entity["indices"]?.jsonArray?.map { it.jsonObject.string("name") }?.toSet() ?: emptySet()
@@ -79,6 +80,8 @@ class MigrationSchemaTest {
     private val primaryKey = Regex("""^PRIMARY KEY\((.*)\)$""")
     private val addColumn = Regex("""ALTER TABLE `?(\w+)`? ADD COLUMN `?(\w+)`? (\w+)( NOT NULL)?(?: DEFAULT (.+))?""")
     private val createIndex = Regex("""CREATE (?:UNIQUE )?INDEX IF NOT EXISTS `(\w+)` ON `(\w+)`""")
+    private val dropTable = Regex("""DROP TABLE `?(\w+)`?""")
+    private val renameTable = Regex("""ALTER TABLE `?(\w+)`? RENAME TO `?(\w+)`?""")
 
     /** [tables] after [sql]; only the kinds of statement the migrations use are understood. */
     private fun applied(tables: Map<String, Table>, sql: List<String>, step: String): Map<String, Table> {
@@ -112,11 +115,29 @@ class MigrationSchemaTest {
                 result[name] = table.copy(indices = table.indices + match.groupValues[1])
                 continue
             }
+            dropTable.matchEntire(statement)?.let { match ->
+                result.remove(match.groupValues[1]) ?: error("$step: drops ${match.groupValues[1]}, which does not exist")
+                continue
+            }
+            renameTable.matchEntire(statement)?.let { match ->
+                result[match.groupValues[2]] = result.remove(match.groupValues[1]) ?: error("$step: renames ${match.groupValues[1]}, which does not exist")
+                continue
+            }
             // Data only (filling in new columns): the tables stay as they are.
             if (statement.startsWith("UPDATE") || statement.startsWith("INSERT")) continue
             fail("$step: does not understand \"$statement\"")
         }
         return result
+    }
+
+    @Test
+    fun `an older save's soil starts full and plain, and its beds stay what they were`() {
+        val sql = sqlOf(AppDatabase.MIGRATION_16_17)
+        assertTrue(sql.contains("UPDATE grid_objects SET soilQuality = 0, nutritionLevel = 1"))
+        assertTrue(sql.contains("UPDATE grid_objects SET status = 'HEALTHY' WHERE status = 'UNNOURISHED'"))
+        // Nothing changes what stands in the garden: a bed keeps its id, which now reads as ridges.
+        assertTrue(sql.none { it.contains("SET objectId") })
+        assertTrue(sql.none { it.contains("DELETE") })
     }
 
     @Test

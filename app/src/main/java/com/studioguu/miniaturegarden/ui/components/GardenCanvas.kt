@@ -27,6 +27,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -67,6 +69,7 @@ import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.SoilGrade
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TileType
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -307,8 +310,25 @@ fun GardenCanvas(
     val ghosts = remember { mutableStateListOf<Ghost>() }
     // And where a building has just been unveiled, its wraps burst apart.
     val bursts = remember { mutableStateListOf<Ghost>() }
+    // And where the hoe has just struck, crumbs of earth hop up.
+    val hops = remember { mutableStateListOf<Hop>() }
     val lastSeen = remember { arrayOf(gridObjects) }
+    val lastBroken = remember { arrayOf(brokenCells) }
     val ghostScope = rememberCoroutineScope()
+    LaunchedEffect(brokenCells) {
+        for (cell in brokenCells - lastBroken[0]) {
+            val hop = Hop(cell)
+            hops += hop
+            ghostScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                try {
+                    hop.progress.animateTo(1f, tween(HOP_MILLIS))
+                } finally {
+                    hops -= hop
+                }
+            }
+        }
+        lastBroken[0] = brokenCells
+    }
     LaunchedEffect(gridObjects) {
         val present = gridObjects.mapTo(HashSet()) { it.instanceId }
         val gone = lastSeen[0].filter { it.instanceId !in present }
@@ -391,11 +411,19 @@ fun GardenCanvas(
                 sprite != null
             }
         }
-        // Ground the hoe has begun to break: with the beds, a step short of being one.
+        // Ground the hoe has struck once: the next ground comes through in patches. Just over the
+        // bed it may already be.
         for (cell in brokenCells) {
-            if (!gardenMap.isInside(cell.x, cell.y) || grid.floorAt(cell.x, cell.y) != null) continue
-            pipeline.submit(RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(cell.x, cell.y)) {
-                drawBrokenGround(transform, cell.x, cell.y, terrain.broken)
+            val floor = grid.floorAt(cell.x, cell.y)
+            if (!gardenMap.isInside(cell.x, cell.y) || (floor != null && !floor.isLooseSoil)) continue
+            pipeline.submit(RenderLayer.BASE_TERRAIN, 1.5f + LayerPipeline.depthOf(cell.x, cell.y), inGarden = true) {
+                drawHalfTurnedGround(transform, cell.x, cell.y, if (floor == null) terrain.broken else terrain.tilled)
+            }
+        }
+        for (hop in hops) {
+            val progress = hop.progress.value
+            pipeline.submit(RenderLayer.TOP_EFFECTS, depth = LayerPipeline.depthOf(hop.cell.x, hop.cell.y, 0) + 0.5f) {
+                drawHoppingCrumbs(transform, hop.cell, progress)
             }
         }
         // A thin cover of snow over the ground, the beds and the lawns; the water stays open.
@@ -637,16 +665,16 @@ private fun submitObjects(
             // Back to front within the ground: a bed of soil stands a little proud of the lawn,
             // and its front edge has to come over the bed behind it.
             submit(obj, RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(obj.gridX, obj.gridY)) {
-                if (obj.isTilledSoil) {
+                if (obj.isHoedSoil) {
                     // Beds side by side are one field: each knows which of its sides carry on (#47).
-                    val joins = SoilJoins.at(obj.gridX, obj.gridY) { bx, by -> grid.floorAt(bx, by)?.isTilledSoil == true }
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.tilled)
+                    val joins = SoilJoins.at(obj.gridX, obj.gridY) { bx, by -> grid.floorAt(bx, by)?.isHoedSoil == true }
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = if (obj.isLooseSoil) terrain.broken else terrain.tilled)
                 } else if (obj.isGreenhouse && soil != null && atlasImage != null) {
-                    // Compost darkens the earth.
+                    // Better soil is deeper in colour.
                     val center = transform.tileCenter(obj.gridX, obj.gridY)
-                    drawSprite(atlasImage, soil, center, spriteScale, tint = if (obj.isComposted) COMPOST_TINT else null)
+                    drawSprite(atlasImage, soil, center, spriteScale, tint = soilTint(obj.soilQuality))
                 } else if (obj.isGreenhouse) {
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, composted = obj.isComposted, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.tilled)
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.tilled)
                 } else {
                     // Decking and paving: pictures seen from straight above, one to a cell, made to
                     // run on into the next (#74).
@@ -815,7 +843,14 @@ private fun submitObjects(
                     obj.status == PlantStatus.WITHERED -> sway * PLANT_LEAN * 0.3f
                     else -> sway * PLANT_LEAN
                 }
-                drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
+                // With no food in its soil a crop is weak: a little smaller, and its colour dulled.
+                if (obj.status == PlantStatus.UNNOURISHED) {
+                    scale(WEAK_PLANT_SCALE, WEAK_PLANT_SCALE, pivot = base) {
+                        drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped, colorFilter = WEAK_PLANT_FILTER)
+                    }
+                } else {
+                    drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
+                }
                 // On a snowy day the snow lies on the top of every plant.
                 if (obj.isPlant && ambience.weather == WeatherType.SNOWY) {
                     drawSpriteSnow(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
@@ -847,7 +882,7 @@ private fun submitObjects(
                     // On the wasteland there is no grass to come up round it: crumbs of the earth instead.
                     floor == null && ambience.bareGround == BareGround.WASTELAND -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
                     floor == null -> drawGrassAtFoot(base, unit, reach, sway, seed = obj.gridX * 31 + obj.gridY * 17)
-                    floor.isTilledSoil || floor.isGreenhouse -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
+                    floor.isSoil -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
                 }
             }
         }
@@ -874,8 +909,18 @@ private fun submitObjects(
     }
 }
 
-/** How the earth of a composted bed is darkened (multiplied in). */
-private val COMPOST_TINT = Color(0xFFB8A48E)
+/** How much smaller a weak crop stands ([PlantStatus.UNNOURISHED]). */
+private const val WEAK_PLANT_SCALE = 0.93f
+
+/** How a weak crop's colours are dulled. */
+private val WEAK_PLANT_FILTER = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.55f) })
+
+/** How the earth of better soil is deepened (multiplied in), by [GridObject.soilQuality]; none for plain soil. */
+private fun soilTint(quality: Int): Color? = when (SoilGrade.of(quality)) {
+    SoilGrade.PLAIN -> null
+    SoilGrade.GOOD -> Color(0xFFD3BFA8)
+    SoilGrade.FLUFFY -> Color(0xFFAE9378)
+}
 
 /** How opaque a greenhouse's picture is while a crop grows inside, so that the crop shows through. */
 private const val GREENHOUSE_OVER_CROP_ALPHA = 0.55f
@@ -1216,6 +1261,14 @@ private const val VANISH_MILLIS = 380
 private class Ghost(val gridObject: GridObject, val crumbles: Boolean = false) {
     val progress = Animatable(0f)
 }
+
+/** Crumbs of earth hopping up where the hoe has struck [cell]. */
+private class Hop(val cell: GridCell) {
+    val progress = Animatable(0f)
+}
+
+private const val HOP_MILLIS = 420
+private const val HOP_CRUMBS = 8
 
 /** How long a pulled plant takes to crumble into its bed: under a second (device feedback, after #75). */
 private const val CRUMBLE_MILLIS = 800
@@ -1954,7 +2007,7 @@ private const val PICTURED_BED_EDGE = 0.45f
 /**
  * A tile the hoe has been over: dark, damp-looking earth with furrows running across it, set a
  * little in from the tile's edge so that a strip of grass still shows between two beds.
- * A [composted] bed is darker.
+ * Better soil ([SoilGrade]) is deeper in colour.
  */
 /**
  * A bed of tilled soil on cell ([x], [y]). Its sides that [joins] carry on into the next bed run
@@ -1975,7 +2028,7 @@ private fun DrawScope.drawTilledSoil(
     transform: IsometricTransform,
     x: Int,
     y: Int,
-    composted: Boolean,
+    quality: Int,
     joins: SoilJoins = SoilJoins.NONE,
     onBareEarth: Boolean = false,
     earth: Bitmap? = null,
@@ -2029,9 +2082,8 @@ private fun DrawScope.drawTilledSoil(
 
     if (face != null) {
         fillWithTexture(face, transform, bed, cellsPerCopy = 1f)
-        // Compost darkens the earth of the picture (#61: soil_revived, its own picture until
-        // then, is the broken ground before a bed now).
-        if (composted) drawPath(bed, COMPOST_TINT, blendMode = BlendMode.Multiply)
+        // Better soil is deeper in colour.
+        soilTint(quality)?.let { drawPath(bed, it, blendMode = BlendMode.Multiply) }
     } else {
         drawCodeEarth(transform, x, y, x0, x1, y0, y1, joins, bed, onBareEarth, earth)
     }
@@ -2060,47 +2112,51 @@ private fun DrawScope.drawTilledSoil(
         }
     }
     drawBedEdges(transform, x, y, x0, x1, y0, y1, joins, onBareEarth, strength = if (face != null) PICTURED_BED_EDGE else 1f)
-    // A composted bed is only darker: the flecks of leaf and straw that marked it are gone (device
-    // feedback, after #75); the plant crumbling into it as it is pulled shows what went in.
 }
 
 /**
- * Ground the hoe has struck but not yet broken into a bed ([TerrainTextures.broken]): the dry
- * crust cracked open into loose, turned earth with no furrows yet, lying flat in the cell with
- * a soft edge into the wasteland round it. Without the picture, plain loose earth with crumbs.
+ * A cell the hoe has struck once: [face], the ground it is on its way to, coming through in soft
+ * patches over about half of it. Where the patches go is the cell's own, so they stay put.
  */
-private fun DrawScope.drawBrokenGround(transform: IsometricTransform, x: Int, y: Int, face: Bitmap?) {
-    val inset = BROKEN_GROUND_INSET
-    val patch = quad(
-        transform.worldToScreen(x + inset, y + inset),
-        transform.worldToScreen(x + 1 - inset, y + inset),
-        transform.worldToScreen(x + 1 - inset, y + 1 - inset),
-        transform.worldToScreen(x + inset, y + 1 - inset),
-    )
-    if (face != null) {
-        fillWithTexture(face, transform, patch, cellsPerCopy = 1f)
-    } else {
-        drawPath(patch, DIRT_DRY)
-    }
-    // Clods of the broken crust, lighter on top, lying round on it.
-    val unit = transform.tileWidth
+private fun DrawScope.drawHalfTurnedGround(transform: IsometricTransform, x: Int, y: Int, face: Bitmap?) {
     var seed = x * 48271 xor y * 69621
     fun next(): Float {
         seed = seed * 1103515245 + 12345
         return ((seed ushr 16) and 0x7FFF) / 32767f
     }
-    repeat(BROKEN_GROUND_CLODS) {
-        val at = transform.worldToScreen(x + inset + 0.08f + next() * (0.84f - 2 * inset), y + inset + 0.08f + next() * (0.84f - 2 * inset))
-        val w = unit * (0.02f + next() * 0.02f)
-        drawOval(DIRT_DEEP.copy(alpha = 0.55f), Offset(at.x - w * 0.5f, at.y - w * 0.15f), Size(w, w * 0.55f))
-        drawOval(DIRT_DRY, Offset(at.x - w * 0.5f, at.y - w * 0.4f), Size(w, w * 0.55f))
+    val unit = transform.tileWidth
+    val patches = Path()
+    repeat(HALF_TURNED_PATCHES) {
+        val at = transform.worldToScreen(x + 0.1f + next() * 0.8f, y + 0.1f + next() * 0.8f)
+        val w = unit * (0.07f + next() * 0.07f)
+        patches.addOval(Rect(at.x - w, at.y - w / 2f, at.x + w, at.y + w / 2f))
     }
-    drawPath(patch, DIRT_EDGE.copy(alpha = PICTURED_BED_EDGE), style = Stroke(width = unit * 0.01f))
+    clipPath(transform.tilePath(x, y)) {
+        if (face != null) fillWithTexture(face, transform, patches, cellsPerCopy = 1f) else drawPath(patches, DIRT_DRY)
+    }
+}
+
+/** Crumbs of earth hopping up from [cell] and falling back, [progress] 0 to 1. */
+private fun DrawScope.drawHoppingCrumbs(transform: IsometricTransform, cell: GridCell, progress: Float) {
+    var seed = cell.x * 73856093 xor cell.y * 19349663
+    fun next(): Float {
+        seed = seed * 1103515245 + 12345
+        return ((seed ushr 16) and 0x7FFF) / 32767f
+    }
+    val unit = transform.tileWidth
+    val centre = transform.worldToScreen(cell.x + 0.5f, cell.y + 0.5f)
+    repeat(HOP_CRUMBS) {
+        val dx = (next() - 0.5f) * unit * 0.5f
+        val dy = (next() - 0.5f) * unit * 0.2f
+        val height = unit * (0.12f + next() * 0.14f)
+        val size = unit * (0.012f + next() * 0.012f)
+        val at = centre + Offset(dx * (0.5f + progress * 0.5f), dy - height * 4f * progress * (1f - progress))
+        drawCircle(DIRT_RIDGE.copy(alpha = 1f - progress * progress), size, at)
+    }
 }
 
 /** How far broken ground stays in from its cell's sides: it has not been shaped into a bed yet. */
-private const val BROKEN_GROUND_INSET = 0.06f
-private const val BROKEN_GROUND_CLODS = 6
+private const val HALF_TURNED_PATCHES = 16
 
 /**
  * A bed's earth drawn without a picture: one colour shading smoothly over the field, with damp

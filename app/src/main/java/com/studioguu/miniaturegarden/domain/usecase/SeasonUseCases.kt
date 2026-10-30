@@ -1,9 +1,11 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.Letter
+import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PostOffice
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.SeasonClock
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.after
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import javax.inject.Inject
@@ -32,13 +34,22 @@ class AdvanceSeasonUseCase @Inject constructor(
         if (state.startedAt != progress.seasonStartedAt) {
             gardenRepository.saveProgress(progress.copy(season = state.season, seasonStartedAt = state.startedAt))
             // Only the season of now is announced, however many went by while the player was away.
-            gardenRepository.postLetter(Letter.arrived(state.season, state.startedAt))
+            gardenRepository.postLetter(Letter.arrived(state.season, state.startedAt, endingCrops(state.season)))
             arrived = state.season
         }
         if (SeasonClock.isEndNear(state.startedAt, now)) {
             gardenRepository.postLetter(Letter.coming(state.season.after(), SeasonClock.endOf(state.startedAt), now))
         }
         arrived
+    }
+
+    /** The crops whose next harvest will be their last, now that [season] has come. */
+    private suspend fun endingCrops(season: Season): List<String> {
+        val objects = gardenRepository.getGridObjects()
+        return objects.filter { plant ->
+            plant.isPlant && plant.status != PlantStatus.WITHERED &&
+                HarvestPlantUseCase.endsAtHarvest(plant, season, Soil.under(plant, objects)?.isGreenhouse == true)
+        }.map { it.objectId }.distinct()
     }
 
     /**

@@ -5,13 +5,10 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.MAX_OFFLINE_MILLIS
-import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.NUTRITION_DRAIN_PER_TICK
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.STRESS_RECOVERY_PER_TICK
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.STRESS_THIRSTY_PER_TICK
-import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.STRESS_UNNOURISHED_PER_TICK
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.THIRSTY_THRESHOLD
 import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.TICK_MILLIS
-import com.studioguu.miniaturegarden.domain.usecase.CalculateOfflineProgressUseCase.Companion.UNNOURISHED_THRESHOLD
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -97,10 +94,11 @@ class CalculateOfflineProgressUseCaseTest {
     }
 
     @Test
-    fun `rain keeps soil moist so only nutrition matters`() {
+    fun `rain keeps soil moist, and food does not run down with time`() {
         val result = useCase(plant(), t0 + 60 * hour, WeatherType.RAINY)
         assertEquals(1f, result.moistureLevel, 0f)
-        assertEquals(PlantStatus.UNNOURISHED, result.status)
+        assertEquals(1f, result.nutritionLevel, 0f)
+        assertEquals(PlantStatus.HEALTHY, result.status)
     }
 
     @Test
@@ -138,33 +136,28 @@ class CalculateOfflineProgressUseCaseTest {
     private fun simulate(start: GridObject, ticks: Long, weather: WeatherType): GridObject {
         var growth = start.growthProgress.toDouble()
         var moisture = start.moistureLevel.toDouble()
-        var nutrition = start.nutritionLevel.toDouble()
         var stress = start.stressRate.toDouble()
         // Rain waters the plant, and while it falls nothing brings the plant closer to withering.
         val protected = weather.isProtective
         if (protected && ticks > 0) moisture = 1.0
         repeat(ticks.toInt()) {
             val thirsty = moisture <= THIRSTY_THRESHOLD
-            val starved = nutrition <= UNNOURISHED_THRESHOLD
             // A plant in full bloom no longer grows or recovers: it only goes over.
             val inBloom = growth >= 1.0 - 1e-9
-            if (!thirsty && !starved && !inBloom) {
+            if (!thirsty && !inBloom) {
                 growth = (growth + GROWTH_PER_TICK * weather.growthMultiplier).coerceAtMost(1.0)
                 stress = (stress - STRESS_RECOVERY_PER_TICK).coerceAtLeast(0.0)
             }
             if (!protected) {
                 if (thirsty) stress += STRESS_THIRSTY_PER_TICK
-                if (starved) stress += STRESS_UNNOURISHED_PER_TICK
                 if (inBloom) stress += CalculateOfflineProgressUseCase.STRESS_OVERRIPE_PER_TICK
             }
             stress = stress.coerceAtMost(1.0)
             moisture = (moisture - MOISTURE_DRAIN_PER_TICK * weather.moistureDrainMultiplier).coerceAtLeast(0.0)
-            nutrition = (nutrition - NUTRITION_DRAIN_PER_TICK).coerceAtLeast(0.0)
         }
         return start.copy(
             growthProgress = growth.toFloat(),
             moistureLevel = moisture.toFloat(),
-            nutritionLevel = nutrition.toFloat(),
             stressRate = stress.toFloat(),
         )
     }

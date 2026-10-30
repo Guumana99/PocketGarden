@@ -61,7 +61,7 @@ class FollowTutorialUseCase @Inject constructor(
         val progress = gardenRepository.getProgress() ?: return@runInTransaction TutorialStep.DONE
         val objects = gardenRepository.getGridObjects()
         val plant = TutorialGuide.tutorialPlant(objects)
-        val tilled = objects.any { it.isTilledSoil }
+        val tilled = objects.any { it.isHoedSoil }
         // Several steps may have been done since the last look: take them all at once.
         var settled = progress.tutorialStep
         while (true) {
