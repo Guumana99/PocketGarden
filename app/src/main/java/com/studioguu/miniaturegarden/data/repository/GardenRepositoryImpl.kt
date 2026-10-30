@@ -22,7 +22,6 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.NatureNote
-import com.studioguu.miniaturegarden.domain.model.StarterGarden
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.repository.GameClock
@@ -55,9 +54,8 @@ class GardenRepositoryImpl @Inject constructor(
             ?: securityManager.stampAndSign(UserProfileEntity(coins = UserProfile.STARTING_COINS))
                 .also { userProfileDao.upsert(it) }
         if (existing == null) {
-            // A new garden: bare lawn and the crate whose seed is the first thing to plant. The
-            // player starts out with an empty bag. Its season clock starts at the first sync.
-            gridObjectDao.upsertAll(StarterGarden.objects(clock.now()).map { it.toEntity() })
+            // A new garden: bare ground and an empty bag, the first gift coming after the first
+            // steps. Its season clock starts at the first sync.
             gardenProgressDao.upsert(GardenProgress.NEW_GARDEN.toEntity())
         } else if (gardenProgressDao.get() == null) {
             // Saved before there was any progress to keep: the player knows the way already.

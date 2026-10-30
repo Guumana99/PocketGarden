@@ -103,14 +103,6 @@ class SoilTest {
         assertTrue(stored.isLooseSoil)
     }
 
-    @Test
-    fun `the first steps' one cell goes at one strike`() = runBlocking {
-        repo.progress = GardenProgress(tutorialStep = TutorialStep.TILL_SOIL)
-        assertEquals(ActionResult.SUCCESS, strike(3, 3, 0))
-        assertTrue(repo.objects.values.single().isLooseSoil)
-        assertEquals(TutorialStep.PLANT_SEED, repo.progress?.tutorialStep)
-    }
-
     // --- Where things go ---
 
     @Test
@@ -304,9 +296,12 @@ class SoilTest {
     }
 
     @Test
-    fun `a crop pulled up puts a serving back, up to full`() = runBlocking {
+    fun `a withered crop pulled up puts a serving back, up to full, and a growing one nothing`() = runBlocking {
         repo.put(soil(food = 0f))
         repo.put(plant(PlantSpecies.CARROT, growth = 0.4f))
+        remove("p")
+        assertEquals(0f, stored.nutritionLevel, 0f)
+        repo.put(plant(PlantSpecies.CARROT, growth = 0.4f).copy(status = PlantStatus.WITHERED))
         remove("p")
         assertEquals(1f / 3f, stored.nutritionLevel, 1e-4f)
         repo.put(stored.copy(nutritionLevel = 0.9f))
@@ -343,7 +338,25 @@ class SoilTest {
         // The first harvest has nothing to differ from: it is the next ones that are told apart.
         harvests(5, PlantSpecies.CARROT, PlantSpecies.TOMATO)
         assertEquals(1, stored.soilQuality)
-        assertEquals(12 + 15 * 4, stored.soilProgress + Soil.POINTS_PER_GRADE)
+        assertEquals(24 + 30 * 4, stored.soilProgress + Soil.POINTS_PER_GRADE)
+    }
+
+    @Test
+    fun `a crop's later harvests take half the food and bring half the points`() = runBlocking {
+        for (grade in SoilGrade.entries) {
+            repo.put(soil().copy(soilQuality = grade.ordinal))
+            repo.put(plant(PlantSpecies.TOMATO).copy(harvestCount = 1))
+            assertEquals(ActionResult.SUCCESS, harvest("p", t0, sunny, noLuck))
+            assertEquals(grade.name, 1f - 0.5f * grade.nutritionPerHarvest / Soil.SERVINGS, stored.nutritionLevel, 1e-4f)
+        }
+        repo.put(soil())
+        repo.put(plant(PlantSpecies.TOMATO).copy(harvestCount = 1))
+        harvest("p", t0, sunny, noLuck)
+        assertEquals(Soil.SAME_CROP_POINTS / 2, stored.soilProgress)
+        repo.put(stored.copy(lastCropId = PlantSpecies.CARROT.objectId, soilProgress = 0))
+        repo.put(plant(PlantSpecies.TOMATO).copy(harvestCount = 3))
+        harvest("p", t0, sunny, noLuck)
+        assertEquals(Soil.NEW_CROP_POINTS / 2, stored.soilProgress)
     }
 
     @Test
@@ -473,8 +486,8 @@ class SoilTest {
         repo.put(plant(PlantSpecies.TOMATO).copy(harvestCount = 2))
         assertEquals(ActionResult.SUCCESS, harvest("p", t0, sunny, noLuck))
         assertNull(repo.objects["p"])
-        // A harvest takes one, the compost gives it back.
-        assertEquals(2f / 3f, stored.nutritionLevel, 1e-4f)
+        // A later harvest takes half a serving, the compost gives a whole one.
+        assertEquals(2f / 3f + 0.5f / 3f, stored.nutritionLevel, 1e-4f)
         assertEquals(1_000L + PlantSpecies.TOMATO.regrowCoins, repo.profile?.coins)
     }
 

@@ -108,6 +108,7 @@ dependencies {
 
     // Rewarded ads
     implementation(libs.play.services.ads)
+    implementation(libs.play.review)
 
     // Notifications posted while the app is away
     implementation(libs.androidx.work.runtime)

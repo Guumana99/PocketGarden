@@ -6,6 +6,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
+import com.studioguu.miniaturegarden.domain.model.PracticeGarden
 import com.studioguu.miniaturegarden.domain.model.Season
 
 /**
@@ -51,7 +52,7 @@ enum class ShelfTag {
 }
 
 /** One thing standing on a shelf, and how many of it the player has in the bag ([held]). */
-data class ShelfItem(val item: GardenItem, val tag: ShelfTag, val held: Int = 0)
+data class ShelfItem(val item: GardenItem, val tag: ShelfTag, val held: Int = 0, val free: Boolean = false)
 
 /**
  * What stands on a shop's shelves, and how it is set out: a pure function of the shop, the
@@ -83,6 +84,11 @@ object ShopShelves {
             }
             ShelfItem(item, tag, held[item] ?: 0)
         }
+
+    /** What is on show during the first steps: the seed they give away, and nothing else. */
+    fun firstSteps(shelves: List<List<ShelfItem>>): List<List<ShelfItem>> =
+        shelves.flatten().filter { it.item == PracticeGarden.SEED }.map { it.copy(tag = ShelfTag.FOR_SALE, free = true) }
+            .let { if (it.isEmpty()) emptyList() else listOf(it) }
 
     /** How many of each item are in the bag, over all its slots. */
     fun heldIn(slots: List<InventorySlot>): Map<GardenItem, Int> =

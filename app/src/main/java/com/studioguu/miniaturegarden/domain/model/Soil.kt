@@ -6,6 +6,9 @@ import kotlin.math.roundToInt
  * How good a cell's soil has become over time (the long cycle; [Soil] has the short one). It only
  * ever helps a crop stay well and bear well: nothing about the soil makes anything grow faster.
  *
+ * The food shown is for a plant's first harvest; a crop that bears again takes
+ * [Soil.LATER_HARVEST_SHARE] of that at each harvest after it.
+ *
  *     grade   name          food a harvest takes   dries out   "good harvest"
  *     PLAIN   ふつうの土    1 serving              as usual    never
  *     GOOD    よい土        1.25 servings          15 % later  1 in 10
@@ -30,8 +33,8 @@ enum class SoilGrade(val nutritionPerHarvest: Float, val dryOutFactor: Float, va
  * The soil of a cell: a tilled cell, a ridged one or a greenhouse bed ([GridObject.isSoil]).
  *
  * The short cycle is its food, held in the soil's [GridObject.nutritionLevel] as a share of what a
- * full cell holds, [SERVINGS] crops' worth. A harvest takes some, fertilizer fills it, a crop
- * pulled up adds a serving. A plant keeps a copy of the level of its cell in its own
+ * full cell holds, [SERVINGS] crops' worth. A harvest takes some, fertilizer fills it, a withered
+ * crop pulled up or one that has gone past its season adds a serving. A plant keeps a copy of the level of its cell in its own
  * [GridObject.nutritionLevel], which the panel's bar and its status read; every change here goes
  * to both. With none left a crop is weak: it looks a little tired and bears no good harvests, but
  * it grows as fast as ever, does not wither and can be harvested as usual.
@@ -52,10 +55,13 @@ object Soil {
     /** Below this there is no food left: what rounding leaves behind is not food. */
     private const val EMPTY = 1e-4f
 
-    /** What a grade takes, in points: a harvest of the same crop is 12, of a different one 15. */
-    const val POINTS_PER_GRADE = 60
-    const val SAME_CROP_POINTS = 12
-    const val NEW_CROP_POINTS = 15
+    /** What a grade takes, in points: a harvest of the same crop is 24, of a different one 30. */
+    const val POINTS_PER_GRADE = 120
+    const val SAME_CROP_POINTS = 24
+    const val NEW_CROP_POINTS = 30
+
+    /** What a crop's second and later harvests take from the soil and add to its grade. */
+    const val LATER_HARVEST_SHARE = 0.5f
 
     /** Time with nothing growing that takes a grade away. */
     const val IDLE_MILLIS_PER_GRADE = 14L * 24 * 60 * 60 * 1000
@@ -76,16 +82,21 @@ object Soil {
     /** Whether [level] (a [GridObject.nutritionLevel]) has no food left in it. */
     fun isEmpty(level: Float): Boolean = level < EMPTY
 
-    /** How [soil] stands after a harvest of [cropId], with food in it or not. */
-    fun afterHarvest(soil: GridObject, cropId: String, now: Long): GridObject {
+    /**
+     * How [soil] stands after a harvest of [cropId], with food in it or not.
+     *
+     * @param later it is not this plant's first harvest: it counts [LATER_HARVEST_SHARE] of one.
+     */
+    fun afterHarvest(soil: GridObject, cropId: String, now: Long, later: Boolean = false): GridObject {
         val grade = SoilGrade.of(soil.soilQuality)
-        val left = soil.nutritionLevel - grade.nutritionPerHarvest / SERVINGS
+        val share = if (later) LATER_HARVEST_SHARE else 1f
+        val left = soil.nutritionLevel - grade.nutritionPerHarvest * share / SERVINGS
         val fed = !isEmpty(soil.nutritionLevel)
         var quality = soil.soilQuality
         var points = soil.soilProgress
         if (fed && quality < SoilGrade.entries.lastIndex) {
             val rotated = soil.lastCropId != null && soil.lastCropId != cropId
-            points += if (rotated) NEW_CROP_POINTS else SAME_CROP_POINTS
+            points += ((if (rotated) NEW_CROP_POINTS else SAME_CROP_POINTS) * share).toInt()
             if (points >= POINTS_PER_GRADE) {
                 quality++
                 points = if (quality < SoilGrade.entries.lastIndex) points - POINTS_PER_GRADE else 0

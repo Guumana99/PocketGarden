@@ -140,7 +140,7 @@ class SeasonsTest {
         assertEquals(end, repo.progress?.seasonStartedAt)
         assertTrue(repo.letters.values.any { it.kind == LetterKind.SEASON_ARRIVED && it.season == Season.SUMMER && !it.read })
         // The tutorial is not touched by the year going round.
-        assertEquals(TutorialStep.OPEN_CRATE, repo.progress?.tutorialStep)
+        assertEquals(TutorialStep.WELCOME, repo.progress?.tutorialStep)
     }
 
     @Test

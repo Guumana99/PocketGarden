@@ -16,6 +16,7 @@
     <!-- Quick action bar -->
     <string name="action_water">水やり</string>
     <string name="action_fertilize">肥料 🪙%1$d</string>
+    <string name="action_fertilize_free">肥料 無料</string>
     <string name="action_inventory">持ち物</string>
     <string name="action_shop">ショップ</string>
     <string name="action_hoe">クワ</string>
@@ -334,6 +335,13 @@
     <string name="settings_app_version">%1$s　v%2$s</string>
     <string name="settings_licenses">ライセンス</string>
     <string name="settings_privacy">プライバシーポリシー</string>
+    <string name="settings_replay_tutorial">チュートリアルをもう一度</string>
+    <string name="settings_contact">お問い合わせ</string>
+    <!-- Placeholder: the real address is still to be decided. -->
+    <string name="contact_email" translatable="false">support@example.com</string>
+    <string name="contact_subject">ぽけっと庭園へのお問い合わせ</string>
+    <string name="contact_body">（ここにご用件をお書きください）\n\n\n--- 以下は変更しないでください ---\nアプリの版：%1$s\n機種：%2$s\nAndroid の版：%3$s</string>
+    <string name="contact_no_mail_app">メールアプリが見つかりませんでした</string>
     <string name="settings_disclaimer">免責事項</string>
     <string name="privacy_policy_url" translatable="false">https://guumana99.github.io/privacy-policy_pocketgarden/</string>
     <!-- TODO before release: replace the last line with the real credits for the music and the
@@ -395,18 +403,40 @@
     <string name="time_night">夜</string>
 
     <!-- First steps -->
-    <string name="object_deco_starter_crate">小さな木箱</string>
-    <string name="crate_text">ふたを開けると、種が一つ。</string>
-    <string name="crate_reward">%1$s ×%2$d</string>
-    <string name="crate_receive">受け取る</string>
-    <string name="crate_later">後で</string>
-    <string name="tutorial_hint_open_crate">真ん中の木箱が光っています。タップして開けてみましょう</string>
-    <string name="tutorial_hint_till">「クワ」を選んで、好きな地面を1か所耕しましょう</string>
-    <string name="tutorial_hint_plant_seed">持ち物にある種を選び、耕した土にまきましょう</string>
-    <string name="tutorial_hint_water">種をタップして水をあげましょう</string>
+    <string name="object_deco_starter_crate">おくりもの</string>
+    <string name="gift_first_title">はじめてのおくりもの</string>
+    <string name="gift_first_text">お庭づくりのはじまりに、種を少しどうぞ。</string>
+    <string name="gift_item">%1$s ×%2$d</string>
+    <string name="gift_coins">🪙 %1$d</string>
+    <string name="gift_receive">受け取る</string>
+    <string name="gift_later">後で</string>
+    <string name="tutorial_skip">とばす</string>
+    <string name="tutorial_welcome_title">ようこそ、ぽけっと庭園へ！</string>
+    <string name="tutorial_welcome_text">ここは、あなただけの小さなお庭。\nまずは練習用の畑で、いっしょにミントを育ててみよう！</string>
+    <string name="tutorial_welcome_ok">やってみる</string>
+    <string name="tutorial_hint_till">光っているマスを、クワでトントンと 2 回たたいてみよう</string>
+    <string name="tutorial_hint_ridge">いい感じにほぐれたね！もう 2 回たたくと、畝ができるよ</string>
+    <string name="tutorial_hint_shop">りっぱな畝ができたね！お店へ行って、ミントの苗をもらってこよう。今回はお代はいらないよ</string>
+    <string name="tutorial_shop_note">今回は特別に、ミントの苗をプレゼント！棚からどうぞ</string>
+    <string name="tutorial_shop_free">無料</string>
+    <string name="tutorial_shop_take">もらう</string>
+    <string name="tutorial_hint_plant_seed">持ち物から苗を選んで、光っている畝に植えてみよう</string>
+    <string name="tutorial_hint_water">苗がのどをかわかせているみたい。タップして、水をあげよう</string>
+    <string name="tutorial_hint_feed">あれれ、土の栄養がなくなって、元気がないみたい。タップして、肥料をまいてあげよう。今回は無料だよ</string>
+    <string name="tutorial_grow_title">元気になったね！</string>
+    <string name="tutorial_grow_text">肥料をまくと土に栄養がたまって、作物が元気になるよ。育つのが早くなるわけではないけれどね。\nいつもはのんびり待つところだけど、今回は特別に時間を進めるね。</string>
+    <string name="tutorial_grow_ok">時間を進める</string>
+    <string name="tutorial_hint_harvest">ミントが育ったよ！タップして、収穫してみよう</string>
+    <string name="tutorial_thanks_title">おつかれさま！</string>
+    <string name="tutorial_thanks_text">はじめての収穫、おめでとう！とっても上手だったよ。\nここまでは練習だから、お庭はもとどおりにしておくね。</string>
+    <string name="tutorial_thanks_ok">お庭へ</string>
+    <string name="tip_no_food">土の栄養がなくなると、作物は少し元気をなくすよ。肥料をまくと元気になるよ</string>
+    <string name="tip_withered">枯れてしまった株は、編集モードで抜けるよ。抜くと、土の栄養になるんだ</string>
+    <string name="tip_new_page">図鑑に新しいページができたよ。開いて、タップしてみてね</string>
+    <string name="tip_visitor">お客さんが来ているよ！タップすると、自然メモに書き留められるよ</string>
     <!-- The closing board. Lines are broken by hand so that no phrase is split. -->
-    <string name="tutorial_done_title">🎉 チュートリアルクリア！</string>
-    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\n好きなものを、好きな場所へ。</string>
+    <string name="tutorial_done_title">🎉 いよいよ本番！</string>
+    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\nお庭に「はじめてのおくりもの」を置いておいたよ。開けてみてね。</string>
     <string name="tutorial_done_ok">お庭づくりを始める</string>
     <!-- Features handed over one by one after the first steps. -->
     <string name="reveal_title">新しい機能が使えるようになりました</string>
@@ -514,12 +544,12 @@
     <string name="creature_squirrel">りす</string>
     <string name="creature_frog">かえる</string>
     <string name="creature_dragonfly">とんぼ</string>
-    <string name="msg_met_butterfly">🦋 ちょうちょが遊びに来ました。自然メモに書き留めました</string>
-    <string name="msg_met_ladybug">🐞 てんとうむしが遊びに来ました。自然メモに書き留めました</string>
-    <string name="msg_met_bird">🐦 ことりが遊びに来ました。自然メモに書き留めました</string>
-    <string name="msg_met_squirrel">🐿️ りすが遊びに来ました。自然メモに書き留めました</string>
-    <string name="msg_met_frog">🐸 かえるが遊びに来ました。自然メモに書き留めました</string>
-    <string name="msg_met_dragonfly">🍂 とんぼが遊びに来ました。自然メモに書き留めました</string>
+    <string name="msg_met_butterfly">🦋 ちょうちょが遊びに来ました</string>
+    <string name="msg_met_ladybug">🐞 てんとうむしが遊びに来ました</string>
+    <string name="msg_met_bird">🐦 ことりが遊びに来ました</string>
+    <string name="msg_met_squirrel">🐿️ りすが遊びに来ました</string>
+    <string name="msg_met_frog">🐸 かえるが遊びに来ました</string>
+    <string name="msg_met_dragonfly">🍂 とんぼが遊びに来ました</string>
     <string name="msg_nature_note_added">📝 自然メモに新しい出会いを書き留めました</string>
     <string name="nature_tab">いきもの</string>
     <string name="nature_unknown">？？？</string>
@@ -530,6 +560,10 @@
     <!-- #59: the colours of a crop that blooms in several, as the player has grown them. -->
     <string name="collection_bloom_colours">咲かせた色：%1$s（%2$d／%3$d色）</string>
     <string name="collection_bloom_colours_separator">・</string>
+    <string name="bloom_unknown">？？？</string>
+    <string name="bloom_hint_common">どこでも咲くらしい</string>
+    <string name="bloom_hint_rare">よい土で、まれに咲くらしい</string>
+    <string name="bloom_hint_very_rare">春のふかふかの土で、ごくまれに咲くらしい</string>
     <string name="bloom_colour_red">赤</string>
     <string name="bloom_colour_pink">ピンク</string>
     <string name="bloom_colour_yellow">黄</string>

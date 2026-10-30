@@ -25,7 +25,7 @@
 
 - バラ（5 枚）：`plant_rose_stage{1..4}.png` と `_withered.png`（手描き風のまま）
 - チューリップ（#58、8 枚）：`plant_tulip_stage{1..3}.png` と、3 段階目の色違い `plant_tulip_stage3_{pink,yellow,white,purple,blue}.png`（`plant_tulip_stage3` が赤）。
-  **枯れた絵は無い**：チューリップは枯れない（`PlantSpecies.canWither = false`）。株ごとの色は `TileSetDefinition.bloomColourOf`（インスタンス id から 6 色のどれか、ずっと同じ）。
+  **枯れた絵は無い**：チューリップは枯れない（`PlantSpecies.canWither = false`）。株ごとの色は咲いたときに土の質で決まる（`BloomColours`、#79）。
   1・2 段階目は数本の芽・つぼみ、3 段階目は 3 輪。原画は `crop_tulip_stage{1,2}.png` と `crop_tulip_<色>_stage3.png`。
 - ひまわり（#58、4 枚）：`plant_sunflower_stage{1..3}.png` と `_withered.png`。1 段階目は 3 本の双葉で、アンカーは 3 本の真ん中（`atlas_overrides.json`）。
 - #58 で消した旧版：`plant_tulip_stage4`・`plant_tulip_withered`・`plant_sunflower_stage4`（4 段階の手描き風）。旧 1〜3 段階は同じ名前で上書き。
@@ -135,7 +135,7 @@
 | 飾り | 池（`deco_pond`） | 120 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |
 
 集計：確定アセット 34（うちコード併用 3、旧画風 3）、生成アセット 1、コード描画（仮置き） 0、未作成（ショップに出していない） 3。
-ショップに出ないもの：畝のある土（鍬で作る。`soil_tilled.png`）、耕した土（鍬で作る。`soil_revived.png`）、最初の木箱（`deco_starter_crate`、#74 から絵）。
+ショップに出ないもの：畝のある土（鍬で作る。`soil_tilled.png`）、耕した土（鍬で作る。`soil_revived.png`）、おくりものの箱（`deco_starter_crate`、#74 から絵）。
 品を足したり絵を入れたりしたら、この表と `GardenItem.kt` 冒頭の一覧と `ASSET_LEDGER.md` を直すこと。
 
 ### 画像が無く、プログラムで描いているもの

@@ -30,6 +30,10 @@ data class GridObject(
     val lastCropId: String? = null,
     /** Of a cell of soil: how long it has lain with nothing growing, as [Soil.afterTime] counts it. */
     val idleMillis: Long = 0L,
+    /** Of a crop of several colours: the one it opened in ([BloomColours]); null until it has. */
+    val bloomColour: String? = null,
+    /** Of a gift box: what is inside ([Gift.encoded]); null for a box from before there were gifts. */
+    val gift: String? = null,
 ) {
     /** Whether this is a work site: being built (or built and not yet unveiled), taken apart or packed up. */
     val isWorking: Boolean get() = workKind != WorkKind.NONE
@@ -95,7 +99,7 @@ data class GridObject(
     val isSprinkler: Boolean get() = objectId == Sprinkler.OBJECT_ID
 
     /** The crate a new player opens for their first seed. */
-    val isStarterCrate: Boolean get() = objectId == STARTER_CRATE_OBJECT_ID
+    val isGiftBox: Boolean get() = objectId == GIFT_BOX_OBJECT_ID
 
     /** The garden's landmark building, of which there is one at most. */
     val isSymbol: Boolean get() = StructureData.isSymbol(objectId)
@@ -147,7 +151,7 @@ data class GridObject(
          * The small wooden crate a new garden starts with (see [StarterGarden]). It is not an item:
          * it cannot be bought, moved or put away, and tapping it opens it, which uses it up.
          */
-        const val STARTER_CRATE_OBJECT_ID = "deco_starter_crate"
+        const val GIFT_BOX_OBJECT_ID = "deco_starter_crate"
 
         /** The pond, bought in the shop and put down on a cell of its own. */
         const val POND_OBJECT_ID = "deco_pond"

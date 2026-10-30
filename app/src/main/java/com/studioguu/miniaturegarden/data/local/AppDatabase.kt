@@ -32,7 +32,7 @@ import com.studioguu.miniaturegarden.data.local.entity.WeatherDayEntity
         LetterEntity::class,
         WeatherDayEntity::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -226,6 +226,20 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL("DROP TABLE garden_progress")
                 db.execSQL("ALTER TABLE garden_progress_new RENAME TO garden_progress")
+            }
+        }
+
+        /**
+         * Adds the colour a flower opened in and the contents of a gift box. A tulip already in
+         * bloom has been showing the colour its id picks, and keeps it (`BloomColours.BY_ID`). The
+         * soil's points are counted twice as finely, for the half points of later harvests.
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN bloomColour TEXT")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN gift TEXT")
+                db.execSQL("UPDATE grid_objects SET bloomColour = 'by_id' WHERE objectId = 'plant_tulip' AND growthProgress >= 1")
+                db.execSQL("UPDATE grid_objects SET soilProgress = soilProgress * 2")
             }
         }
     }

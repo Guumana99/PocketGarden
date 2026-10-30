@@ -23,6 +23,7 @@ import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CoinBonus
+import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.PurchaseItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
@@ -54,6 +55,7 @@ data class PurchaseFeedback(val item: GardenItem, val result: ActionResult)
 class ShopViewModel @Inject constructor(
     gardenRepository: GardenRepository,
     private val purchaseItem: PurchaseItemUseCase,
+    private val followTutorial: FollowTutorialUseCase,
     private val audio: AudioManager,
     private val grantReward: GrantRewardUseCase,
     private val rewardedAds: RewardedAdManager,
@@ -95,6 +97,11 @@ class ShopViewModel @Inject constructor(
         combine(gardenRepository.observeGridObjects(), gardenRepository.observeInventory(), ::ownsSymbolBuilding)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** The first steps are under way: there is one thing on the shelf, and it is free. */
+    val guiding: StateFlow<Boolean> = gardenRepository.observeProgress()
+        .map { it?.tutorialStep?.isGuiding == true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     /** How many of each item the player has in the bag, shown on the shelves and the card. */
     private val held = gardenRepository.observeInventory().map(ShopShelves::heldIn)
 
@@ -103,6 +110,7 @@ class ShopViewModel @Inject constructor(
         combine(_stage, season, playerStats, coins, ownsSymbol) { stage, season, stats, coins, owns ->
             { held: Map<GardenItem, Int> -> ShopShelves.shelves(ShopShelves.stock(stage, season, stats, coins, owns, held)) }
         }.combine(held) { build, counts -> build(counts) }
+            .combine(guiding) { shelves, guided -> if (guided) ShopShelves.firstSteps(shelves) else shelves }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Whether the garden can be grown now, and what it takes; offered in the workshop. */
@@ -186,7 +194,7 @@ class ShopViewModel @Inject constructor(
     fun buy(item: GardenItem) {
         _notice.value = null
         viewModelScope.launch {
-            val result = purchaseItem(item)
+            val result = purchaseItem(item).also { if (it == ActionResult.SUCCESS) followTutorial() }
             audio.play(if (result == ActionResult.SUCCESS) SoundEffect.COIN else SoundEffect.ERROR)
             _feedback.value = PurchaseFeedback(item, result)
         }

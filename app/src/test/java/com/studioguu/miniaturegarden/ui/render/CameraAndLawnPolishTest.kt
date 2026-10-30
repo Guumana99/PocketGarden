@@ -179,8 +179,8 @@ class CameraAndLawnPolishTest {
     }
 
     @Test
-    fun `the crate's two buttons are of one make`() {
-        val crate = source("ui/onboarding/FirstSteps.kt").substringAfter("fun StarterCrateDialog(").substringBefore("\n}\n")
+    fun `the gift box's two buttons are of one make`() {
+        val crate = source("ui/onboarding/FirstSteps.kt").substringAfter("fun GiftDialog(").substringBefore("\n}\n")
         assertFalse(crate.contains("CarvedButton"))
         assertEquals(2, Regex("WoodButton\\(").findAll(crate).count())
     }

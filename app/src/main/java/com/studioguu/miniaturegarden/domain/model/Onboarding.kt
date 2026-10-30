@@ -17,30 +17,46 @@ enum class Season {
 }
 
 /**
- * How far a new player has got with the first steps. They follow one another in this order,
- * and none of them stops the player from doing anything else in the meantime.
+ * How far a new player has got with the first steps. They follow one another in this order.
  *
- * The guided steps ([OPEN_CRATE] to [WATER_SEEDLING]) are followed by a closing board
- * ([FINISHED]) and then by the garden's other features being handed over one at a time
- * ([REVEAL_EDIT], [REVEAL_RAIN], [REVEAL_COLLECTION], [REVEAL_CAMERA], [REVEAL_POST]), each at
- * the player's own tap. Stored by name, so new steps can be put anywhere in the order.
+ * The guided steps ([WELCOME] to [PRACTICE_DONE]) are played in a practice garden
+ * ([com.studioguu.miniaturegarden.domain.repository.PracticeMode]), and it is there that these
+ * steps are followed. Leaving it, by coming to the end or by skipping, the saved garden goes
+ * straight to the closing board ([FINISHED]) and then to the garden's other features being handed
+ * over one at a time ([REVEAL_EDIT], [REVEAL_RAIN], [REVEAL_COLLECTION], [REVEAL_CAMERA],
+ * [REVEAL_POST]), each at the player's own tap. A saved garden that is on a guided step has simply
+ * not been through them yet. Stored by name, so new steps can be put anywhere in the order.
  *
- * During the guided steps only the tool the step needs can be picked up ([allows]): nothing
- * while the crate waits, the hoe to till, the bag to sow, the watering can to water. So the
- * player does one thing at a time, and tills one cell, not a field.
+ * During the guided steps only the tool the step needs can be picked up ([allows]), so the player
+ * does one thing at a time.
  */
 enum class TutorialStep {
-    /** The starter crate stands in the middle of the garden, waiting to be opened. */
-    OPEN_CRATE,
+    /** A few words of welcome. */
+    WELCOME,
 
-    /** The crate has given its seed; first a patch of the lawn has to be tilled with the hoe. */
+    /** The cell that shines is to be hoed twice over: tilled earth, then ridges. */
     TILL_SOIL,
 
-    /** There is tilled soil; the seed is to be sown in it. */
+    /** A seed is to be had from the shop, for nothing ([givesAway]). */
+    BUY_SEED,
+
+    /** There is a seed in the bag, and it is to be sown in the ridges. */
     PLANT_SEED,
 
     /** The seed is in the ground and wants its first watering. */
     WATER_SEEDLING,
+
+    /** The soil has run out of food and the seedling looks it: fertilizer, for nothing. */
+    FEED_SEEDLING,
+
+    /** Time is brought on, this once, at the player's tap. */
+    GROW,
+
+    /** It is ready to be harvested. */
+    HARVEST,
+
+    /** The harvest is in: a word of thanks, and the practice garden is left. */
+    PRACTICE_DONE,
 
     /** The first steps are over: the closing board is showing. */
     FINISHED,
@@ -81,19 +97,28 @@ enum class TutorialStep {
      * step asks for; from the closing board on, all of them.
      */
     fun allows(tool: TutorialTool): Boolean = when (this) {
-        OPEN_CRATE -> false
+        WELCOME, GROW, HARVEST, PRACTICE_DONE -> false
         TILL_SOIL -> tool == TutorialTool.HOE
+        BUY_SEED -> tool == TutorialTool.SHOP
         PLANT_SEED -> tool == TutorialTool.BAG
         WATER_SEEDLING -> tool == TutorialTool.WATER
+        FEED_SEEDLING -> tool == TutorialTool.FERTILIZE
         else -> true
     }
+
+    /** Whether the shop gives [item] away at this step. */
+    fun givesAway(item: GardenItem): Boolean = this == BUY_SEED && item == PracticeGarden.SEED
 
     /** The feature being introduced at this step, if any. */
     val introducing: GardenFeature? get() = GardenFeature.entries.firstOrNull { it.revealedAt == this }
 
     companion object {
-        /** Unknown values count as done: a step that cannot be read is not shown. */
-        fun fromName(name: String): TutorialStep = entries.firstOrNull { it.name == name } ?: DONE
+        /**
+         * Unknown values count as done: a step that cannot be read is not shown. A garden still
+         * waiting at the old starter crate has the first steps ahead of it.
+         */
+        fun fromName(name: String): TutorialStep =
+            if (name == "OPEN_CRATE") WELCOME else entries.firstOrNull { it.name == name } ?: DONE
     }
 }
 
@@ -127,64 +152,34 @@ data class GardenProgress(
 
     companion object {
         /** A garden made just now: spring, with the first steps ahead. */
-        val NEW_GARDEN = GardenProgress(Season.SPRING, TutorialStep.OPEN_CRATE)
+        val NEW_GARDEN = GardenProgress(Season.SPRING, TutorialStep.WELCOME)
 
         /** A garden saved before there were first steps: its player knows the way already. */
         val EXISTING_GARDEN = GardenProgress(Season.SPRING, TutorialStep.DONE, gardenSize = GridObject.LEGACY_GRID_SIZE)
     }
 }
 
-/**
- * The garden a new player finds: bare lawn, with nothing on it but the starter crate in the
- * middle. Fences, beds and everything else are theirs to make.
- */
-object StarterGarden {
-    /** The middle of a new garden. */
-    val CRATE = GridCell(GridObject.GRID_SIZE / 2, GridObject.GRID_SIZE / 2)
+/** What the first steps are played with, in the practice garden. */
+object PracticeGarden {
+    /** The cell that shines: the middle of a new garden. */
+    val PLOT = GridCell(GridObject.GRID_SIZE / 2, GridObject.GRID_SIZE / 2)
 
-    /** What the crate holds: one seed, the first crop of the game. */
-    val CRATE_REWARD: GardenItem = GardenItem.SEED_TULIP
-    const val CRATE_REWARD_AMOUNT = 1
-
-    /** Everything the new garden starts with: the crate alone. */
-    fun objects(now: Long): List<GridObject> =
-        listOf(GridObject(STARTER_CRATE_INSTANCE_ID, CRATE.x, CRATE.y, objectId = GridObject.STARTER_CRATE_OBJECT_ID, lastUpdatedTimestamp = now))
-
-    const val STARTER_CRATE_INSTANCE_ID = "starter_crate"
+    /** The seed the shop gives away: a crop of one short harvest, for every season. */
+    val SEED: GardenItem = GardenItem.SEED_MINT
 }
 
 /** Which cells the first steps point at, with a quiet sparkle, while each step is the current one. */
 object TutorialGuide {
 
-    /**
-     * The crate while it waits to be opened; nothing while tilling (any cell of lawn will do, the
-     * player chooses); then the free tilled cell nearest the middle; then the young plant.
-     * Nothing at all once the guided steps are over.
-     */
-    fun hintCells(step: TutorialStep, objects: List<GridObject>, gardenMap: GardenMap = GardenMap.DEFAULT): Set<GridCell> {
-        val grid = GardenGrid(gardenMap, objects)
-        fun nearestMiddle(cells: List<GridCell>): Set<GridCell> =
-            cells.minWithOrNull(compareBy({ distanceToMiddle(it, gardenMap.size) }, { it.y }, { it.x }))?.let { setOf(it) } ?: emptySet()
-        return when (step) {
-            TutorialStep.OPEN_CRATE -> objects.filter { it.isStarterCrate }.map { GridCell(it.gridX, it.gridY) }.toSet()
-            TutorialStep.TILL_SOIL -> emptySet()
-            TutorialStep.PLANT_SEED -> nearestMiddle(
-                objects.filter { it.isHoedSoil && grid.occupantAt(it.gridX, it.gridY) == null }.map { GridCell(it.gridX, it.gridY) },
-            )
-            TutorialStep.WATER_SEEDLING -> tutorialPlant(objects)?.let { setOf(GridCell(it.gridX, it.gridY)) } ?: emptySet()
-            else -> emptySet()
-        }
+    /** The cell to hoe, then the ridges to sow, then the plant that grows there. */
+    fun hintCells(step: TutorialStep, objects: List<GridObject>): Set<GridCell> = when (step) {
+        TutorialStep.TILL_SOIL, TutorialStep.PLANT_SEED -> setOf(PracticeGarden.PLOT)
+        TutorialStep.WATER_SEEDLING, TutorialStep.FEED_SEEDLING, TutorialStep.HARVEST ->
+            tutorialPlant(objects)?.let { setOf(GridCell(it.gridX, it.gridY)) } ?: emptySet()
+        else -> emptySet()
     }
 
-    /** The plant the watering step is about: the first one that is alive. */
+    /** The plant the steps are about: the first one that is alive. */
     fun tutorialPlant(objects: List<GridObject>): GridObject? =
         objects.filter { it.isPlant && it.status != PlantStatus.WITHERED }.minWithOrNull(compareBy({ it.gridY }, { it.gridX }))
-
-    // Squared distance to the middle of a garden [size] across, doubled so that the middle of
-    // an even-sized garden stays on whole numbers.
-    private fun distanceToMiddle(cell: GridCell, size: Int): Int {
-        val dx = 2 * cell.x - (size - 1)
-        val dy = 2 * cell.y - (size - 1)
-        return dx * dx + dy * dy
-    }
 }

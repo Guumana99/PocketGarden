@@ -143,9 +143,9 @@ enum class PlantSpecies(
     val bloomColours: List<String> get() = BLOOM_COLOURS[this].orEmpty()
 
     /**
-     * The colour the plant [instanceId] of this crop blooms in, picked by its id once and for
-     * good: the same one in the garden, when it is harvested and in the book (#59). Null for a
-     * crop of one colour.
+     * The colour the plant [instanceId] of this crop blooms in, going by its id alone: how the
+     * colour was picked until [BloomColours] (#79), and still is for what was in bloom by then.
+     * Null for a crop of one colour.
      */
     fun bloomColourOf(instanceId: String): String? =
         bloomColours.takeIf { it.isNotEmpty() }?.let { it[Math.floorMod(instanceId.hashCode(), it.size)] }

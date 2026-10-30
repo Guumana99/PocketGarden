@@ -241,23 +241,59 @@ object CreatureRoutes {
         val landing = landingOf(visit.creature, home.x + 0.5f, home.y + 0.5f, grid.map.size, random)
         val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
         val plan = planner(random, manner, span, cyclic, home.x + 0.5f, home.y + 0.5f, landing)
-        var at = home
-        val reserve = if (cyclic) manner.stepMillis * manner.roam * 2 + manner.rest.first else 0L
+        val reserve = if (cyclic) (manner.stepMillis * MAX_PACE * manner.roam * 2).toLong() + manner.rest.first else 0L
         plan.standFor(plan.between(manner.firstRest))
         while (true) {
-            val choices = region.filter { it != at && distance(it, at) <= manner.stride }.sortedWith(CELL_ORDER)
-            if (choices.isEmpty()) break
-            val path = pathBetween(at, choices[random.nextInt(choices.size)], region)
+            val to = pointNearby(plan, region, manner, random) ?: break
+            val millis = plan.pace(hypot(to.first - plan.x, to.second - plan.y) * manner.stepMillis)
             val rest = plan.between(manner.rest)
-            if (plan.t + path.size * manner.stepMillis + rest + reserve > span) break
-            plan.walk(path, manner.stepMillis)
-            at = path.last()
+            if (plan.t + millis + rest + reserve > span) break
+            plan.stepTo(to.first, to.second, millis)
             plan.standFor(rest)
         }
-        if (cyclic && at != home) plan.walk(pathBetween(at, home, region), manner.stepMillis)
+        if (cyclic) goHome(plan, region, manner, home)
         plan.standUntil(span)
         return arriving(visit, plan, landing, home.x + 0.5f, home.y + 0.5f, grid.map.size, depthCell = null, ponds = ponds)
     }
+
+    /**
+     * A point a short way from where [plan] has got to, anywhere inside a cell of [region] rather
+     * than in its middle, with the way there inside [region] too; null if a few tries find none.
+     */
+    private fun pointNearby(plan: Planner, region: Set<GridCell>, manner: Manner, random: Random): Pair<Float, Float>? {
+        repeat(NEARBY_TRIES) {
+            val angle = random.nextDouble() * 2 * PI
+            val reach = manner.stride.start + random.nextFloat() * (manner.stride.endInclusive - manner.stride.start)
+            val x = plan.x + cos(angle).toFloat() * reach
+            val y = plan.y + sin(angle).toFloat() * reach
+            if (isClearWay(plan.x, plan.y, x, y, region)) return x to y
+        }
+        return null
+    }
+
+    /** Whether a straight line stays in [region], also where it cuts past the corner of a cell. */
+    private fun isClearWay(fromX: Float, fromY: Float, toX: Float, toY: Float, region: Set<GridCell>): Boolean {
+        var last = cellOf(fromX, fromY)
+        for (i in 1..WAY_SAMPLES) {
+            val f = i / WAY_SAMPLES.toFloat()
+            val cell = cellOf(fromX + (toX - fromX) * f, fromY + (toY - fromY) * f)
+            if (cell !in region || GridCell(last.x, cell.y) !in region || GridCell(cell.x, last.y) !in region) return false
+            last = cell
+        }
+        return true
+    }
+
+    /** Takes [plan] back to [home] by the cells of [region], for a route that goes round. */
+    private fun goHome(plan: Planner, region: Set<GridCell>, manner: Manner, home: GridCell) {
+        var from = cellOf(plan.x, plan.y)
+        if (from == home && hypot(plan.x - (home.x + 0.5f), plan.y - (home.y + 0.5f)) < 0.01f) return
+        for (cell in pathBetween(from, home, region) + (if (from == home) listOf(home) else emptyList())) {
+            plan.stepTo(cell.x + 0.5f, cell.y + 0.5f, manner.stepMillis)
+            from = cell
+        }
+    }
+
+    private fun cellOf(x: Float, y: Float) = GridCell(floor(x).toInt(), floor(y).toInt())
 
     /** Cells [creature] can reach on foot from [home] without going more than [roam] cells from it. */
     private fun regionAround(creature: Creature, grid: GardenGrid, home: GridCell, roam: Int): Set<GridCell> {
@@ -309,13 +345,14 @@ object CreatureRoutes {
         val landing = landingOf(visit.creature, homeX, homeY, size, random)
         val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
         val plan = planner(random, manner, span, cyclic, homeX, homeY, landing)
-        val reserve = if (cyclic) manner.hostStepMillis + manner.rest.first else 0L
+        val reserve = if (cyclic) (manner.hostStepMillis * MAX_PACE).toLong() + manner.rest.first else 0L
         plan.standFor(plan.between(manner.firstRest))
         while (true) {
             val rest = plan.between(manner.rest)
-            if (plan.t + manner.hostStepMillis + rest + reserve > span) break
+            val millis = plan.pace(manner.hostStepMillis.toFloat())
+            if (plan.t + millis + rest + reserve > span) break
             val r = manner.hostReach
-            plan.stepTo(homeX + random.nextFloat() * 2f * r - r, homeY + random.nextFloat() * 2f * r - r, manner.hostStepMillis)
+            plan.stepTo(homeX + random.nextFloat() * 2f * r - r, homeY + random.nextFloat() * 2f * r - r, millis)
             plan.standFor(rest)
         }
         if (cyclic) plan.stepTo(homeX, homeY, manner.hostStepMillis)
@@ -377,32 +414,39 @@ object CreatureRoutes {
         val outMillis = inMillis
         val (span, cyclic) = spanOf(length - inMillis - outMillis)
         val plan = Planner(random, manner, span, cyclic, homeX, homeY, cruise, opening.facing)
-        val flowers = flowersAround(visit)
+        val flowers = flowersAround(visit, grid)
         val inside = { v: Float -> v.coerceIn(EDGE, size - EDGE) }
         val reserve = if (cyclic) 2 * (manner.reach * 2 / manner.flySpeed * 1000).toLong() + manner.rest.first else 0L
-        var flightsToPerch = 2 + random.nextInt(3)
+        var flightsToPerch = 1 + random.nextInt(3)
+        // Where it is drifting round: a flower, for as long as it stays with that one.
+        var aroundX = homeX
+        var aroundY = homeY
         while (true) {
             val perching = flowers.isNotEmpty() && flightsToPerch == 0
             val tx: Float
             val ty: Float
             val alt: Float
             if (perching) {
-                val flower = flowers[random.nextInt(flowers.size)]
-                tx = flower.x + 0.5f
-                ty = flower.y + 0.5f
+                // Off to another flower, if there is one: it does not stay with the one it came for.
+                val others = flowers.filter { abs(it.x + 0.5f - aroundX) + abs(it.y + 0.5f - aroundY) > 0.01f }.ifEmpty { flowers }
+                val flower = others[random.nextInt(others.size)]
+                tx = flower.x + 0.5f + (random.nextFloat() - 0.5f) * PERCH_SCATTER
+                ty = flower.y + 0.5f + (random.nextFloat() - 0.5f) * PERCH_SCATTER
                 alt = PERCH_ALTITUDE
+                aroundX = flower.x + 0.5f
+                aroundY = flower.y + 0.5f
             } else {
-                tx = inside(homeX + (random.nextFloat() * 2f - 1f) * manner.reach)
-                ty = inside(homeY + (random.nextFloat() * 2f - 1f) * manner.reach)
+                tx = inside(aroundX + (random.nextFloat() * 2f - 1f) * manner.reach)
+                ty = inside(aroundY + (random.nextFloat() * 2f - 1f) * manner.reach)
                 alt = cruise + (random.nextFloat() - 0.5f) * 0.1f
             }
-            val flight = maxOf(manner.stepMillis, (hypot(tx - plan.x, ty - plan.y) / manner.flySpeed * 1000).toLong())
+            val flight = maxOf(manner.stepMillis, plan.pace(hypot(tx - plan.x, ty - plan.y) / manner.flySpeed * 1000))
             val pause = if (perching) plan.between(manner.perch) else plan.between(manner.rest)
             if (plan.t + flight + pause + reserve > span) break
             plan.flyTo(tx, ty, alt, flight)
             if (perching) {
                 plan.hold(CreatureAction.PERCH, pause)
-                flightsToPerch = 2 + random.nextInt(3)
+                flightsToPerch = 1 + random.nextInt(3)
             } else {
                 if (pause > 0L) plan.hold(CreatureAction.HOVER, pause)
                 flightsToPerch--
@@ -458,11 +502,19 @@ object CreatureRoutes {
     }
 
     /**
-     * Where a butterfly settles now and then: on the flower it came for. That one only, and not
-     * whichever is in bloom nearby, so that the route stays the same while the flowers grow.
+     * Where a butterfly settles now and then: the flower it came for, and what else is in full
+     * bloom within [FLOWER_REACH] cells of it. Only what is fully grown, so that the route stays
+     * the same while the others grow.
      */
-    private fun flowersAround(visit: CreatureVisit): List<GridCell> =
-        if (visit.creature == Creature.BUTTERFLY) listOf(visit.host?.let { GridCell(it.gridX, it.gridY) } ?: visit.cell) else emptyList()
+    private fun flowersAround(visit: CreatureVisit, grid: GardenGrid): List<GridCell> {
+        if (visit.creature != Creature.BUTTERFLY) return emptyList()
+        val home = visit.host?.let { GridCell(it.gridX, it.gridY) } ?: visit.cell
+        val nearby = (-FLOWER_REACH..FLOWER_REACH).flatMap { dy -> (-FLOWER_REACH..FLOWER_REACH).map { dx -> GridCell(home.x + dx, home.y + dy) } }
+            .filter { cell ->
+                grid.occupantAt(cell.x, cell.y)?.let { it.isPlant && it.growthProgress >= 1f && it.status != PlantStatus.WITHERED } == true
+            }
+        return (listOf(home) + nearby).distinct()
+    }
 
     // --- Shared ---
 
@@ -493,21 +545,32 @@ object CreatureRoutes {
         GridCell(cell.x, cell.y - 1), GridCell(cell.x + 1, cell.y), GridCell(cell.x, cell.y + 1), GridCell(cell.x - 1, cell.y),
     )
 
-    private val CELL_ORDER = compareBy<GridCell>({ it.y }, { it.x })
-
     /** How near a flier keeps to the garden's edge while it flits about, in cells. */
     private const val EDGE = 0.3f
+
+    /** How far from the flower it came for a butterfly goes for others, in cells. */
+    private const val FLOWER_REACH = 3
+
+    /** How far from a flower's middle a butterfly may settle, in cells. */
+    private const val PERCH_SCATTER = 0.2f
+
+    /** How many points are tried for the next short move before staying put. */
+    private const val NEARBY_TRIES = 6
+
+    /** How many points along a short move are looked at, to see that its way is clear. */
+    private const val WAY_SAMPLES = 16
 }
 
 /**
  * How a kind of visitor goes about.
  *
- * @property stepMillis on the ground, how long it takes from one cell to the next; for a flier,
- *   the shortest flight.
- * @property rest how long it stops for between moves (a flier: hovers).
+ * @property stepMillis on the ground, how long it takes to go one cell; for a flier, the shortest
+ *   flight.
+ * @property rest how long it stops for between moves (a flier: hovers). Now and then, with
+ *   [LINGER_CHANCE], it stays [LINGER] times as long.
  * @property firstRest how long it stays put after arriving.
  * @property roam how many cells it goes from where it came, on the ground.
- * @property stride how many cells at most it goes in one go.
+ * @property stride how far it goes in one go, in cells: a short way, to a point nearby.
  * @property lookChance how likely it is to look the other way for a while when it stops.
  * @property turnChance how likely it is to turn round for good when it stops.
  * @property hostStepMillis on what it came for, how long a move takes there.
@@ -521,7 +584,7 @@ internal class Manner(
     val rest: LongRange,
     val firstRest: LongRange = 900L..1600L,
     val roam: Int = 2,
-    val stride: Int = 2,
+    val stride: ClosedFloatingPointRange<Float> = 0.4f..1f,
     val lookChance: Float = 0f,
     val turnChance: Float = 0f,
     val hostStepMillis: Long = 600L,
@@ -531,17 +594,20 @@ internal class Manner(
     val perch: LongRange = 0L..0L,
 ) {
     companion object {
-        private val SQUIRREL = Manner(stepMillis = 380L, rest = 1800L..4200L, roam = 3, stride = 3, lookChance = 0.6f, turnChance = 0.3f)
+        const val LINGER_CHANCE = 0.2f
+        const val LINGER = 2
+
+        private val SQUIRREL = Manner(stepMillis = 420L, rest = 1500L..4800L, roam = 3, stride = 0.5f..1.5f, lookChance = 0.6f, turnChance = 0.3f)
         private val BIRD = Manner(
-            stepMillis = 560L, rest = 1500L..3500L, stride = 2, lookChance = 0.5f, turnChance = 0.4f,
+            stepMillis = 700L, rest = 1200L..4000L, stride = 0.3f..0.8f, lookChance = 0.5f, turnChance = 0.4f,
             hostStepMillis = 520L, hostReach = 0.22f, flySpeed = 3f,
         )
-        private val FROG = Manner(stepMillis = 620L, rest = 2500L..6000L, stride = 2, lookChance = 0.2f, turnChance = 0.35f)
+        private val FROG = Manner(stepMillis = 800L, rest = 2200L..7000L, stride = 0.4f..0.9f, lookChance = 0.2f, turnChance = 0.35f)
         private val LADYBUG = Manner(
-            stepMillis = 2200L, rest = 1200L..3000L, stride = 1, turnChance = 0.5f,
+            stepMillis = 2600L, rest = 1000L..3600L, stride = 0.2f..0.6f, turnChance = 0.5f,
             hostStepMillis = 1600L, hostReach = 0.13f,
         )
-        private val BUTTERFLY = Manner(stepMillis = 900L, rest = 0L..300L, flySpeed = 1.8f, reach = 1.1f, perch = 3000L..6000L)
+        private val BUTTERFLY = Manner(stepMillis = 900L, rest = 0L..500L, flySpeed = 1.6f, reach = 0.8f, perch = 2500L..7000L)
         private val DRAGONFLY = Manner(stepMillis = 220L, rest = 900L..2600L, flySpeed = 4f, reach = 1.4f)
 
         fun of(creature: Creature): Manner = when (creature) {
@@ -554,6 +620,10 @@ internal class Manner(
         }
     }
 }
+
+/** How much a move's time varies from one to the next. */
+private const val MIN_PACE = 0.8f
+private const val MAX_PACE = 1.25f
 
 /** Lays the legs of a route one after another, from (x, y). */
 private class Planner(
@@ -570,7 +640,13 @@ private class Planner(
     val legs = ArrayList<Leg>()
     var t = 0L
 
-    fun between(range: LongRange): Long = if (range.last <= range.first) range.first else range.first + random.nextLong(range.last - range.first)
+    fun between(range: LongRange): Long {
+        val stop = if (range.last <= range.first) range.first else range.first + random.nextLong(range.last - range.first)
+        return if (range.first > 0L && random.nextFloat() < Manner.LINGER_CHANCE) stop * Manner.LINGER else stop
+    }
+
+    /** [millis], a little quicker or slower than the last time: no two moves are alike. */
+    fun pace(millis: Float): Long = (millis * (MIN_PACE + random.nextFloat() * (MAX_PACE - MIN_PACE))).toLong().coerceAtLeast(1L)
 
     fun stepTo(toX: Float, toY: Float, millis: Long) {
         facing = CreatureRoutes.facingOf(toX - x, toY - y, facing)
@@ -578,19 +654,6 @@ private class Planner(
         x = toX
         y = toY
         t += millis
-    }
-
-    /** Goes cell by cell through [path], [millis] a cell, marking where it sets off and where it stops. */
-    fun walk(path: List<GridCell>, millis: Long) {
-        for ((i, cell) in path.withIndex()) {
-            val toX = cell.x + 0.5f
-            val toY = cell.y + 0.5f
-            facing = CreatureRoutes.facingOf(toX - x, toY - y, facing)
-            legs += Leg(t, millis, CreatureAction.STEP, x, y, alt, toX, toY, alt, facing = facing, setsOff = i == 0, stops = i == path.lastIndex)
-            x = toX
-            y = toY
-            t += millis
-        }
     }
 
     fun flyTo(toX: Float, toY: Float, toAlt: Float, millis: Long) {

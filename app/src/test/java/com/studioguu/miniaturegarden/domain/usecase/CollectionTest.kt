@@ -228,15 +228,14 @@ class CollectionTest {
     @Test
     fun `a harvested tulip notes the colour it bloomed in, and the book shows the ones grown`() = runBlocking {
         // Two tulips of different colours, and a second of the first colour.
-        val ids = (0 until 200).map { "tulip-$it" }
-        val first = ids.first()
-        val firstColour = PlantSpecies.TULIP.bloomColourOf(first)!!
-        val other = ids.first { PlantSpecies.TULIP.bloomColourOf(it) != firstColour }
-        val otherColour = PlantSpecies.TULIP.bloomColourOf(other)!!
-        val again = ids.drop(1).first { PlantSpecies.TULIP.bloomColourOf(it) == firstColour }
-        repo.put(grown(first, PlantSpecies.TULIP))
-        repo.put(grown(other, PlantSpecies.TULIP, x = 1))
-        repo.put(grown(again, PlantSpecies.TULIP, x = 2))
+        val first = "first"
+        val firstColour = "pink"
+        val other = "other"
+        val otherColour = "white"
+        val again = "again"
+        repo.put(grown(first, PlantSpecies.TULIP).copy(bloomColour = firstColour))
+        repo.put(grown(other, PlantSpecies.TULIP, x = 1).copy(bloomColour = otherColour))
+        repo.put(grown(again, PlantSpecies.TULIP, x = 2).copy(bloomColour = firstColour))
 
         harvest(first, t0, sunny)
         harvest(other, t0 + 1, sunny)
@@ -266,18 +265,10 @@ class CollectionTest {
         // The sprite the garden draws a tulip with is the colour noted for it when it is harvested.
         val tulip = PlantSpecies.TULIP
         assertEquals(listOf("red", "pink", "yellow", "white", "purple", "blue"), tulip.bloomColours)
-        for (i in 0 until 100) {
-            val id = "t-$i"
-            val colour = tulip.bloomColourOf(id)!!
-            val sprite = com.studioguu.miniaturegarden.data.asset.TileSetDefinition.assetIdFor(grown(id, tulip))
+        for (colour in tulip.bloomColours) {
+            val sprite = com.studioguu.miniaturegarden.data.asset.TileSetDefinition.assetIdFor(grown("t", tulip).copy(bloomColour = colour))
             assertEquals(if (colour == "red") "plant_tulip_stage3" else "plant_tulip_stage3_$colour", sprite)
         }
-        // And a picture of a tulip in a given colour (the book's) is drawn in that colour, or in red.
-        for (colour in tulip.bloomColours + listOf<String?>(null, "green")) {
-            val id = com.studioguu.miniaturegarden.data.asset.TileSetDefinition.instanceIdBlooming("plant_tulip", colour, "preview_0_0")
-            assertEquals(colour.takeIf { it in tulip.bloomColours } ?: "red", tulip.bloomColourOf(id))
-        }
-        assertEquals("preview_0_0", com.studioguu.miniaturegarden.data.asset.TileSetDefinition.instanceIdBlooming("plant_sunflower", "red", "preview_0_0"))
     }
 
     // --- Through the game actions ---

@@ -33,6 +33,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -110,6 +112,11 @@ fun ShopStageScreen(
     val bonusRemaining by viewModel.bonusRemaining.collectAsStateWithLifecycle()
     val adReady by viewModel.adReady.collectAsStateWithLifecycle()
     val expansion by viewModel.expansion.collectAsStateWithLifecycle()
+    val guiding by viewModel.guiding.collectAsStateWithLifecycle()
+    // The first steps go straight to the shelf they are about.
+    LaunchedEffect(guiding) { if (guiding) viewModel.goTo(ShopStage.SEEDS) }
+    // However the shop was left, the next visit starts at its door.
+    DisposableEffect(Unit) { onDispose(viewModel::leave) }
     var confirmBonus by rememberSaveable { mutableStateOf(false) }
     var confirmExpand by rememberSaveable { mutableStateOf(false) }
     /** Price of the item the player could not afford, while that dialog is open. */
@@ -141,6 +148,7 @@ fun ShopStageScreen(
         message = message,
         bonusLabel = stringResource(R.string.reward_bonus_button, bonusRemaining, RewardType.COIN_BONUS.dailyLimit),
         bonusEnabled = bonusAvailable,
+        guiding = guiding,
         expansion = expansion,
         onExpand = { confirmExpand = true },
         onGoTo = viewModel::goTo,
@@ -222,6 +230,7 @@ fun ShopStageContent(
     onBonus: () -> Unit,
     onLeave: () -> Unit,
     modifier: Modifier = Modifier,
+    guiding: Boolean = false,
     expansion: ExpansionOffer? = null,
     onExpand: () -> Unit = {},
 ) {
@@ -240,7 +249,8 @@ fun ShopStageContent(
                 Spacer(Modifier.weight(1f))
                 CoinPill(coins)
             }
-            Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
+            // During the first steps the way out of them stands where the signs would.
+            if (guiding) Spacer(Modifier.height(48.dp)) else Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
             AnimatedContent(
                 targetState = stage,
                 // The old shelves go first, quickly, then the new ones come: never both at half.
@@ -253,7 +263,7 @@ fun ShopStageContent(
                     verticalArrangement = Arrangement.spacedBy(18.dp),
                 ) {
                     if (shown == ShopStage.SEEDS) {
-                        ChalkNote(stringResource(R.string.shop_season_caption))
+                        ChalkNote(stringResource(if (guiding) R.string.tutorial_shop_note else R.string.shop_season_caption))
                     }
                     if (shown == ShopStage.WORKSHOP && expansion != null) {
                         ExpansionBoard(expansion, onExpand)
@@ -264,7 +274,7 @@ fun ShopStageContent(
                     }
                 }
             }
-            Counter(message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, Modifier.padding(bottom = 8.dp))
+            if (!guiding) Counter(message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, Modifier.padding(bottom = 8.dp))
         }
         // The card of the thing in hand rises onto the counter, over everything below the shelves.
         var lastInHand by remember { mutableStateOf<ShelfItem?>(null) }
@@ -512,7 +522,7 @@ private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem
 @Composable
 private fun PriceTag(thing: ShelfItem) {
     val text = when (thing.tag) {
-        ShelfTag.FOR_SALE, ShelfTag.SHORT_OF_COINS -> "🪙 ${thing.item.price}"
+        ShelfTag.FOR_SALE, ShelfTag.SHORT_OF_COINS -> if (thing.free) stringResource(R.string.tutorial_shop_free) else "🪙 ${thing.item.price}"
         ShelfTag.LOCKED -> lockedText(thing.item)
         ShelfTag.OWNED -> stringResource(R.string.shop_owned)
     }
@@ -622,7 +632,7 @@ private fun ItemCard(thing: ShelfItem, message: ShopMessage?, onBuy: (GardenItem
                     ShelfTag.OWNED -> Text(stringResource(R.string.shop_owned), style = MaterialTheme.typography.labelLarge, color = GardenColors.InkSoft)
                     // Stays tappable when the player is short: the tap then explains, and offers the bonus.
                     ShelfTag.FOR_SALE, ShelfTag.SHORT_OF_COINS -> WoodButton(
-                        text = stringResource(R.string.shop_buy, item.price),
+                        text = if (thing.free) stringResource(R.string.tutorial_shop_take) else stringResource(R.string.shop_buy, item.price),
                         onClick = { onBuy(item) },
                         modifier = Modifier.alpha(if (thing.tag == ShelfTag.SHORT_OF_COINS) UNAFFORDABLE_ALPHA else 1f),
                     )

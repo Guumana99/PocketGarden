@@ -50,10 +50,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +70,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
+import com.studioguu.miniaturegarden.domain.model.BloomColours
+import com.studioguu.miniaturegarden.domain.model.BloomRarity
 import com.studioguu.miniaturegarden.domain.model.CollectionCategory
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -462,18 +467,9 @@ private fun Spread(
                     // A crop of several colours lists the ones the player has grown (#59).
                     val all = PlantSpecies.fromObjectId(entry.objectId)?.bloomColours.orEmpty()
                     if (all.size > 1) {
-                        val grown = colours.map { stringResource(bloomColourLabel(it)) }
-                        Text(
-                            text = stringResource(
-                                R.string.collection_bloom_colours,
-                                grown.joinToString(stringResource(R.string.collection_bloom_colours_separator)).ifEmpty { "―" },
-                                colours.size,
-                                all.size,
-                            ),
-                            color = Ink,
-                            fontFamily = BookFont,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+                        for (colour in all) {
+                            BloomColourSlot(entry, colour, grown = colour in colours, atlas, terrain)
+                        }
                     }
                 }
                 PageState.READY -> {
@@ -514,6 +510,53 @@ private fun Spread(
             }
         }
     }
+}
+
+/**
+ * One colour's place on a crop's page: the flower and its name once it has been harvested in that
+ * colour; until then a shadow, and a line on where it is said to bloom.
+ */
+@Composable
+private fun BloomColourSlot(entry: CollectionEntry, colour: String, grown: Boolean, atlas: SpriteAtlas, terrain: TerrainTextures) {
+    val species = PlantSpecies.forObjectId(entry.objectId)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        val shadow = if (grown) {
+            Modifier
+        } else {
+            Modifier
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .drawWithContent {
+                    drawContent()
+                    drawRect(InkFaded, blendMode = BlendMode.SrcIn)
+                }
+        }
+        ObjectPreview(
+            objectId = entry.objectId,
+            atlas = atlas,
+            terrain = terrain,
+            bloomColour = colour,
+            modifier = Modifier.size(BLOOM_SLOT_SIZE).then(shadow).testTag(bloomSlotTag(colour, grown)),
+        )
+        Text(
+            text = stringResource(if (grown) bloomColourLabel(colour) else bloomHint(BloomColours.rarityOf(species, colour))),
+            color = if (grown) Ink else InkFaded,
+            fontFamily = BookFont,
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+
+/** Test tag of one colour's place on the page. */
+fun bloomSlotTag(colour: String, grown: Boolean): String = "bloom_${colour}_${if (grown) "grown" else "shadow"}"
+
+private val BLOOM_SLOT_SIZE = 40.dp
+
+/** Where a colour not grown yet is said to bloom. No numbers: only a hint. */
+@StringRes
+private fun bloomHint(rarity: BloomRarity): Int = when (rarity) {
+    BloomRarity.COMMON -> R.string.bloom_hint_common
+    BloomRarity.RARE -> R.string.bloom_hint_rare
+    BloomRarity.VERY_RARE -> R.string.bloom_hint_very_rare
 }
 
 /**

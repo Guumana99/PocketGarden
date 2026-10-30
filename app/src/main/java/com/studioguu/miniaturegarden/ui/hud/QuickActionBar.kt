@@ -72,7 +72,7 @@ fun QuickActionBar(
                 "⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive, enabled = allows(TutorialTool.HOE),
             )
             ActionButton(
-                "🧪", stringResource(R.string.action_fertilize, fertilizerCost), onFertilize,
+                "🧪", if (fertilizerCost == 0) stringResource(R.string.action_fertilize_free) else stringResource(R.string.action_fertilize, fertilizerCost), onFertilize,
                 enabled = canCare && allows(TutorialTool.FERTILIZE),
             )
             ActionButton("🎒", stringResource(R.string.action_inventory), onOpenInventory, enabled = allows(TutorialTool.BAG), selected = bagActive)

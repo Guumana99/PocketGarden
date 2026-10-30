@@ -6,7 +6,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.LevelTable
-import com.studioguu.miniaturegarden.domain.model.StarterGarden
+import com.studioguu.miniaturegarden.domain.model.PracticeGarden
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -97,19 +97,19 @@ class SystemRefactorTest {
         // A level-up runs the gauge to full, then empties it.
         assertTrue(bar.contains("gauge.animateTo(1f") && bar.contains("gauge.snapTo(0f)"))
         // The profile arriving is not taken for a level-up.
-        assertTrue(source("ui/GardenScreen.kt").contains("key(profile != null) { TopStatusBar("))
+        assertTrue(source("ui/GardenScreen.kt").contains("key(profile != null, practising) { TopStatusBar("))
     }
 
     // --- 4. 11 x 11 ---
 
     @Test
-    fun `a new garden is 11 x 11 with its crate in the middle`() {
+    fun `a new garden is 11 x 11 with its first plot in the middle`() {
         assertEquals(11, GridObject.GRID_SIZE)
         assertEquals(11, GardenProgress().gardenSize)
         assertEquals(11, GardenProgress.NEW_GARDEN.gardenSize)
         assertEquals(11, GardenMap.DEFAULT.size)
-        assertEquals(5, StarterGarden.CRATE.x)
-        assertEquals(5, StarterGarden.CRATE.y)
+        assertEquals(5, PracticeGarden.PLOT.x)
+        assertEquals(5, PracticeGarden.PLOT.y)
         // It grows once, to the largest size; gardens saved at 9 x 9 still grow from there.
         assertEquals(13, GardenExpansion.nextStage(GridObject.GRID_SIZE)?.size)
         assertEquals(11, GardenExpansion.nextStage(GridObject.LEGACY_GRID_SIZE)?.size)

@@ -86,15 +86,19 @@ class EncyclopediaTest {
     }
 
     @Test
-    fun `a tulip's page is drawn in the colour first grown and lists the colours grown`() {
+    fun `a tulip's page is drawn in the colour first grown, with a place for every colour`() {
         val book = source("ui/collection/CollectionDialog.kt")
         // #59: the picture is the colour harvested, not one picked by the preview's own id.
         assertTrue(book.contains("EntryCell(entry, progress.stateOf(entry), progress.coloursOf(entry).firstOrNull(), atlas, terrain)"))
         assertTrue(book.contains("colours = progress.coloursOf(entry),"))
         assertTrue(book.contains("Illustration(entry, state, reveal.value, colours.firstOrNull(), atlas, terrain)"))
-        assertEquals(2, Regex("bloomColour = colour").findAll(book).count())
-        assertTrue(source("ui/components/GardenCanvas.kt").contains("TileSetDefinition.instanceIdBlooming(objectId, bloomColour, \"preview_\${x}_\$y\")"))
-        assertEquals("咲かせた色：%1\$s（%2\$d／%3\$d色）", string("collection_bloom_colours"))
+        assertEquals(3, Regex("bloomColour = colour").findAll(book).count())
+        assertTrue(source("ui/components/GardenCanvas.kt").contains("bloomColour = bloomColour,"))
+        // A colour not grown yet is a shadow and a hint, with no number in it.
+        assertTrue(book.contains("BloomColourSlot(entry, colour, grown = colour in colours, atlas, terrain)"))
+        for (hint in listOf("bloom_hint_common", "bloom_hint_rare", "bloom_hint_very_rare")) {
+            assertFalse(hint, string(hint)!!.any { it.isDigit() || it == '%' })
+        }
         for (colour in com.studioguu.miniaturegarden.domain.model.PlantSpecies.TULIP.bloomColours) {
             assertTrue(colour, string("bloom_colour_$colour") != null)
         }
