@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ぽけっと庭園</string>
+    <string name="app_name">ポケット庭園</string>
 
     <!-- Top status bar -->
     <string name="status_level">Lv.%1$d</string>
@@ -296,7 +296,7 @@
     <!-- Sharing -->
     <string name="share_button">お庭をシェア</string>
     <string name="share_title">お庭をシェア</string>
-    <string name="share_text">#ぽけっと庭園</string>
+    <string name="share_text">#ポケット庭園</string>
     <string name="share_failed">画像を共有できませんでした</string>
 
     <!-- Rewards. By request, none of these texts uses the word 動画. -->
@@ -337,9 +337,8 @@
     <string name="settings_privacy">プライバシーポリシー</string>
     <string name="settings_replay_tutorial">チュートリアルをもう一度</string>
     <string name="settings_contact">お問い合わせ</string>
-    <!-- Placeholder: the real address is still to be decided. -->
-    <string name="contact_email" translatable="false">support@example.com</string>
-    <string name="contact_subject">ぽけっと庭園へのお問い合わせ</string>
+    <string name="contact_email" translatable="false">golphable.deve7@gmail.com</string>
+    <string name="contact_subject">ポケット庭園へのお問い合わせ</string>
     <string name="contact_body">（ここにご用件をお書きください）\n\n\n--- 以下は変更しないでください ---\nアプリの版：%1$s\n機種：%2$s\nAndroid の版：%3$s</string>
     <string name="contact_no_mail_app">メールアプリが見つかりませんでした</string>
     <string name="settings_disclaimer">免責事項</string>
@@ -411,7 +410,7 @@
     <string name="gift_receive">受け取る</string>
     <string name="gift_later">後で</string>
     <string name="tutorial_skip">とばす</string>
-    <string name="tutorial_welcome_title">ようこそ、ぽけっと庭園へ！</string>
+    <string name="tutorial_welcome_title">ようこそ、ポケット庭園へ！</string>
     <string name="tutorial_welcome_text">ここは、あなただけの小さなお庭。\nまずは練習用の畑で、いっしょにミントを育ててみよう！</string>
     <string name="tutorial_welcome_ok">やってみる</string>
     <string name="tutorial_hint_till">光っているマスを、クワでトントンと 2 回たたいてみよう</string>
@@ -421,10 +420,10 @@
     <string name="tutorial_shop_free">無料</string>
     <string name="tutorial_shop_take">もらう</string>
     <string name="tutorial_hint_plant_seed">持ち物から苗を選んで、光っている畝に植えてみよう</string>
-    <string name="tutorial_hint_water">苗がのどをかわかせているみたい。タップして、水をあげよう</string>
-    <string name="tutorial_hint_feed">あれれ、土の栄養がなくなって、元気がないみたい。タップして、肥料をまいてあげよう。今回は無料だよ</string>
+    <string name="tutorial_hint_water">水をあげると、すくすく育つよ。苗をタップして、水をあげよう</string>
+    <string name="tutorial_hint_feed">肥料をまくと、土に栄養がたまって作物が元気になるよ。タップして、まいてみよう。今回は無料だよ</string>
     <string name="tutorial_grow_title">元気になったね！</string>
-    <string name="tutorial_grow_text">肥料をまくと土に栄養がたまって、作物が元気になるよ。育つのが早くなるわけではないけれどね。\nいつもはのんびり待つところだけど、今回は特別に時間を進めるね。</string>
+    <string name="tutorial_grow_text">育つのが早くなるわけではないけれどね。\nいつもはのんびり待つところだけど、今回は特別に時間を進めるね。</string>
     <string name="tutorial_grow_ok">時間を進める</string>
     <string name="tutorial_hint_harvest">ミントが育ったよ！タップして、収穫してみよう</string>
     <string name="tutorial_thanks_title">おつかれさま！</string>

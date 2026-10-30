@@ -787,7 +787,7 @@ Play In-App Review（`StoreReviewManager`）。設定に評価ボタンは置か
 
 ## お問い合わせ（#79）
 
-設定の「情報」タブの「お問い合わせ」。`openContactMail` がメールアプリを開く（`ACTION_SENDTO`）。本文にアプリの版・機種・Android の版を入れる。宛先は `R.string.contact_email`（**仮の値**）。
+設定の「情報」タブの「お問い合わせ」。`openContactMail` がメールアプリを開く（`ACTION_SENDTO`）。本文にアプリの版・機種・Android の版を入れる。宛先は `R.string.contact_email`。
 
 ## 画面
 
