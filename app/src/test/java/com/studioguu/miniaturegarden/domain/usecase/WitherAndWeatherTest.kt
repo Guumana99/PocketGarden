@@ -225,7 +225,7 @@ class WitherAndWeatherTest {
     }
 
     @Test
-    fun `only crops make compost`() = runBlocking {
+    fun `only withered crops make compost`() = runBlocking {
         repo.till(0, 0)
         repo.till(1, 0)
         repo.put(repo.objects.getValue("soil_0_0").copy(nutritionLevel = 0f))
@@ -236,10 +236,10 @@ class WitherAndWeatherTest {
         remove("alive")
         remove("rock")
 
-        assertTrue(repo.objects.getValue("soil_0_0").nutritionLevel > 0f)
+        assertEquals(0f, repo.objects.getValue("soil_0_0").nutritionLevel, 0f)
         assertEquals(0f, repo.objects.getValue("soil_1_0").nutritionLevel, 0f)
         assertTrue(RemoveObjectUseCase.leavesCompost(flower(stress = 1f, status = PlantStatus.WITHERED)))
-        assertTrue(RemoveObjectUseCase.leavesCompost(flower()))
+        assertFalse(RemoveObjectUseCase.leavesCompost(flower()))
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 import com.studioguu.miniaturegarden.data.local.mapper.toDomain
 import com.studioguu.miniaturegarden.data.local.mapper.toEntity
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.Gift
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventoryFilter
 import com.studioguu.miniaturegarden.domain.model.InventoryGroup
@@ -10,7 +11,6 @@ import com.studioguu.miniaturegarden.domain.model.InventoryOrder
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.model.Season
-import com.studioguu.miniaturegarden.domain.model.StarterGarden
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import java.io.File
 import kotlinx.coroutines.runBlocking
@@ -170,7 +170,7 @@ class InventorySortTest {
     private fun newest(): String = InventoryOrder.arrange(repo.slots.values.toList(), InventorySort.ACQUIRED).first().itemId
 
     @Test
-    fun `buying, putting back and opening the crate each make that the newest thing`() = runBlocking {
+    fun `buying, putting back and opening a gift each make that the newest thing`() = runBlocking {
         val purchase = PurchaseItemUseCase(repo)
         purchase(GardenItem.STRUCT_FENCE)
         assertEquals(GardenItem.STRUCT_FENCE.itemId, newest())
@@ -185,9 +185,9 @@ class InventorySortTest {
         assertEquals(ActionResult.SUCCESS, StoreObjectUseCase(repo)("rock"))
         assertEquals(GardenItem.DECO_ROCK.itemId, newest())
 
-        StarterGarden.objects(0L).forEach(repo::put)
-        assertEquals(ActionResult.SUCCESS, OpenStarterCrateUseCase(repo)(StarterGarden.STARTER_CRATE_INSTANCE_ID))
-        assertEquals(StarterGarden.CRATE_REWARD.itemId, newest())
+        repo.put(GridObject("box", 0, 0, objectId = GridObject.GIFT_BOX_OBJECT_ID, lastUpdatedTimestamp = 0L))
+        assertEquals(ActionResult.SUCCESS, OpenGiftUseCase(repo)("box"))
+        assertEquals(Gift.FIRST.items.single().itemId, newest())
     }
 
     @Test

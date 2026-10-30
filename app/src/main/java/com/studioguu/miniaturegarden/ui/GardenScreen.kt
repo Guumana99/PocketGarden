@@ -69,6 +69,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.Gift
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
 import com.studioguu.miniaturegarden.domain.model.Sprinkler
 import com.studioguu.miniaturegarden.domain.model.GardenFeature
@@ -118,7 +119,12 @@ import com.studioguu.miniaturegarden.ui.notifications.rememberNotificationPermis
 import com.studioguu.miniaturegarden.ui.onboarding.FeatureRevealCard
 import com.studioguu.miniaturegarden.ui.post.PostDialog
 import com.studioguu.miniaturegarden.ui.onboarding.RevealBadge
-import com.studioguu.miniaturegarden.ui.onboarding.StarterCrateDialog
+import com.studioguu.miniaturegarden.ui.onboarding.GardenTipSign
+import com.studioguu.miniaturegarden.ui.onboarding.GiftDialog
+import com.studioguu.miniaturegarden.ui.onboarding.PracticeDoneDialog
+import com.studioguu.miniaturegarden.ui.onboarding.PracticeGrowDialog
+import com.studioguu.miniaturegarden.ui.onboarding.SkipTutorialButton
+import com.studioguu.miniaturegarden.ui.onboarding.WelcomeDialog
 import com.studioguu.miniaturegarden.ui.onboarding.TutorialDoneDialog
 import com.studioguu.miniaturegarden.ui.onboarding.revealGlow
 import com.studioguu.miniaturegarden.ui.onboarding.TutorialHint
@@ -170,7 +176,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
     val tutorialStep by viewModel.tutorialStep.collectAsStateWithLifecycle()
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
-    val openingCrate by viewModel.openingCrate.collectAsStateWithLifecycle()
+    val openingGift by viewModel.openingGift.collectAsStateWithLifecycle()
+    val practising by viewModel.practising.collectAsStateWithLifecycle()
+    val bringingOn by viewModel.bringingOn.collectAsStateWithLifecycle()
+    val gardenTip by viewModel.gardenTip.collectAsStateWithLifecycle()
+    val reviewDue by viewModel.reviewDue.collectAsStateWithLifecycle()
     val season by viewModel.season.collectAsStateWithLifecycle()
     val seasonPhase by viewModel.seasonPhase.collectAsStateWithLifecycle()
     val clockHour by viewModel.clockHour.collectAsStateWithLifecycle()
@@ -286,6 +296,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 brokenCells = brokenGround,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
+                onVisitorTapped = viewModel::onVisitorTapped,
                 onZoomChanged = if (BuildConfig.DEBUG) ({ debugZoom = it }) else null,
                 // The showcase's view (debug builds only), taken up afresh whenever it changes.
                 savedView = showcase?.view,
@@ -349,7 +360,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         } else {
             // Keyed on the profile having arrived, so that the level gauge starts from the saved
             // level rather than greeting every visit with a level-up from Lv.1.
-            key(profile != null) { TopStatusBar(
+            key(profile != null, practising) { TopStatusBar(
                 coins = profile?.coins ?: 0L,
                 playerLevel = profile?.playerLevel ?: 1,
                 currentXp = profile?.currentXp ?: 0L,
@@ -476,7 +487,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     canCare = placing == null && !hoeActive && target != null && (
                         target.isSoil || (target.isPlant && PlantSpecies.forObjectId(target.objectId).ground.usesSoil)
                         ),
-                    fertilizerCost = Soil.fertilizerCost(profile?.playerLevel ?: 1),
+                    fertilizerCost = if (tutorialStep == TutorialStep.FEED_SEEDLING) 0 else Soil.fertilizerCost(profile?.playerLevel ?: 1),
                     onFertilize = viewModel::fertilizeSelected,
                     onOpenInventory = { if (viewModel.onBagTapped()) showInventory = true },
                     // Nothing stays picked across the walk: the garden may grow while in the workshop.
@@ -546,7 +557,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },
                                 editing = editMode,
                                 // During the first steps the panel keeps to what the step is about.
-                                guiding = tutorialStep?.isGuiding == true,
+                                guiding = tutorialStep?.isGuiding == true && tutorialStep != TutorialStep.HARVEST,
                                 soil = remember(it, gridObjects) { if (it.isSoil) it else Soil.under(it, gridObjects) },
                                 endsAtHarvest = remember(it, gridObjects, season) {
                                     HarvestPlantUseCase.endsAtHarvest(it, season, Soil.under(it, gridObjects)?.isGreenhouse == true)
@@ -564,15 +575,26 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     // Edit mode has no banner of its own (#49): the lit pencil and the grid say it is
                     // on, and the pencil ends it.
                     // The first steps say what to do next, only while nothing else is showing here.
-                    val hint = tutorialHint(tutorialStep)
+                    val hint = tutorialHint(tutorialStep, gridObjects)
                     var lastHint by remember { mutableStateOf(hint) }
                     if (hint != null) lastHint = hint
                     AnimatedVisibility(
-                        visible = hint != null && !editMode && placing == null && !hoeActive && moving == null && target == null,
+                        visible = hint != null && !editMode && placing == null && moving == null && target == null,
                         enter = fadeIn(),
                         exit = fadeOut(),
                     ) {
-                        lastHint?.let { TutorialHint(it) }
+                        lastHint?.let { TutorialHint(it, Modifier.padding(bottom = if (hoeActive) 44.dp else 0.dp)) }
+                    }
+                    // A word of advice, once, the first time it is called for.
+                    val tip = gardenTip
+                    var lastTip by remember { mutableStateOf(tip) }
+                    if (tip != null) lastTip = tip
+                    AnimatedVisibility(
+                        visible = tip != null && !editMode && placing == null && !hoeActive && moving == null && target == null,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        lastTip?.let { shown -> GardenTipSign(shown, onClose = { viewModel.tipSeen(shown) }) }
                     }
 
                 }
@@ -601,6 +623,26 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         ) {
             ShopStageScreen(onLeave = { showShop = false })
         }
+
+        // The first steps can be left at any moment, whatever is on show.
+        if (tutorialStep?.isGuiding == true) {
+            SkipTutorialButton(
+                onClick = {
+                    showShop = false
+                    showInventory = false
+                    viewModel.leavePractice()
+                },
+                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 64.dp, end = 8.dp),
+            )
+        }
+    }
+
+    // With the seed in hand the shop has done its part in the first steps.
+    LaunchedEffect(tutorialStep) {
+        if (tutorialStep == TutorialStep.PLANT_SEED) {
+            delay(SHOP_THANKS_MILLIS)
+            showShop = false
+        }
     }
 
     if (showInventory) {
@@ -619,10 +661,35 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         )
     }
     if (showSettings) {
-        SettingsDialog(onDismiss = { showSettings = false })
+        SettingsDialog(
+            onDismiss = { showSettings = false },
+            // Not while they are being played.
+            onReplayTutorial = {
+                showSettings = false
+                viewModel.replayTutorial()
+            }.takeIf { !practising },
+        )
     }
-    if (openingCrate != null) {
-        StarterCrateDialog(onReceive = viewModel::openCrate, onDismiss = viewModel::closeCrate)
+    openingGift?.let { box ->
+        GiftDialog(gift = Gift.inside(box), onReceive = viewModel::openGift, onDismiss = viewModel::closeGift)
+    }
+    if (tutorialStep == TutorialStep.WELCOME) {
+        WelcomeDialog(onClose = viewModel::welcomed)
+    }
+    if (tutorialStep == TutorialStep.GROW && !bringingOn) {
+        PracticeGrowDialog(onClose = viewModel::bringOnPlant)
+    }
+    // The coins and the experience fly first, then the word of thanks.
+    var thanksDue by remember { mutableStateOf(false) }
+    LaunchedEffect(tutorialStep) {
+        thanksDue = false
+        if (tutorialStep == TutorialStep.PRACTICE_DONE) {
+            delay(HARVEST_SHOW_MILLIS)
+            thanksDue = true
+        }
+    }
+    if (thanksDue) {
+        PracticeDoneDialog(onClose = viewModel::leavePractice)
     }
     // The first steps are over: a board that stays until the player goes on.
     if (tutorialStep == TutorialStep.FINISHED && !cameraMode) {
@@ -630,13 +697,13 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     // A level-up waits on its board until OK; it holds back while another board is up, so two
     // never stack.
-    val levelUpNow = levelUp?.takeIf { openingCrate == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideUi }
+    val levelUpNow = levelUp?.takeIf { openingGift == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideUi }
     if (levelUpNow != null) {
         LevelUpDialog(notice = levelUpNow, onOk = viewModel::acknowledgeLevelUp)
     }
     // Once, after the first steps, and only where the device needs the player's permission.
     val requestNotificationPermission = rememberNotificationPermissionRequest { }
-    val inviteNow = notificationInviteDue && openingCrate == null && !cameraMode && !hideUi && levelUpNow == null &&
+    val inviteNow = notificationInviteDue && openingGift == null && !cameraMode && !hideUi && levelUpNow == null &&
         NotificationAccess.shouldInvite(Build.VERSION.SDK_INT, context.hasNotificationPermission(), enabledInGame = true, alreadyInvited = false)
     if (inviteNow) {
         NotificationInviteDialog(
@@ -717,7 +784,29 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     if (showPost) {
         PostDialog(letters = letters, onRead = viewModel::markLetterRead, onDismiss = { showPost = false })
     }
+
+    // After a happy moment the store's own review sheet, only on the plain garden with nothing else
+    // open, and a little after the toast and the show have finished. Anything that opens meanwhile
+    // starts the wait over.
+    val gardenAlone = !showShop && !showInventory && !showSettings && !showCollection && !showPost && !showWeather &&
+        !showDebugMenu && !confirmRain && !confirmRemove && !confirmTurnBack && !cameraMode && !hideUi && !editMode &&
+        selectedObject == null && openingGift == null && levelUpNow == null && !inviteNow && gardenTip == null
+    LaunchedEffect(reviewDue, gardenAlone) {
+        if (reviewDue && gardenAlone) {
+            delay(REVIEW_PAUSE_MILLIS)
+            context.findActivity()?.let(viewModel::askForReview)
+        }
+    }
 }
+
+/** How long the shop stays once it has given the first seed: long enough to see it happen. */
+private const val SHOP_THANKS_MILLIS = 1_200L
+
+/** How long the first harvest's coins and experience have the screen to themselves. */
+private const val HARVEST_SHOW_MILLIS = 1_800L
+
+/** The longest a toast stands, and 2.5 seconds after it. */
+private const val REVIEW_PAUSE_MILLIS = GardenToastState.MAX_MILLIS + 2_500L
 
 /**
  * A control that is put away during the first steps. It comes in with a small pop when it is

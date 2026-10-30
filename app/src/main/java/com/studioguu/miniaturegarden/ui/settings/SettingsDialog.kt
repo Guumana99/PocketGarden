@@ -16,6 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -55,12 +56,13 @@ interface SettingsActions {
 @Composable
 fun SettingsDialog(
     onDismiss: () -> Unit,
+    onReplayTutorial: (() -> Unit)? = null,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     // Nothing is drawn until the saved values are in, so no control starts in the wrong place.
     val current = settings ?: return
-    SettingsContent(settings = current, versionName = viewModel.versionName, actions = viewModel, onDismiss = onDismiss)
+    SettingsContent(settings = current, versionName = viewModel.versionName, actions = viewModel, onDismiss = onDismiss, onReplayTutorial = onReplayTutorial)
 }
 
 /**
@@ -76,6 +78,7 @@ internal fun SettingsContent(
     versionName: String,
     actions: SettingsActions,
     onDismiss: () -> Unit,
+    onReplayTutorial: (() -> Unit)? = null,
     notificationRow: @Composable (enabled: Boolean, onChange: (Boolean) -> Unit) -> Unit = { enabled, onChange ->
         NotificationSettingRow(enabledInGame = enabled, onEnabledChange = onChange)
     },
@@ -104,6 +107,7 @@ internal fun SettingsContent(
                     versionName = versionName,
                     onShowLicenses = { showLicenses = true },
                     onShowDisclaimer = { showDisclaimer = true },
+                    onReplayTutorial = onReplayTutorial,
                 )
                 SettingsTab.OTHER -> WoodPanel {
                     notificationRow(settings.notificationsEnabled, actions::setNotificationsEnabled)
@@ -150,8 +154,9 @@ private fun SoundTab(current: AppSettings, actions: SettingsActions) {
 }
 
 @Composable
-private fun AboutTab(versionName: String, onShowLicenses: () -> Unit, onShowDisclaimer: () -> Unit) {
+private fun AboutTab(versionName: String, onShowLicenses: () -> Unit, onShowDisclaimer: () -> Unit, onReplayTutorial: (() -> Unit)?) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
     WoodPanel {
         Text(
@@ -161,6 +166,14 @@ private fun AboutTab(versionName: String, onShowLicenses: () -> Unit, onShowDisc
         )
     }
     WoodPanel {
+        if (onReplayTutorial != null) {
+            CarvedButton(text = stringResource(R.string.settings_replay_tutorial), onClick = onReplayTutorial, modifier = Modifier.fillMaxWidth())
+        }
+        CarvedButton(
+            text = stringResource(R.string.settings_contact),
+            onClick = { openContactMail(context, versionName) },
+            modifier = Modifier.fillMaxWidth(),
+        )
         CarvedButton(text = stringResource(R.string.settings_licenses), onClick = onShowLicenses, modifier = Modifier.fillMaxWidth())
         CarvedButton(
             text = stringResource(R.string.settings_privacy),

@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.data.asset
 
+import com.studioguu.miniaturegarden.domain.model.BloomColours
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -44,7 +45,7 @@ object TileSetDefinition {
         PlantSpecies.entries.map { it.objectId } + Decoration.entries.map { it.objectId } +
             GroundCover.entries.map { it.objectId } + StructureData.entries.map { it.objectId } +
             GridObject.RIVER_OBJECT_ID + GridObject.COBBLESTONE_OBJECT_ID + GridObject.WOOD_DECK_OBJECT_ID + GridObject.TILLED_SOIL_OBJECT_ID + GridObject.LOOSE_SOIL_OBJECT_ID + GridObject.GREENHOUSE_OBJECT_ID +
-            FencePart.entries.map { it.objectId } + GridObject.STARTER_CRATE_OBJECT_ID
+            FencePart.entries.map { it.objectId } + GridObject.GIFT_BOX_OBJECT_ID
 
     /**
      * Ground sprite for a cell: water for the river, grass for the lawn. The lawn used to be a
@@ -68,7 +69,7 @@ object TileSetDefinition {
         val stage = growthStage(gridObject.growthProgress, species.growthStages)
         val plain = stageId(gridObject.objectId, stage)
         if (stage < species.growthStages) return plain
-        val colour = bloomColourOf(gridObject.objectId, gridObject.instanceId) ?: return plain
+        val colour = BloomColours.colourOf(gridObject)?.takeIf { it != species.bloomColours.first() } ?: return plain
         return "${plain}_$colour"
     }
 
@@ -78,29 +79,10 @@ object TileSetDefinition {
 
     /**
      * The flowers a crop blooms in besides its plain last stage (#58): each plant takes one, or
-     * the plain one, for good, by its instance id ([PlantSpecies.bloomColourOf]). Drawn as
-     * `<objectId>_stage<N>_<colour>`.
+     * the plain one, as it opens ([BloomColours]). Drawn as `<objectId>_stage<N>_<colour>`.
      */
     val BLOOM_COLOURS: Map<String, List<String>> =
         PlantSpecies.entries.filter { it.bloomColours.size > 1 }.associate { it.objectId to it.bloomColours.drop(1) }
-
-    /** The colour [instanceId] of [objectId] blooms in, or null for its plain last stage (red for the tulip). */
-    fun bloomColourOf(objectId: String, instanceId: String): String? {
-        val species = PlantSpecies.fromObjectId(objectId) ?: return null
-        return species.bloomColourOf(instanceId)?.takeIf { it != species.bloomColours.first() }
-    }
-
-    /**
-     * An instance id, made from [base], under which [objectId] blooms in [colour]; in its plain
-     * colour when [colour] is null or not one of its own. A picture of a crop (the book's) is
-     * drawn as a plant with this id, so that it shows the colour the player grew rather than
-     * whichever one a made-up id happens to pick (#59).
-     */
-    fun instanceIdBlooming(objectId: String, colour: String?, base: String): String {
-        val species = PlantSpecies.fromObjectId(objectId) ?: return base
-        val wanted = colour?.takeIf { it in species.bloomColours } ?: species.bloomColours.firstOrNull() ?: return base
-        return (0 until 1_000).asSequence().map { "${base}_$it" }.firstOrNull { species.bloomColourOf(it) == wanted } ?: base
-    }
 
     /**
      * Every sprite a crop is drawn with: `<objectId>_stage1` to `_stage<N>`, the colours of its

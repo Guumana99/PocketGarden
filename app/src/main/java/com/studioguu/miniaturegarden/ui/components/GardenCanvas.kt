@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import com.studioguu.miniaturegarden.domain.model.CreatureRoute
 import com.studioguu.miniaturegarden.ui.render.LawnPatches
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
@@ -188,6 +189,7 @@ fun GardenCanvas(
     gridObjects: List<GridObject>,
     selectedTile: TileCoord?,
     onTileTapped: (TileCoord?) -> Unit,
+    onVisitorTapped: (CreatureVisit) -> Unit = {},
     modifier: Modifier = Modifier,
     atlas: SpriteAtlas = SpriteAtlas.EMPTY,
     terrain: TerrainTextures = TerrainTextures.EMPTY,
@@ -281,6 +283,7 @@ fun GardenCanvas(
     val creatureImage = remember(atlas) { AtlasPages.of(atlas.creatures) }
     val currentAtlas by rememberUpdatedState(atlas)
     val currentOnTileTapped by rememberUpdatedState(onTileTapped)
+    val currentOnVisitorTapped by rememberUpdatedState(onVisitorTapped)
     val currentGrid by rememberUpdatedState(grid)
     val currentObjects by rememberUpdatedState(gridObjects)
     val currentEditing by rememberUpdatedState(editing)
@@ -382,6 +385,12 @@ fun GardenCanvas(
             .pointerInput(metrics) {
                 detectTapGestures { position ->
                     val transform = camera?.toTransform(metrics, size.toSize()) ?: return@detectTapGestures
+                    // A visitor comes before what it stands on.
+                    val visitor = visitorAt(position, currentRoutes, transform, System.currentTimeMillis())
+                    if (visitor != null) {
+                        currentOnVisitorTapped(visitor)
+                        return@detectTapGestures
+                    }
                     // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
                     val sprites = currentAtlas
                     val scale = transform.tileWidth / sprites.manifest.tileWidth
@@ -1355,6 +1364,18 @@ private fun visitorBase(transform: IsometricTransform, visit: CreatureVisit, pos
     return transform.worldToScreen(pose.x, pose.y, lift)
 }
 
+/** The visitor under [position] at [now], if any: a generous circle, as they are small and move. */
+private fun visitorAt(position: Offset, routes: List<CreatureRoute>, transform: IsometricTransform, now: Long): CreatureVisit? =
+    routes.mapNotNull { route ->
+        val pose = route.poseAt(now) ?: return@mapNotNull null
+        val body = visitorBase(transform, route.visit, pose) - Offset(0f, (pose.altitude + VISITOR_BODY_HEIGHT) * transform.tileWidth)
+        (route.visit to (body - position).getDistance()).takeIf { it.second <= transform.tileWidth * VISITOR_TAP_REACH }
+    }.minByOrNull { it.second }?.first
+
+/** Where a visitor's body is over its feet, in tile widths, and how far a tap can miss it. */
+private const val VISITOR_BODY_HEIGHT = 0.12f
+private const val VISITOR_TAP_REACH = 0.55f
+
 /** How far up its flower's picture a butterfly settles: on the bloom, just below the top. */
 private const val BLOOM_SHARE = 0.8f
 
@@ -1407,12 +1428,13 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
         /** @param bloomColour for a crop of several colours, the one to show; its plain one when null. */
         fun of(objectId: String, bloomColour: String? = null): PreviewScene {
             fun at(x: Int, y: Int) = GridObject(
-                instanceId = TileSetDefinition.instanceIdBlooming(objectId, bloomColour, "preview_${x}_$y"),
+                instanceId = "preview_${x}_$y",
                 gridX = x,
                 gridY = y,
                 objectId = objectId,
                 growthProgress = 1f,
                 lastUpdatedTimestamp = 0L,
+                bloomColour = bloomColour,
             )
             return when {
                 objectId == GridObject.RIVER_OBJECT_ID -> PreviewScene(3, 0.1f, listOf(at(0, 1), at(1, 1), at(2, 1)))

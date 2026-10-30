@@ -20,8 +20,19 @@ data class AppSettings(
     val gardenView: GardenView? = null,
     /** The order the bag was last sorted in; kept for next time. */
     val inventorySort: InventorySort = InventorySort.DEFAULT,
+    /** The first-meeting tips already given ([GardenTip]), by name. */
+    val seenTips: Set<String> = emptySet(),
+    /** How many different days the garden has been opened on. */
+    val playDays: Int = 0,
+    /** The last of them ([GameDay]); 0 before the first. */
+    val lastPlayDay: Long = 0L,
+    /** When the store's review sheet was last asked for; 0 if it never has been. */
+    val reviewAskedAt: Long = 0L,
 ) {
     /** The same settings with both volumes forced into 0..1; a non-number falls back to the default. */
+    /** These settings with the garden opened on [day]: a new day counts, the same day does not. */
+    fun onDay(day: Long): AppSettings = if (day == lastPlayDay) this else copy(playDays = playDays + 1, lastPlayDay = day)
+
     fun normalized(): AppSettings = copy(
         bgmVolume = bgmVolume.asVolumeOr(DEFAULT_BGM_VOLUME),
         soundEffectVolume = soundEffectVolume.asVolumeOr(DEFAULT_SOUND_EFFECT_VOLUME),

@@ -62,6 +62,8 @@ fun GridObjectEntity.toDomain() = GridObject(
     soilProgress = soilProgress,
     lastCropId = lastCropId,
     idleMillis = idleMillis,
+    bloomColour = bloomColour,
+    gift = gift,
 )
 
 fun GridObject.toEntity() = GridObjectEntity(
@@ -86,6 +88,8 @@ fun GridObject.toEntity() = GridObjectEntity(
     soilProgress = soilProgress,
     lastCropId = lastCropId,
     idleMillis = idleMillis,
+    bloomColour = bloomColour,
+    gift = gift,
 )
 
 fun InventorySlotEntity.toDomain() = InventorySlot(

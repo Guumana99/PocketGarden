@@ -50,7 +50,7 @@ enum class LayoutCheck {
 object GardenLayout {
 
     /** Whether [obj] is a piece of the layout rather than something in the ground. */
-    fun isLayoutPiece(obj: GridObject): Boolean = !obj.isPlant && !obj.isHoedSoil && !obj.isStarterCrate
+    fun isLayoutPiece(obj: GridObject): Boolean = !obj.isPlant && !obj.isHoedSoil && !obj.isGiftBox
 
     /**
      * Whether [tool] is in hand in edit mode: only the shop. Edit mode is for rearranging the
@@ -69,7 +69,7 @@ object GardenLayout {
 
     /** Whether [action] may be done to [obj], with edit mode on ([editing]) or off. */
     fun check(action: LayoutAction, obj: GridObject, editing: Boolean): LayoutCheck = when {
-        obj.isStarterCrate -> LayoutCheck.FIXED
+        obj.isGiftBox -> LayoutCheck.FIXED
         !isLayoutPiece(obj) -> when {
             action != LayoutAction.DISCARD -> LayoutCheck.IN_THE_GROUND
             editing -> LayoutCheck.OK

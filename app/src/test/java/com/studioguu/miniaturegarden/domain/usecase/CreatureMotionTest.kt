@@ -347,12 +347,34 @@ class CreatureMotionTest {
         val butterfly = CreatureRoutes.plan(visit(VisitRule.BUTTERFLY_BLOOMS, GridCell(6, 6), sunflower), grid)
         val perched = posesOf(butterfly, 100L).map { it.second }.filter { it.action == CreatureAction.PERCH }
         assertTrue(perched.isNotEmpty())
-        assertTrue(perched.all { it.altitude == CreatureRoutes.PERCH_ALTITUDE && it.x % 1f == 0.5f && it.y % 1f == 0.5f })
+        assertTrue(perched.all { it.altitude == CreatureRoutes.PERCH_ALTITUDE })
         val river = objects.first { it.objectId == GridObject.RIVER_OBJECT_ID }
         val dragonfly = CreatureRoutes.plan(visit(VisitRule.DRAGONFLY_AUTUMN, GridCell(1, 1), river), grid)
         val actions = posesOf(dragonfly, 50L).map { it.second.action }
         assertTrue(CreatureAction.HOVER in actions)
         assertTrue(CreatureAction.PERCH !in actions)
+    }
+
+    @Test
+    fun `a frog goes a short way at a time, to no cell's middle, and no two moves alike`() {
+        val frog = CreatureRoutes.plan(visit(VisitRule.FROG_RAIN, GridCell(5, 6)), grid)
+        val poses = posesOf(frog, 20L).map { it.second }
+        val moves = poses.filter { it.action == CreatureAction.STEP }.groupBy { it.duration }
+        assertTrue(moves.size >= 3)
+        val stops = poses.filter { it.action == CreatureAction.STAND }.map { it.x to it.y }.distinct()
+        assertTrue(stops.size >= 3)
+        assertTrue(stops.drop(1).any { (x, y) -> x % 1f != 0.5f || y % 1f != 0.5f })
+        for ((a, b) in stops.zipWithNext()) assertTrue(hypot(b.first - a.first, b.second - a.second) < 1.1f)
+    }
+
+    @Test
+    fun `a butterfly drifts over the flowers near the one it came for, and rests on them`() {
+        val flowers = listOf(at(4, 4, "plant_tulip", 1f), at(6, 4, "plant_rose", 1f), at(5, 6, "plant_tulip", 1f))
+        val garden = GardenGrid(GardenMap.allGrass(11), flowers)
+        val butterfly = CreatureRoutes.plan(visit(VisitRule.BUTTERFLY_BLOOMS, GridCell(4, 4), flowers[0]), garden)
+        val perched = posesOf(butterfly, 100L).map { it.second }.filter { it.action == CreatureAction.PERCH }
+        val visited = perched.map { floor(it.x).toInt() to floor(it.y).toInt() }.toSet()
+        assertTrue(visited.toString(), visited.size >= 2)
     }
 
     // --- The title's garden, whose visitors never leave ---

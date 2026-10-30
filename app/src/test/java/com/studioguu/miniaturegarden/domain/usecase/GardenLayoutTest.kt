@@ -17,7 +17,7 @@ class GardenLayoutTest {
 
     private val crop = obj(PlantSpecies.TULIP.objectId)
     private val soil = obj(GridObject.TILLED_SOIL_OBJECT_ID)
-    private val crate = obj(GridObject.STARTER_CRATE_OBJECT_ID)
+    private val crate = obj(GridObject.GIFT_BOX_OBJECT_ID)
     private val greenhouse = obj(GridObject.GREENHOUSE_OBJECT_ID)
 
     /** The garden's exterior and its buildings: lawn, paving, fences, the river, decorations, a hut. */
@@ -63,7 +63,7 @@ class GardenLayoutTest {
     }
 
     @Test
-    fun `the starter crate is not touched, and the greenhouse bed does not move`() {
+    fun `a gift box is not touched, and the greenhouse bed does not move`() {
         for (action in LayoutAction.entries) assertEquals(LayoutCheck.FIXED, GardenLayout.check(action, crate, editing = true))
         assertEquals(LayoutCheck.FIXED, GardenLayout.check(LayoutAction.MOVE, greenhouse, editing = true))
         assertEquals(LayoutCheck.OK, GardenLayout.check(LayoutAction.STORE, greenhouse, editing = true))

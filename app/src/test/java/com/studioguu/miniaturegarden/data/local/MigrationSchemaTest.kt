@@ -37,6 +37,7 @@ class MigrationSchemaTest {
             MIGRATION_14_15,
             MIGRATION_15_16,
             MIGRATION_16_17,
+            MIGRATION_17_18,
         )
     }
 
@@ -138,6 +139,13 @@ class MigrationSchemaTest {
         // Nothing changes what stands in the garden: a bed keeps its id, which now reads as ridges.
         assertTrue(sql.none { it.contains("SET objectId") })
         assertTrue(sql.none { it.contains("DELETE") })
+    }
+
+    @Test
+    fun `tulips in bloom keep their colour, and the soil's points are counted more finely`() {
+        val sql = sqlOf(AppDatabase.MIGRATION_17_18)
+        assertTrue(sql.contains("UPDATE grid_objects SET bloomColour = 'by_id' WHERE objectId = 'plant_tulip' AND growthProgress >= 1"))
+        assertTrue(sql.contains("UPDATE grid_objects SET soilProgress = soilProgress * 2"))
     }
 
     @Test

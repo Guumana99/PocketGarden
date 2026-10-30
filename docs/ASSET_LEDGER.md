@@ -32,7 +32,7 @@
 ## 作物
 
 1 行が 1 つの作物。段階の数は `PlantSpecies.growthStages`（既定 4、#39 以降の作物は 3）。
-画像の枠の assetId は `plant_<作物>_stage<N>` と `plant_<作物>_withered`。アイコンは持ち物・ショップ・木箱で出る絵（`UiLabels.itemIconRes`、無ければ絵文字）。
+画像の枠の assetId は `plant_<作物>_stage<N>` と `plant_<作物>_withered`。アイコンは持ち物・ショップ・おくりもので出る絵（`UiLabels.itemIconRes`、無ければ絵文字）。
 
 | 作物（id） | 解放 | 段階 1 | 段階 2 | 段階 3 | 段階 4 | 枯れ | アイコン | 出所・メモ |
 |---|---|---|---|---|---|---|---|---|
@@ -99,11 +99,11 @@
 | 石灯籠（`deco_lantern`） | ✅ | Recraft | `deco_lantern`（原画 `deco_lantern.png`、Recraft（#74。C2PA を grep で確認））。高さ 0.44 マス |
 | スプリンクラー（`deco_sprinkler`） | ✅＋⬜ | Recraft | 本体 `deco_sprinkler`（原画 `deco_sprinkler.png`、Recraft（#74。C2PA を grep で確認）。高さ 0.34 マス）。水しぶき（`SprinklerSpray`）は演出としてコードで描き、本体の絵の腕の軸（取り付け点）から出る。しぶきの絵を入れるなら `deco_sprinkler_spray_0`〜`_7` |
 | 風見鶏（`deco_weathervane`） | ⬜ | — | **未作成**。Lv6・500 コインの 1 マスの置き物。データだけ登録し、ショップには出していない（`GardenItem.inShop = false`）。置いてある庭だけ明日の天気が見られる（`WeatherOutlook.isReadable`）。原画の候補が `tools/source_art/deco_weathervane.png` に未追跡のまま置かれている（未確認・未加工） |
-| 最初の木箱（`deco_starter_crate`） | ✅ | Recraft | `deco_starter_crate`（原画 `deco_starter_crate.png`、Recraft（#74。C2PA を grep で確認））。幅 0.42 マス、ふたが開いて苗と種袋が見える |
+| おくりものの箱（`deco_starter_crate`。#79 で名前だけ変更、絵は同じ） | ✅ | Recraft | `deco_starter_crate`（原画 `deco_starter_crate.png`、Recraft（#74。C2PA を grep で確認））。幅 0.42 マス、ふたが開いて苗と種袋が見える |
 
 ## ショップのアイコン
 
-ショップ・持ち物・木箱で品物に出す小さな絵（`UiLabels.itemIconRes`、256×256、`tools/prepare_drawable_art.py` が原画から作る）。作物は上の作物の表のアイコンの列（#72 から 18 種すべて ✅）。
+ショップ・持ち物・おくりもので品物に出す小さな絵（`UiLabels.itemIconRes`、256×256、`tools/prepare_drawable_art.py` が原画から作る）。作物は上の作物の表のアイコンの列（#72 から 18 種すべて ✅）。
 `itemEmoji` は、絵が無いときの予備として残してある。
 
 | 品物（id） | 状態 | 素材・メモ |

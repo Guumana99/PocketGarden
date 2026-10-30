@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,102 +39,82 @@ import androidx.compose.ui.window.Dialog
 import com.studioguu.miniaturegarden.R
 import androidx.compose.ui.platform.testTag
 import com.studioguu.miniaturegarden.domain.model.GardenFeature
+import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.GardenTip
+import com.studioguu.miniaturegarden.domain.model.Gift
 import com.studioguu.miniaturegarden.domain.model.GridObject
-import com.studioguu.miniaturegarden.domain.model.StarterGarden
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
+import com.studioguu.miniaturegarden.ui.components.CarvedButton
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.ItemIcon
-import com.studioguu.miniaturegarden.ui.objectDisplayName
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 /**
- * The popup the starter crate opens into: a wooden board with a parchment inset, the seed it
- * holds, and a button to take it. "Later" leaves the crate where it is.
+ * The popup a gift box opens into: a wooden board with a parchment inset, what it holds, and a
+ * button to take it. "Later" leaves the box where it is.
  */
 @Composable
-fun StarterCrateDialog(onReceive: () -> Unit, onDismiss: () -> Unit) {
-    val reward = StarterGarden.CRATE_REWARD
+fun GiftDialog(gift: Gift, onReceive: () -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier.popIn(),
-            shape = RoundedCornerShape(14.dp),
-            color = GardenColors.Wood,
-            border = BorderStroke(3.dp, GardenColors.WoodDark),
-            shadowElevation = 10.dp,
-        ) {
-            Column(
-                modifier = Modifier.padding(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+        WoodBoard(title = "\uD83C\uDF81 " + (gift.title ?: stringResource(R.string.gift_first_title))) {
+            Text(
+                text = gift.message ?: stringResource(R.string.gift_first_text),
+                color = GardenColors.Ink,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            for (item in gift.items) {
+                val thing = GardenItem.fromItemId(item.itemId) ?: continue
+                ItemIcon(thing, 40.sp)
                 Text(
-                    text = "📦 " + objectDisplayName(GridObject.STARTER_CRATE_OBJECT_ID),
-                    color = GardenColors.Cream,
+                    text = stringResource(R.string.gift_item, itemDisplayName(thing), item.amount),
+                    color = GardenColors.Ink,
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                 )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = GardenColors.Parchment,
-                    border = BorderStroke(1.dp, GardenColors.WoodLight),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.crate_text),
-                            color = GardenColors.Ink,
-                            textAlign = TextAlign.Center,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        ItemIcon(reward, 40.sp)
-                        Text(
-                            text = stringResource(R.string.crate_reward, itemDisplayName(reward), StarterGarden.CRATE_REWARD_AMOUNT),
-                            color = GardenColors.Ink,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-                // Two buttons side by side, of one make and one size: wooden planks with a dark edge
-                // and cream lettering. (A parchment "later" next to a wooden "receive" read as two
-                // different kinds of button on the wooden board.)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    WoodButton(
-                        text = stringResource(R.string.crate_later),
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f).testTag(CRATE_LATER_TAG),
-                    )
-                    WoodButton(
-                        text = stringResource(R.string.crate_receive),
-                        onClick = onReceive,
-                        modifier = Modifier.weight(1f).testTag(CRATE_RECEIVE_TAG),
-                    )
-                }
+            }
+            if (gift.coins > 0L) {
+                Text(stringResource(R.string.gift_coins, gift.coins), color = GardenColors.Ink, fontWeight = FontWeight.Bold)
+            }
+            // Two buttons side by side, of one make and one size: wooden planks with a dark edge
+            // and cream lettering.
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                WoodButton(
+                    text = stringResource(R.string.gift_later),
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f).testTag(GIFT_LATER_TAG),
+                )
+                WoodButton(
+                    text = stringResource(R.string.gift_receive),
+                    onClick = onReceive,
+                    modifier = Modifier.weight(1f).testTag(GIFT_RECEIVE_TAG),
+                )
             }
         }
     }
 }
 
-/** Test tags of the crate's two buttons. */
-const val CRATE_LATER_TAG = "crate_later"
-const val CRATE_RECEIVE_TAG = "crate_receive"
+/** Test tags of the gift box's two buttons. */
+const val GIFT_LATER_TAG = "gift_later"
+const val GIFT_RECEIVE_TAG = "gift_receive"
 
-/** What the current first step asks for; null when there is nothing to say. */
+/**
+ * What the current first step asks for; null when there is nothing to say. The hoe's step has two
+ * halves, told apart by the tilled earth that comes of the first.
+ */
 @StringRes
-fun tutorialHint(step: TutorialStep?): Int? = when (step) {
-    TutorialStep.OPEN_CRATE -> R.string.tutorial_hint_open_crate
-    TutorialStep.TILL_SOIL -> R.string.tutorial_hint_till
+fun tutorialHint(step: TutorialStep?, objects: List<GridObject> = emptyList()): Int? = when (step) {
+    TutorialStep.TILL_SOIL -> if (objects.any { it.isLooseSoil }) R.string.tutorial_hint_ridge else R.string.tutorial_hint_till
+    TutorialStep.BUY_SEED -> R.string.tutorial_hint_shop
     TutorialStep.PLANT_SEED -> R.string.tutorial_hint_plant_seed
     TutorialStep.WATER_SEEDLING -> R.string.tutorial_hint_water
+    TutorialStep.FEED_SEEDLING -> R.string.tutorial_hint_feed
+    TutorialStep.HARVEST -> R.string.tutorial_hint_harvest
     else -> null
 }
 
@@ -145,6 +126,88 @@ private fun featureIntroduction(feature: GardenFeature): Pair<String, String> = 
     GardenFeature.COLLECTION -> stringResource(R.string.reveal_collection_name) to stringResource(R.string.reveal_collection_text)
     GardenFeature.CAMERA -> stringResource(R.string.reveal_camera_name) to stringResource(R.string.reveal_camera_text)
     GardenFeature.POST -> stringResource(R.string.reveal_post_name) to stringResource(R.string.reveal_post_text)
+}
+
+/** A board of the first steps: a few words and one button, which stays until the player goes on. */
+@Composable
+private fun TutorialBoard(title: String, text: String, button: String, onClose: () -> Unit) {
+    Dialog(onDismissRequest = {}) {
+        WoodBoard(title = title) {
+            Text(
+                text = text,
+                color = GardenColors.Ink,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 22.sp,
+            )
+            WoodButton(text = button, onClick = onClose, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+/** The first thing a new player reads. */
+@Composable
+fun WelcomeDialog(onClose: () -> Unit) = TutorialBoard(
+    title = stringResource(R.string.tutorial_welcome_title),
+    text = stringResource(R.string.tutorial_welcome_text),
+    button = stringResource(R.string.tutorial_welcome_ok),
+    onClose = onClose,
+)
+
+/** What the fertilizer did and did not do, and the one time that time is brought on. */
+@Composable
+fun PracticeGrowDialog(onClose: () -> Unit) = TutorialBoard(
+    title = stringResource(R.string.tutorial_grow_title),
+    text = stringResource(R.string.tutorial_grow_text),
+    button = stringResource(R.string.tutorial_grow_ok),
+    onClose = onClose,
+)
+
+/** A word of thanks after the first harvest; the practice garden goes with its button. */
+@Composable
+fun PracticeDoneDialog(onClose: () -> Unit) = TutorialBoard(
+    title = stringResource(R.string.tutorial_thanks_title),
+    text = stringResource(R.string.tutorial_thanks_text),
+    button = stringResource(R.string.tutorial_thanks_ok),
+    onClose = onClose,
+)
+
+/** The way out of the first steps, always in reach. */
+@Composable
+fun SkipTutorialButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    CarvedButton(text = stringResource(R.string.tutorial_skip), onClick = onClick, modifier = modifier.testTag(SKIP_TUTORIAL_TAG))
+}
+
+const val SKIP_TUTORIAL_TAG = "skip_tutorial"
+
+/** A word of advice on what the player has just met, gone at their tap and not seen again. */
+@Composable
+fun GardenTipSign(tip: GardenTip, onClose: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.padding(horizontal = 12.dp).clickable(onClick = onClose),
+        shape = RoundedCornerShape(12.dp),
+        color = GardenColors.Parchment.copy(alpha = 0.95f),
+        border = BorderStroke(2.dp, GardenColors.WoodLight),
+        shadowElevation = 4.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("\uD83D\uDCA1", fontSize = 18.sp)
+            Text(stringResource(gardenTipText(tip)), color = GardenColors.Ink, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f, fill = false))
+            Text("\u00D7", color = GardenColors.InkSoft, fontSize = 18.sp)
+        }
+    }
+}
+
+@StringRes
+private fun gardenTipText(tip: GardenTip): Int = when (tip) {
+    GardenTip.NO_FOOD -> R.string.tip_no_food
+    GardenTip.WITHERED -> R.string.tip_withered
+    GardenTip.NEW_PAGE -> R.string.tip_new_page
+    GardenTip.VISITOR -> R.string.tip_visitor
 }
 
 /**

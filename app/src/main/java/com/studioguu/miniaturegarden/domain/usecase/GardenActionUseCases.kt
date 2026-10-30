@@ -1,10 +1,12 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.BloomColours
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GridCell
+import com.studioguu.miniaturegarden.domain.model.PracticeGarden
 import com.studioguu.miniaturegarden.domain.model.Sprinkler
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
@@ -153,7 +155,9 @@ class CareForPlantUseCase @Inject constructor(
             } ?: return@runInTransaction ActionResult.NO_SOIL
             if (soil.nutritionLevel >= 1f) return@runInTransaction ActionResult.ALREADY_FED
             val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
-            val cost = Soil.fertilizerCost(profile.playerLevel)
+            // The first steps' fertilizer is on the house.
+            val free = gardenRepository.getProgress()?.tutorialStep == TutorialStep.FEED_SEEDLING
+            val cost = if (free) 0 else Soil.fertilizerCost(profile.playerLevel)
             if (profile.coins < cost) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
 
             gardenRepository.upsertGridObject(soil.copy(nutritionLevel = 1f))
@@ -323,9 +327,8 @@ class PlaceItemUseCase @Inject constructor(
  * [ActionResult.HOE_STRUCK] and nothing is stored. A cell left half done stays so while the app is
  * open ([GardenViewModel]'s strikes), and starts over after that.
  *
- * During the first steps one strike tills one cell, wherever the player likes, and that moves them
- * on to sowing at once; until the guided steps are over it tills nothing more
- * ([TutorialStep.allows]).
+ * During the first steps the hoe only goes on the cell that shines ([PracticeGarden.PLOT]), and
+ * until the guided steps are over it tills nothing more ([TutorialStep.allows]).
  */
 class HoeUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -335,6 +338,9 @@ class HoeUseCase @Inject constructor(
         gardenRepository.runInTransaction {
             val progress = gardenRepository.getProgress()
             if (progress != null && !progress.tutorialStep.allows(TutorialTool.HOE)) return@runInTransaction ActionResult.NOT_THIS_STEP
+            if (progress?.tutorialStep == TutorialStep.TILL_SOIL && GridCell(gridX, gridY) != PracticeGarden.PLOT) {
+                return@runInTransaction ActionResult.NOT_THIS_STEP
+            }
             val grid = GardenGrid(gardenMap.current(), gardenRepository.getGridObjects())
             val loose = grid.floorAt(gridX, gridY)?.takeIf { it.isLooseSoil && grid.occupantAt(gridX, gridY) == null }
             if (loose == null) {
@@ -346,17 +352,12 @@ class HoeUseCase @Inject constructor(
                     PlacementCheck.OK -> Unit
                 }
             }
-            // The first steps ask for one cell, and one strike is enough for it.
-            val guided = progress?.tutorialStep == TutorialStep.TILL_SOIL
-            val needed = if (guided) 1 else Soil.HOE_STRIKES
-            if (strikes + 1 < needed) return@runInTransaction ActionResult.HOE_STRUCK
+            if (strikes + 1 < Soil.HOE_STRIKES) return@runInTransaction ActionResult.HOE_STRUCK
             gardenRepository.upsertGridObject(
                 // Ridged, the cell keeps its food and grade: it is the same soil.
                 loose?.copy(objectId = GridObject.TILLED_SOIL_OBJECT_ID)
                     ?: soil(gridX, gridY, now, GridObject.LOOSE_SOIL_OBJECT_ID),
             )
-            // With it tilled, on to sowing.
-            if (progress != null && guided) gardenRepository.saveProgress(progress.copy(tutorialStep = TutorialStep.PLANT_SEED))
             ActionResult.SUCCESS
         }
 
@@ -435,8 +436,9 @@ class HarvestPlantUseCase @Inject constructor(
             val bounty = fed && random.nextFloat() < SoilGrade.of(soil!!.soilQuality).bountyChance
             val reward = if (bounty) Soil.bounty(plain) else plain
 
-            val ended = endsAtHarvest(current, gardenRepository.getProgress()?.season, soil?.isGreenhouse == true)
-            val tended = soil?.let { Soil.afterHarvest(it, current.objectId, now) }
+            val season = gardenRepository.getProgress()?.season
+            val ended = endsAtHarvest(current, season, soil?.isGreenhouse == true)
+            val tended = soil?.let { Soil.afterHarvest(it, current.objectId, now, later = current.harvestCount > 0) }
             val left = if (ended) null else afterHarvest(current, species, now)
             if (tended != null) gardenRepository.upsertGridObject(if (ended) Soil.withCompost(tended) else tended)
             left?.let { plant ->
@@ -449,7 +451,8 @@ class HarvestPlantUseCase @Inject constructor(
                 )
             } ?: gardenRepository.deleteGridObject(instanceId)
             // With the colour it bloomed in, for the book to show the one that was grown (#59).
-            recordCollection(current.objectId, CollectionTrigger.HARVEST, now, colour = species.bloomColourOf(current.instanceId))
+            val opened = BloomColours.settled(current, garden, profile.playerLevel, season ?: Season.SPRING, random)
+            recordCollection(current.objectId, CollectionTrigger.HARVEST, now, colour = BloomColours.colourOf(opened))
             gardenRepository.saveUserProfile(profile.copy(coins = profile.coins + reward.coins).gainXp(reward.xp))
             onPaid(reward, bounty)
             ActionResult.SUCCESS
@@ -530,8 +533,8 @@ class StoreObjectUseCase @Inject constructor(
 }
 
 /**
- * Clears a tile. Nothing is refunded, with one consolation: a crop pulled up goes into its soil as
- * compost, a serving of food ([Soil.withCompost]).
+ * Clears a tile. Nothing is refunded, with one consolation: a withered crop pulled up goes into its
+ * soil as compost, a serving of food ([Soil.withCompost]). A crop pulled while it grows leaves none.
  *
  * What the hoe made is not cleared but turned back, one step at a time: ridges to tilled earth,
  * tilled earth to the ground it was ([Soil.groundBelow]). For free and at once. A crop that does
@@ -577,10 +580,11 @@ class RemoveObjectUseCase @Inject constructor(
     companion object {
         /**
          * Whether clearing [gridObject] away turns it into compost, given soil to dig it into: a
-         * crop that grew in the soil ([PlantGround.usesSoil]; a log only lay on it).
+         * withered crop that grew in the soil ([PlantGround.usesSoil]; a log only lay on it).
          */
         fun leavesCompost(gridObject: GridObject): Boolean =
-            gridObject.isPlant && PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil
+            gridObject.isPlant && gridObject.status == PlantStatus.WITHERED &&
+                PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil
     }
 }
 
@@ -601,7 +605,9 @@ class PurchaseItemUseCase @Inject constructor(
         if (season != null && !item.isInSeason(season)) return@runInTransaction ActionResult.OUT_OF_SEASON
         // One symbol building per garden, and one in the bag counts as well.
         if (item.isSymbol && gardenRepository.ownsSymbolBuilding()) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
-        if (profile.coins < item.price) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
+        // The first steps hand their seed over the counter for nothing.
+        val price = if (gardenRepository.getProgress()?.tutorialStep?.givesAway(item) == true) 0 else item.price
+        if (profile.coins < price) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
 
         val slots = gardenRepository.getInventory().filter { it.slotIndex < profile.inventoryCapacity }
         val target = slots.firstOrNull { !it.isEmpty && it.itemId == item.itemId && it.amount < InventorySlot.MAX_STACK }
@@ -610,7 +616,7 @@ class PurchaseItemUseCase @Inject constructor(
 
         val amount = if (target.isEmpty) 1 else target.amount + 1
         gardenRepository.upsertInventorySlot(InventorySlot(target.slotIndex, item.itemId, amount, slots.nextAcquisition()))
-        gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - item.price))
+        gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - price))
         ActionResult.SUCCESS
     }
 }
@@ -629,7 +635,7 @@ class SyncGardenUseCase @Inject constructor(
     private val verifyIntegrity: VerifyIntegrityUseCase,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
-    suspend operator fun invoke(now: Long, weather: WeatherForecast): IntegrityResult {
+    suspend operator fun invoke(now: Long, weather: WeatherForecast, random: Random = Random.Default): IntegrityResult {
         val integrity = verifyIntegrity()
         val trusted = integrity.signatureValid
         gardenRepository.runInTransaction {
@@ -649,7 +655,11 @@ class SyncGardenUseCase @Inject constructor(
                 }
             }
             val aged = if (trusted) updated.mapIndexed { index, obj -> if (obj.isSoil) agedSoil(objects[index], objects, now) else obj } else updated
-            val changed = aged.filterIndexed { index, obj -> obj != objects[index] }
+            // A flower that has opened since the last look takes its colour from the soil as it is now.
+            val level = gardenRepository.getUserProfile()?.playerLevel ?: 1
+            val season = gardenRepository.getProgress()?.season ?: Season.SPRING
+            val opened = aged.map { BloomColours.settled(it, aged, level, season, random) }
+            val changed = opened.filterIndexed { index, obj -> obj != objects[index] }
             if (changed.isNotEmpty()) gardenRepository.upsertGridObjects(changed)
             gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it) }
         }

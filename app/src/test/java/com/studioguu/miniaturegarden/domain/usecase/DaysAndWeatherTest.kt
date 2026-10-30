@@ -180,7 +180,7 @@ class DaysAndWeatherTest {
     fun `the first play stays sunny whatever the diary says`() = runBlocking {
         repo.progress = GardenProgress.NEW_GARDEN
         val diary = keep(noon)
-        val forecast = com.studioguu.miniaturegarden.domain.model.WeatherForecast.forGarden(TutorialStep.OPEN_CRATE, diary)
+        val forecast = com.studioguu.miniaturegarden.domain.model.WeatherForecast.forGarden(TutorialStep.WELCOME, diary)
         assertEquals(WeatherType.SUNNY, forecast.at(noon + 24 * hour))
     }
 

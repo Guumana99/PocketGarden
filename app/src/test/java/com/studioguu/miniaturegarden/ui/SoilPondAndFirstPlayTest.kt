@@ -32,7 +32,7 @@ class SoilPondAndFirstPlayTest {
     @Test
     fun `a new game starts in spring, and is sunny all through its first play`() {
         assertEquals(Season.SPRING, GardenProgress.NEW_GARDEN.season)
-        assertEquals(TutorialStep.OPEN_CRATE, GardenProgress.NEW_GARDEN.tutorialStep)
+        assertEquals(TutorialStep.WELCOME, GardenProgress.NEW_GARDEN.tutorialStep)
         // Whatever the day's own weather, every moment of the first play is sunny.
         val day = SeasonClock.DAY_MILLIS
         val rainyDay = 20_000L * day

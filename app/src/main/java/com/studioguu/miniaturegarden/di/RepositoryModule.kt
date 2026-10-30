@@ -1,10 +1,11 @@
 package com.studioguu.miniaturegarden.di
 
-import com.studioguu.miniaturegarden.data.repository.GardenRepositoryImpl
+import com.studioguu.miniaturegarden.data.repository.SwitchingGardenRepository
 import com.studioguu.miniaturegarden.data.security.TrustedClock
 import com.studioguu.miniaturegarden.domain.repository.GameClock
 import com.studioguu.miniaturegarden.data.repository.SecurityRepositoryImpl
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
+import com.studioguu.miniaturegarden.domain.repository.PracticeMode
 import com.studioguu.miniaturegarden.domain.repository.SecurityRepository
 import dagger.Binds
 import dagger.Module
@@ -18,7 +19,11 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindGardenRepository(impl: GardenRepositoryImpl): GardenRepository
+    abstract fun bindGardenRepository(impl: SwitchingGardenRepository): GardenRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPracticeMode(impl: SwitchingGardenRepository): PracticeMode
 
     @Binds
     @Singleton

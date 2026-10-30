@@ -46,4 +46,8 @@ data class GridObjectEntity(
     /** Of a cell of soil: how long it has lain idle. Added in schema version 17. */
     @ColumnInfo(defaultValue = "0")
     val idleMillis: Long = 0L,
+    /** Of a crop of several colours: the one it opened in. Added in schema version 18. */
+    val bloomColour: String? = null,
+    /** Of a gift box: what is inside. Added in schema version 18. */
+    val gift: String? = null,
 )

@@ -6,7 +6,10 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.InventorySort
@@ -39,6 +42,10 @@ class SettingsRepositoryImpl @Inject constructor(
             prefs[NOTIFICATIONS_ENABLED] = updated.notificationsEnabled
             prefs[NOTIFICATION_INVITE_SHOWN] = updated.notificationInviteShown
             prefs[INVENTORY_SORT] = updated.inventorySort.name
+            prefs[SEEN_TIPS] = updated.seenTips
+            prefs[PLAY_DAYS] = updated.playDays
+            prefs[LAST_PLAY_DAY] = updated.lastPlayDay
+            prefs[REVIEW_ASKED_AT] = updated.reviewAskedAt
             val view = updated.gardenView
             if (view == null) {
                 prefs.remove(VIEW_SCALE)
@@ -64,6 +71,10 @@ class SettingsRepositoryImpl @Inject constructor(
             gardenView = prefs[VIEW_SCALE]?.let { scale -> GardenView(scale, prefs[VIEW_PAN_X] ?: 0f, prefs[VIEW_PAN_Y] ?: 0f) }
                 ?.takeIf { it.isUsable },
             inventorySort = InventorySort.fromName(prefs[INVENTORY_SORT]),
+            seenTips = prefs[SEEN_TIPS] ?: defaults.seenTips,
+            playDays = prefs[PLAY_DAYS] ?: defaults.playDays,
+            lastPlayDay = prefs[LAST_PLAY_DAY] ?: defaults.lastPlayDay,
+            reviewAskedAt = prefs[REVIEW_ASKED_AT] ?: defaults.reviewAskedAt,
         ).normalized()
     }
 
@@ -80,5 +91,9 @@ class SettingsRepositoryImpl @Inject constructor(
         private val VIEW_PAN_X = floatPreferencesKey("garden_view_pan_x")
         private val VIEW_PAN_Y = floatPreferencesKey("garden_view_pan_y")
         private val INVENTORY_SORT = stringPreferencesKey("inventory_sort")
+        private val SEEN_TIPS = stringSetPreferencesKey("seen_tips")
+        private val PLAY_DAYS = intPreferencesKey("play_days")
+        private val LAST_PLAY_DAY = longPreferencesKey("last_play_day")
+        private val REVIEW_ASKED_AT = longPreferencesKey("review_asked_at")
     }
 }

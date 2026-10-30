@@ -12,13 +12,18 @@ import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
+import com.studioguu.miniaturegarden.data.review.StoreReviewManager
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
+import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
+import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.GardenTip
+import com.studioguu.miniaturegarden.domain.model.StoreReviewRule
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
@@ -50,6 +55,7 @@ import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
+import com.studioguu.miniaturegarden.domain.repository.PracticeMode
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
@@ -74,7 +80,8 @@ import com.studioguu.miniaturegarden.domain.usecase.HoeUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RetiredCropsUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ToggleSprinklerUseCase
 import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
-import com.studioguu.miniaturegarden.domain.usecase.OpenStarterCrateUseCase
+import com.studioguu.miniaturegarden.domain.usecase.LeavePracticeUseCase
+import com.studioguu.miniaturegarden.domain.usecase.OpenGiftUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
@@ -106,6 +113,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import java.time.LocalTime
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -134,8 +142,11 @@ class GardenViewModel @Inject constructor(
     private val hoe: HoeUseCase,
     private val retiredCrops: RetiredCropsUseCase,
     private val toggleSprinkler: ToggleSprinklerUseCase,
-    private val openStarterCrate: OpenStarterCrateUseCase,
+    private val openGiftBox: OpenGiftUseCase,
     private val followTutorial: FollowTutorialUseCase,
+    private val leaveTutorial: LeavePracticeUseCase,
+    private val practice: PracticeMode,
+    private val storeReview: StoreReviewManager,
     private val audio: AudioManager,
     private val scheduleNotifications: ScheduleGardenNotificationsUseCase,
     private val recordNatureNote: RecordNatureNoteUseCase,
@@ -258,15 +269,23 @@ class GardenViewModel @Inject constructor(
     val seasonArrived: Flow<Season> = _seasonArrived.receiveAsFlow()
 
     /** The cells the current first step points at with a sparkle. */
-    val hintCells: StateFlow<Set<GridCell>> = combine(tutorialStep, gridObjects, gardenMap) { step, objects, map ->
-        if (step == null) emptySet() else TutorialGuide.hintCells(step, objects, map)
+    val hintCells: StateFlow<Set<GridCell>> = combine(tutorialStep, gridObjects) { step, objects ->
+        if (step == null) emptySet() else TutorialGuide.hintCells(step, objects)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
-    private val _openingCrateId = MutableStateFlow<String?>(null)
+    /** Whether the garden on show is the practice garden of the first steps. */
+    val practising: StateFlow<Boolean> = practice.practising
 
-    /** Non-null while the starter crate's popup is open: the crate it is about. */
-    val openingCrate: StateFlow<GridObject?> = combine(gridObjects, _openingCrateId) { objects, id ->
-        objects.firstOrNull { it.instanceId == id && it.isStarterCrate }
+    private val _bringingOn = MutableStateFlow(false)
+
+    /** The first steps' plant is being grown on, before the player's eyes. */
+    val bringingOn: StateFlow<Boolean> = _bringingOn.asStateFlow()
+
+    private val _openingGiftId = MutableStateFlow<String?>(null)
+
+    /** Non-null while a gift box's popup is open: the box it is about. */
+    val openingGift: StateFlow<GridObject?> = combine(gridObjects, _openingGiftId) { objects, id ->
+        objects.firstOrNull { it.instanceId == id && it.isGiftBox }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _weather = MutableStateFlow(WeatherType.SUNNY)
@@ -501,7 +520,9 @@ class GardenViewModel @Inject constructor(
         // Crops taken out of the game leave the garden, their seeds paid back (#68).
         retiredCrops()
         hoe.tillUnderExistingPlants(clock.now())
-        followTutorial()
+        settingsRepository.update { it.onDay(GameDay.of(clock.now())) }
+        // A garden that has not been through the first steps yet does them in a practice garden.
+        if (gardenRepository.getProgress()?.tutorialStep?.isGuiding == true) practice.enter() else followTutorial()
         _initialized.value = true
     }
 
@@ -563,9 +584,15 @@ class GardenViewModel @Inject constructor(
     /** Visits already written into the nature notes, as (period, rule): each is written once. */
     private val notedVisits = HashSet<Pair<Long, VisitRule>>()
 
+    /** Creatures not met yet that have been announced since the app was opened: each is once. */
+    private val announced = HashSet<Creature>()
+
+    private val unmetVisitor = MutableStateFlow(false)
+
     /**
      * Works out who is visiting, at the start of every period and whenever the garden, its size
-     * or the weather changes, and writes each visitor into the nature notes as it comes into view.
+     * or the weather changes, and says so when a creature not met yet comes into view. It goes
+     * into the nature notes when the player taps it ([onVisitorTapped]).
      */
     private fun watchVisitors() {
         val periods = flow {
@@ -592,7 +619,7 @@ class GardenViewModel @Inject constructor(
                         for (visit in visits) {
                             launch {
                                 delay((visit.arrivesAt - now).coerceAtLeast(0L))
-                                noteVisit(visiting.period, visit)
+                                announceVisit(visit)
                             }
                         }
                     }
@@ -609,13 +636,70 @@ class GardenViewModel @Inject constructor(
         val period: Long,
     )
 
-    private suspend fun noteVisit(period: Long, visit: CreatureVisit) {
-        if (!notedVisits.add(period to visit.rule)) return
-        when (recordNatureNote(visit.rule, clock.now())) {
-            NoteResult.NEW_CREATURE -> _messages.trySend(creatureMetMessage(visit.creature))
-            NoteResult.NEW_COMBINATION -> _messages.trySend(R.string.msg_nature_note_added)
-            NoteResult.SEEN_BEFORE -> Unit
+    private suspend fun announceVisit(visit: CreatureVisit) {
+        if (NatureNotes(gardenRepository.getNatureNotes()).hasMet(visit.creature)) return
+        if (announced.add(visit.creature)) _messages.trySend(creatureMetMessage(visit.creature))
+        unmetVisitor.value = true
+        try {
+            delay((visit.leavesAt - System.currentTimeMillis()).coerceAtLeast(0L))
+        } finally {
+            // Also when the garden changes: the visit is then worked out again.
+            unmetVisitor.value = false
         }
+    }
+
+    /** The player tapped a visitor: that is when it goes into the nature notes. */
+    fun onVisitorTapped(visit: CreatureVisit) {
+        if (!notedVisits.add(CreatureVisits.periodOf(visit.arrivesAt) to visit.rule)) return
+        viewModelScope.launch {
+            when (actionMutex.withLock { recordNatureNote(visit.rule, clock.now()) }) {
+                NoteResult.NEW_CREATURE -> {
+                    audio.play(SoundEffect.LEVEL_UP)
+                    unmetVisitor.value = false
+                    _messages.trySend(R.string.msg_nature_note_added)
+                    happyMoment()
+                }
+                NoteResult.NEW_COMBINATION -> _messages.trySend(R.string.msg_nature_note_added)
+                NoteResult.SEEN_BEFORE -> Unit
+            }
+        }
+    }
+
+    /** The tip the garden calls for now; null when there is none, or it is not the time. */
+    val gardenTip: StateFlow<GardenTip?> = combine(settingsRepository.settings, gridObjects, tutorialStep, collectionReady, unmetVisitor) {
+            settings, objects, step, pages, visitor ->
+        if (step == TutorialStep.DONE) GardenTip.due(settings.seenTips, objects, pages, visitor) else null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun tipSeen(tip: GardenTip) {
+        viewModelScope.launch { settingsRepository.update { it.copy(seenTips = it.seenTips + tip.name) } }
+    }
+
+    private val reviewMoment = MutableStateFlow(false)
+
+    /** A happy moment has just passed and the store's review sheet may be asked for. */
+    val reviewDue: StateFlow<Boolean> = combine(reviewMoment, gridObjects) { moment, objects ->
+        moment && !StoreReviewRule.cropsInTrouble(objects)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Something good has just happened: a building done, a new creature, a first harvest. */
+    private fun happyMoment() {
+        viewModelScope.launch {
+            val level = profile.value?.playerLevel ?: return@launch
+            val step = tutorialStep.value ?: return@launch
+            if (!StoreReviewRule.canAsk(settingsRepository.settings.first(), level, step, clock.now())) return@launch
+            reviewMoment.value = true
+            // Only just after it: later on it would be out of the blue.
+            delay(REVIEW_MOMENT_MILLIS)
+            reviewMoment.value = false
+        }
+    }
+
+    /** The screen has made sure this is a good time. Once asked, not again for a good while. */
+    fun askForReview(activity: Activity) {
+        reviewMoment.value = false
+        viewModelScope.launch { settingsRepository.update { it.copy(reviewAskedAt = clock.now()) } }
+        storeReview.ask(activity)
     }
 
     /**
@@ -645,6 +729,8 @@ class GardenViewModel @Inject constructor(
         // from there either way.
         viewModelScope.launch {
             initJob.join()
+            // Nothing in a practice garden is worth a notification.
+            if (practice.practising.value) return@launch
             val weather: WeatherForecast = gardenForecast()
             withContext(Dispatchers.Default) { scheduleNotifications(clock.now(), weather) }
         }
@@ -679,7 +765,55 @@ class GardenViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.update { it.copy(notificationInviteShown = true) } }
     }
 
+    /** The player has read the welcome of the first steps. */
+    fun welcomed() {
+        viewModelScope.launch { actionMutex.withLock { followTutorial.welcomed() } }
+    }
+
+    /** Brings the first steps' plant on, stage by stage, there and then. */
+    fun bringOnPlant() {
+        if (_bringingOn.value) return
+        _bringingOn.value = true
+        viewModelScope.launch {
+            for (growth in PRACTICE_GROWTH) {
+                actionMutex.withLock { followTutorial.grow(growth) }
+                audio.play(if (growth >= 1f) SoundEffect.LEVEL_UP else SoundEffect.PLANT)
+                delay(PRACTICE_GROWTH_PAUSE_MILLIS)
+            }
+            _bringingOn.value = false
+        }
+    }
+
+    /** Leaves the practice garden, at its end or skipping it; the saved one is there as it was. */
+    fun leavePractice() {
+        dropEverythingInHand()
+        viewModelScope.launch {
+            initJob.join()
+            actionMutex.withLock { leaveTutorial(clock.now()) }
+        }
+    }
+
+    /** Plays the first steps again, in a new practice garden. */
+    fun replayTutorial() {
+        dropEverythingInHand()
+        viewModelScope.launch {
+            initJob.join()
+            actionMutex.withLock { practice.enter() }
+        }
+    }
+
+    private fun dropEverythingInHand() {
+        _selectedTile.value = null
+        _hoeActive.value = false
+        _placingSlotIndex.value = null
+        _movingId.value = null
+        _editMode.value = false
+        hoeStrikes.value = emptyMap()
+    }
+
     override fun onCleared() {
+        // Off to the title: only the saved garden is left.
+        practice.leave()
         audio.stopBgm()
     }
 
@@ -696,6 +830,8 @@ class GardenViewModel @Inject constructor(
     fun sync() {
         viewModelScope.launch {
             initJob.join()
+            // A practice garden keeps to the steps; time and the post are the saved garden's.
+            if (practice.practising.value) return@launch
             var arrived: Season? = null
             val finished = actionMutex.withLock {
                 val now = clock.now()
@@ -762,12 +898,12 @@ class GardenViewModel @Inject constructor(
                     }
                 ) { _, _ -> moveObject(movingId, origin.x, origin.y) }
             }
-        } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.isStarterCrate == true) {
-            // The starter crate is not selected like other things: a tap opens it, in the
-            // everyday garden (no edit mode, no grid).
+        } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.isGiftBox == true) {
+            // A gift box is not selected like other things: a tap opens it, in the everyday
+            // garden (no edit mode, no grid).
             _editMode.value = false
             _selectedTile.value = null
-            _openingCrateId.value = gridObjects.value.objectAt(tile)?.instanceId
+            _openingGiftId.value = gridObjects.value.objectAt(tile)?.instanceId
         } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.workKind == WorkKind.READY) {
             // A finished building under wraps: the tap unveils it.
             val site = gridObjects.value.objectAt(tile) ?: return
@@ -778,24 +914,22 @@ class GardenViewModel @Inject constructor(
                     // Its experience comes now, not when the site went up (#50). The plaque says only
                     // that it is finished (and a new page, if any): no "+XP" on it or beside it.
                     showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
+                    happyMoment()
                 }
             ) { now, _ -> unveilBuilding(site.instanceId, now) }
         } else if (_hoeActive.value) {
             if (tile != null) {
                 act(
-                    onSuccess = {
-                        audio.play(SoundEffect.PLANT)
-                        // Under the first steps one cell is enough: the hoe is put down, and
-                        // sowing is next.
-                        if (tutorialStep.value?.isGuiding == true) _hoeActive.value = false
-                    }
+                    onSuccess = { audio.play(SoundEffect.PLANT) }
                 ) { now, _ ->
                     val cell = GridCell(tile.x, tile.y)
                     val strikes = hoeStrikes.value[cell] ?: 0
                     hoe(tile.x, tile.y, now, strikes).also {
                         // Hard ground gives a little at each strike, and is remembered until it goes.
                         hoeStrikes.update { all -> if (it == ActionResult.HOE_STRUCK) all + (cell to strikes + 1) else all - cell }
-                        if (it == ActionResult.SUCCESS) followTutorial()
+                        // Under the first steps one cell is enough: with its ridges made, the hoe
+                        // is put down, and the shop is next.
+                        if (it == ActionResult.SUCCESS && followTutorial() == TutorialStep.BUY_SEED) _hoeActive.value = false
                     }
                 }
             }
@@ -926,36 +1060,37 @@ class GardenViewModel @Inject constructor(
             onSuccess = { audio.play(SoundEffect.WATER) },
         ) { now, weather ->
             careForPlant.water(obj.instanceId, now, weather).also {
-                // Under the first steps a try counts even when the soil is moist already (rain).
-                // What follows is the closing board, shown by the screen from the stored step.
-                if (it == ActionResult.SUCCESS || it == ActionResult.ALREADY_MOIST) followTutorial.wateringDone()
+                // Under the first steps the panel goes, for the sign to say what comes next.
+                if (it == ActionResult.SUCCESS && followTutorial.wateringDone()) clearSelection()
             }
         }
     }
 
-    /** Opens the starter crate whose popup is showing, and puts its seed in the bag. */
-    fun openCrate() {
-        val crateId = _openingCrateId.value ?: return
+    /** Opens the gift box whose popup is showing, and hands over what it holds. */
+    fun openGift() {
+        val boxId = _openingGiftId.value ?: return
         act(
             onSuccess = {
-                _openingCrateId.value = null
-                // A seed is received, not bought: a soft tap rather than the till's coins.
+                _openingGiftId.value = null
+                // A gift is received, not bought: a soft tap rather than the till's coins.
                 audio.play(SoundEffect.TAP)
             }
-        ) { _, _ ->
-            openStarterCrate(crateId).also { if (it == ActionResult.SUCCESS) followTutorial() }
-        }
+        ) { _, _ -> openGiftBox(boxId) }
     }
 
-    fun closeCrate() {
-        _openingCrateId.value = null
+    fun closeGift() {
+        _openingGiftId.value = null
     }
 
     fun fertilizeSelected() = withSelectedObject { obj ->
         if (lockedByEditMode()) return@withSelectedObject
         act(
             onSuccess = { audio.play(SoundEffect.FERTILIZE) }
-        ) { now, weather -> careForPlant.fertilize(obj.instanceId, now, weather) }
+        ) { now, weather ->
+            careForPlant.fertilize(obj.instanceId, now, weather).also {
+                if (it == ActionResult.SUCCESS && followTutorial.fed()) clearSelection()
+            }
+        }
     }
 
     fun harvestSelected() = withSelectedObject { obj ->
@@ -978,7 +1113,7 @@ class GardenViewModel @Inject constructor(
                     coins = reward.coins
                     bounty = good
                 },
-            )
+            ).also { if (it == ActionResult.SUCCESS) followTutorial() }
         }
     }
 
@@ -986,7 +1121,7 @@ class GardenViewModel @Inject constructor(
         if (refused(GardenLayout.check(LayoutAction.DISCARD, obj, _editMode.value))) return@withSelectedObject
         // A plant pulled up crumbles into its bed as it goes, rather than lifting off like a harvest.
         if (obj.isPlant) markPulled(obj.instanceId)
-        // A crop goes into its soil as compost; say so.
+        // A withered crop goes into its soil as compost; say so.
         val composts = RemoveObjectUseCase.leavesCompost(obj) &&
             GardenGrid(gardenMap.value, gridObjects.value).isTilled(obj.gridX, obj.gridY)
         val takesTime = takesTimeToRemove(obj)
@@ -1114,11 +1249,14 @@ class GardenViewModel @Inject constructor(
      */
     private fun watchForLevelUps() {
         viewModelScope.launch {
-            var lastLevel: Int? = null
-            gardenRepository.observeUserProfile().collect { profile ->
+            // Going into a practice garden and out of it is no change of level, and neither is
+            // anything that happens there.
+            practice.practising.collectLatest { practising ->
+                var lastLevel: Int? = null
+                gardenRepository.observeUserProfile().collect { profile ->
                 val level = profile?.playerLevel ?: return@collect
                 lastLevel?.let { previous ->
-                    if (level > previous) {
+                    if (level > previous && !practising) {
                         audio.play(SoundEffect.LEVEL_UP)
                         _levelUp.update { LevelUpNotice.after(it, previous, level) }
                         // The shop's news also comes by post, to be read again later.
@@ -1128,6 +1266,7 @@ class GardenViewModel @Inject constructor(
                     }
                 }
                 lastLevel = level
+                }
             }
         }
     }
@@ -1143,19 +1282,24 @@ class GardenViewModel @Inject constructor(
      */
     private fun watchCollection() {
         viewModelScope.launch {
-            var known: Set<String>? = null
-            gardenRepository.observeCollection().collect { records ->
+            practice.practising.collectLatest { practising ->
+                var known: Set<String>? = null
+                gardenRepository.observeCollection().collect { records ->
                 val now = records.mapTo(HashSet()) { it.entryId }
                 val before = known
                 known = now
-                // The first emission is what was already there, not news.
-                if (before == null) return@collect
+                // The first emission is what was already there, not news; a practice garden has none.
+                if (before == null || practising) return@collect
 
-                if (CollectionEntry.entries.any { it.objectId in now && it.objectId !in before }) {
+                val found = CollectionEntry.entries.filter { it.objectId in now && it.objectId !in before }
+                if (found.isNotEmpty()) {
                     showEffect { GardenEffect.Discovery(it) }
+                    // The first harvest of a crop is one of the good moments.
+                    if (found.any { it.trigger == CollectionTrigger.HARVEST }) happyMoment()
                 } else if (CollectionEntry.entries.any { entry -> entry.objectId in before && newColour(entry, before, now) }) {
                     // A colour not grown before, of a crop whose page was already there (#59).
                     _messages.trySend(R.string.msg_new_bloom_colour)
+                }
                 }
             }
         }
@@ -1249,3 +1393,10 @@ class GardenViewModel @Inject constructor(
  */
 internal fun isGardenReady(objects: List<GridObject>?, saved: GardenProgress?, map: GardenMap, artLoaded: Boolean): Boolean =
     objects != null && saved != null && map.size == saved.gardenSize && artLoaded
+
+/** How long after a happy moment the store's review sheet may still be asked for. */
+private const val REVIEW_MOMENT_MILLIS = 60_000L
+
+/** How far the first steps' plant comes at each stage of being brought on, and the pause after each. */
+private val PRACTICE_GROWTH = listOf(0.5f, 1f)
+private const val PRACTICE_GROWTH_PAUSE_MILLIS = 800L
