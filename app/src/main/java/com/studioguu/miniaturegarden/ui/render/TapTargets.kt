@@ -37,6 +37,16 @@ object TapTargets {
     /** How far beside a building's outline a tap still counts, in half tile heights (see [Occlusion]). */
     const val BUILDING_MARGIN = 0.35f
 
+    /** How far from a visitor's body a tap still counts, as a share of a tile's width: they are small and move. */
+    const val VISITOR_REACH = 0.55f
+
+    /**
+     * How far from a visitor's body a tap still counts, for a tile [tileWidth] pixels wide:
+     * never less than [minReach], a finger's half-width, so that with the garden zoomed right out
+     * a visitor can still be tapped, and go into the book.
+     */
+    fun visitorReach(tileWidth: Float, minReach: Float): Float = maxOf(tileWidth * VISITOR_REACH, minReach)
+
     /**
      * The tile a tap at [screen] stands for.
      *

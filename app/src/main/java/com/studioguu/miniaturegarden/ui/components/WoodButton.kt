@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
@@ -41,6 +42,6 @@ fun WoodButton(
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
         modifier = modifier.pressScale(interactionSource),
     ) {
-        Text(text, fontWeight = FontWeight.Bold)
+        Text(text, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
     }
 }

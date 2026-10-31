@@ -1,18 +1,12 @@
 package com.studioguu.miniaturegarden.ui.hud
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
-import com.studioguu.miniaturegarden.ui.components.WoodButton
-import com.studioguu.miniaturegarden.ui.components.popIn
+import com.studioguu.miniaturegarden.ui.components.DialogAction
+import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
+import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 /**
  * Asked before the garden grows (#55): growing costs [price] coins and cannot be undone, so it is
@@ -22,21 +16,14 @@ import com.studioguu.miniaturegarden.ui.components.popIn
  */
 @Composable
 fun ExpandConfirmDialog(price: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        modifier = Modifier.popIn(),
+    ParchmentDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.expand_confirm_title)) },
-        text = { Text(stringResource(R.string.expand_confirm_text, price)) },
-        // Side by side and centred, cancel first, like the other wooden dialogs.
-        confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                WoodButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
-                WoodButton(text = stringResource(R.string.expand_confirm_ok), onClick = onConfirm)
-            }
-        },
-    )
+        title = stringResource(R.string.expand_confirm_title),
+        actions = listOf(
+            DialogAction(stringResource(R.string.action_cancel), onDismiss),
+            DialogAction(stringResource(R.string.expand_confirm_ok), onConfirm),
+        ),
+    ) {
+        Text(stringResource(R.string.expand_confirm_text, price), color = GardenColors.Ink)
+    }
 }

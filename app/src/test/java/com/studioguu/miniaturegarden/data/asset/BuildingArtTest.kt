@@ -201,8 +201,8 @@ class BuildingArtTest {
     private val flip = FlipObjectUseCase(repo)
 
     @Test
-    fun `the cottage, the greenhouse and the windmill can face either way, nothing else`() {
-        assertEquals(listOf("struct_cottage", "floor_greenhouse", "struct_windmill"), GridObject.FLIPPABLE_OBJECT_IDS)
+    fun `the cottage, the greenhouse, the windmill and the bench can face either way, nothing else`() {
+        assertEquals(listOf("struct_cottage", "floor_greenhouse", "struct_windmill", "deco_bench"), GridObject.FLIPPABLE_OBJECT_IDS)
         for (id in GridObject.FLIPPABLE_OBJECT_IDS) {
             // Turning round must not change the cells: their footprints are square.
             val footprint = StructureData.fromObjectId(id)?.footprint

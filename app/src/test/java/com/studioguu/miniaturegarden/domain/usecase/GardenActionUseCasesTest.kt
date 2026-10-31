@@ -42,7 +42,7 @@ class GardenActionUseCasesTest {
     private val remove = RemoveObjectUseCase(repo)
     private val purchase = PurchaseItemUseCase(repo)
     private val skip = SkipTimeUseCase(repo, calc)
-    private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, security), calc)
+    private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, security), calc, RecordCollectionUseCase(repo))
 
     /** A cell of ridged soil on the top row. */
     private fun bed(x: Int, nutrition: Float = 1f) = GridObject(

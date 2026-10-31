@@ -120,7 +120,7 @@ class CozyComponentsTest {
                     ParchmentDialog(
                         onDismissRequest = { open = false },
                         title = "設定",
-                        buttons = { CarvedButton(text = "閉じる", onClick = { open = false }) },
+                        actions = listOf(DialogAction("閉じる", { open = false })),
                     ) {
                         Column { Text("中身") }
                     }

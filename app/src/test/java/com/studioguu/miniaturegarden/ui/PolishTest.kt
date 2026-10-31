@@ -158,7 +158,7 @@ class PolishTest {
 
     @Test
     fun `the rain button names the rain and nothing else`() {
-        assertEquals("☔ 慈雨を降らせる", string("reward_rain_button"))
+        assertEquals("雨乞い", string("reward_rain_button"))
         // And the screen does not pass it any counts to show.
         val screen = source("ui/GardenScreen.kt")
         assertTrue(screen.contains("stringResource(R.string.reward_rain_button)"))

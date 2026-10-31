@@ -102,7 +102,6 @@
     <string name="hint_sprinkler_stopped">止めている間は、水をまきません</string>
     <string name="hint_near_sprinkler">💦 スプリンクラーのそば：土がほとんど乾かない</string>
     <string name="book_to_contents">📖 もくじ</string>
-    <string name="msg_hoe_struck">⛏️ 地面が固いようです。もう一度耕しましょう</string>
     <string name="msg_not_switchable">これは止めたり動かしたりできません</string>
     <string name="hint_near_well">💧 井戸や風車のそば：土が乾きにくい</string>
     <string name="hint_near_hut">🛖 小屋のそば：少し早く育つ</string>
@@ -252,6 +251,7 @@
     <string name="collection_unknown">？？？</string>
     <string name="collection_hint_harvest">育てて収穫すると、図鑑に登録されます。</string>
     <string name="collection_hint_placement">お庭に置くと、図鑑に登録されます。</string>
+    <string name="collection_hint_lawn">生えそろうと、図鑑に登録されます。</string>
     <string name="flavor_cosmos">秋風に揺れる、淡い紅色の花。\n細い茎ながら、風にしなやかに耐える。</string>
     <string name="flavor_snowdrop">雪の下から顔を出す、白い小さな花。\nうつむいた鈴の形は、春を待つ合図。</string>
     <string name="flavor_tomato">夏の日差しを浴びて、真っ赤に実る。\n喉が渇きやすいので、水やりはこまめに。</string>
@@ -291,7 +291,6 @@
     <string name="flavor_windmill">風を受けて、くるり、くるり。\n羽根の回る音が、お庭に響く。</string>
     <string name="flavor_hut">小さいけれど、夢の詰まった小屋。\n道具の手入れも、昼寝も、ここで。</string>
     <string name="flavor_cottage">お庭の真ん中に建つ、灯りのともる家。\n窓の明かりが、お庭をやさしく照らす。</string>
-    <string name="effect_discovery">📖 図鑑に登録できます！</string>
 
     <!-- Sharing -->
     <string name="share_button">お庭をシェア</string>
@@ -301,8 +300,8 @@
 
     <!-- Rewards. By request, none of these texts uses the word 動画. -->
     <string name="action_cancel">キャンセル</string>
-    <string name="reward_rain_button">☔ 慈雨を降らせる</string>
-    <string name="reward_rain_confirm" formatted="false">慈雨（じう）を降らせますか？\n（すべての作物に水がたっぷり行き渡り、成長時間を50%短縮します）</string>
+    <string name="reward_rain_button">雨乞い</string>
+    <string name="reward_rain_confirm">雨乞いをすると、お庭にやさしい雨が降ります。作物がぐんと育ちます</string>
     <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
     <string name="reward_bonus_button">💰 臨時ボーナスを受け取る（本日あと %1$d/%2$d回）</string>
     <string name="reward_bonus_short">💰 臨時ボーナス</string>
@@ -312,7 +311,7 @@
     <string name="msg_reward_cancelled">途中で終了したため、特典は付与されませんでした</string>
     <string name="msg_reward_unavailable">ただいま準備中です。少し待ってからお試しください</string>
     <string name="msg_reward_limit">本日の回数上限に達しました</string>
-    <string name="msg_blessed_rain_done">☔ 慈雨が降りました。作物に水が行き渡り、成長時間が半分になりました</string>
+    <string name="msg_blessed_rain_done">雨が降って、作物がぐんと育ちました</string>
     <string name="msg_bonus_done">💰 臨時ボーナス +%1$d 🪙 を受け取りました</string>
     <string name="msg_no_growing_plants">育てている途中の作物がありません</string>
 
@@ -404,7 +403,7 @@
     <!-- First steps -->
     <string name="object_deco_starter_crate">おくりもの</string>
     <string name="gift_first_title">はじめてのおくりもの</string>
-    <string name="gift_first_text">お庭づくりのはじまりに、種を少しどうぞ。</string>
+    <string name="gift_first_text">お庭づくりのはじまりに種をプレゼント🎁</string>
     <string name="gift_item">%1$s ×%2$d</string>
     <string name="gift_coins">🪙 %1$d</string>
     <string name="gift_receive">受け取る</string>
@@ -413,7 +412,7 @@
     <string name="tutorial_welcome_title">ようこそ、ポケット庭園へ！</string>
     <string name="tutorial_welcome_text">ここは、あなただけの小さなお庭。\nまずは練習用の畑で、いっしょにミントを育ててみよう！</string>
     <string name="tutorial_welcome_ok">やってみる</string>
-    <string name="tutorial_hint_till">光っているマスを、クワでトントンと 2 回たたいてみよう</string>
+    <string name="tutorial_hint_till">クワを選んで、光っているマスをトントンと 2 回たたいてみよう</string>
     <string name="tutorial_hint_ridge">いい感じにほぐれたね！もう 2 回たたくと、畝ができるよ</string>
     <string name="tutorial_hint_shop">りっぱな畝ができたね！お店へ行って、ミントの苗をもらってこよう。今回はお代はいらないよ</string>
     <string name="tutorial_shop_note">今回は特別に、ミントの苗をプレゼント！棚からどうぞ</string>
@@ -421,13 +420,13 @@
     <string name="tutorial_shop_take">もらう</string>
     <string name="tutorial_hint_plant_seed">持ち物から苗を選んで、光っている畝に植えてみよう</string>
     <string name="tutorial_hint_water">水をあげると、すくすく育つよ。苗をタップして、水をあげよう</string>
-    <string name="tutorial_hint_feed">肥料をまくと、土に栄養がたまって作物が元気になるよ。タップして、まいてみよう。今回は無料だよ</string>
+    <string name="tutorial_hint_feed">肥料をまくと、土に栄養がたまって作物が元気になるよ。タップしてまいてみよう</string>
     <string name="tutorial_grow_title">元気になったね！</string>
-    <string name="tutorial_grow_text">育つのが早くなるわけではないけれどね。\nいつもはのんびり待つところだけど、今回は特別に時間を進めるね。</string>
+    <string name="tutorial_grow_text">肥料で土に栄養がたまって、ミントが元気になったね。\n栄養があると、ときどき「よい実り」がつくよ。\nいつもはのんびり待つところだけど、今回は特別に時間を進めるね。</string>
     <string name="tutorial_grow_ok">時間を進める</string>
     <string name="tutorial_hint_harvest">ミントが育ったよ！タップして、収穫してみよう</string>
     <string name="tutorial_thanks_title">おつかれさま！</string>
-    <string name="tutorial_thanks_text">はじめての収穫、おめでとう！とっても上手だったよ。\nここまでは練習だから、お庭はもとどおりにしておくね。</string>
+    <string name="tutorial_thanks_text">はじめての収穫、おめでとう！\nとっても上手だったよ。\nここまでは練習だからお庭はもとどおりにしておくね。</string>
     <string name="tutorial_thanks_ok">お庭へ</string>
     <string name="tip_no_food">土の栄養がなくなると、作物は少し元気をなくすよ。肥料をまくと元気になるよ</string>
     <string name="tip_withered">枯れてしまった株は、編集モードで抜けるよ。抜くと、土の栄養になるんだ</string>
@@ -444,8 +443,8 @@
     <string name="reveal_edit_name">✏️ 編集モード</string>
     <string name="reveal_edit_text">芝生や柵、建物などを\n動かしたり持ち物に戻したりできます。\n編集中はお庭に格子線が出ます。</string>
     <string name="msg_not_this_step">🌱 今は案内の手順を進めましょう</string>
-    <string name="reveal_rain_name">☔ 慈雨（じう）</string>
-    <string name="reveal_rain_text">慈雨を降らせると、\n作物に水が行き渡り、成長時間が半分になります。</string>
+    <string name="reveal_rain_name">☔ 雨乞い</string>
+    <string name="reveal_rain_text">雨乞いをすると、お庭にやさしい雨が降ります。\n作物がぐんと育ちます</string>
     <string name="reveal_collection_name">📖 図鑑</string>
     <string name="reveal_collection_text">育てた作物や置いたものが、\n図鑑に少しずつ記されていきます。</string>
     <string name="reveal_camera_name">📷 カメラ</string>

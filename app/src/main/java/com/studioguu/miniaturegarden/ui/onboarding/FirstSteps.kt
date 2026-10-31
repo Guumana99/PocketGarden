@@ -45,7 +45,10 @@ import com.studioguu.miniaturegarden.domain.model.Gift
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.ui.components.CarvedButton
-import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.DIALOG_GAP
+import com.studioguu.miniaturegarden.ui.components.DIALOG_PADDING
+import com.studioguu.miniaturegarden.ui.components.DialogAction
+import com.studioguu.miniaturegarden.ui.components.DialogButtons
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.ItemIcon
@@ -58,7 +61,13 @@ import com.studioguu.miniaturegarden.ui.theme.GardenColors
 @Composable
 fun GiftDialog(gift: Gift, onReceive: () -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
-        WoodBoard(title = "\uD83C\uDF81 " + (gift.title ?: stringResource(R.string.gift_first_title))) {
+        WoodBoard(
+            title = "\uD83C\uDF81 " + (gift.title ?: stringResource(R.string.gift_first_title)),
+            actions = listOf(
+                DialogAction(stringResource(R.string.gift_later), onDismiss, testTag = GIFT_LATER_TAG),
+                DialogAction(stringResource(R.string.gift_receive), onReceive, testTag = GIFT_RECEIVE_TAG),
+            ),
+        ) {
             Text(
                 text = gift.message ?: stringResource(R.string.gift_first_text),
                 color = GardenColors.Ink,
@@ -76,24 +85,6 @@ fun GiftDialog(gift: Gift, onReceive: () -> Unit, onDismiss: () -> Unit) {
             }
             if (gift.coins > 0L) {
                 Text(stringResource(R.string.gift_coins, gift.coins), color = GardenColors.Ink, fontWeight = FontWeight.Bold)
-            }
-            // Two buttons side by side, of one make and one size: wooden planks with a dark edge
-            // and cream lettering.
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                WoodButton(
-                    text = stringResource(R.string.gift_later),
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f).testTag(GIFT_LATER_TAG),
-                )
-                WoodButton(
-                    text = stringResource(R.string.gift_receive),
-                    onClick = onReceive,
-                    modifier = Modifier.weight(1f).testTag(GIFT_RECEIVE_TAG),
-                )
             }
         }
     }
@@ -132,7 +123,7 @@ private fun featureIntroduction(feature: GardenFeature): Pair<String, String> = 
 @Composable
 private fun TutorialBoard(title: String, text: String, button: String, onClose: () -> Unit) {
     Dialog(onDismissRequest = {}) {
-        WoodBoard(title = title) {
+        WoodBoard(title = title, actions = listOf(DialogAction(button, onClose))) {
             Text(
                 text = text,
                 color = GardenColors.Ink,
@@ -140,7 +131,6 @@ private fun TutorialBoard(title: String, text: String, button: String, onClose: 
                 style = MaterialTheme.typography.bodyMedium,
                 lineHeight = 22.sp,
             )
-            WoodButton(text = button, onClick = onClose, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
@@ -154,7 +144,7 @@ fun WelcomeDialog(onClose: () -> Unit) = TutorialBoard(
     onClose = onClose,
 )
 
-/** What the fertilizer did and did not do, and the one time that time is brought on. */
+/** What the fertilizer did, and the one time that time is brought on. */
 @Composable
 fun PracticeGrowDialog(onClose: () -> Unit) = TutorialBoard(
     title = stringResource(R.string.tutorial_grow_title),
@@ -217,7 +207,10 @@ private fun gardenTipText(tip: GardenTip): Int = when (tip) {
 @Composable
 fun TutorialDoneDialog(onClose: () -> Unit) {
     Dialog(onDismissRequest = onClose) {
-        WoodBoard(title = stringResource(R.string.tutorial_done_title)) {
+        WoodBoard(
+            title = stringResource(R.string.tutorial_done_title),
+            actions = listOf(DialogAction(stringResource(R.string.tutorial_done_ok), onClose)),
+        ) {
             Text("🌱 🌷 🏡 🌻", fontSize = 28.sp)
             Text(
                 text = stringResource(R.string.tutorial_done_text),
@@ -226,7 +219,6 @@ fun TutorialDoneDialog(onClose: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 lineHeight = 22.sp,
             )
-            WoodButton(text = stringResource(R.string.tutorial_done_ok), onClick = onClose, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }
@@ -239,7 +231,11 @@ fun TutorialDoneDialog(onClose: () -> Unit) {
 @Composable
 fun FeatureRevealCard(feature: GardenFeature, onClose: () -> Unit, modifier: Modifier = Modifier) {
     val (name, text) = featureIntroduction(feature)
-    WoodBoard(title = "✨ " + stringResource(R.string.reveal_title), modifier = modifier) {
+    WoodBoard(
+        title = "✨ " + stringResource(R.string.reveal_title),
+        modifier = modifier,
+        actions = listOf(DialogAction(stringResource(R.string.reveal_ok), onClose)),
+    ) {
         Text(name, color = GardenColors.Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         Text(
             text = text,
@@ -247,13 +243,17 @@ fun FeatureRevealCard(feature: GardenFeature, onClose: () -> Unit, modifier: Mod
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyMedium,
         )
-        WoodButton(text = stringResource(R.string.reveal_ok), onClick = onClose, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
-/** A wooden board with a title burnt into it and a parchment inset holding [content]. */
+/** A wooden board with a title burnt into it and a parchment inset holding [content] and its [actions]. */
 @Composable
-internal fun WoodBoard(title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun WoodBoard(
+    title: String,
+    modifier: Modifier = Modifier,
+    actions: List<DialogAction> = emptyList(),
+    content: @Composable () -> Unit,
+) {
     Surface(
         modifier = modifier.popIn(),
         shape = RoundedCornerShape(14.dp),
@@ -277,10 +277,13 @@ internal fun WoodBoard(title: String, modifier: Modifier = Modifier, content: @C
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(DIALOG_PADDING),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) { content() }
+                    verticalArrangement = Arrangement.spacedBy(DIALOG_GAP),
+                ) {
+                    content()
+                    if (actions.isNotEmpty()) DialogButtons(actions)
+                }
             }
         }
     }

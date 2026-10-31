@@ -182,7 +182,7 @@ class CameraAndLawnPolishTest {
     fun `the gift box's two buttons are of one make`() {
         val crate = source("ui/onboarding/FirstSteps.kt").substringAfter("fun GiftDialog(").substringBefore("\n}\n")
         assertFalse(crate.contains("CarvedButton"))
-        assertEquals(2, Regex("WoodButton\\(").findAll(crate).count())
+        assertEquals(2, Regex("DialogAction\\(").findAll(crate).count())
     }
 
     private fun Size.center(): Offset = Offset(width / 2f, height / 2f)

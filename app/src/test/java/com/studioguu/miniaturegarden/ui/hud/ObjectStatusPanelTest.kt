@@ -70,9 +70,9 @@ class ObjectStatusPanelTest {
     }
 
     @Test
-    fun `and in edit mode it still does not move`() {
+    fun `and in edit mode it moves like anything else, with the pencil's own button`() {
         show(PlantSpecies.TULIP.objectId, editing = true)
-        compose.onNodeWithText(text(R.string.action_move)).assertDoesNotExist()
+        compose.onNodeWithText(text(R.string.action_move)).assertExists()
         // A crop is pulled up (device feedback, after #75).
         compose.onNodeWithText(text(R.string.action_pull)).assertExists()
     }

@@ -16,6 +16,7 @@ import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.HarvestType
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
+import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.nextAcquisition
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
@@ -67,7 +68,7 @@ enum class ActionResult {
     /** Something that is not an item (a growing plant, tilled soil) was to go back into the bag. */
     NOT_RETURNABLE,
 
-    /** Something that is in the ground (a plant, tilled soil) was to be moved. */
+    /** Something that stays where it is (tilled soil, a withered crop) was to be moved. */
     NOT_MOVABLE,
 
     /** Something that has only one way to face was to be turned round. */
@@ -227,6 +228,40 @@ class CareForPlantUseCase @Inject constructor(
 }
 
 /**
+ * Whether [objectId] can go with its first cell at ([x], [y]) in the garden as it stands:
+ * [ActionResult.SUCCESS], or what to tell the player. Every cell of it must be inside the grid, on
+ * buildable ground and free in its own layer, and a crop only goes on the ground it grows on
+ * ([PlantGround]). The same whether it comes out of the bag or is replanted from elsewhere.
+ */
+internal fun GardenGrid.fits(objectId: String, x: Int, y: Int): ActionResult {
+    val check = checkPlacement(Footprint.forObjectId(objectId), x, y, PlacementKind.forObjectId(objectId), objectId)
+    when (check) {
+        PlacementCheck.OUT_OF_BOUNDS -> return ActionResult.OUT_OF_BOUNDS
+        PlacementCheck.NOT_BUILDABLE -> return ActionResult.TILE_NOT_BUILDABLE
+        else -> Unit
+    }
+    // Something standing in the way is in the way. What only lies on the ground (a lawn,
+    // pebbles, flowers, a pond) is the ground, and a crop is told where it can go instead.
+    val inTheWay = check == PlacementCheck.OCCUPIED && occupantAt(x, y)?.let { it.isGroundCover || it.isPond } != true
+    if (inTheWay) return ActionResult.TILE_OCCUPIED
+    // A crop goes only on the ground it grows on ([PlantGround]).
+    val species = if (objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(objectId) else null
+    if (species != null && !species.ground.allows(groundAt(x, y))) return wrongGround(species.ground)
+    return if (check == PlacementCheck.OCCUPIED) ActionResult.TILE_OCCUPIED else ActionResult.SUCCESS
+}
+
+/** What to tell the player who put a crop that grows on [ground] somewhere else. */
+private fun wrongGround(ground: PlantGround): ActionResult = when (ground) {
+    PlantGround.BED -> ActionResult.NEEDS_RIDGE
+    PlantGround.FLOWER_BED -> ActionResult.NEEDS_TILLED_SOIL
+    PlantGround.LOG -> ActionResult.NEEDS_OPEN_GROUND
+}
+
+/** How much food a crop of [species] (or anything else, for null) finds at ([x], [y]): it keeps a copy of its soil's. */
+internal fun GardenGrid.foodAt(species: PlantSpecies?, x: Int, y: Int): Float =
+    floorAt(x, y)?.takeIf { it.isSoil && species?.ground?.usesSoil == true }?.nutritionLevel ?: 1f
+
+/**
  * Takes one item out of an inventory slot and puts its object on the garden with its first cell
  * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
  * ground (not the river) and free in its own layer: paving goes under things, and things can
@@ -251,24 +286,8 @@ class PlaceItemUseCase @Inject constructor(
             val grid = GardenGrid(gardenMap.current(), gardenRepository.getGridObjects())
             // The symbol building is one of a kind: a second one never goes up.
             if (item.isSymbol && grid.hasSymbol) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
-            val kind = PlacementKind.forObjectId(item.objectId)
-            val check = grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY, kind, item.objectId)
-            when (check) {
-                PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
-                PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
-                else -> Unit
-            }
-            // Something standing in the way is in the way. What only lies on the ground (a lawn,
-            // pebbles, flowers, a pond) is the ground, and a crop is told where it can go instead.
-            val inTheWay = check == PlacementCheck.OCCUPIED &&
-                grid.occupantAt(gridX, gridY)?.let { it.isGroundCover || it.isPond } != true
-            if (inTheWay) return@runInTransaction ActionResult.TILE_OCCUPIED
-            // A crop goes only on the ground it grows on ([PlantGround]).
-            val species = if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(item.objectId) else null
-            if (species != null && !species.ground.allows(grid.groundAt(gridX, gridY))) {
-                return@runInTransaction wrongGround(species.ground)
-            }
-            if (check == PlacementCheck.OCCUPIED) return@runInTransaction ActionResult.TILE_OCCUPIED
+            val fit = grid.fits(item.objectId, gridX, gridY)
+            if (fit != ActionResult.SUCCESS) return@runInTransaction fit
             // Out of its season a crop only grows under glass. Seeds bought earlier stay in the
             // bag for when their season comes round again.
             val season = gardenRepository.getProgress()?.season
@@ -277,7 +296,8 @@ class PlaceItemUseCase @Inject constructor(
             }
 
             // A crop takes its food from the soil of its cell: a plant keeps a copy of how much there is.
-            val food = grid.floorAt(gridX, gridY)?.takeIf { it.isSoil && species?.ground?.usesSoil == true }?.nutritionLevel ?: 1f
+            val species = if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(item.objectId) else null
+            val food = grid.foodAt(species, gridX, gridY)
             gardenRepository.upsertGridObject(
                 GridObject(
                     instanceId = UUID.randomUUID().toString(),
@@ -298,22 +318,16 @@ class PlaceItemUseCase @Inject constructor(
             gardenRepository.upsertInventorySlot(
                 if (remaining > 0) slot.copy(amount = remaining) else InventorySlot(slotIndex)
             )
-            // A building earns and is recorded when it is unveiled; anything else now.
+            // A building earns and is recorded when it is unveiled; anything else now, but for a
+            // lawn, which goes into the book once it has grown in (SyncGardenUseCase).
             if (item.buildSeconds <= 0) {
-                recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
+                if (item.objectId != LawnGrowth.OBJECT_ID) recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
                 if (item.placeXp > 0) {
                     gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
                 }
             }
             ActionResult.SUCCESS
         }
-
-    /** What to tell the player who put a crop that grows on [ground] somewhere else. */
-    private fun wrongGround(ground: PlantGround): ActionResult = when (ground) {
-        PlantGround.BED -> ActionResult.NEEDS_RIDGE
-        PlantGround.FLOWER_BED -> ActionResult.NEEDS_TILLED_SOIL
-        PlantGround.LOG -> ActionResult.NEEDS_OPEN_GROUND
-    }
 }
 
 /**
@@ -591,7 +605,8 @@ class RemoveObjectUseCase @Inject constructor(
 /**
  * Buys one [GardenItem]: tops up an existing stack of it if one has room, otherwise takes the
  * first empty slot. Coins are only spent when the item actually fits. Items the player has not
- * unlocked yet cannot be bought, whatever they can afford.
+ * unlocked yet cannot be bought, whatever they can afford. The first steps' seed is given once:
+ * asking for it again is answered with [ActionResult.NOT_THIS_STEP].
  */
 class PurchaseItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -605,8 +620,13 @@ class PurchaseItemUseCase @Inject constructor(
         if (season != null && !item.isInSeason(season)) return@runInTransaction ActionResult.OUT_OF_SEASON
         // One symbol building per garden, and one in the bag counts as well.
         if (item.isSymbol && gardenRepository.ownsSymbolBuilding()) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
-        // The first steps hand their seed over the counter for nothing.
-        val price = if (gardenRepository.getProgress()?.tutorialStep?.givesAway(item) == true) 0 else item.price
+        // The first steps hand one seed over the counter for nothing, however often it is tapped.
+        val step = gardenRepository.getProgress()?.tutorialStep
+        val inBag = gardenRepository.getInventory().any { it.itemId == item.itemId && !it.isEmpty }
+        if (step?.hasGivenAway(item) == true || (step?.givesAway(item) == true && inBag)) {
+            return@runInTransaction ActionResult.NOT_THIS_STEP
+        }
+        val price = if (step?.givesAway(item) == true) 0 else item.price
         if (profile.coins < price) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
 
         val slots = gardenRepository.getInventory().filter { it.slotIndex < profile.inventoryCapacity }
@@ -634,6 +654,7 @@ class SyncGardenUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val verifyIntegrity: VerifyIntegrityUseCase,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
+    private val recordCollection: RecordCollectionUseCase,
 ) {
     suspend operator fun invoke(now: Long, weather: WeatherForecast, random: Random = Random.Default): IntegrityResult {
         val integrity = verifyIntegrity()
@@ -661,6 +682,12 @@ class SyncGardenUseCase @Inject constructor(
             val opened = aged.map { BloomColours.settled(it, aged, level, season, random) }
             val changed = opened.filterIndexed { index, obj -> obj != objects[index] }
             if (changed.isNotEmpty()) gardenRepository.upsertGridObjects(changed)
+            // The first lawn to have grown in goes into the book.
+            if (opened.any { LawnGrowth.isLawn(it) && it.growthProgress >= 1f } &&
+                gardenRepository.getCollection().none { it.entryId == LawnGrowth.OBJECT_ID }
+            ) {
+                recordCollection(LawnGrowth.OBJECT_ID, CollectionTrigger.PLACEMENT, now)
+            }
             gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it) }
         }
         return integrity

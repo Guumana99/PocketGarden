@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -36,6 +35,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,17 +53,67 @@ private val DialogShape = RoundedCornerShape(14.dp)
 private val PanelShape = RoundedCornerShape(10.dp)
 private val CarvedShape = RoundedCornerShape(8.dp)
 
+/** The room inside a dialog's parchment, all round. */
+internal val DIALOG_PADDING = 16.dp
+
+/** The room between the parts of a dialog, the buttons included. */
+internal val DIALOG_GAP = 12.dp
+
+/** The room between one button of a dialog and the next. */
+private val DIALOG_BUTTON_GAP = 8.dp
+
+/** One button of a dialog, for [DialogButtons]. */
+data class DialogAction(
+    val text: String,
+    val onClick: () -> Unit,
+    val enabled: Boolean = true,
+    val testTag: String? = null,
+)
+
+/**
+ * The buttons at the foot of every dialog, so that all of them are laid out alike: wooden planks
+ * filling the dialog's width. One or two stand side by side at one width, the way out on the left
+ * and what the dialog is for on the right. Three or more, whose words would not fit, are stacked.
+ */
+@Composable
+fun DialogButtons(actions: List<DialogAction>, modifier: Modifier = Modifier) {
+    if (actions.size <= 2) {
+        Row(
+            modifier = modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(DIALOG_BUTTON_GAP),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            for (action in actions) DialogButton(action, Modifier.weight(1f))
+        }
+    } else {
+        Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(DIALOG_BUTTON_GAP)) {
+            for (action in actions) DialogButton(action, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable
+private fun DialogButton(action: DialogAction, modifier: Modifier) {
+    WoodButton(
+        text = action.text,
+        onClick = action.onClick,
+        enabled = action.enabled,
+        modifier = action.testTag?.let { modifier.testTag(it) } ?: modifier,
+    )
+}
+
 /**
  * A dialog on a sheet of pale parchment in a wooden frame, with a soft shadow under it: [title]
- * at the top, [content] in the middle and [buttons] along the bottom right. On a screen too
- * short for all of it the content is squeezed, never the buttons: give it something that scrolls.
+ * (if any) at the top, [content] in the middle and [actions] along the bottom ([DialogButtons]).
+ * On a screen too short for all of it the content is squeezed, never the buttons: give it
+ * something that scrolls.
  */
 @Composable
 fun ParchmentDialog(
     onDismissRequest: () -> Unit,
-    title: String,
+    title: String?,
     modifier: Modifier = Modifier,
-    buttons: @Composable RowScope.() -> Unit = {},
+    actions: List<DialogAction> = emptyList(),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
@@ -78,28 +128,25 @@ fun ParchmentDialog(
                 modifier = Modifier
                     // The edge of the sheet a little darker, as old paper is.
                     .drawBehind { drawParchmentEdge() }
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(DIALOG_PADDING),
+                verticalArrangement = Arrangement.spacedBy(DIALOG_GAP),
             ) {
-                Text(
-                    text = title,
-                    color = GardenColors.Ink,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge,
-                )
+                if (title != null) {
+                    Text(
+                        text = title,
+                        color = GardenColors.Ink,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
                 // The content gives way first on a short screen (anything that scrolls inside it
                 // shrinks), so the title and the buttons always stay in reach.
                 Column(
                     modifier = Modifier.weight(1f, fill = false),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(DIALOG_GAP),
                     content = content,
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically,
-                    content = buttons,
-                )
+                if (actions.isNotEmpty()) DialogButtons(actions)
             }
         }
     }

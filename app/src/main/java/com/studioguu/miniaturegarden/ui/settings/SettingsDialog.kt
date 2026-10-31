@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.ui.components.CarvedButton
+import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.components.WoodPanel
 import com.studioguu.miniaturegarden.ui.components.WoodSlider
@@ -90,7 +91,7 @@ internal fun SettingsContent(
     ParchmentDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.settings_title),
-        buttons = { CarvedButton(text = stringResource(R.string.action_close), onClick = onDismiss) },
+        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
     ) {
         WoodTabs(
             labels = SettingsTab.entries.map { stringResource(it.label) },
@@ -240,7 +241,7 @@ private fun InfoDialog(title: String, body: String, onDismiss: () -> Unit) {
     ParchmentDialog(
         onDismissRequest = onDismiss,
         title = title,
-        buttons = { CarvedButton(text = stringResource(R.string.action_close), onClick = onDismiss) },
+        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
     ) {
         Text(
             text = body,

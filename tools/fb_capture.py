@@ -50,6 +50,9 @@ STILLS = [
     Shot("status_day", "6 状態アイコン", DAY, View(1.6, cell=(10.0, 5.5), lift=120)),
     Shot("crops_day", "10 ニンジン", DAY, View(2.2, cell=(6.5, 10.0), lift=120)),
     Shot("shiitake_day", "9 しいたけの原木", DAY, View(2.2, cell=(5.0, 10.0), lift=60), (720, 600)),
+    Shot("cottage_plinth", "17 コテージの土台と石畳", DAY, View(0.9, cell=(1.5, 2.5), lift=60), (900, 700)),
+    Shot("daikon_day", "18 大根（収穫どき）", DAY, View(2.6, cell=(5.5, 8.5), lift=60), (720, 600)),
+    Shot("rock_bench_day", "15・19 岩とベンチ", DAY, View(1.8, cell=(7.0, 5.5), lift=60), (720, 600)),
 ]
 
 #: Screens reached through the buttons (garden UI shown): name, caption, what to tap in turn

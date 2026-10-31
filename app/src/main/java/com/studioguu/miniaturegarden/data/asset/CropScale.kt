@@ -67,7 +67,7 @@ object CropScale {
      * Narrower widths, in tiles, for crops that spread low and wide (#60): the daikon's grown
      * leaves came two tiles across and, at [MAX_WIDTH], still spilt over the beds beside it.
      */
-    val WIDTH_CAPS = mapOf("plant_daikon" to 0.85f)
+    val WIDTH_CAPS = mapOf("plant_daikon" to 0.76f)
 
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")
     private val WITHERED = Regex("""^plant_[a-z_]+_withered$""")

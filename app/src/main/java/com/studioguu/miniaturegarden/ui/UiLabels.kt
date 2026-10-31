@@ -313,7 +313,8 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.ALREADY_FED -> R.string.msg_already_fed
     ActionResult.OUT_OF_SEASON -> R.string.msg_out_of_season
     ActionResult.IN_USE -> R.string.msg_in_use
-    ActionResult.HOE_STRUCK -> R.string.msg_hoe_struck
+    // Hard ground giving a little is told by the earth itself, in patches.
+    ActionResult.HOE_STRUCK -> null
     ActionResult.NOT_SWITCHABLE -> R.string.msg_not_switchable
 }
 

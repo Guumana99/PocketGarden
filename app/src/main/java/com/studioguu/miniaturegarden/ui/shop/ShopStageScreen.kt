@@ -75,6 +75,7 @@ import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.ui.actionResultMessage
 import com.studioguu.miniaturegarden.ui.collection.flavorText
 import com.studioguu.miniaturegarden.ui.components.CarvedButton
+import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
 import com.studioguu.miniaturegarden.ui.components.WoodButton
@@ -154,7 +155,8 @@ fun ShopStageScreen(
         onGoTo = viewModel::goTo,
         onInspect = viewModel::inspect,
         onPutBack = viewModel::putBack,
-        onBuy = { item -> if (coins >= item.price) viewModel.buy(item) else shortFor = item.price },
+        // The first steps' seed is free, whatever is in the purse.
+        onBuy = { item -> if (guiding || coins >= item.price) viewModel.buy(item) else shortFor = item.price },
         onBonus = { confirmBonus = true },
         onLeave = leave,
         modifier = modifier,
@@ -164,17 +166,17 @@ fun ShopStageScreen(
         ParchmentDialog(
             onDismissRequest = { shortFor = null },
             title = stringResource(R.string.msg_not_enough_coins),
-            buttons = {
-                CarvedButton(text = stringResource(R.string.action_close), onClick = { shortFor = null })
-                WoodButton(
-                    text = stringResource(R.string.reward_bonus_short),
-                    onClick = {
+            actions = listOf(
+                DialogAction(stringResource(R.string.action_close), { shortFor = null }),
+                DialogAction(
+                    stringResource(R.string.reward_bonus_short),
+                    {
                         shortFor = null
                         confirmBonus = true
                     },
                     enabled = bonusAvailable,
-                )
-            },
+                ),
+            ),
         ) {
             Text(stringResource(R.string.shop_short_by, price - coins), color = GardenColors.Ink)
         }
@@ -249,8 +251,8 @@ fun ShopStageContent(
                 Spacer(Modifier.weight(1f))
                 CoinPill(coins)
             }
-            // During the first steps the way out of them stands where the signs would.
-            if (guiding) Spacer(Modifier.height(48.dp)) else Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
+            // During the first steps there is one shop, and nothing to walk to.
+            if (!guiding) Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
             AnimatedContent(
                 targetState = stage,
                 // The old shelves go first, quickly, then the new ones come: never both at half.

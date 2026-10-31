@@ -2,12 +2,10 @@ package com.studioguu.miniaturegarden.ui.hud
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -17,7 +15,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.LevelUpNotice
-import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.itemEmoji
 import com.studioguu.miniaturegarden.ui.onboarding.WoodBoard
@@ -37,7 +35,10 @@ fun LevelUpDialog(notice: LevelUpNotice, onOk: () -> Unit) {
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     ) {
-        WoodBoard(title = stringResource(R.string.level_up_title)) {
+        WoodBoard(
+            title = stringResource(R.string.level_up_title),
+            actions = listOf(DialogAction(stringResource(R.string.level_up_ok), onOk)),
+        ) {
             Text(
                 text = stringResource(R.string.level_up_level, notice.toLevel),
                 color = GardenColors.Ink,
@@ -69,7 +70,6 @@ fun LevelUpDialog(notice: LevelUpNotice, onOk: () -> Unit) {
                     }
                 }
             }
-            WoodButton(text = stringResource(R.string.level_up_ok), onClick = onOk, modifier = Modifier.padding(top = 4.dp))
         }
     }
 }

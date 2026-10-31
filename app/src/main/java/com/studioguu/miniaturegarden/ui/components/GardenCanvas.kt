@@ -139,6 +139,9 @@ private val HEIGHT_STEP = 16.dp
 /** The least reach round a bubble for a tap, about half a fingertip, however far the garden is zoomed out. */
 private val BUBBLE_MIN_REACH = 22.dp
 
+/** The least distance round a visitor that counts as a tap on it: a finger's half-width. */
+private val VISITOR_MIN_REACH = 24.dp
+
 /** Stores a camera as [scale, pan.x, pan.y]; an empty list stands for "not set yet". */
 private val CameraSaver = Saver<GardenCamera?, List<Float>>(
     save = { camera -> camera?.let { listOf(it.scale, it.pan.x, it.pan.y) } ?: emptyList() },
@@ -157,12 +160,15 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param weather decides how hard the wind blows and how strong the shadows are.
  * @param auraCells cells to mark softly on the ground: the reach of the selected building's effect.
  * @param hintCells cells the first steps point at: a few small stars twinkle quietly over each.
+ * @param closedCells cells to darken: where a crop being replanted cannot go.
  * @param visitors creatures staying in the garden; each goes about it on its own route ([CreatureRoutes]).
  * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
  *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid. A tap on a
  *   bubble, or on a building's walls over bare ground, stands for that thing's tile instead
  *   ([TapTargets]).
+ * @param onVisitorTapped told of a tap near a visitor; true if the visitor has taken it, false if
+ *   it goes on to what is under it.
  * @param savedView the view to open with, once known; until then the garden shows at its starting
  *   zoom ([GardenCamera.starting]), tiles about finger-sized.
  * @param onViewChanged told the view a moment after the player has zoomed or panned, to be kept.
@@ -189,7 +195,7 @@ fun GardenCanvas(
     gridObjects: List<GridObject>,
     selectedTile: TileCoord?,
     onTileTapped: (TileCoord?) -> Unit,
-    onVisitorTapped: (CreatureVisit) -> Unit = {},
+    onVisitorTapped: (CreatureVisit) -> Boolean = { false },
     modifier: Modifier = Modifier,
     atlas: SpriteAtlas = SpriteAtlas.EMPTY,
     terrain: TerrainTextures = TerrainTextures.EMPTY,
@@ -198,6 +204,7 @@ fun GardenCanvas(
     weather: WeatherType = WeatherType.SUNNY,
     auraCells: Set<GridCell> = emptySet(),
     hintCells: Set<GridCell> = emptySet(),
+    closedCells: Set<GridCell> = emptySet(),
     fadedObjectIds: Set<String> = emptySet(),
     visitors: List<CreatureVisit> = emptyList(),
     savedView: GardenView? = null,
@@ -385,12 +392,10 @@ fun GardenCanvas(
             .pointerInput(metrics) {
                 detectTapGestures { position ->
                     val transform = camera?.toTransform(metrics, size.toSize()) ?: return@detectTapGestures
-                    // A visitor comes before what it stands on.
-                    val visitor = visitorAt(position, currentRoutes, transform, System.currentTimeMillis())
-                    if (visitor != null) {
-                        currentOnVisitorTapped(visitor)
-                        return@detectTapGestures
-                    }
+                    // A visitor can come before what it stands on, but never while a cell is being
+                    // looked for.
+                    val visitor = if (currentEditing) null else visitorAt(position, currentRoutes, transform, System.currentTimeMillis(), VISITOR_MIN_REACH.toPx())
+                    if (visitor != null && currentOnVisitorTapped(visitor)) return@detectTapGestures
                     // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
                     val sprites = currentAtlas
                     val scale = transform.tileWidth / sprites.manifest.tileWidth
@@ -443,6 +448,12 @@ fun GardenCanvas(
         pipeline.submit(RenderLayer.BASE_TERRAIN, Float.MAX_VALUE) { drawFrameLip(transform, gardenMap.size.toFloat()) }
         if (showGrid) {
             pipeline.submit(RenderLayer.GRID_OVERLAY) { drawIsometricGrid(transform, metrics.gridSize) }
+        }
+        // Last of what lies on the ground, so that it is over the lawns too, and under what stands there.
+        if (closedCells.isNotEmpty()) {
+            pipeline.submit(RenderLayer.BOTTOM_OBJECTS, Float.MAX_VALUE) {
+                for (cell in closedCells) drawPath(transform.tilePath(cell.x, cell.y), CLOSED_CELL)
+            }
         }
         if (auraCells.isNotEmpty()) {
             pipeline.submit(RenderLayer.GRID_OVERLAY, depth = 0.5f) {
@@ -522,6 +533,7 @@ fun GardenCanvas(
 
 private val AURA_FILL = Color(0x334FC3F7)
 private val AURA_EDGE = Color(0x994FC3F7)
+private val CLOSED_CELL = Color(0x73000000)
 
 /** How long the garden waits between two frames of wind. */
 private const val WIND_FRAME_MILLIS = 50L
@@ -831,6 +843,7 @@ private fun submitObjects(
         // is there in any light, and the one the sun throws, which turns with the time of day.
         if (!isGroundCover) {
             submit(obj, RenderLayer.SHADOWS, depth) {
+                if (obj.objectId == StructureData.COTTAGE.objectId && !obj.isWorking) drawCottageGroundShade(transform, obj)
                 if (sprite != null && atlasImage != null) {
                     drawContactShadow(base, min(sprite.drawnWidth(spriteScale) * 0.62f, unit * 0.7f))
                     drawSpriteShadow(atlasImage, sprite, base, spriteScale, light)
@@ -884,7 +897,8 @@ private fun submitObjects(
             // What it stands in comes up around its foot: blades of grass on open ground, crumbs
             // of earth on a bed. Paving is hard and shows nothing. A crop is planted in its bed:
             // crumbs over the bed's own earth read as a second layer of soil on it (#55).
-            if (!isGroundCover && structure == null && !obj.isPlant) {
+            // A rock's foot lies under its own bulk: blades there were drawn on the stone (device feedback).
+            if (!isGroundCover && structure == null && !obj.isPlant && obj.objectId != Decoration.ROCK.objectId) {
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
                 val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
@@ -1364,23 +1378,40 @@ private fun visitorBase(transform: IsometricTransform, visit: CreatureVisit, pos
     return transform.worldToScreen(pose.x, pose.y, lift)
 }
 
-/** The visitor under [position] at [now], if any: a generous circle, as they are small and move. */
-private fun visitorAt(position: Offset, routes: List<CreatureRoute>, transform: IsometricTransform, now: Long): CreatureVisit? =
+/** The visitor under [position] at [now], if any: a generous circle ([TapTargets.visitorReach]). */
+private fun visitorAt(position: Offset, routes: List<CreatureRoute>, transform: IsometricTransform, now: Long, minReach: Float): CreatureVisit? =
     routes.mapNotNull { route ->
         val pose = route.poseAt(now) ?: return@mapNotNull null
         val body = visitorBase(transform, route.visit, pose) - Offset(0f, (pose.altitude + VISITOR_BODY_HEIGHT) * transform.tileWidth)
-        (route.visit to (body - position).getDistance()).takeIf { it.second <= transform.tileWidth * VISITOR_TAP_REACH }
+        (route.visit to (body - position).getDistance()).takeIf { it.second <= TapTargets.visitorReach(transform.tileWidth, minReach) }
     }.minByOrNull { it.second }?.first
 
-/** Where a visitor's body is over its feet, in tile widths, and how far a tap can miss it. */
+/**
+ * Shade over the cottage's cells. Its picture's stone base is drawn flatter than the cells it
+ * stands on and stops short of their front corner: until the picture is redone, the ground left
+ * bare there reads as the base's shadow, which ends on the cell's edge like paving beside it.
+ */
+private fun DrawScope.drawCottageGroundShade(transform: IsometricTransform, obj: GridObject) {
+    val x0 = obj.gridX.toFloat()
+    val y0 = obj.gridY.toFloat()
+    val x1 = x0 + obj.footprint.width
+    val y1 = y0 + obj.footprint.height
+    drawPath(
+        quad(transform.worldToScreen(x0, y0), transform.worldToScreen(x1, y0), transform.worldToScreen(x1, y1), transform.worldToScreen(x0, y1)),
+        COTTAGE_GROUND_SHADE,
+    )
+}
+
+private val COTTAGE_GROUND_SHADE = Color(0x66302010)
+
+/** Where a visitor's body is over its feet, in tile widths. */
 private const val VISITOR_BODY_HEIGHT = 0.12f
-private const val VISITOR_TAP_REACH = 0.55f
 
 /** How far up its flower's picture a butterfly settles: on the bloom, just below the top. */
 private const val BLOOM_SHARE = 0.8f
 
 /** How high the ridge of the cottage's picture is over the middle of its footprint, in height steps (#70, on the emulator). */
-private const val COTTAGE_RIDGE_LIFT = 12.2f
+private const val COTTAGE_RIDGE_LIFT = 12.85f
 
 /** How high a ladybird on a crop is, up among its leaves, in height steps. */
 private const val ON_LEAVES_LIFT = 0.35f
@@ -1467,6 +1498,13 @@ private const val PREVIEW_SHADOW_SHARE = 0.3f
 private const val PREVIEW_MARGIN = 0.08f
 
 /**
+ * Room left under a building's patch, in tile widths. Its outline can be in the middle of the
+ * frame and it still looks low, the stone base, the soil and the shadow being at its foot and only
+ * a narrow roof at its top (device feedback: the cottage looked low and to the right).
+ */
+private const val PREVIEW_BALANCE = 0.4f
+
+/**
  * How far the picture of a preview reaches on screen, in tile widths, from the patch's far
  * corner: its lawn and the soil under it, the [headroom] above, and the buildings standing on
  * it, roof, balcony and turning sails included. A building's picture is often taller and wider
@@ -1511,6 +1549,7 @@ internal data class PreviewExtent(val left: Float, val top: Float, val right: Fl
             }
             for (obj in objects) {
                 val structure = StructureData.fromObjectId(obj.objectId) ?: continue
+                bottom = max(bottom, (n + PREVIEW_SOIL) / 2f + PREVIEW_BALANCE)
                 val footprint = structure.footprint
                 val base = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
                 val sprite = sprites(TileSetDefinition.assetIdFor(obj))

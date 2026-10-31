@@ -174,6 +174,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val notificationInviteDue by viewModel.notificationInviteDue.collectAsStateWithLifecycle()
     val visitors by viewModel.visitors.collectAsStateWithLifecycle()
     val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
+    val closedCells by viewModel.closedCells.collectAsStateWithLifecycle()
     val tutorialStep by viewModel.tutorialStep.collectAsStateWithLifecycle()
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
     val openingGift by viewModel.openingGift.collectAsStateWithLifecycle()
@@ -195,6 +196,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val hideUi = showcase?.hideUi == true
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
+    // Why the seed just tapped stays in the bag: said in the bag, which stays open over the toasts.
+    var bagNotice by rememberSaveable { mutableStateOf<Int?>(null) }
     // The bag's tab is kept while the app is open; its sort order is kept in the settings.
     var inventoryFilter by rememberSaveable { mutableStateOf(InventoryFilter.ALL) }
     var showShop by rememberSaveable { mutableStateOf(false) }
@@ -293,6 +296,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 showGrid = editMode && !cameraMode,
                 auraCells = if (cameraMode) emptySet() else aura,
                 hintCells = if (cameraMode) emptySet() else hintCells,
+                closedCells = closedCells,
                 brokenCells = brokenGround,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
@@ -624,11 +628,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             ShopStageScreen(onLeave = { showShop = false })
         }
 
-        // The first steps can be left at any moment, whatever is on show.
-        if (tutorialStep?.isGuiding == true) {
+        // The first steps can be left at any moment in the garden; the shop keeps to its one seed.
+        if (tutorialStep?.isGuiding == true && !showShop) {
             SkipTutorialButton(
                 onClick = {
-                    showShop = false
                     showInventory = false
                     viewModel.leavePractice()
                 },
@@ -653,11 +656,18 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             filter = inventoryFilter,
             onFilterChange = { inventoryFilter = it },
             season = season,
+            notice = bagNotice?.let { stringResource(it) },
             onSlotSelected = { slotIndex ->
-                viewModel.startPlacing(slotIndex)
+                bagNotice = viewModel.waitsInBag(slotIndex)
+                if (bagNotice == null) {
+                    viewModel.startPlacing(slotIndex)
+                    showInventory = false
+                }
+            },
+            onDismiss = {
+                bagNotice = null
                 showInventory = false
             },
-            onDismiss = { showInventory = false },
         )
     }
     if (showSettings) {

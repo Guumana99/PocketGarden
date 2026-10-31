@@ -56,7 +56,7 @@
 | リワード・1 日の回数 | `RewardTest` |
 | 川・フェンスの連結、川の位相 | `FloorAndFenceTest` `FenceAutotileTest` `FlowAndSoilTest` |
 | 風・影・耕した土 | `AtmosphereTest` `FlowAndSoilTest`（＋つながった畑・芝生の明暗・作物のアンカー `ConnectedGroundTest`） |
-| 雨・慈雨の粒 | `RainFieldTest` |
+| 雨・雨乞いの粒 | `RainFieldTest` |
 | 作物の絵の土の山の除去・アトラスの組み立て | `python -m unittest discover tools`（`test_asset_packer.py`） |
 | カメラ・座標変換 | `IsometricEngineTest` `CameraModeTest` |
 | 画像・アトラス・`tools/` | `BundledArtTest` `AssetPipelineTest`（＋台帳 `AssetLedgerTest`） |

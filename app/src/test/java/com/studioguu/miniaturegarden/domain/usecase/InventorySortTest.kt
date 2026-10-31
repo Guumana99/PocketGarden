@@ -226,4 +226,23 @@ class InventorySortTest {
                     .resolve("java/com/studioguu/miniaturegarden/di/DatabaseModule.kt").readText().contains("MIGRATION_8_9"),
         )
     }
+
+    // --- A seed out of season ---
+
+    @Test
+    fun `a seed out of its season stays in the open bag and says when it can go in`() {
+        // Nothing to wait for in season, or under glass.
+        assertEquals(null, InventoryOrder.waitsFor(GardenItem.SEED_TULIP, Season.SPRING, greenhouse = false))
+        assertEquals(null, InventoryOrder.waitsFor(GardenItem.SEED_TULIP, Season.AUTUMN, greenhouse = true))
+        assertEquals(Season.SPRING, InventoryOrder.waitsFor(GardenItem.SEED_TULIP, Season.AUTUMN, greenhouse = false))
+        // Other things are not seeds, and do not wait.
+        assertEquals(null, InventoryOrder.waitsFor(GardenItem.DECO_BENCH, Season.AUTUMN, greenhouse = false))
+        // The bag closes only for what was taken out, and says the rest itself: the toasts are under it.
+        val screen = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+            .resolve("java/com/studioguu/miniaturegarden/ui/GardenScreen.kt").readText()
+        val selected = screen.substringAfter("onSlotSelected = { slotIndex ->").substringBefore("onDismiss = {")
+        assertTrue(selected.contains("bagNotice = viewModel.waitsInBag(slotIndex)"))
+        assertTrue(selected.contains("if (bagNotice == null) {"))
+        assertTrue(selected.indexOf("showInventory = false") > selected.indexOf("if (bagNotice == null) {"))
+    }
 }

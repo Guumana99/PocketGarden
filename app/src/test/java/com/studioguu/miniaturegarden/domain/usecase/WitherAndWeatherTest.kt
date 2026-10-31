@@ -39,7 +39,7 @@ class WitherAndWeatherTest {
     private val place = PlaceItemUseCase(repo, GardenMap.DEFAULT, record)
     private val harvest = HarvestPlantUseCase(repo, calc, record)
     private val remove = RemoveObjectUseCase(repo)
-    private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, AlwaysTrusted), calc)
+    private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, AlwaysTrusted), calc, RecordCollectionUseCase(repo))
 
     private fun flower(
         id: String = "p",

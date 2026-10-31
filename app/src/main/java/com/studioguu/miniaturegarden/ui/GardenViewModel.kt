@@ -481,6 +481,16 @@ class GardenViewModel @Inject constructor(
         objects.firstOrNull { it.instanceId == id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** While a crop is being replanted, the cells it could not go to: the garden darkens them. */
+    val closedCells: StateFlow<Set<GridCell>> = combine(movingObject, gridObjects, gardenMap) { moving, objects, map ->
+        if (moving?.isPlant != true) {
+            emptySet()
+        } else {
+            val open = MoveObjectUseCase.cellsFor(moving, objects, map)
+            (0 until map.size).flatMap { y -> (0 until map.size).map { x -> GridCell(x, y) } }.filterTo(HashSet()) { it !in open }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     /** Empty until the atlas has loaded, and for good when no artwork is bundled. */
     private val _atlas = MutableStateFlow(SpriteAtlas.EMPTY)
     val atlas: StateFlow<SpriteAtlas> = _atlas.asStateFlow()
@@ -651,9 +661,20 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    /** The player tapped a visitor: that is when it goes into the nature notes. */
-    fun onVisitorTapped(visit: CreatureVisit) {
-        if (!notedVisits.add(CreatureVisits.periodOf(visit.arrivesAt) to visit.rule)) return
+    /** The nature notes as they stand, for what a tap on a visitor means. */
+    private val natureNotes: StateFlow<NatureNotes> = gardenRepository.observeNatureNotes().map(::NatureNotes)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, NatureNotes(emptyList()))
+
+    /**
+     * The player tapped near a visitor: that is when it goes into the nature notes.
+     *
+     * @return whether the tap went to the visitor. Only one with something new for the notes takes
+     *   it: a creature stays a good while on a crop or a bench, and with every tap going to it
+     *   (and nothing to show for it) the cells round it could not be selected (device feedback).
+     */
+    fun onVisitorTapped(visit: CreatureVisit): Boolean {
+        val news = natureNotes.value.isNews(visit.rule)
+        if (!notedVisits.add(CreatureVisits.periodOf(visit.arrivesAt) to visit.rule)) return false
         viewModelScope.launch {
             when (actionMutex.withLock { recordNatureNote(visit.rule, clock.now()) }) {
                 NoteResult.NEW_CREATURE -> {
@@ -666,6 +687,7 @@ class GardenViewModel @Inject constructor(
                 NoteResult.SEEN_BEFORE -> Unit
             }
         }
+        return news
     }
 
     /** The tip the garden calls for now; null when there is none, or it is not the time. */
@@ -891,15 +913,17 @@ class GardenViewModel @Inject constructor(
         val movingId = _movingId.value
         if (movingId != null) {
             if (tile != null) {
-                val footprint = gridObjects.value.firstOrNull { it.instanceId == movingId }?.footprint ?: Footprint.SINGLE
-                val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
+                val moving = gridObjects.value.firstOrNull { it.instanceId == movingId }
+                val origin = (moving?.footprint ?: Footprint.SINGLE).originFor(tile.x, tile.y, gardenMap.value.size)
                 act(
                     onSuccess = {
                         _movingId.value = null
                         _selectedTile.value = tile
                         audio.play(SoundEffect.PLANT)
                     }
-                ) { _, _ -> moveObject(movingId, origin.x, origin.y) }
+                ) { now, weather ->
+                    if (moving?.isPlant == true) moveObject.replant(movingId, origin.x, origin.y, now, weather) else moveObject(movingId, origin.x, origin.y)
+                }
             }
         } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.isGiftBox == true) {
             // A gift box is not selected like other things: a tap opens it, in the everyday
@@ -915,7 +939,7 @@ class GardenViewModel @Inject constructor(
                     _selectedTile.value = null
                     audio.play(SoundEffect.LEVEL_UP)
                     // Its experience comes now, not when the site went up (#50). The plaque says only
-                    // that it is finished (and a new page, if any): no "+XP" on it or beside it.
+                    // that it is finished: no "+XP" on it or beside it.
                     showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
                     happyMoment()
                 }
@@ -1031,16 +1055,19 @@ class GardenViewModel @Inject constructor(
         return !lockedByEditMode()
     }
 
+    /**
+     * The words for why what is in [slotIndex] stays in the bag for now, or null if it can be taken
+     * out. A seed out of its season waits there; only under glass can it go in now.
+     */
+    fun waitsInBag(slotIndex: Int): Int? {
+        val item = inventorySlots.value.firstOrNull { it.slotIndex == slotIndex }?.let { GardenItem.fromItemId(it.itemId) } ?: return null
+        val season = progress.value?.season ?: return null
+        return InventoryOrder.waitsFor(item, season, greenhouse = gridObjects.value.any { it.isGreenhouse })?.let(::plantInSeasonMessage)
+    }
+
     fun startPlacing(slotIndex: Int) {
         // Things are put down in the everyday garden, not in edit mode (#50).
         if (lockedByEditMode()) return
-        // A seed out of its season waits in the bag; only under glass can it go in now.
-        val item = inventorySlots.value.firstOrNull { it.slotIndex == slotIndex }?.let { GardenItem.fromItemId(it.itemId) }
-        val season = progress.value?.season
-        if (item != null && season != null && InventoryOrder.isOutOfSeason(item, season) && gridObjects.value.none { it.isGreenhouse }) {
-            _messages.trySend(plantInSeasonMessage(InventoryOrder.nextSeason(item, season)))
-            return
-        }
         // Each thing taken out of the bag starts facing the usual way.
         _placingFlipped.value = false
         _hoeActive.value = false
@@ -1280,8 +1307,8 @@ class GardenViewModel @Inject constructor(
     }
 
     /**
-     * Says so when a page of the encyclopedia becomes ready. Filling it in, and the coins for
-     * that, happen in the book, at the player's tap.
+     * Watches the encyclopedia. A page made ready is told by the red dot on the book's button
+     * alone; filling it in, and the coins for that, happen in the book, at the player's tap.
      */
     private fun watchCollection() {
         viewModelScope.launch {
@@ -1296,7 +1323,6 @@ class GardenViewModel @Inject constructor(
 
                 val found = CollectionEntry.entries.filter { it.objectId in now && it.objectId !in before }
                 if (found.isNotEmpty()) {
-                    showEffect { GardenEffect.Discovery(it) }
                     // The first harvest of a crop is one of the good moments.
                     if (found.any { it.trigger == CollectionTrigger.HARVEST }) happyMoment()
                 } else if (CollectionEntry.entries.any { entry -> entry.objectId in before && newColour(entry, before, now) }) {
@@ -1330,8 +1356,8 @@ class GardenViewModel @Inject constructor(
             }
             when (result) {
                 ActionResult.SUCCESS -> onSuccess()
-                // Hard ground giving a little is not a mistake, and it makes no sound: the knock
-                // played here sounded out of place. The words "地面が固いようです" say it.
+                // Hard ground giving a little is not a mistake: no sound and no words, the earth
+                // coming through in patches says it.
                 ActionResult.HOE_STRUCK -> Unit
                 else -> audio.play(SoundEffect.ERROR)
             }

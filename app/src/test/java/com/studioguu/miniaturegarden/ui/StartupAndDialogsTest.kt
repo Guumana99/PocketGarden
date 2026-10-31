@@ -57,44 +57,25 @@ class StartupAndDialogsTest {
         assertTrue(source("ui/title/TitleScreen.kt").contains("if (artLoaded) {\n                    SampleGarden("))
     }
 
-    // --- One plaque for a building and its page ---
+    // --- What floats up ---
 
     @Test
-    fun `a new page that comes with a building joins its plaque, whichever comes first`() {
-        val built = GardenEffect.WorkDone(1, "struct_hut", WorkKind.BUILDING)
-        // The page after the building.
-        val afterwards = listOf<GardenEffect>(built).plusEffect(GardenEffect.Discovery(2))
-        assertEquals(listOf<GardenEffect>(built.copy(newPage = true)), afterwards)
-        // The page before the building.
-        val before = listOf<GardenEffect>(GardenEffect.Discovery(2)).plusEffect(built)
-        assertEquals(listOf<GardenEffect>(built.copy(newPage = true)), before)
-        // A page with no building about it floats up as before, and so do the sums of a harvest.
-        val harvest = GardenEffect.Harvest(3, coins = 10)
-        assertEquals(listOf(harvest, GardenEffect.Discovery(4)), listOf<GardenEffect>(harvest).plusEffect(GardenEffect.Discovery(4)))
-        // Taking a building down is not a first completion.
-        val demolished = GardenEffect.WorkDone(5, "struct_hut", WorkKind.DEMOLISHING)
-        assertEquals(listOf(demolished, GardenEffect.Discovery(6)), listOf<GardenEffect>(demolished).plusEffect(GardenEffect.Discovery(6)))
-    }
-
-    @Test
-    fun `effects of one kind merge instead of piling up in the same spot`() {
+    fun `harvests merge instead of piling up in the same spot`() {
         // #59: a run of harvests adds up on one plaque, which starts afresh with the newest id.
         val harvests = listOf<GardenEffect>(GardenEffect.Harvest(1, coins = 10))
             .plusEffect(GardenEffect.Harvest(2, coins = 15))
             .plusEffect(GardenEffect.Harvest(3, coins = 5))
         assertEquals(listOf<GardenEffect>(GardenEffect.Harvest(3, coins = 30)), harvests)
-        // Several pages ready at once are said once.
-        val pages = listOf<GardenEffect>(GardenEffect.Discovery(4)).plusEffect(GardenEffect.Discovery(5))
-        assertEquals(listOf<GardenEffect>(GardenEffect.Discovery(5)), pages)
         // Different kinds keep their own places, one above the other.
-        val mixed = harvests.plusEffect(GardenEffect.Discovery(6)).plusEffect(GardenEffect.Harvest(7, coins = 1))
-        assertEquals(listOf(GardenEffect.Discovery(6), GardenEffect.Harvest(7, coins = 31)), mixed)
+        val built = GardenEffect.WorkDone(6, "struct_hut", WorkKind.BUILDING)
+        val mixed = harvests.plusEffect(built).plusEffect(GardenEffect.Harvest(7, coins = 1))
+        assertEquals(listOf(built, GardenEffect.Harvest(7, coins = 31)), mixed)
     }
 
     @Test
-    fun `the merged plaque says both, and stays as long as a building's`() {
+    fun `a page made ready floats nothing up, the red dot on the book says it`() {
         val effects = source("ui/effects/FloatingEffects.kt")
-        assertTrue(effects.contains("if (effect.newPage) \"\\n\" + stringResource(R.string.effect_discovery) else \"\""))
+        assertFalse(effects.contains("effect_discovery"))
         assertTrue(source("ui/GardenViewModel.kt").contains("_effects.update { it.plusEffect(create(nextEffectId++)) }"))
     }
 
@@ -107,15 +88,21 @@ class StartupAndDialogsTest {
             "ui/components/RewardUi.kt",
             "ui/debug/DebugMenuDialog.kt",
             "ui/hud/RemoveConfirmDialog.kt",
+            "ui/hud/ExpandConfirmDialog.kt",
             "ui/notifications/NotificationUi.kt",
+            "ui/onboarding/FirstSteps.kt",
+            "ui/post/PostDialog.kt",
+            "ui/hud/LevelUpDialog.kt",
         )) {
             val text = source(path)
             assertFalse(path, text.contains("TextButton("))
             assertFalse(path, text.contains("OutlinedButton("))
-            assertTrue(path, text.contains("WoodButton("))
+            // Every dialog's buttons are laid out by the one piece, on its own bare terms.
+            assertFalse(path, text.contains("AlertDialog("))
+            assertTrue(path, text.contains("DialogAction("))
         }
         assertTrue(source("ui/hud/ObjectStatusDialog.kt").contains("WoodButton(text = stringResource(R.string.action_close), onClick = onDismiss)"))
-        val notifications = source("ui/notifications/NotificationUi.kt")
-        assertTrue(notifications.contains("WoodButton(text = stringResource(R.string.notification_invite_later), onClick = onLater)"))
+        val cozy = source("ui/components/Cozy.kt")
+        assertTrue(cozy.contains("for (action in actions) DialogButton(action, Modifier.weight(1f))"))
     }
 }

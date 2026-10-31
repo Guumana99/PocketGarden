@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
 import com.studioguu.miniaturegarden.domain.model.WeatherType
-import com.studioguu.miniaturegarden.ui.components.CarvedButton
+import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import com.studioguu.miniaturegarden.ui.weatherEmoji
@@ -29,7 +29,7 @@ fun WeatherDialog(outlook: WeatherOutlook, readable: Boolean, onDismiss: () -> U
     ParchmentDialog(
         onDismissRequest = onDismiss,
         title = stringResource(R.string.weather_title),
-        buttons = { CarvedButton(text = stringResource(R.string.action_close), onClick = onDismiss) },
+        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
     ) {
         WeatherLine(stringResource(R.string.weather_today), outlook.today)
         if (readable) {

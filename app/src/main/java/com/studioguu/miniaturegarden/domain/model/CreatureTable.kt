@@ -11,15 +11,15 @@ package com.studioguu.miniaturegarden.domain.model
  *     entry               creature   needs                                                chance    stays
  *     BUTTERFLY_BLOOMS    butterfly  2 flowers in bloom, fair weather, morning/day        20%       over a bloom
  *     BUTTERFLY_LAVENDER  butterfly  the same, and a lavender (any size)                  25%       over a lavender
- *     LADYBUG_CROPS       ladybug    3 crops (any size) and a tuft of grass               15%       on a crop
+ *     LADYBUG_CROPS       ladybug    3 crops (any size) and a tuft of grass, not at night 15%       on a crop
  *     LADYBUG_SPRING      ladybug    the same, in spring                                  20%       on a crop
  *     BIRD_BENCH          bird       a bench, not at night                                10% (20%) on the bench
  *     BIRD_FENCE          bird       3 sections of fence, not at night                    10% (20%) beside the fence
  *     BIRD_COTTAGE        bird       a finished cottage, not at night                     10% (20%) on its roof
  *     BIRD_HUT            bird       a finished hut, not at night                         10% (20%) on its roof
  *     BIRD_WELL           bird       a well, not at night                                 10% (20%) beside the well
- *     SQUIRREL_SHIITAKE   squirrel   a shiitake log ready to pick (stage 3)               20% (25%) beside the log
- *     SQUIRREL_SUNFLOWER  squirrel   a sunflower in full bloom and a rock                 20% (25%) beside the rock
+ *     SQUIRREL_SHIITAKE   squirrel   a shiitake log ready to pick (stage 3), not at night 20% (25%) beside the log
+ *     SQUIRREL_SUNFLOWER  squirrel   a sunflower in full bloom and a rock, not at night   20% (25%) beside the rock
  *     FROG_RAIN           frog       3 cells of river or pond, on a rainy day             25%       beside the water
  *     FROG_SUMMER         frog       3 cells of river or pond, in summer                  10%       beside the water
  *     DRAGONFLY_AUTUMN    dragonfly  2 cells of river or pond, late summer or autumn,     20%       over the water
@@ -70,7 +70,7 @@ enum class VisitRule(
     ),
     LADYBUG_CROPS(
         Creature.LADYBUG,
-        conditions = listOf(VisitCondition.Crops(atLeast = 3), VisitCondition.Things(setOf(LawnGrowth.OBJECT_ID))),
+        conditions = listOf(VisitCondition.Crops(atLeast = 3), VisitCondition.Things(setOf(LawnGrowth.OBJECT_ID)), VisitCondition.TimeIs(NOT_NIGHT)),
         anchor = Anchor(PlantSpecies.entries.map { it.objectId }.toSet()),
         placement = VisitPlacement.ON_ANCHOR,
         chance = 0.15f,
@@ -81,6 +81,7 @@ enum class VisitRule(
             VisitCondition.Crops(atLeast = 3),
             VisitCondition.Things(setOf(LawnGrowth.OBJECT_ID)),
             VisitCondition.SeasonIs(setOf(Season.SPRING)),
+            VisitCondition.TimeIs(NOT_NIGHT),
         ),
         anchor = Anchor(PlantSpecies.entries.map { it.objectId }.toSet()),
         placement = VisitPlacement.ON_ANCHOR,
@@ -128,7 +129,7 @@ enum class VisitRule(
     ),
     SQUIRREL_SHIITAKE(
         Creature.SQUIRREL,
-        conditions = listOf(VisitCondition.Crops(atLeast = 1, species = setOf(PlantSpecies.SHIITAKE), minGrowth = 1f)),
+        conditions = listOf(VisitCondition.Crops(atLeast = 1, species = setOf(PlantSpecies.SHIITAKE), minGrowth = 1f), VisitCondition.TimeIs(NOT_NIGHT)),
         anchor = Anchor(setOf(PlantSpecies.SHIITAKE.objectId), minGrowth = 1f),
         placement = VisitPlacement.BESIDE_ANCHOR,
         chance = 0.2f,
@@ -139,6 +140,7 @@ enum class VisitRule(
         conditions = listOf(
             VisitCondition.Crops(atLeast = 1, species = setOf(PlantSpecies.SUNFLOWER), minGrowth = 1f),
             VisitCondition.Things(ROCKS),
+            VisitCondition.TimeIs(NOT_NIGHT),
         ),
         anchor = Anchor(ROCKS),
         placement = VisitPlacement.BESIDE_ANCHOR,
@@ -219,7 +221,7 @@ private val SQUIRREL_BOOST = ChanceBoost(VisitCondition.SeasonIs(setOf(Season.AU
 /** The times of day the butterflies are out. */
 private val DAYTIME = setOf(TimeOfDay.MORNING, TimeOfDay.DAY)
 
-/** All but the night: the birds have gone to roost. */
+/** All but the night: the birds, the ladybirds and the squirrels have gone to rest. The frogs stay out. */
 private val NOT_NIGHT = setOf(TimeOfDay.MORNING, TimeOfDay.DAY, TimeOfDay.EVENING)
 
 /** The garden as the visitors see it: what stands in it, today's weather, the season and its phase, and the time of day. */

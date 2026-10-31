@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,7 +64,8 @@ import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.ui.components.BareGround
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
 import com.studioguu.miniaturegarden.ui.components.WoodButton
-import com.studioguu.miniaturegarden.ui.components.popIn
+import com.studioguu.miniaturegarden.ui.components.DialogAction
+import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import kotlinx.coroutines.delay
@@ -167,30 +167,22 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
     }
 
     if (confirmStartOver) {
-        AlertDialog(
-            modifier = Modifier.popIn(),
+        ParchmentDialog(
             onDismissRequest = { confirmStartOver = false },
-            title = { Text(stringResource(R.string.title_reset_title)) },
-            text = { Text(stringResource(R.string.title_reset_text)) },
-            // Both choices side by side under the text, centred like the other wooden dialogs,
-            // rather than pushed to the right as an AlertDialog's own button row would put them.
-            confirmButton = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    WoodButton(text = stringResource(R.string.action_cancel), onClick = { confirmStartOver = false })
-                    WoodButton(
-                        text = stringResource(R.string.title_reset_ok),
-                        onClick = {
-                            confirmStartOver = false
-                            viewModel.startOver(onEnterGarden)
-                        },
-                    )
-                }
-            },
-        )
+            title = stringResource(R.string.title_reset_title),
+            actions = listOf(
+                DialogAction(stringResource(R.string.action_cancel), { confirmStartOver = false }),
+                DialogAction(
+                    stringResource(R.string.title_reset_ok),
+                    {
+                        confirmStartOver = false
+                        viewModel.startOver(onEnterGarden)
+                    },
+                ),
+            ),
+        ) {
+            Text(stringResource(R.string.title_reset_text), color = GardenColors.Ink)
+        }
     }
 }
 

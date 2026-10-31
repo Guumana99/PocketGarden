@@ -48,7 +48,7 @@ class SoilTest {
     private val harvest = HarvestPlantUseCase(repo, calc, RecordCollectionUseCase(repo))
     private val place = PlaceItemUseCase(repo, GardenMap.DEFAULT, RecordCollectionUseCase(repo))
     private val remove = RemoveObjectUseCase(repo)
-    private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, Trusted), calc)
+    private val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, Trusted), calc, RecordCollectionUseCase(repo))
 
     private fun soil(id: String = "soil", objectId: String = GridObject.TILLED_SOIL_OBJECT_ID, quality: Int = 0, food: Float = 1f) =
         GridObject(id, 2, 2, objectId = objectId, soilQuality = quality, nutritionLevel = food, lastUpdatedTimestamp = t0)
