@@ -98,7 +98,6 @@ class PondAndWastelandTest {
             "soil_wasteland" to GroundSlab.WASTELAND,
             "soil_tilled" to GroundSlab.TILLED,
             "soil_revived" to GroundSlab.REVIVED,
-            "pond_center" to GroundSlab.POND_CENTER,
         )) {
             val measured = measure(name, darkOnly = false, atCorners = true)
             assertEquals(name, slab.anchorX, measured.anchorX, 0.01f)

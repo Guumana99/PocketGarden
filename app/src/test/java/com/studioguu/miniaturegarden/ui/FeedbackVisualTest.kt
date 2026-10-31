@@ -61,9 +61,9 @@ class FeedbackVisualTest {
 
     @Test
     fun `the windows are lit where their glass is, slanted with their walls`() {
-        assertTrue(canvas.contains("StructureData.HUT.objectId to listOf(Lamp(0.314f, 0.457f, 0.104f, 0.164f, skew = 0.044f))"))
+        assertTrue(canvas.contains("StructureData.HUT.objectId to listOf(Lamp(0.3147f, 0.4703f, 0.1066f, 0.111f, skew = 0.0406f))"))
         // The cottage's gable window is in the wall that runs the other way.
-        assertTrue(canvas.contains("Lamp(0.718f, 0.5406f, 0.046f, 0.1006f, skew = -0.0104f)"))
+        assertTrue(canvas.contains("Lamp(0.718f, 0.4909f, 0.046f, 0.0914f, skew = -0.0094f)"))
     }
 
     @Test

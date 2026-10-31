@@ -44,10 +44,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -114,12 +118,14 @@ fun ShopStageScreen(
     val adReady by viewModel.adReady.collectAsStateWithLifecycle()
     val expansion by viewModel.expansion.collectAsStateWithLifecycle()
     val guiding by viewModel.guiding.collectAsStateWithLifecycle()
+    val rockKinds by viewModel.rockKinds.collectAsStateWithLifecycle()
     // The first steps go straight to the shelf they are about.
     LaunchedEffect(guiding) { if (guiding) viewModel.goTo(ShopStage.SEEDS) }
     // However the shop was left, the next visit starts at its door.
     DisposableEffect(Unit) { onDispose(viewModel::leave) }
     var confirmBonus by rememberSaveable { mutableStateOf(false) }
     var confirmExpand by rememberSaveable { mutableStateOf(false) }
+    var choosingRock by rememberSaveable { mutableStateOf(false) }
     /** Price of the item the player could not afford, while that dialog is open. */
     var shortFor by rememberSaveable { mutableStateOf<Int?>(null) }
     val activity = LocalContext.current.findActivity()
@@ -138,7 +144,7 @@ fun ShopStageScreen(
             good = purchase.result == ActionResult.SUCCESS,
         )
     }
-    val inHand = inspecting?.let { item -> shelves.flatten().firstOrNull { it.item == item } }
+    val inHand = inspecting?.let { item -> (shelves.flatten() + rockKinds).firstOrNull { it.item == item } }
 
     ShopStageContent(
         stage = stage,
@@ -153,7 +159,7 @@ fun ShopStageScreen(
         expansion = expansion,
         onExpand = { confirmExpand = true },
         onGoTo = viewModel::goTo,
-        onInspect = viewModel::inspect,
+        onInspect = { item -> if (item == GardenItem.ROCK_KINDS.first()) choosingRock = true else viewModel.inspect(item) },
         onPutBack = viewModel::putBack,
         // The first steps' seed is free, whatever is in the purse.
         onBuy = { item -> if (guiding || coins >= item.price) viewModel.buy(item) else shortFor = item.price },
@@ -161,6 +167,17 @@ fun ShopStageScreen(
         onLeave = leave,
         modifier = modifier,
     )
+
+    if (choosingRock) {
+        RockKindsDialog(
+            kinds = rockKinds,
+            onChoose = { item ->
+                choosingRock = false
+                viewModel.inspect(item)
+            },
+            onDismiss = { choosingRock = false },
+        )
+    }
 
     shortFor?.let { price ->
         ParchmentDialog(
@@ -205,6 +222,66 @@ fun ShopStageScreen(
         )
     }
 }
+
+/** The kinds of rock to choose from: those not open yet are shadows, with the level that opens them. */
+@Composable
+private fun RockKindsDialog(kinds: List<ShelfItem>, onChoose: (GardenItem) -> Unit, onDismiss: () -> Unit) {
+    ParchmentDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.shop_rocks),
+        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
+    ) {
+        Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (kind in kinds) RockKindRow(kind, onChoose)
+        }
+    }
+}
+
+@Composable
+private fun RockKindRow(kind: ShelfItem, onChoose: (GardenItem) -> Unit) {
+    val locked = kind.tag == ShelfTag.LOCKED
+    val interaction = remember { MutableInteractionSource() }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pressScale(interaction)
+            .clickable(interactionSource = interaction, indication = null, enabled = !locked, role = Role.Button, onClick = withTick { onChoose(kind.item) })
+            .testTag(rockKindTag(kind.item))
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        ItemIcon(
+            kind.item,
+            36.sp,
+            modifier = if (locked) {
+                Modifier
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(GardenColors.WoodDark, blendMode = BlendMode.SrcIn)
+                    }
+            } else {
+                Modifier
+            },
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = if (locked) stringResource(R.string.collection_unknown) else itemDisplayName(kind.item),
+                style = MaterialTheme.typography.titleSmall,
+                color = GardenColors.Ink,
+            )
+            Text(
+                text = if (locked) stringResource(R.string.shop_rocks_locked, kind.item.unlockLevel) else "🪙 ${kind.item.price}",
+                style = MaterialTheme.typography.labelMedium,
+                color = GardenColors.InkSoft,
+            )
+        }
+    }
+}
+
+/** Test tag of a kind of rock in the list. */
+fun rockKindTag(item: GardenItem): String = "rock_${item.itemId}"
 
 /** A line said at the counter: what was bought, or why not. [good] decides its colour. */
 data class ShopMessage(val text: String, val good: Boolean)
@@ -486,7 +563,8 @@ private fun Shelf(things: List<ShelfItem>, inHand: GardenItem?, onInspect: (Gard
 @Composable
 private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem) -> Unit) {
     val interaction = remember { MutableInteractionSource() }
-    val name = itemDisplayName(thing.item)
+    // The one rock on the shelf stands for all the kinds of rock.
+    val name = if (thing.item == GardenItem.ROCK_KINDS.first()) stringResource(R.string.shop_rocks) else itemDisplayName(thing.item)
     Column(
         modifier = Modifier
             .width(ITEM_WIDTH)
@@ -523,8 +601,9 @@ private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem
 /** The paper tag in front of a thing on the shelf: its price (or why it is not for sale), and how many are in the bag. */
 @Composable
 private fun PriceTag(thing: ShelfItem) {
+    val kinds = thing.item == GardenItem.ROCK_KINDS.first()
     val text = when (thing.tag) {
-        ShelfTag.FOR_SALE, ShelfTag.SHORT_OF_COINS -> if (thing.free) stringResource(R.string.tutorial_shop_free) else "🪙 ${thing.item.price}"
+        ShelfTag.FOR_SALE, ShelfTag.SHORT_OF_COINS -> if (kinds) stringResource(R.string.shop_rocks_choose) else if (thing.free) stringResource(R.string.tutorial_shop_free) else "🪙 ${thing.item.price}"
         ShelfTag.LOCKED -> lockedText(thing.item)
         ShelfTag.OWNED -> stringResource(R.string.shop_owned)
     }
@@ -536,13 +615,15 @@ private fun PriceTag(thing: ShelfItem) {
     ) {
         Text(text, style = MaterialTheme.typography.labelSmall, color = GardenColors.InkSoft, modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
     }
-    Text(
-        text = stringResource(R.string.shop_held, thing.held),
-        style = MaterialTheme.typography.labelSmall,
-        color = GardenColors.InkSoft,
-        maxLines = 1,
-        modifier = Modifier.padding(top = 1.dp).testTag(heldTag(thing.item)),
-    )
+    if (!kinds) {
+        Text(
+            text = stringResource(R.string.shop_held, thing.held),
+            style = MaterialTheme.typography.labelSmall,
+            color = GardenColors.InkSoft,
+            maxLines = 1,
+            modifier = Modifier.padding(top = 1.dp).testTag(heldTag(thing.item)),
+        )
+    }
 }
 
 @Composable

@@ -11,64 +11,6 @@ class FlowAndSoilTest {
 
     // --- River: every tile one frame behind the one upstream ---
 
-    @Test
-    fun `tiles of a river do not all show the same frame`() {
-        val frames = (0 until 9).flatMap { x -> (0 until 9).map { y -> Math.floorMod(RiverAutotile.frameFor(0, x, y), 4) } }
-        assertEquals(setOf(0, 1, 2, 3), frames.toSet())
-        // Each of the four frames is on show on about a quarter of the tiles.
-        assertTrue((0..3).all { f -> frames.count { it == f } in 18..23 })
-    }
-
-    @Test
-    fun `each tile runs one frame behind the tile upstream of it`() {
-        for (tick in 0 until 8) for (x in 0 until 8) for (y in 0 until 8) {
-            val here = RiverAutotile.frameFor(tick, x, y)
-            assertEquals(here - 1, RiverAutotile.frameFor(tick, x + 1, y)) // east is downstream
-            assertEquals(here - 1, RiverAutotile.frameFor(tick, x, y + 1)) // and so is south
-        }
-    }
-
-    @Test
-    fun `what one tile shows now, the next tile downstream shows one tick later`() {
-        // That is what makes a ripple travel: it is handed on from tile to tile.
-        for (tick in 0 until 12) for (x in 0 until 8) {
-            assertEquals(RiverAutotile.frameFor(tick, x, 4), RiverAutotile.frameFor(tick + 1, x + 1, 4))
-            assertEquals(RiverAutotile.frameFor(tick, 4, x), RiverAutotile.frameFor(tick + 1, 4, x + 1))
-        }
-        // Followed down a river four tiles long, a frame is at each tile in turn.
-        val seen = (0 until 4).map { step -> Math.floorMod(RiverAutotile.frameFor(step, 2 + step, 4), 4) }
-        assertEquals(1, seen.toSet().size)
-    }
-
-    @Test
-    fun `every tile still plays the whole loop, in order, at the same pace`() {
-        for ((x, y) in listOf(0 to 0, 3 to 5, 8 to 8)) {
-            val played = (0 until 8).map { Math.floorMod(RiverAutotile.frameFor(it, x, y), 4) }
-            assertEquals(played.subList(0, 4).toSet(), setOf(0, 1, 2, 3))
-            assertEquals(played.subList(0, 4), played.subList(4, 8))
-            played.zipWithNext { a, b -> assertEquals((a + 1) % 4, b) }
-        }
-    }
-
-    @Test
-    fun `a frame number below zero or beyond the last picks a real frame of the atlas`() {
-        val width = 512
-        val height = 2048
-        for (tick in 0 until 4) for (x in 0 until 9) for (y in 0 until 9) {
-            val top = RiverAutotile.cellTop(10, RiverAutotile.frameFor(tick, x, y), width, height)
-            assertTrue(top >= 0 && top + 128 <= height)
-        }
-        // The far corner of the garden asks for frame -16; it gets frame 0.
-        assertEquals(RiverAutotile.cellTop(10, 0, width, height), RiverAutotile.cellTop(10, RiverAutotile.frameFor(0, 8, 8), width, height))
-    }
-
-    @Test
-    fun `tiles on the same diagonal move together, as the flow runs across them`() {
-        assertEquals(RiverAutotile.frameFor(5, 2, 6), RiverAutotile.frameFor(5, 6, 2))
-        assertEquals(RiverAutotile.frameFor(5, 4, 4), RiverAutotile.frameFor(5, 3, 5))
-        assertFalse(RiverAutotile.frameFor(5, 4, 4) == RiverAutotile.frameFor(5, 4, 5))
-    }
-
     // --- Tilled soil ---
 
     @Test

@@ -19,7 +19,7 @@ import org.junit.Test
 
 /**
  * #61: the broken ground between the wasteland and a bed (soil_revived.png), the open water in
- * the middle of a pool (pond_center.png), and a new game that opens on a sunny spring day.
+ * the middle of a pool, and a new game that opens on a sunny spring day.
  */
 class SoilPondAndFirstPlayTest {
 
@@ -103,11 +103,11 @@ class SoilPondAndFirstPlayTest {
     }
 
     @Test
-    fun `the middle of a pool is pond_center's open water`() {
+    fun `the middle of a pool is the same open water as the river`() {
         val canvas = source("ui/components/GardenCanvas.kt")
         assertTrue(canvas.contains("PondJoin.isCentre(obj.gridX, obj.gridY, isPondHere)"))
         assertTrue(canvas.contains("fillWithTexture(water, transform, transform.tilePath(obj.gridX, obj.gridY), POND_WATER_CELLS)"))
-        assertTrue(source("data/asset/AssetRepository.kt").contains("decodeUnscaled(R.drawable.pond_center)"))
+        assertTrue(source("data/asset/AssetRepository.kt").contains("pondWater = water.await()?.surface"))
     }
 
     // --- The shop's list in the docs ---

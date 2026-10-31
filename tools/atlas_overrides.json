@@ -5,7 +5,7 @@
   "tile_grass": {"anchorX": 0.5, "anchorY": 0.4337, "isFlippedAllowed": true},
   "tile_grass_dark": {"anchorX": 0.5, "anchorY": 0.4337, "isFlippedAllowed": true},
   "floor_tilled": {"anchorX": 0.5, "anchorY": 0.458, "isFlippedAllowed": false},
-  "struct_cottage": {"anchorX": 0.4994, "anchorY": 0.78, "scale": 2.4971},
+  "struct_cottage": {"anchorX": 0.4988, "anchorY": 0.7229, "scale": 2.4971},
   "floor_greenhouse": {"anchorX": 0.4993, "anchorY": 0.7366},
   "struct_windmill": {"anchorX": 0.5299, "anchorY": 0.8295, "scale": 3.2802, "attachX": 0.8422, "attachY": 0.25},
   "struct_windmill_blades": {"anchorX": 0.4912, "anchorY": 0.515, "scale": 3.2802},
@@ -22,11 +22,17 @@
   "plant_shiitake_stage2": {"anchorX": 0.4973, "anchorY": 1.0, "isFlippedAllowed": true},
   "plant_shiitake_stage3": {"anchorX": 0.5014, "anchorY": 1.0, "isFlippedAllowed": true},
   "plant_shiitake_withered": {"anchorX": 0.5, "anchorY": 1.0, "isFlippedAllowed": true},
-  "struct_hut": {"anchorX": 0.4994, "anchorY": 0.7613, "scale": 1.7822},
+  "struct_hut": {"anchorX": 0.4994, "anchorY": 0.7648, "scale": 1.7822},
   "struct_well": {"anchorX": 0.4895, "anchorY": 0.8409},
   "deco_rock": {"anchorX": 0.4637, "anchorY": 0.6788},
   "deco_bench": {"anchorX": 0.5025, "anchorY": 0.7668},
   "deco_lantern": {"anchorX": 0.4975, "anchorY": 0.8584},
   "deco_sprinkler": {"anchorX": 0.4983, "anchorY": 0.8638, "attachX": 0.4983, "attachY": 0.3673},
-  "deco_starter_crate": {"anchorX": 0.4586, "anchorY": 0.8112}
+  "deco_starter_crate": {"anchorX": 0.4586, "anchorY": 0.8112},
+  "deco_bench_back": {"anchorX": 0.5012, "anchorY": 0.7211},
+  "deco_rock_flat": {"anchorX": 0.4986, "anchorY": 0.5972},
+  "deco_rock_mossy": {"anchorX": 0.4917, "anchorY": 0.7004},
+  "deco_rock_standing": {"anchorX": 0.4069, "anchorY": 0.9219},
+  "deco_rock_pebbles": {"anchorX": 0.5, "anchorY": 0.6608},
+  "struct_bridge_taiko": {"anchorX": 0.5, "anchorY": 0.6947}
 }

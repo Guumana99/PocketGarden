@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.BuildingPaint
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -69,6 +70,8 @@ fun ObjectStatusDialog(
     onMove: () -> Unit,
     onDismiss: () -> Unit,
     onFlip: () -> Unit = {},
+    /** Opens the choice of colours, for a building that can be painted. */
+    onPaint: () -> Unit = {},
     modifier: Modifier = Modifier,
     surroundings: PlantSurroundings = PlantSurroundings.OPEN_GROUND,
     editing: Boolean = false,
@@ -197,6 +200,10 @@ fun ObjectStatusDialog(
                 )
             }
 
+            // Free, at any time: in the everyday garden as well as in edit mode.
+            if (BuildingPaint.canPaint(gridObject.objectId) && !gridObject.isWorking) {
+                FilledTonalButton(onClick = onPaint, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.action_paint)) }
+            }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 // Edit mode keeps to rearranging (#50): no watering, harvesting or reviving there.

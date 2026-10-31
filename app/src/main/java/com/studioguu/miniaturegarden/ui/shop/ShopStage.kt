@@ -75,15 +75,21 @@ object ShopShelves {
         ownsSymbol: Boolean,
         held: Map<GardenItem, Int> = emptyMap(),
     ): List<ShelfItem> =
-        GardenItem.shelf(stage.category, season).map { item ->
-            val tag = when {
-                !item.isUnlockedFor(stats) -> ShelfTag.LOCKED
-                item.isSymbol && ownsSymbol -> ShelfTag.OWNED
-                coins < item.price -> ShelfTag.SHORT_OF_COINS
-                else -> ShelfTag.FOR_SALE
-            }
-            ShelfItem(item, tag, held[item] ?: 0)
+        GardenItem.shelf(stage.category, season).map { item -> shelfItem(item, stats, coins, ownsSymbol, held) }
+
+    /** The kinds of rock ([GardenItem.ROCK_KINDS]), each tagged like anything on a shelf. */
+    fun rockKinds(stats: PlayerStats, coins: Long, held: Map<GardenItem, Int> = emptyMap()): List<ShelfItem> =
+        GardenItem.ROCK_KINDS.map { shelfItem(it, stats, coins, ownsSymbol = false, held) }
+
+    private fun shelfItem(item: GardenItem, stats: PlayerStats, coins: Long, ownsSymbol: Boolean, held: Map<GardenItem, Int>): ShelfItem {
+        val tag = when {
+            !item.isUnlockedFor(stats) -> ShelfTag.LOCKED
+            item.isSymbol && ownsSymbol -> ShelfTag.OWNED
+            coins < item.price -> ShelfTag.SHORT_OF_COINS
+            else -> ShelfTag.FOR_SALE
         }
+        return ShelfItem(item, tag, held[item] ?: 0)
+    }
 
     /** What is on show during the first steps: the seed they give away, and nothing else. */
     fun firstSteps(shelves: List<List<ShelfItem>>): List<List<ShelfItem>> =

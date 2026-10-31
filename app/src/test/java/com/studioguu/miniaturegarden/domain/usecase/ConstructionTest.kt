@@ -117,7 +117,7 @@ class ConstructionTest {
 
     @Test
     fun `a site cannot be turned round, a finished building can`() = runBlocking {
-        val flip = FlipObjectUseCase(repo)
+        val flip = FlipObjectUseCase(repo, GardenMap.DEFAULT)
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_COTTAGE.itemId, 1))
         repo.profile = UserProfile(coins = 0, currentXp = LevelTable.xpForLevel(6), playerLevel = 6)
         place(0, 3, 3, t0)

@@ -46,7 +46,7 @@
 | 小麦（`plant_wheat`） | Lv7 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58） |
 | トウモロコシ（`plant_corn`） | Lv13 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58）。段階 1 は 16 本の苗から 3 本、段階 2 は 2 本に左右反転の 1 本を足して 3 本に並べ直した |
 | パプリカ（`plant_paprika`） | Lv11 | 🟡 | 🟡 | 🟡 | ➖ | 🟡 | ✅ | Recraft（#39）。アイコンは #72（Recraft、C2PA を grep で確認）。株は旧画風のまま |
-| 大根（`plant_daikon`） | Lv4 | 🟡 | 🟡 | 🟡 | ➖ | 🟡 | ✅ | Recraft（#39）。段階 3 は描くときに幅 0.76 マスまで縮める（#60、FB④）。絵には白い根の先しか描かれていないので、根を見せるには作り直しが要る。アイコンは #72（Recraft、C2PA を grep で確認）。株は旧画風のまま。白い根が欠けないよう、アイコンは真っ白だけを背景として抜いた |
+| 大根（`plant_daikon`） | Lv4 | 🟡 | 🟡 | 🟡 | ➖ | 🟡 | ✅ | Recraft（#39）。段階 3 は `crop_daikon_stage3.png`（白い根の上の部分が見える新しい絵）に差し替え、描くときに幅 0.76 マスまで縮める。アイコンは #72（Recraft、C2PA を grep で確認）。白い根が欠けないよう、アイコンは真っ白だけを背景として抜いた |
 | コスモス（`plant_cosmos`） | 最初から | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#63。C2PA を grep で確認）。#63 で 4 段階から 3 段階に。葉が細く、白との混ざりを絵全体で戻して切り抜いた |
 | スノードロップ（`plant_snowdrop`） | 最初から | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#64。C2PA を grep で確認）。#64 で 4 段階から 3 段階に。段階 1 はひげ根を切り落とし、白い花びらは花のまわりだけ弱く切り抜いた。アイコンは #64 で届いた絵が枯れた絵の複製だったため、#66 で置き直したもの（Recraft） |
 | ミント（`plant_mint`） | 最初から | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#62。C2PA を grep で確認）。#62 で 4 段階から 3 段階に |
@@ -74,8 +74,8 @@
 | ウッドフェンス（`struct_fence`） | ✅＋⬜ | Recraft | `struct_fence` `struct_fence_post`（原画 `item_fence_wood.png` から切り出し）。斜めにつなぐ横木と杭はコード。`struct_fence_rail` は 📦 |
 | 井戸（`struct_well`） | ✅ | Recraft | `struct_well`（原画 `building_well.png`、Recraft（#74。C2PA を grep で確認））。#74 で 1×2 から 1×1 に。丸い石の井戸に屋根と桶 |
 | 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた） |
-| 小屋（`struct_hut`） | ✅ | Recraft | `struct_hut`（原画 `building_hut.png`、Recraft（#74。C2PA を grep で確認））。土台の石が明るいクリーム色なので、真っ白だけを抜いて切り抜いた |
-| コテージ（`struct_cottage`） | ✅ | Recraft | `struct_cottage`（原画 `building_cottage.png`）。石の土台がマス目より平たいので作り直しの候補。今はアンカーを上げ、手前のすき間はコードの影で隠している（FB④） |
+| 小屋（`struct_hut`） | ✅ | Recraft | `struct_hut`（原画 `building_hut.png`を差し替え：片流れのトタン屋根・板壁・観音開きの戸）。色変えのマスクは `mask_struct_hut`。土台の石が明るいクリーム色なので、真っ白だけを抜いて切り抜いた |
+| コテージ（`struct_cottage`） | ✅ | Recraft | `struct_cottage`（原画 `building_cottage.png`）。土台の下の帯をマスの角まで伸ばしている。色変えのマスクは `mask_struct_cottage` |
 | ガラスの温室（`floor_greenhouse`） | ✅ | Recraft | `floor_greenhouse`（原画 `building_greenhouse.png`）。中の床は `floor_tilled` |
 | 工事現場（シート・足場） | ⬜ | — | 演出としてコードで描く（建てる途中の進み具合で足場とシートが変わる）。建物ごとの絵は無い |
 
@@ -92,10 +92,15 @@
 | 野の花（`ground_flowers`） | ✅ | Recraft | `res/drawable-nodpi/ground_flowers.png`（原画 `tile_flowers_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方 |
 | 石畳（`floor_cobblestone`） | ✅ | Recraft | `res/drawable-nodpi/floor_cobblestone.png`（原画 `tile_cobblestone_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方で、継ぎ目では石が重ならず目地で区切れる。#73 まではイラスト調の `tile_path_cobblestone.png`（📦、`tools/source_art/`） |
 | ウッドデッキ（`floor_wood`） | ✅ | Recraft | `res/drawable-nodpi/floor_wood.png`（原画 `tile_wood_deck_iso.png`、Recraft（#74。C2PA を grep で確認））。板の幅の整数倍で切って、隣のマスへ板が続く。板の長さ方向はマスの縁が板の継ぎ目 |
-| 小川のかけら／せせらぎ（`tile_river`） | ⚙️ | スクリプト | `res/drawable-nodpi/tile_river_autotile.png`（`tools/build_terrain_assets.py`）。受け取った `tile_river_atlas.png` はつながりが合わず 📦 |
-| 池（`deco_pond`） | ✅ | Recraft | `res/drawable/pond.png`。つなぎ目と真ん中の水面は `pond_center.png`（✅ Recraft） |
-| 岩（`deco_rock`） | ✅ | Recraft | `deco_rock`（原画 `deco_rock.png`、Recraft（#74。C2PA を grep で確認））。幅 0.46 マス |
-| ベンチ（`deco_bench`） | ✅ | Recraft | `deco_bench`（原画 `deco_bench.png`、Recraft（#74。C2PA を grep で確認））。幅 0.56 マス、4 本の脚の真ん中に立つ |
+| 小川のかけら／せせらぎ（`tile_river`） | ✅ | Recraft | 水面 `water_surface.png`・波 `water_ripple_a.png` `water_ripple_b.png`・岸 `river_bank.png` `river_bank_concave.png` `river_bank_convex.png`（`tools/prepare_water_art.py`。原画 `water_surface.png` `river_bank.png`）。角 2 種は帯を曲げて作った |
+| 池（`deco_pond`） | ✅ | Recraft | `res/drawable/pond.png`。つなぎ目と真ん中の水面は川と同じ `water_surface.png`、水の色も合わせた |
+| 丸い岩（`deco_rock`） | ✅ | Recraft | `deco_rock`（原画 `deco_rock.png`、Recraft（#74。C2PA を grep で確認））。幅 0.46 マス |
+| 平たい石（`deco_rock_flat`） | ✅ | Recraft | `deco_rock_flat`（原画 `rock_flat.png`）。幅 0.5 マス |
+| 苔むした岩（`deco_rock_mossy`） | ✅ | Recraft | `deco_rock_mossy`（原画 `rock_mossy.png`）。幅 0.5 マス |
+| 立て石（`deco_rock_standing`） | ✅ | Recraft | `deco_rock_standing`（原画 `rock_standing.png`）。高さ 0.68 マス、根元が接地点 |
+| 小石の山（`deco_rock_pebbles`） | ✅ | Recraft | `deco_rock_pebbles`（原画 `rock_pebbles.png`）。幅 0.52 マス |
+| 太鼓橋（`struct_bridge_taiko`） | ✅ | Recraft | `struct_bridge_taiko`（原画 `bridge_taiko.png`）。幅 1.5 マス（1×2 の対角の長さ） |
+| ベンチ（`deco_bench`） | ✅ | Recraft | `deco_bench`（原画 `deco_bench.png`、Recraft（#74。C2PA を grep で確認））。幅 0.56 マス、4 本の脚の真ん中に立つ。裏側 `deco_bench_back`（原画 `bench_back.png`）と反転で 4 方向 |
 | 石灯籠（`deco_lantern`） | ✅ | Recraft | `deco_lantern`（原画 `deco_lantern.png`、Recraft（#74。C2PA を grep で確認））。高さ 0.44 マス |
 | スプリンクラー（`deco_sprinkler`） | ✅＋⬜ | Recraft | 本体 `deco_sprinkler`（原画 `deco_sprinkler.png`、Recraft（#74。C2PA を grep で確認）。高さ 0.34 マス）。水しぶき（`SprinklerSpray`）は演出としてコードで描き、本体の絵の腕の軸（取り付け点）から出る。しぶきの絵を入れるなら `deco_sprinkler_spray_0`〜`_7` |
 | 風見鶏（`deco_weathervane`） | ⬜ | — | **未作成**。Lv6・500 コインの 1 マスの置き物。データだけ登録し、ショップには出していない（`GardenItem.inShop = false`）。置いてある庭だけ明日の天気が見られる（`WeatherOutlook.isReadable`）。原画の候補が `tools/source_art/deco_weathervane.png` に未追跡のまま置かれている（未確認・未加工） |

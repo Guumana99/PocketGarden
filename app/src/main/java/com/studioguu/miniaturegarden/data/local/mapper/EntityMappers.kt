@@ -64,6 +64,9 @@ fun GridObjectEntity.toDomain() = GridObject(
     idleMillis = idleMillis,
     bloomColour = bloomColour,
     gift = gift,
+    turned = turned,
+    roofColour = roofColour,
+    wallColour = wallColour,
 )
 
 fun GridObject.toEntity() = GridObjectEntity(
@@ -90,6 +93,9 @@ fun GridObject.toEntity() = GridObjectEntity(
     idleMillis = idleMillis,
     bloomColour = bloomColour,
     gift = gift,
+    turned = turned,
+    roofColour = roofColour,
+    wallColour = wallColour,
 )
 
 fun InventorySlotEntity.toDomain() = InventorySlot(

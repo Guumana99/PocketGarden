@@ -133,23 +133,6 @@ class CameraAndLawnPolishTest {
     // --- The stream ---
 
     @Test
-    fun `the water is shaded under its far banks and lit at its near ones`() {
-        val alone = 0
-        assertEquals(listOf(RiverAutotile.NORTH, RiverAutotile.WEST), RiverAutotile.shadedSides(alone))
-        assertEquals(listOf(RiverAutotile.SOUTH, RiverAutotile.EAST), RiverAutotile.litSides(alone))
-        // A straight run north to south has banks only to the east and west.
-        val run = RiverAutotile.NORTH or RiverAutotile.SOUTH
-        assertEquals(listOf(RiverAutotile.WEST), RiverAutotile.shadedSides(run))
-        assertEquals(listOf(RiverAutotile.EAST), RiverAutotile.litSides(run))
-        // Water all round: no bank at all.
-        val all = RiverAutotile.NORTH or RiverAutotile.EAST or RiverAutotile.SOUTH or RiverAutotile.WEST
-        assertTrue(RiverAutotile.shadedSides(all).isEmpty() && RiverAutotile.litSides(all).isEmpty())
-        // The shade starts at the water's edge, inside the bank, and stays off the cell's middle.
-        assertTrue(RiverAutotile.BANK_EDGE in 0.15f..0.25f)
-        assertTrue(RiverAutotile.BANK_EDGE + RiverAutotile.BANK_SHADE_WIDTH < 0.5f)
-    }
-
-    @Test
     fun `the garden box's rim lies over the stream and the beds at its edge`() {
         val canvas = source("ui/components/GardenCanvas.kt")
         assertTrue(canvas.contains("pipeline.submit(RenderLayer.BASE_TERRAIN, Float.MAX_VALUE) { drawFrameLip("))

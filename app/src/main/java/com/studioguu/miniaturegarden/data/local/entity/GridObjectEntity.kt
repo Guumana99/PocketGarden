@@ -50,4 +50,10 @@ data class GridObjectEntity(
     val bloomColour: String? = null,
     /** Of a gift box: what is inside. Added in schema version 18. */
     val gift: String? = null,
+    /** Of something with a back: whether it is turned to show it. Added in schema version 19. */
+    @ColumnInfo(defaultValue = "0")
+    val turned: Boolean = false,
+    /** Of a painted building: its colours; null for the picture's own. Added in schema version 19. */
+    val roofColour: String? = null,
+    val wallColour: String? = null,
 )

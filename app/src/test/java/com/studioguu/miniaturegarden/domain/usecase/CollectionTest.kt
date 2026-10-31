@@ -79,8 +79,9 @@ class CollectionTest {
         )
         assertEquals(
             listOf(
-                CollectionEntry.ROCK, CollectionEntry.FENCE, CollectionEntry.BENCH, CollectionEntry.LANTERN, CollectionEntry.SPRINKLER,
-                CollectionEntry.WELL, CollectionEntry.HUT, CollectionEntry.COTTAGE, CollectionEntry.WINDMILL, CollectionEntry.GREENHOUSE,
+                CollectionEntry.ROCK, CollectionEntry.ROCK_FLAT, CollectionEntry.ROCK_MOSSY, CollectionEntry.ROCK_STANDING, CollectionEntry.ROCK_PEBBLES,
+                CollectionEntry.FENCE, CollectionEntry.BENCH, CollectionEntry.LANTERN, CollectionEntry.SPRINKLER,
+                CollectionEntry.WELL, CollectionEntry.HUT, CollectionEntry.COTTAGE, CollectionEntry.WINDMILL, CollectionEntry.GREENHOUSE, CollectionEntry.BRIDGE,
             ),
             byCategory[CollectionCategory.STRUCTURES],
         )
@@ -188,7 +189,7 @@ class CollectionTest {
         assertEquals(0, none.revealed)
         assertEquals(0, none.ready)
         assertEquals(0, none.percent)
-        assertEquals(35, none.total)
+        assertEquals(40, none.total)
         assertEquals(PageState.LOCKED, none.stateOf(CollectionEntry.TULIP))
 
         val some = CollectionProgress(
@@ -220,7 +221,7 @@ class CollectionTest {
 
         val allReady = CollectionEntry.entries.map { CollectionRecord(it.objectId, 1, t0) }
         assertEquals(0, CollectionProgress(allReady).percent)
-        assertEquals(35, CollectionProgress(allReady).ready)
+        assertEquals(40, CollectionProgress(allReady).ready)
     }
 
     // --- The colours of a crop that blooms in several (#59) ---

@@ -685,6 +685,11 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.GRASS -> R.string.flavor_grass
     CollectionEntry.PEBBLE -> R.string.flavor_pebble
     CollectionEntry.ROCK -> R.string.flavor_rock
+    CollectionEntry.ROCK_FLAT -> R.string.flavor_rock_flat
+    CollectionEntry.ROCK_MOSSY -> R.string.flavor_rock_mossy
+    CollectionEntry.ROCK_STANDING -> R.string.flavor_rock_standing
+    CollectionEntry.ROCK_PEBBLES -> R.string.flavor_rock_pebbles
+    CollectionEntry.BRIDGE -> R.string.flavor_bridge_taiko
     CollectionEntry.RIVER -> R.string.flavor_river
     CollectionEntry.PATH -> R.string.flavor_path
     CollectionEntry.FLOWERS -> R.string.flavor_flowers

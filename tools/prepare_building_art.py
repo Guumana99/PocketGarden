@@ -382,6 +382,98 @@ def flat_to_tile(
     return rgba, {"anchorX": round(TILE / 2 / rw, 4), "anchorY": round(TILE / 4 / rh, 4), "isFlippedAllowed": False}
 
 
+def bilinear(rgba: np.ndarray, xs: np.ndarray, ys: np.ndarray) -> np.ndarray:
+    """[rgba] sampled at the fractional points ([xs], [ys]); premultiplied, so that no colour bleeds from clear pixels."""
+    h, w = rgba.shape[:2]
+    alpha = rgba[:, :, 3:4].astype(float) / 255.0
+    pre = np.concatenate([rgba[:, :, :3] * alpha, rgba[:, :, 3:4].astype(float)], axis=2)
+    x0 = np.clip(np.floor(xs).astype(int), 0, w - 2)
+    y0 = np.clip(np.floor(ys).astype(int), 0, h - 2)
+    fx = np.clip(xs - x0, 0, 1)[..., None]
+    fy = np.clip(ys - y0, 0, 1)[..., None]
+    out = (pre[y0, x0] * (1 - fx) * (1 - fy) + pre[y0, x0 + 1] * fx * (1 - fy)
+           + pre[y0 + 1, x0] * (1 - fx) * fy + pre[y0 + 1, x0 + 1] * fx * fy)
+    outside = (xs < 0) | (xs > w - 1) | (ys < 0) | (ys > h - 1)
+    out[outside] = 0
+    a = out[..., 3:4]
+    rgb = np.where(a > 0, out[..., :3] * 255.0 / np.maximum(a, 1e-3), 0)
+    return np.clip(np.concatenate([rgb, a], axis=2), 0, 255).round().astype(np.uint8)
+
+
+def fit_plinth(rgba: np.ndarray, band: float) -> tuple[np.ndarray, float, float]:
+    """
+    Stands a building's stone base on the corners of its footprint. The pictures are drawn flatter
+    than the game's 2:1 diamond, so their base stops short of the footprint's front corner. Here
+    only the foot of the picture is moved: a band [band] of the base's width high, measured up
+    from the base's lower outline, is stretched down so that the outline runs from the left
+    corner to the footprint's front corner and on to the right corner, each column staying
+    upright. Nothing above the band moves, so the walls and the roof keep their shape. The middle
+    of the band gives way to the front corner's sideways shift the same way.
+
+    @return the picture, and the footprint's centre (x, y) in it.
+    """
+    opaque = rgba[:, :, 3] > 128
+    h, w = opaque.shape
+    low = opaque.copy()
+    low[: int(h * 0.6)] = False
+    ys, xs = np.where(low)
+    lx, rx = int(xs.min()), int(xs.max())
+    near = max(2, int((rx - lx) * 0.02))
+    ly = int(ys[xs <= lx + near].max())
+    ry = int(ys[xs >= rx - near].max())
+    fy = int(ys.max())
+    fx = float(xs[ys >= fy - 2].mean())
+    cx, width = (lx + rx) / 2.0, float(rx - lx)
+    y0 = (ly + ry) / 2.0
+    front = y0 + width / 4.0
+    thick = band * width
+
+    def warp(px: np.ndarray, py: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Where a pixel of the picture goes, as an offset."""
+        outline = np.interp(px, [lx, fx, rx], [ly, fy, ry])
+        moved = np.interp(px, [lx, fx, rx], [lx, cx, rx])
+        target = np.interp(moved, [lx, cx, rx], [y0, front, y0])
+        t = np.clip((py - (outline - thick)) / thick, 0.0, 1.0)
+        return (moved - px) * t, (target - outline) * t
+
+    extra = int(np.ceil(max(0.0, front - fy))) + 2
+    yy, xx = np.mgrid[0:h + extra, 0:w].astype(float)
+    sx, sy = xx.copy(), yy.copy()
+    for _ in range(8):  # the mapping back: a few rounds of fixed-point are plenty for so gentle a warp
+        dx, dy = warp(sx, sy)
+        sx, sy = xx - dx, yy - dy
+    out = bilinear(rgba, sx, sy)
+    # What still hangs over the footprint's front edges (the steps at the foot of the hut) is cut
+    # along them, with a soft edge.
+    rows, cols = np.mgrid[0:h + extra, 0:w].astype(float)
+    edge = y0 + (width / 2 - np.abs(cols - cx)) / 2
+    out[:, :, 3] = (out[:, :, 3] * np.clip((edge + 1.0 - rows) / 2.0, 0.0, 1.0)).astype(np.uint8)
+    return out, cx, y0
+
+
+#: How high, as a share of the base's width, the foot of each picture may be stretched
+#: ([fit_plinth]): up to where the stones meet the walls.
+PLINTH_BAND = {"struct_cottage": 0.2, "struct_hut": 0.16}
+
+
+def prepare_plinthed(asset_id: str, rgba: np.ndarray, tiles: int) -> tuple[np.ndarray, dict]:
+    """[prepare_building] for a picture with a stone base, which is first stood on its corners."""
+    rgba = crop(keep_main_part(rgba))
+    _, _, width = base_of(rgba)
+    wanted = tiles * TILE
+    scale = 1.0
+    if width > wanted:
+        rgba = crop(resize(rgba, wanted / width, wanted / width))
+    else:
+        scale = wanted / width
+    fitted, cx, cy = fit_plinth(rgba, PLINTH_BAND[asset_id])
+    h, w = fitted.shape[:2]
+    override = {"anchorX": round(float(cx / w), 4), "anchorY": round(float(cy / h), 4)}
+    if scale != 1.0:
+        override["scale"] = round(float(scale), 4)
+    return fitted, override
+
+
 def prepare_building(rgba: np.ndarray, tiles: int, centred: bool = False) -> tuple[np.ndarray, dict]:
     """
     Fits a building to its footprint. By default it stands where [ground_centre_y] puts it. With
@@ -423,7 +515,27 @@ PROPS: dict[str, tuple[str, tuple, float]] = {
     "deco_lantern": ("deco_lantern.png", ("h", 0.44), 0.2),
     "deco_sprinkler": ("deco_sprinkler.png", ("h", 0.34), 0.2),
     "deco_starter_crate": ("deco_starter_crate.png", ("w", 0.42), 0.2),
+    "deco_bench_back": ("bench_back.png", ("w", 0.56), 0.45),
+    "deco_rock_flat": ("rock_flat.png", ("w", 0.5), 0.35),
+    "deco_rock_mossy": ("rock_mossy.png", ("w", 0.5), 0.35),
+    "deco_rock_standing": ("rock_standing.png", ("h", 0.68), 0.1),
+    "deco_rock_pebbles": ("rock_pebbles.png", ("w", 0.52), 0.3),
+    "struct_bridge_taiko": ("bridge_taiko.png", ("w", 1.5), 0.3),
 }
+
+
+def cut_stone(name: str) -> np.ndarray:
+    """
+    [name], a stone on white, cut out of it: all that is pale and grey and joined to the picture's
+    edge goes, the soft shadow on the white included, and nothing inside the outline does, so
+    that the bright glints on a wet pebble stay.
+    """
+    rgb = np.array(Image.open(SOURCE / name).convert("RGB")).astype(int)
+    pale = (rgb.min(axis=2) > 196) & (rgb.max(axis=2) - rgb.min(axis=2) < 18)
+    alpha = np.where(reconstruct(border(pale.shape), pale), 0, 255).astype(np.uint8)
+    rim = dilate(alpha == 0) & (alpha > 0)
+    alpha[rim] = 150
+    return np.dstack([rgb.astype(np.uint8), alpha])
 
 
 def cut_from_white(name: str) -> np.ndarray:
@@ -434,12 +546,17 @@ def cut_from_white(name: str) -> np.ndarray:
 
 def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
     name, (kind, size), band = PROPS[asset_id]
-    rgba = crop(keep_main_part(cut_from_white(name)))
+    cut = cut_stone(name) if asset_id.startswith("deco_rock_") else cut_from_white(name)
+    rgba = crop(keep_main_part(cut))
+    if asset_id in PLINTH_BAND:
+        return prepare_plinthed(asset_id, rgba, tiles=size)
     if kind == "tiles":
         return prepare_building(rgba, tiles=size)
     h, w = rgba.shape[:2]
     scale = size * TILE / (w if kind == "w" else h)
     rgba = crop(resize(rgba, scale, scale))
+    if asset_id == "struct_bridge_taiko":
+        return rgba, bridge_anchor(rgba)
     # It stands on the middle of its base, as a building does.
     cx, side_y, width = base_of(rgba, band)
     ys, _ = np.where(rgba[:, :, 3] > ALPHA_MIN)
@@ -450,6 +567,21 @@ def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
         nx, ny = nozzle_of(rgba, cx, cy)
         override["attachX"], override["attachY"] = round(nx / w, 4), round(ny / h, 4)
     return rgba, override
+
+
+def bridge_anchor(rgba: np.ndarray) -> dict:
+    """
+    The bridge stands on the middle of its span: halfway between the feet of its two ends, which
+    are the lowest points at its left end and at its right end (seen from the side it runs from
+    the near left up to the far right).
+    """
+    opaque = rgba[:, :, 3] > 128
+    h, w = opaque.shape
+    ys, xs = np.where(opaque)
+    near = int(w * 0.14)
+    left_y = ys[xs <= xs.min() + near].max()
+    right_y = ys[xs >= xs.max() - near].max()
+    return {"anchorX": 0.5, "anchorY": round(float((left_y + right_y) / 2 / h), 4)}
 
 
 def nozzle_of(rgba: np.ndarray, cx: float, cy: float) -> tuple[float, float]:
@@ -526,6 +658,106 @@ def hub_of(blades: np.ndarray) -> tuple[float, float]:
     return float(xs.mean()), float(ys.mean())
 
 
+# --- What can be painted ------------------------------------------------------------------------
+
+def polygon(shape, points: list[tuple[float, float]]) -> np.ndarray:
+    """A mask of the polygon [points] (x, y) on a picture of [shape]."""
+    from PIL import ImageDraw
+    image = Image.new("L", (shape[1], shape[0]), 0)
+    ImageDraw.Draw(image).polygon(points, fill=255)
+    return np.array(image) > 0
+
+
+def soften(mask: np.ndarray, radius: float = 1.0) -> np.ndarray:
+    """[mask] as 0 to 255, a little soft at its edge, so that a colour does not end in a jagged line."""
+    from PIL import ImageFilter
+    return np.array(Image.fromarray((mask * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(radius)))
+
+
+def paint_mask(rgba: np.ndarray, roof: np.ndarray, wall: np.ndarray) -> np.ndarray:
+    """
+    The parts of [rgba] the player can paint, as a picture packed beside it: red the roof, green
+    the walls. It has the picture's own alpha, so that the packer crops the two alike and the
+    mask lies pixel for pixel on the sprite wherever that lands in the atlas.
+    """
+    out = np.zeros_like(rgba)
+    out[:, :, 0] = soften(roof)
+    out[:, :, 1] = soften(wall)
+    out[:, :, 3] = rgba[:, :, 3]
+    return out
+
+
+def cottage_mask(rgba: np.ndarray) -> np.ndarray:
+    """
+    The cottage's red tiles, by their colour, inside the outline of the roof (the chimney and the
+    bricks are red too); and its pale plaster, inside the outlines of the walls. The timbers, the
+    windows, the door, the bricks and the stones are dark or saturated, and stay as they are.
+    """
+    h, w = rgba.shape[:2]
+    k = 866 / 640
+    v = rgba[:, :, :3].astype(int)
+    r, g, b = v[:, :, 0], v[:, :, 1], v[:, :, 2]
+    solid = rgba[:, :, 3] > 40
+    red = (r > g * 1.42) & (r > b * 1.42) & solid
+    outline = polygon(rgba.shape, [(x * k, y * k) for x, y in [(100, 212), (185, 0), (480, 92), (348, 296)]])
+    roof = dilate(red & outline) & outline
+    pale = (v.min(axis=2) > 84) & (v.max(axis=2) - v.min(axis=2) < 70) & solid
+    gable = polygon(rgba.shape, [(x * k, y * k) for x, y in [(362, 318), (470, 136), (552, 226), (552, 322), (372, 398)]])
+    front = polygon(rgba.shape, [(x * k, y * k) for x, y in [(118, 278), (276, 336), (276, 352), (118, 296)]])
+    return paint_mask(rgba, roof, pale & (gable | front))
+
+
+def hut_mask(rgba: np.ndarray) -> np.ndarray:
+    """
+    The hut's sheet roof and its plank walls, by their outlines; the shutters, the window and the
+    double door are left out by theirs, so that the grain of the planks is all that changes.
+    """
+    k = 876 / 640
+    solid = rgba[:, :, 3] > 40
+
+    def poly(points: list[tuple[float, float]]) -> np.ndarray:
+        return polygon(rgba.shape, [((x - 650) * k, y * k) for x, y in points])
+
+    roof = poly([(700, 96), (934, 0), (1192, 206), (956, 306)]) & solid
+    left = poly([(713, 118), (952, 306), (948, 518), (718, 428)])
+    right = poly([(952, 306), (1168, 224), (1168, 438), (948, 518)])
+    window = poly([(742, 224), (790, 224), (880, 258), (916, 276), (916, 400), (742, 314)])
+    door = poly([(986, 296), (1124, 246), (1124, 462), (986, 512)])
+    return paint_mask(rgba, roof, (left | right) & ~window & ~door & solid & ~dilate(roof, 2))
+
+
+#: How much of the daikon's root shows above the bed, from its shoulder down.
+ROOT_SHOWN = 0.62
+
+
+def prepare_daikon() -> np.ndarray:
+    """
+    The grown daikon (crop_daikon_stage3.png, on white, in its clump of earth). Its root is white,
+    so only the plain white of the background goes; the clump is taken out as for any crop. The
+    root is then cut off along a soft curve, about two thirds of the way down: the rest of it is
+    in the ground, and the picture stands in the bed on that curve. The packer takes no more out
+    (crop_soil.SOILLESS).
+    """
+    from crop_soil import strip_soil_ball
+    rgba = crop(keep_main_part(cut_from_white("crop_daikon_stage3.png")))
+    rgba = np.array(strip_soil_ball(Image.fromarray(rgba, "RGBA")))
+    v = rgba[:, :, :3].astype(int)
+    h, w = rgba.shape[:2]
+    pale = (v.min(axis=2) > 165) & (rgba[:, :, 3] > 200)
+    pale[: int(h * 0.45)] = False
+    widths = pale.sum(axis=1)
+    rows = np.where(widths > w * 0.05)[0]
+    top, bottom = int(rows.min()), int(rows.max())
+    columns = np.where(pale[top:bottom].sum(axis=0) > (bottom - top) * 0.3)[0]
+    left, right = int(columns.min()), int(columns.max())
+    middle, half = (left + right) / 2, (right - left) / 2
+    cut = top + (bottom - top) * ROOT_SHOWN
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    curve = cut + half * 0.28 * (1 - ((xx - middle) / max(half, 1)) ** 2)
+    rgba[:, :, 3] = (rgba[:, :, 3] * np.clip((curve + 2 - yy) / 5, 0, 1)).astype(np.uint8)
+    return crop(rgba)
+
+
 def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     out: dict[str, tuple[np.ndarray, dict]] = {}
     # Since #53 the lawn and the tilled soil come from flat textures; the #40 photos
@@ -541,21 +773,30 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     dark[:, :, :3] = (dark[:, :, :3].astype(float) * 0.9).astype(np.uint8)
     out["tile_grass_dark"] = (dark, dict(grass_override))
     out["floor_tilled"] = flat_to_tile("tile_soil_flat.png", side_depth=33)
-    # Stood like the others, halfway between its side and front corners (#55): centred on its
-    # side corners alone, its flat base left the front row of its lot bare and it looked set back.
-    out["struct_cottage"] = prepare_building(load("building_cottage.png"), tiles=3)
+    out["struct_cottage"] = prepare_plinthed("struct_cottage", load("building_cottage.png"), tiles=3)
     out["floor_greenhouse"] = prepare_building(load("building_greenhouse.png"), tiles=1)
     out.update(prepare_windmill())
     for asset_id in PROPS:
         out[asset_id] = prepare_prop(asset_id)
+    out["mask_struct_cottage"] = (cottage_mask(out["struct_cottage"][0]), {})
+    out["mask_struct_hut"] = (hut_mask(out["struct_hut"][0]), {})
+    out["plant_daikon_stage3"] = (prepare_daikon(), {})
     return out
 
 
+#: The things that came with no icon of their own: theirs is their picture.
+ICONS_FROM_PICTURE = ("deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles", "struct_bridge_taiko")
+
+
 def write(prepared: dict[str, tuple[np.ndarray, dict]]) -> None:
+    from prepare_drawable_art import ICONS, to_icon
+    for asset_id in ICONS_FROM_PICTURE:
+        Image.fromarray(to_icon(prepared[asset_id][0]), "RGBA").save(ICONS / f"icon_{asset_id}.png", optimize=True)
     overrides = json.loads(OVERRIDES.read_text(encoding="utf-8"))
     for asset_id, (rgba, override) in prepared.items():
         Image.fromarray(rgba, "RGBA").save(RAW / f"{asset_id}.png", optimize=True)
-        overrides[asset_id] = override
+        if override:
+            overrides[asset_id] = override
         print(f"{asset_id:24s} {rgba.shape[1]}x{rgba.shape[0]}  {override}")
     lines = [f'  "{k}": {json.dumps(v)}' for k, v in overrides.items()]
     OVERRIDES.write_text("{\n" + ",\n".join(lines) + "\n}\n", encoding="utf-8")

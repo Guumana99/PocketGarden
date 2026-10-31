@@ -66,7 +66,7 @@ object PondJoin {
 
     /**
      * Whether the pond at ([x], [y]) is the middle of a pool, with ponds on all four sides: it has
-     * no bank, and is drawn as open water alone (`pond_center.png`, #61) rather than as the
+     * no bank, and is drawn as open water alone (#61) rather than as the
      * pond's picture in its ring of logs.
      */
     fun isCentre(x: Int, y: Int, isPond: (Int, Int) -> Boolean): Boolean = mask(x, y, isPond) == ALL

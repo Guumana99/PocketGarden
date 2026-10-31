@@ -10,13 +10,13 @@
 |---|---|---|
 | `app/src/main/assets/atlas/{crops,world}_<n>.png` + `assets_manifest.json` | スプライト 87 枚を 1 辺 2048px 以内のページに詰めたもの（#73）。作物（`plant_*`）は `crops_0`〜`2`（2035×2045・1952×2023・1925×467）、それ以外（建物・地面・柵）は `world_0`（1820×966）。合計 約 13.8MB、メモリ上 約 43MB、1 タイル 512px | `tools/asset_packer.py` |
 | `app/src/main/assets/atlas/creatures_0.png` + `creatures_manifest.json` | 生き物 6 種の絵 16 枚（#71。1009×459、約 480KB、1 タイル 960px）。作物のアトラスとは別（形は同じ。#73 で `creatures.png` から改名） | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
-| `app/src/main/res/drawable-nodpi/tile_river_autotile.png` | 川。16 種のつながり方 × 4 コマ（512×2048） | `tools/build_terrain_assets.py` が**生成** |
+| `app/src/main/res/drawable-nodpi/{water_surface,water_ripple_a,water_ripple_b}.png` | 水面（繰り返せる 1 枚）と、その細かい波 2 枚（白＋透明）。川と池で共通。原画 `water_surface.png` | `tools/prepare_water_art.py` |
+| `app/src/main/res/drawable-nodpi/{river_bank,river_bank_concave,river_bank_convex}.png` | 川の岸。まっすぐな帯（1 マスの辺に 1 枚）と、帯を曲げて作った角 2 種。原画 `river_bank.png` | `tools/prepare_water_art.py` |
 | `app/src/main/res/drawable-nodpi/{floor_cobblestone,floor_wood,ground_pebble,ground_flowers}.png` | 石畳・ウッドデッキ・小石・野の花（#74）。真上から見た 1 マス分の模様（512×512）で、並べると隣のマスへ続く。庭は 1 マスに 1 枚敷く（`drawGroundTexture`） | `tools/prepare_drawable_art.py`（`GROUND`）が板の原画の上面から作る |
 | `app/src/main/res/drawable-nodpi/icon_{struct_hut,struct_well,deco_rock,deco_bench,deco_lantern,deco_sprinkler,ground_pebble,ground_flowers,floor_wood,floor_cobblestone,ground_grass,struct_cottage,floor_greenhouse,struct_fence,deco_pond,struct_windmill,tile_river}.png` | 建物・飾り・地面の品物のアイコン（#74、残りの 7 つは #77。256×256） | `tools/prepare_drawable_art.py`（`ITEM_ICONS` は原画から、`CUT_ICONS` は切り抜き済みの絵から、風車は `windmill_icon`、小川は `river_icon`）。地面は斜め上から見た板の形のまま |
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
 | `app/src/main/res/drawable/soil_tilled.png` | 耕した土（畝 3 本）の板（#57）。上面を畑の 1 マスに敷く | 受け取ったまま（1024×1024、白背景）。`GroundSlab.TILLED` |
 | `app/src/main/res/drawable/soil_revived.png` | 耕した土（#78。畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
-| `app/src/main/res/drawable/pond_center.png` | 水面だけの 1 マス（#57）。池どうしのつなぎ目の水と、#61 から四方を池に囲まれた池（池の真ん中）の水面 | 受け取ったまま（1024×1024、白背景）。`GroundSlab.POND_CENTER`、`TerrainTextures.pondWater`。色は池の絵の水にそろえて使う |
 | `app/src/main/res/drawable-nodpi/icon_<作物>.png`（作物 18 種すべて） | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
 | `app/src/main/res/drawable/pond.png` | 池（`deco_pond`） | `tools/source_art/pond.png` をそのままコピー（1536×768）。上面の位置は `GroundSlab.POND` |
 | `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
@@ -89,7 +89,7 @@
 
 ### ショップの取扱一覧（プログレッション改定時点）
 
-`domain/model/GardenItem.kt` の全 38 品（うち 3 品は絵が無く、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
+`domain/model/GardenItem.kt` の全 43 品（うち 3 品は絵が無く、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
 「確定アセット」は庭に置いたときの絵が受け取った画像素材のもの、「コード描画（仮置き）」は絵が無くプログラムで描いているもの。
 アイコンは、ショップに出している品すべてが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`。作物は #72、建物・飾り・地面は #74 と #77）。絵文字（`itemEmoji`）は絵が無いときの予備で、いまはショップに出していない白菜・菜の花・風見鶏だけ。
 
@@ -120,6 +120,7 @@
 | 建物 | 風車（`struct_windmill`） | 1200 | Lv9 | 確定アセット | `struct_windmill` `struct_windmill_blades` |
 | 建物 | 小屋（`struct_hut`） | 2000 | Lv11 | 確定アセット | `struct_hut`（#74）、アイコン画像あり |
 | 建物 | コテージ（`struct_cottage`） | 800 | Lv3 | 確定アセット | `struct_cottage` |
+| 建物 | 太鼓橋（`struct_bridge_taiko`） | 3500 | Lv17 | 確定アセット | `struct_bridge_taiko`（原画 `bridge_taiko.png`）、アイコン画像あり |
 | 建物 | ガラスの温室（`floor_greenhouse`） | 3000 | Lv18 | 確定アセット | `floor_greenhouse`、床は `floor_tilled` |
 | 飾り | 芝生（`ground_grass`） | 10 | 最初から | 確定アセット＋コード | 育ちきると `tile_grass`。育つ途中の苗床と葉の切り抜きはコード（#61） |
 | 飾り | 小石（`ground_pebble`） | 10 | 最初から | 確定アセット | `ground_pebble.png`（#74）、アイコン画像あり |
@@ -127,7 +128,11 @@
 | 飾り | 小川のかけら（`tile_river`） | 10 | 最初から | 生成アセット | `tile_river_autotile.png`（スクリプトで生成）。庭・図鑑での名前は「せせらぎ」 |
 | 飾り | 野の花（`ground_flowers`） | 15 | 最初から | 確定アセット | `ground_flowers.png`（#74）、アイコン画像あり |
 | 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 2 ページ | 確定アセット | `floor_wood.png`（#74）、アイコン画像あり |
-| 飾り | 岩（`deco_rock`） | 60 | Lv2 | 確定アセット | `deco_rock`（#74）、アイコン画像あり |
+| 飾り | 丸い岩（`deco_rock`） | 60 | Lv2 | 確定アセット | `deco_rock`（#74）、アイコン画像あり。ショップでは「石」の 1 つにまとめて、押すと 5 種の一覧が出る |
+| 飾り | 平たい石（`deco_rock_flat`） | 80 | Lv4 | 確定アセット | `deco_rock_flat`（原画 `rock_flat.png`）、アイコン画像あり |
+| 飾り | 苔むした岩（`deco_rock_mossy`） | 150 | Lv7 | 確定アセット | `deco_rock_mossy`（原画 `rock_mossy.png`）、アイコン画像あり |
+| 飾り | 立て石（`deco_rock_standing`） | 250 | Lv10 | 確定アセット | `deco_rock_standing`（原画 `rock_standing.png`）、アイコン画像あり |
+| 飾り | 小石の山（`deco_rock_pebbles`） | 300 | Lv13 | 確定アセット | `deco_rock_pebbles`（原画 `rock_pebbles.png`）、アイコン画像あり |
 | 飾り | ベンチ（`deco_bench`） | 100 | Lv3 | 確定アセット | `deco_bench`（#74）、アイコン画像あり |
 | 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 4 ページ | 確定アセット | `deco_lantern`（#74）、アイコン画像あり |
 | 飾り | スプリンクラー（`deco_sprinkler`） | 450 | Lv7 | 確定アセット＋コード | `deco_sprinkler`（#74）、アイコン画像あり。水しぶきは `SprinklerSpray` のコードで、絵の腕の軸から出る |
@@ -261,6 +266,21 @@ python tools/prepare_building_art.py --preview <確認用フォルダ>
 - 作物のアンカーの目安は `python tools/estimate_crop_anchors.py ...` で出せた（#39。土の山を取り除いた #47 からは使わない）。
   土の山の底辺を、横幅が縦の 2 倍の楕円とみなし、いちばん手前（いちばん下の不透明な点）から横幅の 1/4 上を接地点にする。白っぽい点（切り抜きの名残）は数えない。
   手で合わせた既存の 15 枚とは ±0.03 前後で一致した。#39 の 16 枚はこの値をそのまま使っている（エミュレータでの見た目は未確認）。
+
+### 建物の土台・色変えのマスク・石・橋（prepare_building_art.py）
+
+- 土台（`fit_plinth`）：コテージと小屋の絵は石組みがマス目より平たい。土台の下の帯（`PLINTH_BAND`）だけを、列ごとに下へ伸ばし、手前の角と左右の角をマスの角に合わせる。壁と屋根は動かさない。アンカーは左右の角の高さ、中央。
+- 色変えのマスク：`mask_struct_cottage` `mask_struct_hut`（赤＝屋根、緑＝壁）。アルファを絵と同じにしてあるので、アトラスで絵と同じ大きさに切り抜かれる。コテージは赤い瓦と淡い漆喰を色で、小屋は輪郭の多角形で取る。絵を描き替えたら `cottage_mask` `hut_mask` の多角形も直す。
+- 大根の段階 3（`prepare_daikon`）：土の山を取り、根を上から 62% のところで曲線で切る。パッカーはこれ以上削らない（`crop_soil.SOILLESS`）。
+- 石（`cut_stone`）：外周からつながる淡い灰色だけを抜く（ぬれた小石の光を残すため）。
+
+### 水面と岸（prepare_water_art.py）
+
+```bash
+python tools/prepare_water_art.py --preview <確認用フォルダ>
+```
+
+- `--pond` は `res/drawable/pond.png` の水の色を合わせ直す。ファイルをその場で書き換えるので、池の絵を差し替えたときだけ使う。
 
 ### 新しいスプライトを入れるとき
 

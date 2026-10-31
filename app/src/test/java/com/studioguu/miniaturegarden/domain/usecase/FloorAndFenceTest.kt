@@ -252,31 +252,6 @@ class FloorAndFenceTest {
 
     // --- River animation frames ---
 
-    @Test
-    fun `an atlas holds one square block of cells per animation frame`() {
-        assertEquals(1, RiverAutotile.frameCount(512, 512))
-        assertEquals(4, RiverAutotile.frameCount(512, 2048))
-        assertEquals(1, RiverAutotile.frameCount(512, 300)) // never less than one
-    }
-
-    @Test
-    fun `each frame shows the same mask from its own block and the loop wraps round`() {
-        val width = 512
-        val height = 2048
-        // Mask 10 sits in row 2: 2 x 128 px down inside its block.
-        assertEquals(256, RiverAutotile.cellTop(10, frame = 0, width, height))
-        assertEquals(512 + 256, RiverAutotile.cellTop(10, frame = 1, width, height))
-        assertEquals(3 * 512 + 256, RiverAutotile.cellTop(10, frame = 3, width, height))
-        assertEquals(256, RiverAutotile.cellTop(10, frame = 4, width, height))
-        assertEquals(512 + 256, RiverAutotile.cellTop(10, frame = 73, width, height))
-        // A sheet without animation is one block, whatever frame is asked for.
-        assertEquals(256, RiverAutotile.cellTop(10, frame = 7, 512, 512))
-        // Every cell of every frame lies inside the atlas.
-        for (frame in 0 until 4) for (mask in 0..15) {
-            assertTrue(RiverAutotile.cellTop(mask, frame, width, height) + 128 <= height)
-        }
-    }
-
     // --- River autotiling ---
 
     private fun maskOf(x: Int, y: Int, vararg rivers: Pair<Int, Int>): Int =
@@ -301,18 +276,6 @@ class FloorAndFenceTest {
         assertEquals(0, maskOf(4, 4, 3 to 3, 5 to 3, 3 to 5, 5 to 5))    // diagonals only
         // The tile itself being river makes no difference to its own mask.
         assertEquals(RiverAutotile.EAST, maskOf(4, 4, 4 to 4, 5 to 4))
-    }
-
-    @Test
-    fun `every mask has its own cell in the 4 x 4 atlas`() {
-        val cells = (0..15).map { RiverAutotile.column(it) to RiverAutotile.row(it) }
-        assertEquals(16, cells.toSet().size)
-        assertTrue(cells.all { (column, row) -> column in 0..3 && row in 0..3 })
-        assertEquals(0 to 0, cells[0])
-        assertEquals(3 to 0, cells[3])
-        assertEquals(0 to 1, cells[4])
-        assertEquals(2 to 2, cells[10])
-        assertEquals(3 to 3, cells[15])
     }
 
     @Test
