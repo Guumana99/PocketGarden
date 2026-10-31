@@ -1,6 +1,6 @@
 {
   "struct_fence": {"anchorX": 0.5, "anchorY": 0.97},
-  "struct_fence_rail": {"anchorX": 0.5, "anchorY": 1.0, "attachX": 0.5, "attachY": 1.5776},
+  "struct_fence_rail": {"anchorX": 0.5, "anchorY": 1.0, "attachX": 0.5, "attachY": 1.5417},
   "struct_fence_post": {"anchorX": 0.5, "anchorY": 0.97},
   "tile_grass": {"anchorX": 0.5, "anchorY": 0.4337, "isFlippedAllowed": true},
   "tile_grass_dark": {"anchorX": 0.5, "anchorY": 0.4337, "isFlippedAllowed": true},

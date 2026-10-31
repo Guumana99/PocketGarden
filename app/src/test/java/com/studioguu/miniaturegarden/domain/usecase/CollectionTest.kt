@@ -80,7 +80,7 @@ class CollectionTest {
         assertEquals(
             listOf(
                 CollectionEntry.ROCK, CollectionEntry.ROCK_FLAT, CollectionEntry.ROCK_MOSSY, CollectionEntry.ROCK_STANDING, CollectionEntry.ROCK_PEBBLES,
-                CollectionEntry.FENCE, CollectionEntry.FENCE_WHITE, CollectionEntry.FENCE_BAMBOO, CollectionEntry.EDGING_BRICK, CollectionEntry.BENCH, CollectionEntry.LANTERN, CollectionEntry.SPRINKLER,
+                CollectionEntry.FENCE, CollectionEntry.FENCE_WHITE, CollectionEntry.FENCE_BAMBOO, CollectionEntry.BENCH, CollectionEntry.LANTERN, CollectionEntry.SPRINKLER,
                 CollectionEntry.WELL, CollectionEntry.HUT, CollectionEntry.COTTAGE, CollectionEntry.WINDMILL, CollectionEntry.GREENHOUSE, CollectionEntry.BRIDGE,
             ),
             byCategory[CollectionCategory.STRUCTURES],
@@ -189,7 +189,7 @@ class CollectionTest {
         assertEquals(0, none.revealed)
         assertEquals(0, none.ready)
         assertEquals(0, none.percent)
-        assertEquals(43, none.total)
+        assertEquals(42, none.total)
         assertEquals(PageState.LOCKED, none.stateOf(CollectionEntry.TULIP))
 
         val some = CollectionProgress(
@@ -202,7 +202,7 @@ class CollectionTest {
         )
         assertEquals(2, some.revealed)
         assertEquals(1, some.ready)
-        assertEquals(4, some.percent) // 2 of 43, rounded down; ready pages do not count yet
+        assertEquals(4, some.percent) // 2 of 42, rounded down; ready pages do not count yet
         assertEquals(PageState.REVEALED, some.stateOf(CollectionEntry.TULIP))
         assertEquals(PageState.READY, some.stateOf(CollectionEntry.WELL))
         assertEquals(PageState.LOCKED, some.stateOf(CollectionEntry.HUT))
@@ -221,7 +221,7 @@ class CollectionTest {
 
         val allReady = CollectionEntry.entries.map { CollectionRecord(it.objectId, 1, t0) }
         assertEquals(0, CollectionProgress(allReady).percent)
-        assertEquals(43, CollectionProgress(allReady).ready)
+        assertEquals(42, CollectionProgress(allReady).ready)
     }
 
     // --- The colours of a crop that blooms in several (#59) ---

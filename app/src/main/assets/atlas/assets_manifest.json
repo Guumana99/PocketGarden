@@ -20,7 +20,7 @@
     {
       "file": "world_0.png",
       "width": 2020,
-      "height": 2045
+      "height": 2048
     },
     {
       "file": "world_1.png",
@@ -1154,13 +1154,13 @@
       "anchorX": 0.5,
       "anchorY": 1.0,
       "width": 235,
-      "height": 82,
+      "height": 85,
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 2,
       "atlasY": 1961,
       "attachX": 0.5,
-      "attachY": 1.5776
+      "attachY": 1.5417
     },
     {
       "assetId": "struct_fence_white",

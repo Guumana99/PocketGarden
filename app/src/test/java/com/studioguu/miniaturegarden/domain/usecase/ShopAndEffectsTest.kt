@@ -59,7 +59,7 @@ class ShopAndEffectsTest {
         assertEquals(onSale.size, shelves.values.sumOf { it.size })
 
         assertEquals(18, shelves.getValue(ItemCategory.SEED).size)
-        assertEquals(8, shelves.getValue(ItemCategory.STRUCTURE).size)
+        assertEquals(7, shelves.getValue(ItemCategory.STRUCTURE).size)
         assertEquals(11, shelves.getValue(ItemCategory.DECORATION).size)
     }
 
@@ -90,7 +90,7 @@ class ShopAndEffectsTest {
         assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(9, 11))
 
         assertEquals(
-            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_EDGING_BRICK, GardenItem.STRUCT_BRIDGE, GardenItem.FLOOR_GREENHOUSE),
+            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_BRIDGE, GardenItem.FLOOR_GREENHOUSE),
             GardenItem.shelf(ItemCategory.STRUCTURE),
         )
         assertEquals(

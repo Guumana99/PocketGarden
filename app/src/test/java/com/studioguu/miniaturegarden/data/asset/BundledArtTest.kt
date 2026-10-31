@@ -138,7 +138,7 @@ class BundledArtTest {
 
     @Test
     fun `the buildings, decorations and ground have icon pictures, cut out of their background (#74)`() {
-        val labels = File(main, "java/com/studioguu/miniaturegarden/ui/UiLabels.kt").readText()
+        val labels = File(main, "java/com/studioguu/miniaturegarden/ui/UiLabels.kt").readText().replace("\r\n", "\n")
         for (id in listOf(
             "struct_hut", "struct_well", "deco_rock", "deco_bench", "deco_lantern", "deco_sprinkler",
             "ground_pebble", "ground_flowers", "floor_wood", "floor_cobblestone",

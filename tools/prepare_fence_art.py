@@ -12,8 +12,11 @@ from the front, on white. Out of it come, for each of them, with <id> its object
 Everything is at the atlas' source scale, 720 px a tile. Across the screen a cell of a run is half
 a tile, so a rail is 360 px between post centres, whatever is the picture's own width. The fences
 are all [POST_HEIGHT] tall, the picture squeezed in height until they are. Their middles are
-made up to that width: the wood's rails are drawn out, as boards only get longer, and the pickets,
-the bamboo and the bricks are laid side by side, as stretching them would make them fat.
+made up to that width by laying them side by side, never by drawing them out: stretched, the wood's
+rails lost their grain and read as thin sticks (#86), and pickets would turn fat. The wood's copies
+overlap and fade into one another, as its rails do not end where they could meet. Sheared along
+the grid a rail keeps its height on the screen but is thinner across, so the wood's bars are made
+that much taller ([SHEAR_THICKNESS]): across they are as thick as on the section standing alone.
 
 Usage:
   python tools/prepare_fence_art.py                 # writes raw_assets/ and the overrides
@@ -44,6 +47,9 @@ SPAN = TILE // 2
 #: How far a rail goes in under the post at each of its ends, so that no gap shows between them.
 RAIL_TUCK = 3
 
+#: How much taller a bar lying along a cell must be to stay as thick: 1 / cos(atan(1/2)).
+SHEAR_THICKNESS = 1.118
+
 #: The edging's height: about a third of a post's.
 BRICK_HEIGHT = 76
 
@@ -71,16 +77,19 @@ class Fence:
     middle: tuple[int, int]
     #: How much wider than tall the picture is drawn: the originals are narrow for the cell.
     stout: float
-    #: How many times the middle is laid side by side; one is drawn out instead.
-    repeats: int = 1
-    #: Vertical bamboo left, one in so many ([thin_canes]).
-    thin: int = 1
+    #: How many times the middle is laid side by side.
+    repeats: int
+    #: How many of the original's columns two copies fade across; 0 where they just meet.
+    overlap: int = 0
+    #: The rows of the bars that run across, top and bottom, made up for the shear; none for
+    #: what has uprights in front of its rails.
+    bars: tuple[tuple[int, int], ...] = ()
 
 
 FENCES: dict[str, Fence] = {
-    "struct_fence": Fence("struct_fence_wood.png", (223, 333, 121, 955), None, (338, 684), stout=1.3),
+    "struct_fence": Fence("struct_fence_wood.png", (223, 333, 121, 955), None, (338, 684), stout=1.3, repeats=3, overlap=60, bars=((226, 320), (601, 692))),
     "struct_fence_white": Fence("struct_fence_white.png", (226, 318, 169, 858), (205, 340, 224), (319, 701), stout=1.3, repeats=2),
-    "struct_fence_bamboo": Fence("struct_fence_bamboo.png", (160, 236, 213, 815), None, (284, 776), stout=1.0, repeats=2, thin=2),
+    "struct_fence_bamboo": Fence("struct_fence_bamboo.png", (160, 236, 213, 815), None, (288, 781), stout=1.0, repeats=2),
 }
 
 
@@ -143,24 +152,33 @@ def post_of(cut: np.ndarray, fence: Fence) -> np.ndarray:
     return only(cut, keep)
 
 
-def thin_canes(strip: np.ndarray, pitch: float, offset: float, every: int) -> np.ndarray:
-    """
-    The middle of the bamboo with only one upright in [every] left. Shrunk to a phone they came down
-    to hairlines that glittered as the garden moved. In place of each one taken out, the bare
-    stretch of the rails next to it is drawn out over it.
-    """
-    out = strip.copy()
+def lay_side_by_side(strip: np.ndarray, times: int, overlap: int) -> np.ndarray:
+    """[times] copies of [strip] in a row, each fading into the next across [overlap] columns."""
     h, w = strip.shape[:2]
-    n = int(round(w / pitch))
-    for i in range(n):
-        if i % every == 0:
-            continue
-        centre = offset + i * pitch
-        left, right = int(round(centre - pitch * 0.5)), int(round(centre + pitch * 0.5))
-        bare_left, bare_right = left - int(pitch * 0.22), left + 2
-        bare = strip[:, max(0, bare_left):max(1, bare_right)]
-        filled = np.array(Image.fromarray(bare, "RGBA").resize((min(w, right) - max(0, left), h), Image.BILINEAR))
-        out[:, max(0, left):min(w, right)] = filled
+    step = w - overlap
+    out = np.zeros((h, step * (times - 1) + w, 4))
+    premultiplied = np.concatenate([strip[..., :3] * (strip[..., 3:4] / 255.0), strip[..., 3:4].astype(float)], axis=2)
+    ramp = np.ones(w)
+    if overlap:
+        ramp[:overlap] = np.linspace(0.0, 1.0, overlap)
+    for i in range(times):
+        fade = np.ones(w) if i == 0 else ramp
+        out[:, i * step:i * step + w] = out[:, i * step:i * step + w] * (1 - fade[None, :, None]) + premultiplied * fade[None, :, None]
+    alpha = out[..., 3:4]
+    rgb = np.where(alpha > 0, out[..., :3] * 255.0 / np.maximum(alpha, 1e-3), 0)
+    return np.clip(np.concatenate([rgb, alpha], axis=2), 0, 255).round().astype(np.uint8)
+
+
+def thickened(strip: np.ndarray, rows: tuple[int, int], top: int) -> np.ndarray:
+    """[strip], whose first row is the picture's row [top], with the bar in [rows] taller about its middle."""
+    first, last = rows[0] - top, rows[1] - top
+    bar = strip[first:last]
+    tall = int(round((last - first) * SHEAR_THICKNESS))
+    grown = np.array(Image.fromarray(bar, "RGBA").convert("RGBa").resize((bar.shape[1], tall), Image.BICUBIC).convert("RGBA"))
+    out = strip.copy()
+    out[first:last] = 0
+    at = (first + last - tall) // 2
+    out[at:at + tall] = grown
     return out
 
 
@@ -174,11 +192,11 @@ def rail_of(cut: np.ndarray, fence: Fence, post_width: float, sx: float, sy: flo
     strip = cut[top:bottom + 1, x0:x1].copy()
     if fence.cap:  # the cap reaches out over the middle
         strip[:fence.cap[2] + 4 - top, :, 3] = 0
-    if fence.thin > 1:
-        strip = thin_canes(strip, pitch=49.3, offset=261 - x0, every=fence.thin)
     wide = SPAN - post_width + 2 * RAIL_TUCK
     tall = int(round((bottom + 1 - top) * sy))
-    whole = np.concatenate([strip] * fence.repeats, axis=1)
+    for rows in fence.bars:
+        strip = thickened(strip, rows, top)
+    whole = lay_side_by_side(strip, fence.repeats, fence.overlap)
     rail = np.array(Image.fromarray(whole, "RGBA").convert("RGBa").resize((int(round(wide)), tall), Image.LANCZOS).convert("RGBA"))
     ys = np.where(rail[..., 3].max(axis=1) > 8)[0]
     return rail, float(tall - 1 - ys.max())
