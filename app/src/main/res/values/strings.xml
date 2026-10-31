@@ -116,7 +116,10 @@
     <string name="camera_button">カメラ</string>
     <string name="camera_back">✕ 戻る</string>
     <string name="camera_shutter">撮影してシェア</string>
-    <string name="object_struct_fence">ウッドフェンス</string>
+    <string name="object_struct_fence">木の柵</string>
+    <string name="object_struct_fence_white">白い柵</string>
+    <string name="object_struct_fence_bamboo">竹垣</string>
+    <string name="object_struct_edging_brick">レンガの縁石</string>
     <string name="remove_title">%1$s を撤去</string>
     <string name="remove_title_plant">%1$sを抜きますか？</string>
     <string name="remove_title_withered">枯れた%1$sを抜きますか？</string>
@@ -316,6 +319,9 @@
     <string name="flavor_river">さらさらと流れる小川。\n並べてつなげば、お庭にせせらぎが生まれる。</string>
     <string name="flavor_path">丸い石を敷きつめた小径。\n雨の日も、足もとがぬかるまない。</string>
     <string name="flavor_fence">木を組んだ、素朴な柵。\n花畑をぐるりと囲もう。</string>
+    <string name="flavor_fence_white">白くぬった、とがり頭の柵。\nお庭が少しよそ行きの顔になる。</string>
+    <string name="flavor_fence_bamboo">竹を縄で結んだ垣根。\n風が通るたび、さらりと鳴る。</string>
+    <string name="flavor_edging_brick">斜めに立てて並べたレンガ。\nすき間の苔も、花壇の仲間。</string>
     <string name="flavor_well">冷たい水が、こんこんと湧く。\nのぞき込むと、自分の顔が揺れる。</string>
     <string name="flavor_windmill">風を受けて、くるり、くるり。\n羽根の回る音が、お庭に響く。</string>
     <string name="flavor_hut">小さいけれど、夢の詰まった小屋。\n道具の手入れも、昼寝も、ここで。</string>
@@ -490,6 +496,7 @@
     <string name="shop_leave">← お庭へ戻る</string>
     <string name="shop_put_back">棚に戻す</string>
     <string name="shop_rocks">石</string>
+    <string name="shop_fences">柵</string>
     <string name="shop_rocks_choose">えらぶ</string>
     <string name="shop_rocks_locked">Lv.%1$d で置けます</string>
     <string name="msg_only_one_symbol">🏡 シンボル建物はお庭に一つだけです</string>

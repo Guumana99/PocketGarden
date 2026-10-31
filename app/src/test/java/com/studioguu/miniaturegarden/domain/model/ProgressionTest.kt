@@ -137,10 +137,10 @@ class ProgressionTest {
             2 to setOf(GardenItem.SEED_CARROT, GardenItem.DECO_ROCK),
             3 to setOf(GardenItem.SEED_SUNFLOWER, GardenItem.DECO_BENCH, GardenItem.STRUCT_COTTAGE),
             4 to setOf(GardenItem.SEED_DAIKON, GardenItem.DECO_POND, GardenItem.DECO_ROCK_FLAT),
-            5 to setOf(GardenItem.SEED_LAVENDER, GardenItem.STRUCT_WELL),
+            5 to setOf(GardenItem.SEED_LAVENDER, GardenItem.STRUCT_WELL, GardenItem.STRUCT_FENCE_WHITE),
             6 to setOf(GardenItem.SEED_EGGPLANT, GardenItem.DECO_WEATHERVANE),
             7 to setOf(GardenItem.SEED_WHEAT, GardenItem.DECO_SPRINKLER, GardenItem.DECO_ROCK_MOSSY),
-            8 to setOf(GardenItem.SEED_ROSE),
+            8 to setOf(GardenItem.SEED_ROSE, GardenItem.STRUCT_FENCE_BAMBOO),
             9 to setOf(GardenItem.SEED_WATERMELON, GardenItem.STRUCT_WINDMILL),
             10 to setOf(GardenItem.SEED_HAKUSAI, GardenItem.DECO_ROCK_STANDING),
             11 to setOf(GardenItem.SEED_PAPRIKA, GardenItem.STRUCT_HUT),
@@ -148,6 +148,7 @@ class ProgressionTest {
             13 to setOf(GardenItem.SEED_CORN, GardenItem.DECO_ROCK_PEBBLES),
             14 to setOf(GardenItem.SEED_SHIITAKE),
             15 to setOf(GardenItem.SEED_POINSETTIA),
+            16 to setOf(GardenItem.STRUCT_EDGING_BRICK),
             17 to setOf(GardenItem.STRUCT_BRIDGE),
             18 to setOf(GardenItem.FLOOR_GREENHOUSE),
         )
@@ -172,7 +173,7 @@ class ProgressionTest {
         assertEquals(setOf(GardenItem.SEED_EGGPLANT), GardenItem.unlockedBetween(5, 6).toSet())
         assertEquals(setOf(GardenItem.DECO_ROCK_STANDING), GardenItem.unlockedBetween(9, 10).toSet())
         assertTrue(GardenItem.unlockedBetween(11, 12).isEmpty())
-        assertEquals(setOf(GardenItem.STRUCT_BRIDGE), GardenItem.unlockedBetween(15, 17).toSet())
+        assertEquals(setOf(GardenItem.STRUCT_EDGING_BRICK, GardenItem.STRUCT_BRIDGE), GardenItem.unlockedBetween(15, 17).toSet())
         assertTrue(GardenItem.unlockedBetween(3, 3).isEmpty())
     }
 
@@ -192,7 +193,7 @@ class ProgressionTest {
         assertEquals(GardenItem.unlockedBetween(1, 4).toSet(), LevelUpNotice(1, 4).unlockedItems.toSet())
         assertTrue(LevelUpNotice(1, 2).unlockedItems.isNotEmpty())
         // A level that opens nothing: the board does not speak of new items.
-        assertTrue(LevelUpNotice(15, 16).unlockedItems.isEmpty())
+        assertTrue(LevelUpNotice(11, 12).unlockedItems.isEmpty())
     }
 
     // --- What has no pictures yet ---
@@ -333,7 +334,8 @@ class ProgressionTest {
                 GardenItem.DECO_SPRINKLER to 450, GardenItem.STRUCT_WINDMILL to 1_200, GardenItem.STRUCT_HUT to 2_000,
                 GardenItem.FLOOR_GREENHOUSE to 3_000,
                 GardenItem.DECO_ROCK_FLAT to 80, GardenItem.DECO_ROCK_MOSSY to 150, GardenItem.DECO_ROCK_STANDING to 250,
-                GardenItem.DECO_ROCK_PEBBLES to 300, GardenItem.STRUCT_BRIDGE to 3_500,
+                GardenItem.DECO_ROCK_PEBBLES to 300, GardenItem.STRUCT_BRIDGE to 3_500, GardenItem.STRUCT_FENCE_WHITE to 25, GardenItem.STRUCT_FENCE_BAMBOO to 35,
+                GardenItem.STRUCT_EDGING_BRICK to 60,
                 GardenItem.GROUND_GRASS to 10, GardenItem.GROUND_PEBBLE to 10, GardenItem.FLOOR_COBBLESTONE to 10,
                 GardenItem.TILE_RIVER to 10, GardenItem.GROUND_FLOWERS to 15, GardenItem.STRUCT_FENCE to 15,
                 GardenItem.FLOOR_WOOD to 12, GardenItem.DECO_LANTERN to 60,

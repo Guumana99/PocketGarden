@@ -61,7 +61,7 @@ import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.CreaturePose
 import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
-import com.studioguu.miniaturegarden.domain.model.FencePart
+import com.studioguu.miniaturegarden.domain.model.RunKind
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenView
@@ -116,8 +116,8 @@ import com.studioguu.miniaturegarden.ui.render.Wind
 import com.studioguu.miniaturegarden.ui.render.drawVisitor
 import com.studioguu.miniaturegarden.ui.render.flies
 import com.studioguu.miniaturegarden.ui.render.VisitorLook
-import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
-import com.studioguu.miniaturegarden.ui.render.drawFenceArms
+import com.studioguu.miniaturegarden.ui.render.drawRunPiece
+import com.studioguu.miniaturegarden.ui.render.drawRunPieceShadow
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
 import com.studioguu.miniaturegarden.ui.render.drawSprite
 import com.studioguu.miniaturegarden.ui.render.drawSpriteShadow
@@ -790,45 +790,51 @@ private fun submitObjects(
             submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) { drawGroundTexture(cover, transform, obj.gridX, obj.gridY) }
             continue
         }
-        if (obj.isFence) {
-            // How a fence looks is read off its neighbours every time it is drawn: alone it is one
-            // short panel, two posts and their rails; next to other fences it is a post with rails
-            // reaching out to them. (The picket section was a run of five pales, which read as
-            // fences already joined even when it stood alone, #55; it stays for an atlas without the panel.)
-            // Only finished fences join (device feedback, after #75): one still going up is a work
+        val run = obj.runKind
+        if (run != null) {
+            // How a section looks is read off its neighbours every time it is drawn: alone it is the
+            // whole picture; among others of its kind a post, and a rail on to the next post. Kinds
+            // do not join (#85): side by side, each stands alone.
+            // Only finished sections join (device feedback, after #75): one still going up is a work
             // site, and rails reaching into it left the joined look behind when it was done.
-            val mask = FenceAutotile.maskAt(obj.gridX, obj.gridY) { x, y -> grid.occupantAt(x, y)?.let { it.isFence && !it.isWorking } == true }
-            val section = atlas[FencePart.RAIL.objectId] ?: atlas[FencePart.SECTION.objectId]
-            val post = atlas[FencePart.POST.objectId]
-            val alone = mask == 0 && section != null && atlasImage != null
-            val postHeight = if (post != null) post.height * post.anchorY * spriteScale else unit * 0.2f
+            val mask = FenceAutotile.maskAt(obj.gridX, obj.gridY) { x, y -> grid.occupantAt(x, y)?.let { it.runKind == run && !it.isWorking } == true }
+            val whole = atlas[run.objectId]
+            val post = run.postSpriteId?.let { atlas[it] }
+            val rail = atlas[run.railSpriteId]
+            val alone = mask == 0 && whole != null && atlasImage != null
+            val onLawn = ambience.bareGround == BareGround.LAWN || grid.lawnAt(obj.gridX, obj.gridY) != null
+            val grassy = run.isFence && grid.floorAt(obj.gridX, obj.gridY) == null && onLawn
             submit(obj, RenderLayer.SHADOWS, depth) {
                 if (alone) {
-                    drawContactShadow(base, min(section!!.width * spriteScale * 0.62f, unit * 0.7f))
-                    drawSpriteShadow(atlasImage!!, section, base, spriteScale, light)
-                } else {
-                    drawContactShadow(base, unit * 0.22f)
-                    drawFenceArmShadows(transform, obj.gridX, obj.gridY, mask, postHeight, light)
-                    if (post != null && atlasImage != null) drawSpriteShadow(atlasImage, post, base, spriteScale, light)
+                    drawContactShadow(base, min(whole!!.width * spriteScale * 0.62f, unit * 0.7f))
+                    drawSpriteShadow(atlasImage!!, whole, base, spriteScale, light)
+                } else if (post != null && atlasImage != null) {
+                    drawContactShadow(base, unit * 0.1f)
+                    drawSpriteShadow(atlasImage, post, base, spriteScale, light)
                 }
             }
-            submit(obj, RenderLayer.GRID_OBJECTS, depth) {
+            // A work site stands for all of itself: its rails come with it when it is finished.
+            if (!obj.isWorking && rail != null && atlasImage != null) {
+                for (direction in FenceAutotile.railsFrom(mask)) {
+                    val (toX, toY) = FenceAutotile.nextPost(obj.gridX, obj.gridY, direction)
+                    val next = transform.worldToScreen(toX, toY, obj.heightLevel.toFloat())
+                    // Bricks lean one way in their picture: mirrored on the other slope, the four
+                    // sides of a bed look alike.
+                    val mirrored = !run.hasPosts && direction == FenceAutotile.EAST
+                    submit(obj, RenderLayer.SHADOWS, depth) { drawRunPieceShadow(atlasImage, rail, base, next, spriteScale, light, mirrored) }
+                    submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.RAIL_DEPTH) { drawRunPiece(atlasImage, rail, base, next, spriteScale, mirrored) }
+                }
+            }
+            submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.POST_DEPTH) {
                 if (alone) {
-                    drawSprite(atlasImage!!, section!!, base, spriteScale)
-                } else {
-                    drawFenceArms(transform, obj.gridX, obj.gridY, mask, behind = true, postHeight)
-                    if (post != null && atlasImage != null) {
-                        drawSprite(atlasImage, post, base, spriteScale)
-                    } else {
-                        drawPlaceholder(obj, base, unit)
-                    }
-                    drawFenceArms(transform, obj.gridX, obj.gridY, mask, behind = false, postHeight)
+                    drawSprite(atlasImage!!, whole!!, base, spriteScale)
+                } else if (post != null && atlasImage != null) {
+                    drawSprite(atlasImage, post, base, spriteScale)
+                } else if (run.hasPosts) {
+                    drawPlaceholder(obj, base, unit)
                 }
                 // Grass at its foot on open lawn, and on a lawn sown under it (#55).
-                val onLawn = ambience.bareGround == BareGround.LAWN || grid.lawnAt(obj.gridX, obj.gridY) != null
-                if (grid.floorAt(obj.gridX, obj.gridY) == null && onLawn) {
-                    drawGrassAtFoot(base, unit, unit * (if (alone) 0.28f else 0.1f), sway, seed = obj.gridX * 31 + obj.gridY * 17)
-                }
+                if (grassy) drawGrassAtFoot(base, unit, unit * (if (alone) 0.28f else 0.07f), sway, seed = obj.gridX * 31 + obj.gridY * 17)
             }
             continue
         }
@@ -1452,7 +1458,7 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
                     PreviewScene(2, 0.1f, listOf(at(0, 0), at(1, 0), at(0, 1), at(1, 1)))
                 objectId.startsWith(GridObject.PLANT_ID_PREFIX) -> PreviewScene(1, 1.05f, listOf(at(0, 0)))
                 // A run with a corner in it, to show how fences join.
-                objectId == GridObject.FENCE_OBJECT_ID ->
+                RunKind.of(objectId) != null ->
                     PreviewScene(3, 0.25f, listOf(at(0, 1), at(1, 1), at(2, 1), at(2, 0)))
                 StructureData.fromObjectId(objectId) != null -> {
                     val footprint = StructureData.fromObjectId(objectId)!!.footprint

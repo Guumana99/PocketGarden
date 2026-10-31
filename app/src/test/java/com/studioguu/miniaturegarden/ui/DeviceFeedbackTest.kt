@@ -165,12 +165,12 @@ class DeviceFeedbackTest {
     }
 
     @Test
-    fun `a fence standing alone is one panel between two posts, not a run of pales`() {
+    fun `a fence standing alone is the whole picture, and joined it is a post and rails`() {
         val canvas = source("ui/components/GardenCanvas.kt")
-        assertTrue(canvas.contains("val section = atlas[FencePart.RAIL.objectId] ?: atlas[FencePart.SECTION.objectId]"))
+        assertTrue(canvas.contains("val whole = atlas[run.objectId]"))
         assertNotNull(manifest.assets.firstOrNull { it.assetId == "struct_fence_rail" })
         // Joined, it is still built round the post.
-        assertTrue(canvas.contains("drawFenceArms(transform, obj.gridX, obj.gridY, mask, behind = true, postHeight)"))
+        assertTrue(canvas.contains("drawSprite(atlasImage, post, base, spriteScale)"))
     }
 
     // --- 2.3 The cottage ---

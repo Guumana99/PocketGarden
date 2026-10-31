@@ -81,6 +81,10 @@ object ShopShelves {
     fun rockKinds(stats: PlayerStats, coins: Long, held: Map<GardenItem, Int> = emptyMap()): List<ShelfItem> =
         GardenItem.ROCK_KINDS.map { shelfItem(it, stats, coins, ownsSymbol = false, held) }
 
+    /** The kinds of fence ([GardenItem.FENCE_KINDS]), tagged the same way. */
+    fun fenceKinds(stats: PlayerStats, coins: Long, held: Map<GardenItem, Int> = emptyMap()): List<ShelfItem> =
+        GardenItem.FENCE_KINDS.map { shelfItem(it, stats, coins, ownsSymbol = false, held) }
+
     private fun shelfItem(item: GardenItem, stats: PlayerStats, coins: Long, ownsSymbol: Boolean, held: Map<GardenItem, Int>): ShelfItem {
         val tag = when {
             !item.isUnlockedFor(stats) -> ShelfTag.LOCKED

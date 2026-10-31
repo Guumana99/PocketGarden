@@ -144,6 +144,55 @@ private fun shearAbout(anchor: Offset, dx: Float, dy: Float): Matrix = shearMatr
 }
 
 /**
+ * Maps every point to where it is when a picture standing on the ground line through [middle]
+ * is turned along a run sloping [slope] pixels down for each one across: what is `x` from the
+ * middle goes `x * slope` down, and what is `h` above the line goes `h * dx` sideways and
+ * `h * dy` down. With `dx = 0, dy = -1` it stands; laid flat, it is its shadow.
+ */
+private fun alongRun(middle: Offset, slope: Float, dx: Float, dy: Float): Matrix = shearMatrix.apply {
+    reset()
+    // x' = x + dx * (middle.y - y),  y' = middle.y + slope * (x - middle.x) + dy * (middle.y - y)
+    this[1, 0] = -dx
+    this[3, 0] = dx * middle.y
+    this[0, 1] = slope
+    this[1, 1] = -dy
+    this[3, 1] = middle.y - slope * middle.x + dy * middle.y
+}
+
+/** Where a rail's anchor goes, for its attachment point (where the ground is on it) to stand on [middle]. */
+private fun railAnchor(asset: AssetManifest, middle: Offset, scale: Float): Offset =
+    middle - Offset(0f, ((asset.attachY ?: asset.anchorY) - asset.anchorY) * asset.drawnHeight(scale))
+
+/**
+ * Draws the piece of a run between [from] and [to], two points on the ground: a sprite drawn
+ * upright with its ground line ([railAnchor]) on the point midway, and sheared so that the line
+ * follows the run. Verticals stay upright.
+ *
+ * @param mirrored shown from its other side, for the slope that would otherwise lay it down.
+ */
+fun DrawScope.drawRunPiece(pages: AtlasPages, asset: AssetManifest, from: Offset, to: Offset, scale: Float, mirrored: Boolean = false) {
+    val middle = (from + to) / 2f
+    withTransform({
+        transform(alongRun(middle, (to.y - from.y) / (to.x - from.x), 0f, -1f))
+        scale(scaleX = if (mirrored) -1f else 1f, scaleY = 1f, pivot = middle)
+    }) {
+        drawSprite(pages[asset], asset, railAnchor(asset, middle, scale), scale)
+    }
+}
+
+/** The shadow [drawRunPiece]'s piece casts in [light]: its own outline laid on the ground along the run. */
+fun DrawScope.drawRunPieceShadow(pages: AtlasPages, asset: AssetManifest, from: Offset, to: Offset, scale: Float, light: SunLight, mirrored: Boolean = false) {
+    if (light.alpha <= 0f) return
+    val middle = (from + to) / 2f
+    withTransform({
+        transform(alongRun(middle, (to.y - from.y) / (to.x - from.x), light.dx, light.dy))
+        scale(scaleX = if (mirrored) -1f else 1f, scaleY = 1f, pivot = middle)
+    }) {
+        drawSprite(pages[asset], asset, railAnchor(asset, middle, scale), scale, alpha = light.alpha, colorFilter = ColorFilter.tint(Color.Black, BlendMode.SrcIn))
+    }
+}
+
+/**
  * Draws one atlas sprite leaning in the wind: its foot stays on [anchor] and everything above
  * moves sideways in proportion to its height, [lean] times as far (negative to the left).
  */

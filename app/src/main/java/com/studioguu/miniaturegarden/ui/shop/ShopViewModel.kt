@@ -118,6 +118,11 @@ class ShopViewModel @Inject constructor(
         ShopShelves.rockKinds(stats, coins, counts)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** The kinds of fence, the same way. */
+    val fenceKinds: StateFlow<List<ShelfItem>> = combine(playerStats, coins, held) { stats, coins, counts ->
+        ShopShelves.fenceKinds(stats, coins, counts)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Whether the garden can be grown now, and what it takes; offered in the workshop. */
     val expansion: StateFlow<ExpansionOffer> =
         combine(gardenRepository.observeProgress(), gardenRepository.observeUserProfile()) { progress, profile ->

@@ -76,6 +76,9 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "deco_starter_crate" -> R.string.object_deco_starter_crate
     // A fence is a fence under any of the ids it has been stored as.
     "struct_fence", "struct_fence_rail", "struct_fence_post" -> R.string.object_struct_fence
+    "struct_fence_white" -> R.string.object_struct_fence_white
+    "struct_fence_bamboo" -> R.string.object_struct_fence_bamboo
+    "struct_edging_brick" -> R.string.object_struct_edging_brick
     else -> null
 }
 
@@ -121,7 +124,8 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.GROUND_PEBBLE -> "⚪"
     GardenItem.TILE_RIVER -> "🌊"
     GardenItem.FLOOR_COBBLESTONE -> "🧱"
-    GardenItem.STRUCT_FENCE -> "🪵"
+    GardenItem.STRUCT_FENCE, GardenItem.STRUCT_FENCE_WHITE, GardenItem.STRUCT_FENCE_BAMBOO -> "🪵"
+    GardenItem.STRUCT_EDGING_BRICK -> "🧱"
     GardenItem.GROUND_FLOWERS -> "🌼"
     GardenItem.FLOOR_WOOD -> "🟫"
     GardenItem.DECO_BENCH -> "🪑"
@@ -198,6 +202,9 @@ fun itemIconRes(item: GardenItem): Int? = when (item) {
     GardenItem.STRUCT_WINDMILL -> R.drawable.icon_struct_windmill
     GardenItem.FLOOR_GREENHOUSE -> R.drawable.icon_floor_greenhouse
     GardenItem.STRUCT_FENCE -> R.drawable.icon_struct_fence
+    GardenItem.STRUCT_FENCE_WHITE -> R.drawable.icon_struct_fence_white
+    GardenItem.STRUCT_FENCE_BAMBOO -> R.drawable.icon_struct_fence_bamboo
+    GardenItem.STRUCT_EDGING_BRICK -> R.drawable.icon_struct_edging_brick
     GardenItem.DECO_POND -> R.drawable.icon_deco_pond
     GardenItem.GROUND_GRASS -> R.drawable.icon_ground_grass
     GardenItem.TILE_RIVER -> R.drawable.icon_tile_river

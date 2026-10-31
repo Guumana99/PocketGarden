@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.RunKind
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TileType
 
@@ -50,7 +51,7 @@ object TileSetDefinition {
         PlantSpecies.entries.map { it.objectId } + Decoration.entries.map { it.objectId } +
             GroundCover.entries.map { it.objectId } + StructureData.entries.map { it.objectId } +
             GridObject.RIVER_OBJECT_ID + GridObject.COBBLESTONE_OBJECT_ID + GridObject.WOOD_DECK_OBJECT_ID + GridObject.TILLED_SOIL_OBJECT_ID + GridObject.LOOSE_SOIL_OBJECT_ID + GridObject.GREENHOUSE_OBJECT_ID +
-            FencePart.entries.map { it.objectId } + GridObject.GIFT_BOX_OBJECT_ID
+            FencePart.entries.map { it.objectId } + RunKind.entries.map { it.objectId }.drop(1) + GridObject.GIFT_BOX_OBJECT_ID
 
     /**
      * Ground sprite for a cell: water for the river, grass for the lawn. The lawn used to be a
@@ -166,7 +167,7 @@ object TileSetDefinition {
     val expectedSpriteIds: List<String> =
         GroundTile.entries.map { it.assetId } +
             PlantSpecies.entries.flatMap(::spriteIdsFor) +
-            (objectIds - PlantSpecies.entries.map { it.objectId }.toSet() - DRAWABLE_OBJECT_IDS) +
+            ((objectIds + RunKind.entries.flatMap { it.spriteIds }).distinct() - PlantSpecies.entries.map { it.objectId }.toSet() - DRAWABLE_OBJECT_IDS) +
             WINDMILL_SAILS +
             (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId) +
             "deco_bench_back" + "struct_bridge_taiko_long" + BuildingPaint.PAINTABLE_OBJECT_IDS.map { "mask_$it" }

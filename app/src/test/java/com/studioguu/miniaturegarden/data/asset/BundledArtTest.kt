@@ -62,11 +62,11 @@ class BundledArtTest {
     }
 
     @Test
-    fun `the parts differ in shape, the post being the narrowest`() {
+    fun `the parts differ in shape, the post being the narrowest and the rail the widest`() {
         val widths = FencePart.entries.associateWith { part -> manifest.assets.first { it.assetId == part.objectId }.width }
         assertEquals(3, widths.values.toSet().size)
         assertEquals(FencePart.POST, widths.minBy { it.value }.key)
-        assertEquals(FencePart.SECTION, widths.maxBy { it.value }.key)
+        assertEquals(FencePart.RAIL, widths.maxBy { it.value }.key)
     }
 
     @Test

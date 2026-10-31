@@ -20,12 +20,12 @@
     {
       "file": "world_0.png",
       "width": 2020,
-      "height": 1961
+      "height": 2045
     },
     {
       "file": "world_1.png",
-      "width": 1862,
-      "height": 435
+      "width": 1950,
+      "height": 434
     }
   ],
   "assets": [
@@ -70,7 +70,7 @@
       "height": 159,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1625,
+      "atlasX": 1349,
       "atlasY": 2
     },
     {
@@ -81,7 +81,7 @@
       "height": 109,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 625,
+      "atlasX": 927,
       "atlasY": 283
     },
     {
@@ -103,7 +103,7 @@
       "height": 142,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 357,
+      "atlasX": 178,
       "atlasY": 283
     },
     {
@@ -125,7 +125,7 @@
       "height": 174,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1410,
+      "atlasX": 1134,
       "atlasY": 2,
       "attachX": 0.4983,
       "attachY": 0.3673
@@ -1034,27 +1034,27 @@
     },
     {
       "assetId": "struct_bridge_taiko",
-      "anchorX": 0.5,
-      "anchorY": 0.6947,
+      "anchorX": 0.4995,
+      "anchorY": 0.5411,
       "width": 768,
       "height": 457,
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 2,
       "atlasY": 1189,
-      "drawScale": 1.3333
+      "drawScale": 1.1241
     },
     {
       "assetId": "struct_bridge_taiko_long",
-      "anchorX": 0.5,
-      "anchorY": 0.6785,
+      "anchorX": 0.4996,
+      "anchorY": 0.5327,
       "width": 960,
       "height": 550,
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 616,
       "atlasY": 625,
-      "drawScale": 1.3333
+      "drawScale": 1.2096
     },
     {
       "assetId": "struct_cottage",
@@ -1069,37 +1069,133 @@
       "drawScale": 2.4971
     },
     {
-      "assetId": "struct_fence",
+      "assetId": "struct_edging_brick",
       "anchorX": 0.5,
-      "anchorY": 0.93,
-      "width": 353,
-      "height": 150,
+      "anchorY": 0.8,
+      "width": 234,
+      "height": 54,
       "isFlippedAllowed": true,
-      "page": 4,
-      "atlasX": 2,
-      "atlasY": 283
+      "page": 3,
+      "atlasX": 239,
+      "atlasY": 1961
     },
     {
-      "assetId": "struct_fence_post",
+      "assetId": "struct_edging_brick_rail",
       "anchorX": 0.5,
-      "anchorY": 0.93,
-      "width": 56,
-      "height": 119,
+      "anchorY": 0.8,
+      "width": 304,
+      "height": 54,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 475,
+      "atlasY": 1961,
+      "attachX": 0.5,
+      "attachY": 0.8
+    },
+    {
+      "assetId": "struct_fence",
+      "anchorX": 0.5,
+      "anchorY": 0.97,
+      "width": 164,
+      "height": 149,
+      "isFlippedAllowed": true,
+      "page": 4,
+      "atlasX": 1586,
+      "atlasY": 2
+    },
+    {
+      "assetId": "struct_fence_bamboo",
+      "anchorX": 0.5,
+      "anchorY": 0.97,
+      "width": 196,
+      "height": 149,
+      "isFlippedAllowed": true,
+      "page": 4,
+      "atlasX": 1752,
+      "atlasY": 2
+    },
+    {
+      "assetId": "struct_fence_bamboo_post",
+      "anchorX": 0.5,
+      "anchorY": 0.97,
+      "width": 18,
+      "height": 149,
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 1922,
       "atlasY": 1648
     },
     {
-      "assetId": "struct_fence_rail",
+      "assetId": "struct_fence_bamboo_rail",
       "anchorX": 0.5,
-      "anchorY": 0.93,
-      "width": 274,
-      "height": 176,
+      "anchorY": 1.0,
+      "width": 242,
+      "height": 122,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1134,
-      "atlasY": 2
+      "atlasX": 683,
+      "atlasY": 283,
+      "attachX": 0.5,
+      "attachY": 1.1228
+    },
+    {
+      "assetId": "struct_fence_post",
+      "anchorX": 0.5,
+      "anchorY": 0.97,
+      "width": 26,
+      "height": 149,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 1942,
+      "atlasY": 1648
+    },
+    {
+      "assetId": "struct_fence_rail",
+      "anchorX": 0.5,
+      "anchorY": 1.0,
+      "width": 235,
+      "height": 82,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 2,
+      "atlasY": 1961,
+      "attachX": 0.5,
+      "attachY": 1.5776
+    },
+    {
+      "assetId": "struct_fence_white",
+      "anchorX": 0.5,
+      "anchorY": 0.97,
+      "width": 174,
+      "height": 149,
+      "isFlippedAllowed": true,
+      "page": 4,
+      "atlasX": 2,
+      "atlasY": 283
+    },
+    {
+      "assetId": "struct_fence_white_post",
+      "anchorX": 0.5,
+      "anchorY": 0.97,
+      "width": 38,
+      "height": 149,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 1970,
+      "atlasY": 1648
+    },
+    {
+      "assetId": "struct_fence_white_rail",
+      "anchorX": 0.5,
+      "anchorY": 1.0,
+      "width": 235,
+      "height": 130,
+      "isFlippedAllowed": true,
+      "page": 4,
+      "atlasX": 446,
+      "atlasY": 283,
+      "attachX": 0.5,
+      "attachY": 1.0328
     },
     {
       "assetId": "struct_hut",

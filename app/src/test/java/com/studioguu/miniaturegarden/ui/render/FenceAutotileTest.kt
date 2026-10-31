@@ -137,34 +137,26 @@ class FenceAutotileTest {
     // --- Meeting the neighbour ---
 
     @Test
-    fun `two neighbours' arms end at the very same point`() {
-        // East of (3,4) is (4,4), whose west arm comes back to meet it; likewise north and south.
-        assertEquals(FenceAutotile.armEnd(3, 4, EAST), FenceAutotile.armEnd(4, 4, WEST))
-        assertEquals(FenceAutotile.armEnd(4, 4, NORTH), FenceAutotile.armEnd(4, 3, SOUTH))
-        for (x in 0 until 8) for (y in 0 until 8) {
-            assertEquals(FenceAutotile.armEnd(x, y, EAST), FenceAutotile.armEnd(x + 1, y, WEST))
-            assertEquals(FenceAutotile.armEnd(x, y, SOUTH), FenceAutotile.armEnd(x, y + 1, NORTH))
-        }
+    fun `the rail between two sections belongs to the one drawn first`() {
+        assertEquals(listOf(EAST, SOUTH), FenceAutotile.railsFrom(NORTH or EAST or SOUTH or WEST))
+        assertEquals(emptyList<Int>(), FenceAutotile.railsFrom(NORTH or WEST))
+        // Of any two neighbours, exactly one has the rail between them.
+        assertTrue(EAST in FenceAutotile.railsFrom(EAST) && EAST !in FenceAutotile.railsFrom(WEST))
+        assertTrue(SOUTH in FenceAutotile.railsFrom(SOUTH) && SOUTH !in FenceAutotile.railsFrom(NORTH))
     }
 
     @Test
-    fun `an arm ends in the middle of its side of the tile`() {
-        assertEquals(4.5f to 4f, FenceAutotile.armEnd(4, 4, NORTH))
-        assertEquals(5f to 4.5f, FenceAutotile.armEnd(4, 4, EAST))
-        assertEquals(4.5f to 5f, FenceAutotile.armEnd(4, 4, SOUTH))
-        assertEquals(4f to 4.5f, FenceAutotile.armEnd(4, 4, WEST))
-        assertThrows(IllegalArgumentException::class.java) { FenceAutotile.armEnd(4, 4, 3) }
+    fun `a rail runs from the middle of its tile to the middle of the next`() {
+        assertEquals(4.5f to 3.5f, FenceAutotile.nextPost(4, 4, NORTH))
+        assertEquals(5.5f to 4.5f, FenceAutotile.nextPost(4, 4, EAST))
+        assertEquals(4.5f to 5.5f, FenceAutotile.nextPost(4, 4, SOUTH))
+        assertEquals(3.5f to 4.5f, FenceAutotile.nextPost(4, 4, WEST))
+        assertThrows(IllegalArgumentException::class.java) { FenceAutotile.nextPost(4, 4, 3) }
     }
 
     @Test
-    fun `arms running up the screen are drawn behind the post, the others in front`() {
-        val transform = IsometricTransform(tileWidth = 128f, tileHeight = 64f, heightStep = 16f)
-        val centre = transform.worldToScreen(4.5f, 4.5f)
-        for (direction in FenceAutotile.DIRECTIONS) {
-            val (x, y) = FenceAutotile.armEnd(4, 4, direction)
-            val runsUpTheScreen = transform.worldToScreen(x, y).y < centre.y
-            assertEquals("direction $direction", runsUpTheScreen, FenceAutotile.isBehindPost(direction))
-        }
+    fun `the posts go over the rails, and all of it before what stands at the next depth`() {
+        assertTrue(0f < FenceAutotile.RAIL_DEPTH && FenceAutotile.RAIL_DEPTH < FenceAutotile.POST_DEPTH && FenceAutotile.POST_DEPTH < 1f)
     }
 
     // --- Through the game: place, remove, put away ---
@@ -173,7 +165,7 @@ class FenceAutotileTest {
         profile = UserProfile(coins = 100)
         repeat(4) { putSlot(InventorySlot(it)) }
     }
-    private val place = PlaceItemUseCase(repo, GardenMap.DEFAULT, RecordCollectionUseCase(repo))
+    private val place =PlaceItemUseCase(repo, GardenMap.DEFAULT, RecordCollectionUseCase(repo))
 
     private fun maskNow(x: Int, y: Int) = maskIn(repo.objects.values.toList(), x, y)
     private fun idAt(x: Int, y: Int) = repo.objects.values.first { it.gridX == x && it.gridY == y }.instanceId

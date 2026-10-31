@@ -71,7 +71,10 @@
 
 | 物（id） | 状態 | 出所 | 素材・メモ |
 |---|---|---|---|
-| ウッドフェンス（`struct_fence`） | ✅＋⬜ | Recraft | `struct_fence` `struct_fence_post`（原画 `item_fence_wood.png` から切り出し）。斜めにつなぐ横木と杭はコード。`struct_fence_rail` は 📦 |
+| 木の柵（`struct_fence`） | ✅ | Recraft | `struct_fence`（1 本のとき）`struct_fence_post` `struct_fence_rail`（つながるとき。#85、原画 `struct_fence_wood.png` から切り出し、横木を引き伸ばす）。コードの横木と杭はやめた |
+| 白い柵（`struct_fence_white`） | ✅ | Recraft | `struct_fence_white` `struct_fence_white_post` `struct_fence_white_rail`（#85、原画 `struct_fence_white.png`。真っ白だけを抜く。杭の間は 2 回並べる） |
+| 竹垣（`struct_fence_bamboo`） | ✅ | Recraft | `struct_fence_bamboo` `struct_fence_bamboo_post` `struct_fence_bamboo_rail`（#85、原画 `struct_fence_bamboo.png`。つなぎでは縦の竹を 2 本に 1 本に間引き、2 回並べる） |
+| レンガの縁石（`struct_edging_brick`） | ✅ | Recraft | `struct_edging_brick` `struct_edging_brick_rail`（#85、原画 `struct_edging_brick.png`。歯を 1 マス 7 本に並べ直す。右下がりの辺は反転して描く。杭は無い） |
 | 井戸（`struct_well`） | ✅ | Recraft | `struct_well`（原画 `building_well.png`、Recraft（#74。C2PA を grep で確認））。#74 で 1×2 から 1×1 に。丸い石の井戸に屋根と桶 |
 | 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた） |
 | 小屋（`struct_hut`） | ✅ | Recraft | `struct_hut`（原画 `building_hut.png`を差し替え：片流れのトタン屋根・板壁・観音開きの戸）。色変えのマスクは `mask_struct_hut`。土台の石が明るいクリーム色なので、真っ白だけを抜いて切り抜いた |
@@ -116,13 +119,14 @@
 | 小屋・井戸（`struct_hut` `struct_well`） | ✅ | `icon_struct_hut.png` `icon_struct_well.png`（#74、建物の原画から） |
 | 岩・ベンチ・石灯籠・スプリンクラー（`deco_rock` `deco_bench` `deco_lantern` `deco_sprinkler`） | ✅ | `icon_deco_*.png`（#74、飾りの原画から） |
 | 小石・野の花・ウッドデッキ・石畳（`ground_pebble` `ground_flowers` `floor_wood` `floor_cobblestone`） | ✅ | `icon_ground_*.png` `icon_floor_*.png`（#74。斜め上から見た板の形のまま） |
-| コテージ・ガラスの温室・ウッドフェンス（`struct_cottage` `floor_greenhouse` `struct_fence`） | ✅ | `icon_struct_cottage.png` `icon_floor_greenhouse.png` `icon_struct_fence.png`（#77、庭で使っている切り抜き済みの絵 `raw_assets/` から。柵は 1 枚で立つときの板） |
+| コテージ・ガラスの温室（`struct_cottage` `floor_greenhouse`） | ✅ | `icon_struct_cottage.png` `icon_floor_greenhouse.png`（#77、庭で使っている切り抜き済みの絵 `raw_assets/` から） |
+| 柵 3 種・縁石（`struct_fence` `struct_fence_white` `struct_fence_bamboo` `struct_edging_brick`） | ✅ | `icon_struct_fence.png` ほか 3 枚（#85、1 本で立つときの絵から。`tools/prepare_fence_art.py`） |
 | 風車（`struct_windmill`） | ✅ | `icon_struct_windmill.png`（#77、本体と羽根の切り抜きを、庭と同じ取り付け点で重ねた） |
 | 池・芝生（`deco_pond` `ground_grass`） | ✅ | `icon_deco_pond.png`（#77、`pond.png`）・`icon_ground_grass.png`（#77、`tile_grass_iso.png` を板の形のまま） |
 | 小川のかけら（`tile_river`） | ⚙️ | `icon_tile_river.png`（#77、スクリプトで作った `tile_river_autotile.png` のまっすぐなひと続きを、庭のマスと同じひし形に） |
 | 白菜・菜の花・風見鶏（ショップに出していない） | ⬜ | 絵文字。白菜・菜の花のアイコンの原画らしい画像が `tools/source_art/` に未追跡で置かれている（未確認・未加工） |
 
-**集計（作物以外の品物のアイコン 18。ショップに出している品はすべて絵）**：✅ 16、⚙️ 1、⬜ 1（風見鶏、未作成）。
+**集計（作物以外の品物のアイコン 21。ショップに出している品はすべて絵）**：✅ 19、⚙️ 1、⬜ 1（風見鶏、未作成）。
 
 ## 演出としてコードで描くもの
 
@@ -189,4 +193,3 @@
 | `tools/source_art/tile_dirt_plowed.png` | #53 から未使用 |
 | `tools/source_art/tile_river_atlas.png` | 16 種のつながり方に合わない並びで、継ぎ目も合わなかった |
 | アトラスの `tile_grass_dark` | 残っているが描画に使っていない |
-| アトラスの `struct_fence_rail` | 横木はコードで描いている |

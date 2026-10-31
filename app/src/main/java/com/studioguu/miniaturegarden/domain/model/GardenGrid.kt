@@ -63,8 +63,8 @@ enum class PlacementKind {
  * (paving) and an occupant (whatever stands there); every object counts on all the cells of
  * its footprint.
  *
- * A lawn is an occupant too, with one exception (#55): a fence may stand on a lawn, and a lawn
- * be sown under a fence ([sharesCellWithLawn]). Such a cell holds both; the fence is what stands
+ * A lawn is an occupant too, with one exception (#55): a fence or edging may stand on a lawn, and a
+ * lawn be sown under it ([sharesCellWithLawn]). Such a cell holds both; the fence is what stands
  * there ([occupantAt]), and the lawn lies under it ([lawnAt]).
  */
 class GardenGrid(
@@ -198,7 +198,7 @@ class GardenGrid(
         val placingFence = objectId != null && sharesCellWithLawn(objectId)
         val thing = standing[cell]
         return when {
-            thing != null -> !(placingLawn && thing.isFence)
+            thing != null -> !(placingLawn && thing.runKind != null)
             cell in lawns -> !placingFence
             else -> false
         }
@@ -208,7 +208,7 @@ class GardenGrid(
         /** The widest river a bridge crosses. */
         const val MAX_BRIDGED_RIVER = 2
 
-        /** Whether [objectId] can share its cell with a lawn: a fence (#55). */
-        fun sharesCellWithLawn(objectId: String): Boolean = FencePart.fromObjectId(objectId) != null
+        /** Whether [objectId] can share its cell with a lawn: a fence (#55) or the edging. */
+        fun sharesCellWithLawn(objectId: String): Boolean = RunKind.of(objectId) != null
     }
 }

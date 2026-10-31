@@ -1,7 +1,7 @@
 {
-  "struct_fence": {"anchorX": 0.5, "anchorY": 0.93},
-  "struct_fence_rail": {"anchorX": 0.5, "anchorY": 0.93},
-  "struct_fence_post": {"anchorX": 0.5, "anchorY": 0.93},
+  "struct_fence": {"anchorX": 0.5, "anchorY": 0.97},
+  "struct_fence_rail": {"anchorX": 0.5, "anchorY": 1.0, "attachX": 0.5, "attachY": 1.5776},
+  "struct_fence_post": {"anchorX": 0.5, "anchorY": 0.97},
   "tile_grass": {"anchorX": 0.5, "anchorY": 0.4337, "isFlippedAllowed": true},
   "tile_grass_dark": {"anchorX": 0.5, "anchorY": 0.4337, "isFlippedAllowed": true},
   "floor_tilled": {"anchorX": 0.5, "anchorY": 0.458, "isFlippedAllowed": false},
@@ -34,6 +34,14 @@
   "deco_rock_mossy": {"anchorX": 0.4917, "anchorY": 0.7004},
   "deco_rock_standing": {"anchorX": 0.4069, "anchorY": 0.9219},
   "deco_rock_pebbles": {"anchorX": 0.5, "anchorY": 0.6608},
-  "struct_bridge_taiko": {"anchorX": 0.5, "anchorY": 0.6947, "scale": 1.3333},
-  "struct_bridge_taiko_long": {"anchorX": 0.5, "anchorY": 0.6785, "scale": 1.3333}
+  "struct_bridge_taiko": {"anchorX": 0.4995, "anchorY": 0.5411, "scale": 1.1241},
+  "struct_bridge_taiko_long": {"anchorX": 0.4996, "anchorY": 0.5327, "scale": 1.2096},
+  "struct_fence_white": {"anchorX": 0.5, "anchorY": 0.97},
+  "struct_fence_white_post": {"anchorX": 0.5, "anchorY": 0.97},
+  "struct_fence_white_rail": {"anchorX": 0.5, "anchorY": 1.0, "attachX": 0.5, "attachY": 1.0328},
+  "struct_fence_bamboo": {"anchorX": 0.5, "anchorY": 0.97},
+  "struct_fence_bamboo_post": {"anchorX": 0.5, "anchorY": 0.97},
+  "struct_fence_bamboo_rail": {"anchorX": 0.5, "anchorY": 1.0, "attachX": 0.5, "attachY": 1.1228},
+  "struct_edging_brick": {"anchorX": 0.5, "anchorY": 0.8},
+  "struct_edging_brick_rail": {"anchorX": 0.5, "anchorY": 0.8, "attachX": 0.5, "attachY": 0.8}
 }
