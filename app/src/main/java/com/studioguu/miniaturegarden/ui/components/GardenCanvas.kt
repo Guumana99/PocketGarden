@@ -838,7 +838,7 @@ private fun submitObjects(
             submit(obj, RenderLayer.SHADOWS, depth) {
                 if (sprite != null && atlasImage != null) {
                     drawContactShadow(base, min(sprite.drawnWidth(spriteScale) * 0.62f, unit * 0.7f))
-                    drawSpriteShadow(atlasImage, sprite, base, spriteScale, light)
+                    drawSpriteShadow(atlasImage, sprite, base, spriteScale, light, flipped = obj.isFlipped)
                 } else if (structure != null) {
                     drawStructureShadow(transform, obj, structure, light)
                 } else {
@@ -892,8 +892,10 @@ private fun submitObjects(
             // What it stands in comes up around its foot: blades of grass on open ground, crumbs
             // of earth on a bed. Paving is hard and shows nothing. A crop is planted in its bed:
             // crumbs over the bed's own earth read as a second layer of soil on it (#55).
-            // A rock's foot lies under its own bulk: blades there were drawn on the stone (device feedback).
-            if (!isGroundCover && structure == null && !obj.isPlant && !obj.objectId.startsWith(ROCK_ID_PREFIX)) {
+            // Not for a rock or a bench, whose picture has no foot at this point: a rock's lies under
+            // its own bulk, and a bench stands on four legs round it, so that crumbs and blades came
+            // out as dots on the stone or under the seat (device feedback).
+            if (!isGroundCover && structure == null && !obj.isPlant && !obj.objectId.startsWith(ROCK_ID_PREFIX) && obj.objectId != Decoration.BENCH.objectId) {
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
                 val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
@@ -1454,7 +1456,8 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
                     PreviewScene(3, 0.25f, listOf(at(0, 1), at(1, 1), at(2, 1), at(2, 0)))
                 StructureData.fromObjectId(objectId) != null -> {
                     val footprint = StructureData.fromObjectId(objectId)!!.footprint
-                    PreviewScene(maxOf(2, footprint.width, footprint.height), 0.45f, listOf(at(0, 0)))
+                    val size = maxOf(2, footprint.width, footprint.height)
+                    PreviewScene(size, 0.45f, listOf(at((size - footprint.width) / 2, (size - footprint.height) / 2)))
                 }
                 else -> PreviewScene(1, 0.3f, listOf(at(0, 0)))
             }

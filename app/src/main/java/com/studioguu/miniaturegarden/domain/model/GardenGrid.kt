@@ -14,6 +14,28 @@ enum class PlacementCheck {
     OCCUPIED,
 }
 
+/** Where a bridge goes, or why it does not: see [GardenGrid.bridgeAcross]. */
+sealed interface BridgeFit {
+    /** It goes with its first cell at [origin]; [longer] over a river two cells wide. */
+    data class Across(val origin: GridCell, val longer: Boolean) : BridgeFit
+
+    data class Refused(val why: BridgeProblem) : BridgeFit
+}
+
+enum class BridgeProblem {
+    /** There is no river where it would go. */
+    NO_RIVER,
+
+    /** The river is wider than a bridge reaches. */
+    TOO_WIDE,
+
+    /** One of its ends would be outside the garden. */
+    OUTSIDE,
+
+    /** Something stands where one of its ends would rest, or another bridge is in the way. */
+    ENDS_TAKEN,
+}
+
 /** Which layer of a cell something goes into. */
 enum class PlacementKind {
     /** Stands on the ground: plants, decorations, structures. One per cell. */
@@ -114,20 +136,32 @@ class GardenGrid(
     fun bridgeAt(x: Int, y: Int): GridObject? = bridges[GridCell(x, y)]
 
     /**
-     * Whether a bridge with [footprint] goes with its first cell at (originX, originY): all of it
-     * is over the river, free of other bridges, and it reaches land at both ends. So it crosses a
-     * river two cells wide, from bank to bank, and cannot lie along one.
+     * Where a bridge goes for a tap on (x, y), running along gridY, or along gridX if [flipped]: from
+     * bank to bank across the river at the tap, or just beside it. The river may be one or two
+     * cells wide along that line, and each end rests on land. What only lies on the ground
+     * (a lawn, ground cover, paving) can stay under an end; a bed of soil or anything standing there
+     * cannot.
      */
-    fun spansRiver(footprint: Footprint, originX: Int, originY: Int): Boolean {
-        val cells = footprint.cells(originX, originY)
-        fun river(x: Int, y: Int) = standing[GridCell(x, y)]?.isTerrain == true
-        if (cells.any { !river(it.x, it.y) || it in bridges }) return false
-        return if (footprint.width > footprint.height) {
-            !river(originX - 1, originY) && !river(originX + footprint.width, originY)
-        } else {
-            !river(originX, originY - 1) && !river(originX, originY + footprint.height)
-        }
+    fun bridgeAcross(x: Int, y: Int, flipped: Boolean): BridgeFit {
+        val dx = if (flipped) 1 else 0
+        val dy = 1 - dx
+        fun cell(i: Int) = GridCell(x + dx * i, y + dy * i)
+        fun river(i: Int) = standing[cell(i)]?.isTerrain == true
+        val at = listOf(0, 1, -1).firstOrNull { river(it) } ?: return BridgeFit.Refused(BridgeProblem.NO_RIVER)
+        var first = at
+        while (river(first - 1)) first--
+        var last = at
+        while (river(last + 1)) last++
+        val width = last - first + 1
+        if (width > MAX_BRIDGED_RIVER) return BridgeFit.Refused(BridgeProblem.TOO_WIDE)
+        val cells = (first - 1..last + 1).map(::cell)
+        if (cells.any { !map.isInside(it.x, it.y) }) return BridgeFit.Refused(BridgeProblem.OUTSIDE)
+        if (cells.any { it in bridges } || !restsOn(cells.first()) || !restsOn(cells.last())) return BridgeFit.Refused(BridgeProblem.ENDS_TAKEN)
+        return BridgeFit.Across(cells.first(), longer = width == MAX_BRIDGED_RIVER)
     }
+
+    private fun restsOn(cell: GridCell): Boolean =
+        standing[cell]?.isGroundCover != false && floors[cell]?.isSoil != true && map.isBuildable(cell.x, cell.y)
 
     /**
      * Whether something of [kind] with [footprint] fits with its first cell at
@@ -147,6 +181,8 @@ class GardenGrid(
         return when {
             cells.any { !map.isInside(it.x, it.y) } -> PlacementCheck.OUT_OF_BOUNDS
             cells.any { !map.isBuildable(it.x, it.y) } -> PlacementCheck.NOT_BUILDABLE
+            // Nothing goes on the cells a bridge stands over, the banks at its ends included.
+            cells.any { it in bridges } -> PlacementCheck.OCCUPIED
             cells.any { standing[it]?.isTerrain == true } -> PlacementCheck.NOT_BUILDABLE
             // Nor is anything laid under or stood in a pond, though it can be taken away again.
             cells.any { standing[it]?.isPond == true } -> PlacementCheck.OCCUPIED
@@ -169,6 +205,9 @@ class GardenGrid(
     }
 
     companion object {
+        /** The widest river a bridge crosses. */
+        const val MAX_BRIDGED_RIVER = 2
+
         /** Whether [objectId] can share its cell with a lawn: a fence (#55). */
         fun sharesCellWithLawn(objectId: String): Boolean = FencePart.fromObjectId(objectId) != null
     }

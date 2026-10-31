@@ -1,6 +1,8 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.BridgeFit
+import com.studioguu.miniaturegarden.domain.model.BridgeProblem
 import com.studioguu.miniaturegarden.domain.model.BuildingPaint
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
@@ -12,6 +14,8 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PaintPart
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PlacementCheck
+import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.UserProfile
@@ -140,45 +144,83 @@ class ArtImportTest {
 
     // --- The bridge ---
 
+    private val bridge = StructureData.BRIDGE.objectId
+
     @Test
-    fun `a bridge crosses a river two cells wide, from land to land, either way`() {
-        val wide = river(1 to 3, 2 to 3, 3 to 3, 1 to 4, 2 to 4, 3 to 4)
-        val along = Footprint.forObjectId(StructureData.BRIDGE.objectId)
-        val across = Footprint.forObjectId(StructureData.BRIDGE.objectId, flipped = true)
-        assertEquals(Footprint(1, 2), along)
-        assertEquals(Footprint(2, 1), across)
-        assertTrue(GardenGrid(map, wide).spansRiver(along, 2, 3))
-        // Along the river it would end in the water.
-        assertFalse(GardenGrid(map, wide).spansRiver(across, 1, 3))
-        // A river one cell wide has no room for it, and neither has the bank.
-        assertFalse(GardenGrid(map, river(1 to 3, 2 to 3, 3 to 3)).spansRiver(along, 2, 3))
-        // Flipped, over a river running the other way.
-        assertTrue(GardenGrid(map, river(3 to 1, 4 to 1, 3 to 2, 4 to 2, 3 to 3, 4 to 3)).spansRiver(across, 3, 2))
-        // Three wide: it would end in the water.
-        assertFalse(GardenGrid(map, wide + river(1 to 5, 2 to 5, 3 to 5)).spansRiver(along, 2, 3))
+    fun `a bridge goes bank to bank over a river one or two cells wide, and no wider`() {
+        val one = river(1 to 3, 2 to 3, 3 to 3)
+        val two = one + river(1 to 4, 2 to 4, 3 to 4)
+        val three = two + river(1 to 5, 2 to 5, 3 to 5)
+        assertEquals(BridgeFit.Across(GridCell(2, 2), longer = false), GardenGrid(map, one).bridgeAcross(2, 3, flipped = false))
+        assertEquals(BridgeFit.Across(GridCell(2, 2), longer = true), GardenGrid(map, two).bridgeAcross(2, 4, flipped = false))
+        assertEquals(BridgeFit.Refused(BridgeProblem.TOO_WIDE), GardenGrid(map, three).bridgeAcross(2, 4, flipped = false))
+        // A tap on the bank will do.
+        assertEquals(BridgeFit.Across(GridCell(2, 2), longer = false), GardenGrid(map, one).bridgeAcross(2, 2, flipped = false))
+        assertEquals(BridgeFit.Refused(BridgeProblem.NO_RIVER), GardenGrid(map, one).bridgeAcross(7, 7, flipped = false))
+        // Flipped it runs along x, so along this river it would be over three cells of water.
+        assertEquals(BridgeFit.Refused(BridgeProblem.TOO_WIDE), GardenGrid(map, one).bridgeAcross(2, 3, flipped = true))
+        assertEquals(
+            BridgeFit.Across(GridCell(4, 6), longer = false),
+            GardenGrid(map, river(5 to 5, 5 to 6, 5 to 7)).bridgeAcross(5, 6, flipped = true),
+        )
+        // The river at the garden's edge leaves no land for an end.
+        assertEquals(BridgeFit.Refused(BridgeProblem.OUTSIDE), GardenGrid(map, river(0 to 3, 1 to 3, 2 to 3).map { it.copy(gridY = 0) }).bridgeAcross(1, 0, flipped = false))
+        assertEquals(Footprint(1, 3), Footprint.forObjectId(bridge))
+        assertEquals(Footprint(1, 4), Footprint.forObjectId(bridge, longer = true))
+        assertEquals(Footprint(4, 1), Footprint.forObjectId(bridge, flipped = true, longer = true))
     }
 
     @Test
-    fun `a bridge goes on the river from the bag, the river stays under it, and stays while it stands`() = runBlocking {
+    fun `each end of a bridge rests on free land`() {
+        val water = river(1 to 3, 2 to 3, 3 to 3)
+        fun endOn(objectId: String) = GardenGrid(map, water + at(2, 2, objectId)).bridgeAcross(2, 3, flipped = false)
+        assertEquals(BridgeFit.Refused(BridgeProblem.ENDS_TAKEN), endOn("deco_bench"))
+        assertEquals(BridgeFit.Refused(BridgeProblem.ENDS_TAKEN), endOn(GridObject.TILLED_SOIL_OBJECT_ID))
+        // What only lies on the ground stays under it.
+        assertTrue(endOn("ground_grass") is BridgeFit.Across)
+        assertTrue(endOn(GridObject.COBBLESTONE_OBJECT_ID) is BridgeFit.Across)
+    }
+
+    @Test
+    fun `a bridge costs the same either way, and what is under it stays while it stands`() = runBlocking {
+        assertEquals(3_500, GardenItem.STRUCT_BRIDGE.price)
         val cells = river(1 to 3, 2 to 3, 3 to 3, 1 to 4, 2 to 4, 3 to 4)
-        cells.forEach { repo.objects[it.instanceId] = it }
+        val lawn = at(2, 2, "ground_grass")
+        (cells + lawn).forEach { repo.objects[it.instanceId] = it }
         repo.profile = UserProfile()
-        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_BRIDGE.itemId, 2))
+        repo.putSlot(InventorySlot(0, GardenItem.STRUCT_BRIDGE.itemId, 3))
         val place = PlaceItemUseCase(repo, map, RecordCollectionUseCase(repo))
-        assertEquals(ActionResult.NEEDS_RIVER_ACROSS, place(0, 6, 6, 0L))
+        assertEquals(ActionResult.NEEDS_RIVER_ACROSS, place(0, 7, 7, 0L))
         assertEquals(ActionResult.SUCCESS, place(0, 2, 3, 0L))
-        val garden = repo.objects.values.toList()
-        val grid = GardenGrid(map, garden)
+        val placed = repo.objects.values.first { it.isBridge }
+        assertEquals(GridCell(2, 2), GridCell(placed.gridX, placed.gridY))
+        assertEquals("struct_bridge_taiko_long", TileSetDefinition.assetIdFor(placed))
+        assertEquals(4, placed.occupiedCells().size)
+        val grid = GardenGrid(map, repo.objects.values.toList())
         assertTrue(grid.occupantAt(2, 3)!!.isTerrain)
-        assertTrue(grid.objectAt(2, 3)!!.isBridge)
-        // Nothing else goes there, and the water cannot be taken from under it.
-        val under = cells.first { it.gridX == 2 && it.gridY == 3 }
+        for (y in 2..5) assertTrue(grid.objectAt(2, y)!!.isBridge)
+        // Nothing goes on its ends, or on the river, and neither comes out from under it.
+        assertEquals(PlacementCheck.OCCUPIED, grid.checkPlacement(Footprint.SINGLE, 2, 5))
+        assertEquals(PlacementCheck.OCCUPIED, grid.checkPlacement(Footprint.SINGLE, 2, 2, PlacementKind.FLOOR))
         val store = StoreObjectUseCase(repo)
         val remove = StartRemovalUseCase(repo, store, RemoveObjectUseCase(repo))
-        assertEquals(ActionResult.BRIDGE_ABOVE, remove(under.instanceId, toBag = true, 0L))
-        // Turned round it would lie along the river.
-        val bridge = garden.first { it.isBridge }
-        assertEquals(ActionResult.NEEDS_RIVER_ACROSS, flip(bridge.instanceId))
+        assertEquals(ActionResult.BRIDGE_ABOVE, remove(cells.first { it.gridX == 2 && it.gridY == 3 }.instanceId, toBag = true, 0L))
+        assertEquals(ActionResult.BRIDGE_ABOVE, remove(lawn.instanceId, toBag = true, 0L))
+        // Turned round it would have to cross three cells of water.
+        assertEquals(ActionResult.RIVER_TOO_WIDE, flip(placed.instanceId))
+    }
+
+    @Test
+    fun `a bridge moved takes the length of the river it goes to`() = runBlocking {
+        val over = at(4, 6, bridge, "bridge").copy(turned = true)
+        val move = MoveObjectUseCase(repo, map, CalculateOfflineProgressUseCase())
+        val more = river(1 to 1, 2 to 1, 3 to 1)
+        more.forEach { repo.objects[it.instanceId] = it }
+        repo.objects["bridge"] = over
+        assertEquals(ActionResult.SUCCESS, move("bridge", 2, 1))
+        val moved = repo.objects.getValue("bridge")
+        assertEquals(GridCell(2, 0), GridCell(moved.gridX, moved.gridY))
+        assertFalse(moved.turned)
     }
 
     // --- The river ---

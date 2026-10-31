@@ -1,6 +1,8 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.BloomColours
+import com.studioguu.miniaturegarden.domain.model.BridgeFit
+import com.studioguu.miniaturegarden.domain.model.BridgeProblem
 import com.studioguu.miniaturegarden.domain.model.BuildingPaint
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
@@ -111,8 +113,11 @@ enum class ActionResult {
     /** A cell of river was to go from under a bridge. */
     BRIDGE_ABOVE,
 
-    /** A bridge was to go anywhere but across a river two cells wide ([GardenGrid.spansRiver]). */
+    /** A bridge was to go where there is no river to cross. */
     NEEDS_RIVER_ACROSS,
+
+    /** A bridge was to go over a river wider than it reaches ([GardenGrid.bridgeAcross]). */
+    RIVER_TOO_WIDE,
 
     /** Only a building with a mask can be painted ([BuildingPaint]), and only in its own colours. */
     NOT_PAINTABLE,
@@ -248,10 +253,6 @@ class CareForPlantUseCase @Inject constructor(
  */
 internal fun GardenGrid.fits(objectId: String, x: Int, y: Int, flipped: Boolean = false): ActionResult {
     val footprint = Footprint.forObjectId(objectId, flipped)
-    if (objectId == StructureData.BRIDGE.objectId) {
-        if (footprint.cells(x, y).any { !map.isInside(it.x, it.y) }) return ActionResult.OUT_OF_BOUNDS
-        return if (spansRiver(footprint, x, y)) ActionResult.SUCCESS else ActionResult.NEEDS_RIVER_ACROSS
-    }
     val check = checkPlacement(footprint, x, y, PlacementKind.forObjectId(objectId), objectId)
     when (check) {
         PlacementCheck.OUT_OF_BOUNDS -> return ActionResult.OUT_OF_BOUNDS
@@ -266,6 +267,14 @@ internal fun GardenGrid.fits(objectId: String, x: Int, y: Int, flipped: Boolean 
     val species = if (objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(objectId) else null
     if (species != null && !species.ground.allows(groundAt(x, y))) return wrongGround(species.ground)
     return if (check == PlacementCheck.OCCUPIED) ActionResult.TILE_OCCUPIED else ActionResult.SUCCESS
+}
+
+/** What to tell the player whose bridge was refused for [problem]. */
+internal fun bridgeRefusal(problem: BridgeProblem): ActionResult = when (problem) {
+    BridgeProblem.NO_RIVER -> ActionResult.NEEDS_RIVER_ACROSS
+    BridgeProblem.TOO_WIDE -> ActionResult.RIVER_TOO_WIDE
+    BridgeProblem.OUTSIDE -> ActionResult.OUT_OF_BOUNDS
+    BridgeProblem.ENDS_TAKEN -> ActionResult.TILE_OCCUPIED
 }
 
 /** What to tell the player who put a crop that grows on [ground] somewhere else. */
@@ -305,8 +314,17 @@ class PlaceItemUseCase @Inject constructor(
             // The symbol building is one of a kind: a second one never goes up.
             if (item.isSymbol && grid.hasSymbol) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
             val facing = flipped && GridObject.canFaceEitherWay(item.objectId)
-            val fit = grid.fits(item.objectId, gridX, gridY, facing)
-            if (fit != ActionResult.SUCCESS) return@runInTransaction fit
+            // A bridge finds its own place and length from the river at the tap.
+            val across = if (item.objectId == StructureData.BRIDGE.objectId) {
+                when (val fit = grid.bridgeAcross(gridX, gridY, facing)) {
+                    is BridgeFit.Across -> fit
+                    is BridgeFit.Refused -> return@runInTransaction bridgeRefusal(fit.why)
+                }
+            } else {
+                val fit = grid.fits(item.objectId, gridX, gridY, facing)
+                if (fit != ActionResult.SUCCESS) return@runInTransaction fit
+                null
+            }
             // Out of its season a crop only grows under glass. Seeds bought earlier stay in the
             // bag for when their season comes round again.
             val season = gardenRepository.getProgress()?.season
@@ -320,9 +338,10 @@ class PlaceItemUseCase @Inject constructor(
             gardenRepository.upsertGridObject(
                 GridObject(
                     instanceId = UUID.randomUUID().toString(),
-                    gridX = gridX,
-                    gridY = gridY,
+                    gridX = across?.origin?.x ?: gridX,
+                    gridY = across?.origin?.y ?: gridY,
                     isFlipped = facing,
+                    turned = across?.longer == true,
                     objectId = item.objectId,
                     nutritionLevel = food,
                     status = if (Soil.isEmpty(food)) PlantStatus.UNNOURISHED else PlantStatus.HEALTHY,
@@ -763,14 +782,19 @@ class FlipObjectUseCase @Inject constructor(
         if (!target.canFlip) return@runInTransaction ActionResult.NOT_FLIPPABLE
         // Turned round once it stands (#50): a work site is sheeting, with no front to face.
         if (target.isWorking) return@runInTransaction ActionResult.BUSY
-        val turned = target.quarterTurned()
-        // A bridge turned round runs the other way, and has to fit that way.
+        // A bridge turned round crosses the river the other way, from the cell next to its end.
         if (target.isBridge) {
+            val over = target.occupiedCells()[1]
             val others = GardenGrid(gardenMap.current(), objects.filter { it.instanceId != instanceId })
-            val fit = others.fits(target.objectId, target.gridX, target.gridY, turned.isFlipped)
-            if (fit != ActionResult.SUCCESS) return@runInTransaction fit
+            when (val fit = others.bridgeAcross(over.x, over.y, !target.isFlipped)) {
+                is BridgeFit.Refused -> return@runInTransaction bridgeRefusal(fit.why)
+                is BridgeFit.Across -> gardenRepository.upsertGridObject(
+                    target.copy(gridX = fit.origin.x, gridY = fit.origin.y, isFlipped = !target.isFlipped, turned = fit.longer),
+                )
+            }
+            return@runInTransaction ActionResult.SUCCESS
         }
-        gardenRepository.upsertGridObject(turned)
+        gardenRepository.upsertGridObject(target.quarterTurned())
         ActionResult.SUCCESS
     }
 }

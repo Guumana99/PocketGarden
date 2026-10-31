@@ -307,7 +307,7 @@ class RiverScene(private val art: WaterArt, cells: Set<GridCell>) {
         const val UNITS = 512f
 
         /** How far the land edge of the bank lies outside the cell, in cells (tools/prepare_water_art.py). */
-        const val OVERHANG = 0.12f
+        const val OVERHANG = 0.08f
 
         /** How many cells one copy of a picture covers. */
         const val SURFACE_CELLS = 2f

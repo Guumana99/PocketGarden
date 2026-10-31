@@ -491,7 +491,6 @@ def prepare_icons() -> dict[str, np.ndarray]:
     for item_id, path in CUT_ICONS.items():
         out[f"icon_{item_id}"] = to_icon(crop(np.array(Image.open(path).convert("RGBA"))))
     out["icon_struct_windmill"] = windmill_icon()
-    out["icon_tile_river"] = river_icon()
     return out
 
 
@@ -541,7 +540,6 @@ ITEM_ICONS: dict[str, str] = {
 CUT_ICONS: dict[str, Path] = {
     "struct_cottage": RAW / "struct_cottage.png",
     "floor_greenhouse": RAW / "floor_greenhouse.png",
-    "deco_pond": SOURCE / "pond.png",
     # The panel of fence the garden draws for one standing alone (item_fence_wood.png is a sheet of parts).
     "struct_fence": RAW / "struct_fence.png",
 }
@@ -636,18 +634,6 @@ def windmill_icon() -> np.ndarray:
     canvas.alpha_composite(Image.fromarray(body), (-left, -top))
     canvas.alpha_composite(Image.fromarray(sails), (sx - left, sy - top))
     return to_icon(crop(np.array(canvas)))
-
-
-def river_icon() -> np.ndarray:
-    """The river's icon: a straight stretch (north to south) out of the garden's own river tiles
-    (tile_river_autotile.png, made by build_terrain_assets.py: 4 x 4 joins, 128 px each, seen from
-    straight above), laid down as a cell of the garden is: a diamond twice as wide as it is tall."""
-    tiles = Image.open(ROOT / "app/src/main/res/drawable-nodpi/tile_river_autotile.png").convert("RGBA")
-    mask = 1 | 4
-    piece = tiles.crop(((mask % 4) * 128, (mask // 4) * 128, (mask % 4 + 1) * 128, (mask // 4 + 1) * 128))
-    # Screen (x, y) of the 256 x 128 diamond from the tile's (u, v): x = u - v + 128, y = (u + v) / 2.
-    diamond = piece.transform((256, 128), Image.AFFINE, (0.5, 1.0, -64.0, -0.5, 1.0, 64.0), resample=Image.BICUBIC)
-    return to_icon(crop(np.array(diamond)))
 
 
 def to_icon(rgba: np.ndarray) -> np.ndarray:

@@ -152,7 +152,8 @@
     <string name="paint_pale_green">淡い緑</string>
     <string name="msg_bridge_above">橋がかかっています。先に橋を片づけてください</string>
     <string name="msg_not_paintable">これは色を変えられません</string>
-    <string name="msg_needs_river_across">太鼓橋は、幅 2 マスの川を渡すように置けます</string>
+    <string name="msg_needs_river_across">太鼓橋は、川をまたぐように置けます</string>
+    <string name="msg_river_too_wide">川の幅が 2 マスまでの所に置けます</string>
     <string name="placing_flip">↔ 向き</string>
     <string name="placing_flip_description">置く向きを左右で切り替える（現在：%1$s）</string>
     <string name="facing_normal">通常</string>
