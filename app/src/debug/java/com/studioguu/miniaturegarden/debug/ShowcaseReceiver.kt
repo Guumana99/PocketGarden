@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
  *     adb shell am broadcast -a com.studioguu.miniaturegarden.debug.SHOWCASE -p com.studioguu.miniaturegarden \
  *         --ez load true                      # replaces the saved garden with [ShowcaseGarden]
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
+ *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
  *         --ef scale 0.32 --ef pan_x 0 --ef pan_y 0 \
@@ -72,13 +73,23 @@ class ShowcaseReceiver : BroadcastReceiver() {
 
     private suspend fun loadGarden(garden: String?) {
         val art = garden == "art"
-        val feedback = garden == "fb" || art
+        val fences = garden == "fences"
+        val bridges = garden == "bridges"
+        val feedback = garden == "fb" || art || fences || bridges
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
         gardenRepository.runInTransaction {
             gardenRepository.getGridObjects().forEach { gardenRepository.deleteGridObject(it.instanceId) }
-            gardenRepository.upsertGridObjects(if (art) ArtGarden.objects(now) else if (feedback) FeedbackGarden.objects(now) else ShowcaseGarden.objects(now))
+            gardenRepository.upsertGridObjects(
+                when {
+                    art -> ArtGarden.objects(now)
+                    fences -> FenceGarden.fences(now)
+                    bridges -> FenceGarden.bridges(now)
+                    feedback -> FeedbackGarden.objects(now)
+                    else -> ShowcaseGarden.objects(now)
+                },
+            )
             gardenRepository.saveProgress(
                 GardenProgress(
                     season = Season.AUTUMN,

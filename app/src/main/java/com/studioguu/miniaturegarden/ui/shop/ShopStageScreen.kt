@@ -119,13 +119,15 @@ fun ShopStageScreen(
     val expansion by viewModel.expansion.collectAsStateWithLifecycle()
     val guiding by viewModel.guiding.collectAsStateWithLifecycle()
     val rockKinds by viewModel.rockKinds.collectAsStateWithLifecycle()
+    val fenceKinds by viewModel.fenceKinds.collectAsStateWithLifecycle()
     // The first steps go straight to the shelf they are about.
     LaunchedEffect(guiding) { if (guiding) viewModel.goTo(ShopStage.SEEDS) }
     // However the shop was left, the next visit starts at its door.
     DisposableEffect(Unit) { onDispose(viewModel::leave) }
     var confirmBonus by rememberSaveable { mutableStateOf(false) }
     var confirmExpand by rememberSaveable { mutableStateOf(false) }
-    var choosingRock by rememberSaveable { mutableStateOf(false) }
+    /** The thing on the shelf whose kinds are being chosen from. */
+    var choosingKind by rememberSaveable { mutableStateOf<GardenItem?>(null) }
     /** Price of the item the player could not afford, while that dialog is open. */
     var shortFor by rememberSaveable { mutableStateOf<Int?>(null) }
     val activity = LocalContext.current.findActivity()
@@ -144,7 +146,7 @@ fun ShopStageScreen(
             good = purchase.result == ActionResult.SUCCESS,
         )
     }
-    val inHand = inspecting?.let { item -> (shelves.flatten() + rockKinds).firstOrNull { it.item == item } }
+    val inHand = inspecting?.let { item -> (shelves.flatten() + rockKinds + fenceKinds).firstOrNull { it.item == item } }
 
     ShopStageContent(
         stage = stage,
@@ -159,7 +161,7 @@ fun ShopStageScreen(
         expansion = expansion,
         onExpand = { confirmExpand = true },
         onGoTo = viewModel::goTo,
-        onInspect = { item -> if (item == GardenItem.ROCK_KINDS.first()) choosingRock = true else viewModel.inspect(item) },
+        onInspect = { item -> if (GardenItem.kindsUnder(item) != null) choosingKind = item else viewModel.inspect(item) },
         onPutBack = viewModel::putBack,
         // The first steps' seed is free, whatever is in the purse.
         onBuy = { item -> if (guiding || coins >= item.price) viewModel.buy(item) else shortFor = item.price },
@@ -168,14 +170,15 @@ fun ShopStageScreen(
         modifier = modifier,
     )
 
-    if (choosingRock) {
-        RockKindsDialog(
-            kinds = rockKinds,
+    choosingKind?.let { shelved ->
+        KindsDialog(
+            title = kindsName(shelved),
+            kinds = if (shelved == GardenItem.FENCE_KINDS.first()) fenceKinds else rockKinds,
             onChoose = { item ->
-                choosingRock = false
+                choosingKind = null
                 viewModel.inspect(item)
             },
-            onDismiss = { choosingRock = false },
+            onDismiss = { choosingKind = null },
         )
     }
 
@@ -223,22 +226,27 @@ fun ShopStageScreen(
     }
 }
 
-/** The kinds of rock to choose from: those not open yet are shadows, with the level that opens them. */
+/** What the one thing on the shelf that stands for several kinds is called there. */
 @Composable
-private fun RockKindsDialog(kinds: List<ShelfItem>, onChoose: (GardenItem) -> Unit, onDismiss: () -> Unit) {
+private fun kindsName(shelved: GardenItem): String =
+    stringResource(if (shelved == GardenItem.FENCE_KINDS.first()) R.string.shop_fences else R.string.shop_rocks)
+
+/** The kinds to choose from: those not open yet are shadows, with the level that opens them. */
+@Composable
+private fun KindsDialog(title: String, kinds: List<ShelfItem>, onChoose: (GardenItem) -> Unit, onDismiss: () -> Unit) {
     ParchmentDialog(
         onDismissRequest = onDismiss,
-        title = stringResource(R.string.shop_rocks),
+        title = title,
         actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
     ) {
         Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (kind in kinds) RockKindRow(kind, onChoose)
+            for (kind in kinds) KindRow(kind, onChoose)
         }
     }
 }
 
 @Composable
-private fun RockKindRow(kind: ShelfItem, onChoose: (GardenItem) -> Unit) {
+private fun KindRow(kind: ShelfItem, onChoose: (GardenItem) -> Unit) {
     val locked = kind.tag == ShelfTag.LOCKED
     val interaction = remember { MutableInteractionSource() }
     Row(
@@ -280,7 +288,7 @@ private fun RockKindRow(kind: ShelfItem, onChoose: (GardenItem) -> Unit) {
     }
 }
 
-/** Test tag of a kind of rock in the list. */
+/** Test tag of a kind in the list. */
 fun rockKindTag(item: GardenItem): String = "rock_${item.itemId}"
 
 /** A line said at the counter: what was bought, or why not. [good] decides its colour. */
@@ -563,8 +571,8 @@ private fun Shelf(things: List<ShelfItem>, inHand: GardenItem?, onInspect: (Gard
 @Composable
 private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem) -> Unit) {
     val interaction = remember { MutableInteractionSource() }
-    // The one rock on the shelf stands for all the kinds of rock.
-    val name = if (thing.item == GardenItem.ROCK_KINDS.first()) stringResource(R.string.shop_rocks) else itemDisplayName(thing.item)
+    // The one rock on the shelf stands for all the kinds of rock, and the one fence for the fences.
+    val name = if (GardenItem.kindsUnder(thing.item) != null) kindsName(thing.item) else itemDisplayName(thing.item)
     Column(
         modifier = Modifier
             .width(ITEM_WIDTH)
@@ -601,7 +609,7 @@ private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem
 /** The paper tag in front of a thing on the shelf: its price (or why it is not for sale), and how many are in the bag. */
 @Composable
 private fun PriceTag(thing: ShelfItem) {
-    val kinds = thing.item == GardenItem.ROCK_KINDS.first()
+    val kinds = GardenItem.kindsUnder(thing.item) != null
     val text = when (thing.tag) {
         ShelfTag.FOR_SALE, ShelfTag.SHORT_OF_COINS -> if (kinds) stringResource(R.string.shop_rocks_choose) else if (thing.free) stringResource(R.string.tutorial_shop_free) else "🪙 ${thing.item.price}"
         ShelfTag.LOCKED -> lockedText(thing.item)

@@ -227,9 +227,9 @@ class FloorAndFenceTest {
     }
 
     @Test
-    fun `there is one fence item, and it is what every fence id belongs to`() {
+    fun `there is one wooden fence item, and it is what every old fence id belongs to`() {
         val fenceItems = GardenItem.entries.filter { it.objectId.startsWith(GridObject.FENCE_OBJECT_ID) }
-        assertEquals(listOf(GardenItem.STRUCT_FENCE), fenceItems)
+        assertEquals(GardenItem.FENCE_KINDS, fenceItems)
         for (part in FencePart.entries) {
             val stored = GridObject(instanceId = part.name, gridX = 0, gridY = 0, objectId = part.objectId, lastUpdatedTimestamp = t0)
             assertEquals(part.name, GardenItem.STRUCT_FENCE, StoreObjectUseCase.itemFor(stored))

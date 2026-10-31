@@ -556,7 +556,7 @@ def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
     scale = size * TILE / (w if kind == "w" else h)
     rgba = crop(resize(rgba, scale, scale))
     if asset_id == "struct_bridge_taiko":
-        return rgba, dict(bridge_anchor(rgba), scale=BRIDGE_DRAW_SCALE)
+        return rgba, bridge_fit(rgba, cells=3)
     # It stands on the middle of its base, as a building does.
     cx, side_y, width = base_of(rgba, band)
     ys, _ = np.where(rgba[:, :, 3] > ALPHA_MIN)
@@ -569,8 +569,8 @@ def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
     return rgba, override
 
 
-#: The bridge's picture is made 1.5 tiles across and drawn 2: three cells long, end to end.
-BRIDGE_DRAW_SCALE = 1.3333
+#: How far short of the footprint's two ends the deck stops, in cells, together.
+BRIDGE_MARGIN = 0.1
 
 #: How much longer the bridge over a river two cells wide is: four cells to three, across the screen.
 BRIDGE_LONG = 1.25
@@ -607,19 +607,32 @@ def lengthen_bridge(rgba: np.ndarray) -> np.ndarray:
     return crop(bilinear(rgba, source_x, source_y))
 
 
-def bridge_anchor(rgba: np.ndarray) -> dict:
+def bridge_fit(rgba: np.ndarray, cells: int) -> dict:
     """
-    The bridge stands on the middle of its span: halfway between the feet of its two ends, which
-    are the lowest points at its left end and at its right end (seen from the side it runs from
-    the near left up to the far right).
+    Where the bridge stands and how large it is drawn, from the ends of its deck. Each end is an
+    edge running down to the right, with the deck's left corner and the lowest point at the left
+    end at either side of it; at the right end only the far corner shows, and the edge is as long
+    as the left one. Midway between the middles of the two edges stands on the middle of the
+    footprint, and the distance between them is drawn [cells] long, less [BRIDGE_MARGIN], so that
+    neither end lies over the garden's frame.
     """
     opaque = rgba[:, :, 3] > 128
     h, w = opaque.shape
     ys, xs = np.where(opaque)
     near = int(w * 0.14)
-    left_y = ys[xs <= xs.min() + near].max()
-    right_y = ys[xs >= xs.max() - near].max()
-    return {"anchorX": 0.5, "anchorY": round(float((left_y + right_y) / 2 / h), 4)}
+    left_x = xs.min()
+    left = float(left_x), float(ys[xs <= left_x + 2].mean())
+    at_end = xs <= left_x + near
+    low_y = ys[at_end].max()
+    low = float(xs[at_end & (ys >= low_y - 1)].mean()), float(low_y)
+    right_x = xs.max()
+    right = float(right_x), float(ys[xs >= right_x - 2].mean())
+    edge = (low[0] - left[0]), (low[1] - left[1])
+    start = left[0] + edge[0] / 2, left[1] + edge[1] / 2
+    end = right[0] - edge[0] / 2, right[1] - edge[1] / 2
+    cx, cy = (start[0] + end[0]) / 2, (start[1] + end[1]) / 2
+    drawn = (cells - BRIDGE_MARGIN) * TILE / 2
+    return {"anchorX": round(cx / w, 4), "anchorY": round(cy / h, 4), "scale": round(drawn / (end[0] - start[0]), 4)}
 
 
 def nozzle_of(rgba: np.ndarray, cx: float, cy: float) -> tuple[float, float]:
@@ -818,7 +831,7 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
         out[asset_id] = prepare_prop(asset_id)
     short = out["struct_bridge_taiko"][0]
     long_bridge = lengthen_bridge(short)
-    out["struct_bridge_taiko_long"] = (long_bridge, dict(bridge_anchor(long_bridge), scale=BRIDGE_DRAW_SCALE))
+    out["struct_bridge_taiko_long"] = (long_bridge, bridge_fit(long_bridge, cells=4))
     out["mask_struct_cottage"] = (cottage_mask(out["struct_cottage"][0]), {})
     out["mask_struct_hut"] = (hut_mask(out["struct_hut"][0]), {})
     out["plant_daikon_stage3"] = (prepare_daikon(), {})

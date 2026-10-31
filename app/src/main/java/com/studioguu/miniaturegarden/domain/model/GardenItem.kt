@@ -41,7 +41,10 @@ enum class ItemCategory {
  *                  corn         Lv.13           65   165 coins + 63 XP after 42 h (summer)
  *                  shiitake     Lv.14           45   100 coins + 65 XP after 48 h (autumn), on a log; regrows 50 + 33 in 24 h
  *                  poinsettia   Lv.15           70   175 coins + 67 XP after 40 h (winter)
- *     structures   fence        from start      15   joins its neighbours; 20 s to build
+ *     structures   fence        from start      15   joins its neighbours of its kind; 20 s to build
+ *                  white fence  Lv.5            25   as the fence
+ *                  bamboo fence Lv.8            35   as the fence
+ *                  brick edging Lv.16           60   joins its neighbours; no fence, but nothing walks through it; 20 s
  *                  cottage      Lv.3           800   100 XP; symbol building (one per garden, 3x3); 2 h
  *                  well         Lv.5           400   30 XP; soil round it dries half as fast; 30 min to build
  *                  windmill     Lv.9         1,200   45 XP; 2x2, its sails turn; soil within two cells dries a little slower; 45 min
@@ -329,6 +332,22 @@ enum class GardenItem(
         unlock = UnlockCondition.PlayerLevel(13),
     ),
 
+    /** The other kinds of fence: the shop keeps them with the first ([FENCE_KINDS]), under "柵". */
+    STRUCT_FENCE_WHITE(
+        "struct_fence_white", price = 25, objectId = RunKind.WHITE_FENCE.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(5), buildSeconds = 20,
+    ),
+    STRUCT_FENCE_BAMBOO(
+        "struct_fence_bamboo", price = 35, objectId = RunKind.BAMBOO_FENCE.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(8), buildSeconds = 20,
+    ),
+
+    /** Bricks set on the slant round a bed. It joins up like a fence, and is not one. */
+    STRUCT_EDGING_BRICK(
+        "struct_edging_brick", price = 60, objectId = RunKind.BRICK_EDGING.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(16), buildSeconds = 20,
+    ),
+
     /** An arched bridge from bank to bank, one price whatever the river ([GardenGrid.bridgeAcross]). */
     STRUCT_BRIDGE(
         "struct_bridge_taiko", price = 3500, objectId = StructureData.BRIDGE.objectId, category = ItemCategory.STRUCTURE,
@@ -401,7 +420,7 @@ enum class GardenItem(
          * not on sale yet ([inShop]) is never on it.
          */
         fun shelf(category: ItemCategory, season: Season? = null): List<GardenItem> =
-            entries.filter { it.inShop && it.category == category && (season == null || it.isInSeason(season)) && it !in ROCK_KINDS.drop(1) }
+            entries.filter { it.inShop && it.category == category && (season == null || it.isInSeason(season)) && it !in OFF_THE_SHELF }
                 .sortedWith(compareBy({ it.openingRank }, { it.price }))
 
         /**
@@ -409,6 +428,15 @@ enum class GardenItem(
          * first: tapping it shows the lot, those not open yet as shadows.
          */
         val ROCK_KINDS: List<GardenItem> get() = listOf(DECO_ROCK, DECO_ROCK_FLAT, DECO_ROCK_MOSSY, DECO_ROCK_STANDING, DECO_ROCK_PEBBLES)
+
+        /** The kinds of fence, shown the way the rocks are. */
+        val FENCE_KINDS: List<GardenItem> get() = listOf(STRUCT_FENCE, STRUCT_FENCE_WHITE, STRUCT_FENCE_BAMBOO)
+
+        /** What is bought from the list under another item, and so has no place of its own on a shelf. */
+        val OFF_THE_SHELF: List<GardenItem> get() = ROCK_KINDS.drop(1) + FENCE_KINDS.drop(1)
+
+        /** The kinds that open from [item] when it is tapped on the shelf; null for a thing with none. */
+        fun kindsUnder(item: GardenItem): List<GardenItem>? = listOf(ROCK_KINDS, FENCE_KINDS).firstOrNull { it.first() == item }
 
         /** Items that are locked at [previousLevel] and for sale at [newLevel]. */
         fun unlockedBetween(previousLevel: Int, newLevel: Int): List<GardenItem> = entries.filter {

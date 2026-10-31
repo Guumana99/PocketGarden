@@ -547,7 +547,7 @@ class HarvestPlantUseCase @Inject constructor(
  * it takes the first empty slot; with no room for it, nothing happens.
  *
  * Plants cannot go back (a seed that has grown is not a seed any more) and neither can what the
- * hoe made, which was never an item. A fence goes back as a fence however it was joined up.
+ * hoe made, which was never an item. A fence goes back as its kind of fence however it was joined up.
  * Experience that was earned for placing the thing is taken back with it, so that picking a
  * building up and putting it down again earns nothing.
  */
@@ -578,7 +578,7 @@ class StoreObjectUseCase @Inject constructor(
         /** The item [gridObject] goes back into the bag as, or null if it cannot go back. */
         fun itemFor(gridObject: GridObject): GardenItem? {
             if (gridObject.isPlant || gridObject.isHoedSoil) return null
-            val objectId = if (gridObject.isFence) GridObject.FENCE_OBJECT_ID else gridObject.objectId
+            val objectId = gridObject.runKind?.objectId ?: gridObject.objectId
             return GardenItem.entries.firstOrNull { it.objectId == objectId }
         }
     }

@@ -113,7 +113,7 @@ class FeedbackVisualTest {
 
     @Test
     fun `a fence joins only fences that are finished`() {
-        assertTrue(canvas.contains("FenceAutotile.maskAt(obj.gridX, obj.gridY) { x, y -> grid.occupantAt(x, y)?.let { it.isFence && !it.isWorking } == true }"))
+        assertTrue(canvas.contains("FenceAutotile.maskAt(obj.gridX, obj.gridY) { x, y -> grid.occupantAt(x, y)?.let { it.runKind == run && !it.isWorking } == true }"))
     }
 
     // --- 6. The water and food bubbles ---

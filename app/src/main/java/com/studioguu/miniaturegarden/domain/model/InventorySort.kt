@@ -28,7 +28,8 @@ enum class InventoryGroup {
             GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WINDMILL,
             GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_LANTERN, GardenItem.DECO_SPRINKLER, GardenItem.FLOOR_GREENHOUSE,
             GardenItem.DECO_WEATHERVANE, GardenItem.DECO_ROCK_FLAT, GardenItem.DECO_ROCK_MOSSY, GardenItem.DECO_ROCK_STANDING,
-            GardenItem.DECO_ROCK_PEBBLES, GardenItem.STRUCT_BRIDGE -> FURNITURE
+            GardenItem.DECO_ROCK_PEBBLES, GardenItem.STRUCT_BRIDGE, GardenItem.STRUCT_FENCE_WHITE, GardenItem.STRUCT_FENCE_BAMBOO,
+            GardenItem.STRUCT_EDGING_BRICK -> FURNITURE
             GardenItem.GROUND_GRASS, GardenItem.GROUND_FLOWERS, GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER -> GREENERY
             GardenItem.GROUND_PEBBLE, GardenItem.FLOOR_COBBLESTONE, GardenItem.FLOOR_WOOD, GardenItem.TILE_RIVER, GardenItem.DECO_POND -> GROUND
         }

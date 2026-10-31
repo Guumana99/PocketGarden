@@ -97,8 +97,11 @@ data class GridObject(
      */
     val isGreenhouse: Boolean get() = objectId == GREENHOUSE_OBJECT_ID
 
-    /** A fence, under whichever of its ids. Fences join up with the fences next to them. */
-    val isFence: Boolean get() = FencePart.fromObjectId(objectId) != null
+    /** What it joins up with, if it stands in a run: a kind of fence, or the brick edging. */
+    val runKind: RunKind? get() = RunKind.of(objectId)
+
+    /** A fence of any kind, under whichever of its ids. The brick edging joins up too, but is no fence. */
+    val isFence: Boolean get() = runKind?.isFence == true
 
     /** The pond: water in a ring of stones, which takes its whole cell like the river does. */
     val isPond: Boolean get() = objectId == POND_OBJECT_ID
@@ -185,16 +188,16 @@ data class GridObject(
 }
 
 /**
- * The object ids a fence can be stored under. A fence is placed as a [SECTION] and how it looks
- * is worked out from the fences next to it, so the id says nothing about its shape. The other two
- * ids date from when the player picked a piece by hand; gardens saved then still hold them, and
- * they are fences like any other.
+ * The object ids a wooden fence can be stored under. A fence is placed as a [SECTION] and how it
+ * looks is worked out from the fences next to it, so the id says nothing about its shape. The
+ * other two ids date from when the player picked a piece by hand; gardens saved then still hold
+ * them, and they are wooden fences like any other. They are also the ids of its pictures.
  */
 enum class FencePart(val objectId: String) {
-    /** What every new fence is stored as. Its sprite, a run of pales, is the shop's picture of a fence. */
+    /** What every new fence is stored as. Its sprite is the whole section, a fence standing alone. */
     SECTION(GridObject.FENCE_OBJECT_ID),
 
-    /** Stored by older versions only. Its sprite, one panel between two posts, is a fence standing alone (#55). */
+    /** Stored by older versions only. Its sprite is the rails from one post to the next. */
     RAIL("struct_fence_rail"),
 
     /** Stored by older versions only. Its sprite is the post that joined fences are built round. */
@@ -202,6 +205,37 @@ enum class FencePart(val objectId: String) {
 
     companion object {
         fun fromObjectId(objectId: String): FencePart? = entries.firstOrNull { it.objectId == objectId }
+    }
+}
+
+/**
+ * What stands in a run: a section joins the sections of its own kind next to it, and stands alone
+ * beside any other. How it looks is worked out from its neighbours (FenceAutotile). Each is drawn
+ * from up to three pictures: [objectId] alone, and in a run a post ([postSpriteId]) with a rail
+ * ([railSpriteId]) out to the next post. The edging has no posts: its rail is all there is.
+ *
+ * @property isFence whether it counts as a fence for what asks for one (the bird).
+ */
+enum class RunKind(val objectId: String, val isFence: Boolean = true, val hasPosts: Boolean = true) {
+    WOOD_FENCE(GridObject.FENCE_OBJECT_ID),
+    WHITE_FENCE("struct_fence_white"),
+    BAMBOO_FENCE("struct_fence_bamboo"),
+    BRICK_EDGING("struct_edging_brick", isFence = false, hasPosts = false);
+
+    val postSpriteId: String? get() = if (hasPosts) "${objectId}_post" else null
+    val railSpriteId: String get() = "${objectId}_rail"
+
+    /** Every sprite this kind is drawn with. */
+    val spriteIds: List<String> get() = listOfNotNull(objectId, postSpriteId, railSpriteId)
+
+    companion object {
+        /** The kind stored under [objectId]; the ids of [FencePart] are all the wooden fence. */
+        fun of(objectId: String): RunKind? =
+            if (FencePart.fromObjectId(objectId) != null) WOOD_FENCE else entries.firstOrNull { it.objectId == objectId }
+
+        /** Every id a fence can be stored under, old and new. */
+        val FENCE_OBJECT_IDS: Set<String> =
+            (FencePart.entries.map { it.objectId } + entries.filter { it.isFence }.map { it.objectId }).toSet()
     }
 }
 

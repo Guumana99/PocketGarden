@@ -207,7 +207,7 @@ private val FLOWERS = PlantSpecies.entries.filter { it.isFlower }.toSet()
 private val ROCKS = setOf("deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles")
 
 /** Every kind of fence, old and new. */
-private val FENCES = FencePart.entries.map { it.objectId }.toSet()
+private val FENCES = RunKind.FENCE_OBJECT_IDS
 
 /** Water a frog or a dragonfly comes to. */
 private val WATER = setOf(GridObject.RIVER_OBJECT_ID, GridObject.POND_OBJECT_ID)

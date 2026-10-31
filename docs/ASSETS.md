@@ -79,7 +79,7 @@
 - ポインセチア（#69、4 枚）：`plant_poinsettia_stage{1..3}.png` と `_withered.png`（3 段階。#69 で 4 段階から 3 段階にし、コード描画をやめた。これで作物の絵はすべてそろい、作物の仮の絵の仕組み `ui/render/CropArt.kt` は削除した）。
   原画は `crop_poinsettia_stage{1..3}.png` と `crop_poinsettia_withered.png`（Recraft、白背景）。大きさ（`STAGES`）は丸い株として 0.3 / 0.55 / 0.7、枯れ 0.7（目安のままで幅・高さとも 1→2→3 の順に大きい）。
   段階 2 の苞はピンク、段階 3 は鮮やかな赤で、色は届いた絵のまま。切り抜きはふつうの設定のまま。`crop_soil.SOILLESS` に `poinsettia` を追加。
-- フェンス 3 枚：`struct_fence.png`（単体の柵）、`struct_fence_post.png`（支柱）、`struct_fence_rail.png`（現在は未使用）
+- 柵 3 種と縁石（#85）：`<id>.png`（1 本のとき）、`<id>_post.png`（杭）、`<id>_rail.png`（杭から次の杭まで）。`<id>` は `struct_fence` `struct_fence_white` `struct_fence_bamboo`。縁石 `struct_edging_brick` に杭は無い。作り方は「柵と縁石の絵を入れるとき」
 
 原画は `tools/raw_assets/`。ファイル名（拡張子なし）がそのまま assetId になる。
 
@@ -89,7 +89,7 @@
 
 ### ショップの取扱一覧（プログレッション改定時点）
 
-`domain/model/GardenItem.kt` の全 43 品（うち 3 品は絵が無く、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
+`domain/model/GardenItem.kt` の全 46 品（うち 3 品は絵が無く、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
 「確定アセット」は庭に置いたときの絵が受け取った画像素材のもの、「コード描画（仮置き）」は絵が無くプログラムで描いているもの。
 アイコンは、ショップに出している品すべてが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`。作物は #72、建物・飾り・地面は #74 と #77）。絵文字（`itemEmoji`）は絵が無いときの予備で、いまはショップに出していない白菜・菜の花・風見鶏だけ。
 
@@ -115,7 +115,10 @@
 | 種 | 白菜の種（`seed_hakusai`） | 40 | Lv10 | コード描画（仮置き） | **未作成**。ショップに出していない（`inShop = false`） |
 | 種 | 菜の花の種（`seed_nanohana`） | 45 | Lv12 | コード描画（仮置き） | **未作成**。ショップに出していない（`inShop = false`） |
 | 種 | トウモロコシの種（`seed_corn`） | 65 | Lv13 | 確定アセット | `plant_corn_*`（#57）、アイコン画像あり |
-| 建物 | ウッドフェンス（`struct_fence`） | 15 | 最初から | 確定アセット＋コード | `struct_fence` `struct_fence_post`。斜めにつなぐ横木はコード |
+| 建物 | 木の柵（`struct_fence`） | 15 | 最初から | 確定アセット | `struct_fence` `_post` `_rail`（#85）、アイコン画像あり |
+| 建物 | 白い柵（`struct_fence_white`） | 25 | Lv5 | 確定アセット | `struct_fence_white` `_post` `_rail`（#85）、アイコン画像あり。ショップでは「柵」の一覧から |
+| 建物 | 竹垣（`struct_fence_bamboo`） | 35 | Lv8 | 確定アセット | `struct_fence_bamboo` `_post` `_rail`（#85）、アイコン画像あり。ショップでは「柵」の一覧から |
+| 建物 | レンガの縁石（`struct_edging_brick`） | 60 | Lv16 | 確定アセット | `struct_edging_brick` `_rail`（#85）、アイコン画像あり |
 | 建物 | 井戸（`struct_well`） | 400 | Lv5 | 確定アセット | `struct_well`（#74、1×1）、アイコン画像あり |
 | 建物 | 風車（`struct_windmill`） | 1200 | Lv9 | 確定アセット | `struct_windmill` `struct_windmill_blades` |
 | 建物 | 小屋（`struct_hut`） | 2000 | Lv11 | 確定アセット | `struct_hut`（#74）、アイコン画像あり |
@@ -187,9 +190,10 @@
 
 | ファイル | 状態 |
 |---|---|
-| `item_fence_wood.png` | 正面向きのパーツ集。柵・支柱・横木を切り出して使用 |
+| `item_fence_wood.png` | **#85 から未使用（保管）**。正面向きのパーツ集。#84 まで柵・支柱・横木を切り出していた |
+| `struct_fence_wood.png` `struct_fence_white.png` `struct_fence_bamboo.png` `struct_edging_brick.png` | 柵 3 種と縁石（#85、Recraft、白背景 1024×1024）。1 区画を正面から見た絵。`tools/prepare_fence_art.py` で切り出す |
 | `creature_{squirrel,squirrel_run,bird,bird_fly,frog,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures_0.png` に |
-| `tile_path_cobblestone.png` | **#74 から未使用（保管）**。イラスト調の石畳（#40）。#73 まで `build_terrain_assets.py` が 4 分の 1 を切り出して石畳の床にしていた。#74 で `tile_cobblestone_iso.png` から作った `floor_cobblestone.png` に差し替え |
+| `tile_path_cobblestone.png` | **#74 から未使用（保管）**。イラスト調の石畳（#40）。#73 まで `build_terrain_assets.py`（#85 で削除）が 4 分の 1 を切り出して石畳の床にしていた。#74 で `tile_cobblestone_iso.png` から作った `floor_cobblestone.png` に差し替え |
 | `building_cottage.png` | コテージ（#40）。透過はきれいだった。切り抜いて 3 マス分の幅で描く（描画倍率 約 2.5）。土台が 2:1 より平たい。#41 では土台の左右の角を 3×3 の左右の角にそろえていた（anchorY 0.7975）が、前の列が空いて奥に寄って見えたので、#55 から他の建物と同じく左右の角と前の角のずれを半分ずつにする（`ground_centre_y`、anchorY 0.7481、約 0.2 マス手前へ） |
 | `building_greenhouse.png` | ガラスの温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |
 | `building_windmill_body.jpg` | 風車の本体（#40）。**JPEG で透過が無く、灰色の市松模様（48px、2 トーン）が背景として描き込まれていた**。マスごとの色で抜いた |
@@ -206,11 +210,6 @@
 ## 加工の手順
 
 Python 3.12（Pillow、numpy）。パスは `AI_WORKFLOW.md` を参照。
-
-```bash
-# 川・石畳・フェンスの部品を作り直す
-python tools/build_terrain_assets.py
-```
 
 ```bash
 # スプライトをアトラスに詰め直す（この引数の組み合わせを変えないこと）
@@ -240,6 +239,19 @@ python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-w
 - `--preview` は作物ごとに段階を並べた絵（実際の大きさの比）と、アイコンの一覧、真上から見た芝生を出す。
 - 地面の板 4 枚（荒れ地・耕した土・崩しかけた地面・水面）の上面の位置を表示する。`GroundSlab` の値はこれ。絵を差し替えたらこの値も直し、荒れ地は `FlatGround.FIELD_VERSION` を上げる（作った地面のキャッシュを捨てるため）。
 - 1 回 1 分ほど。
+
+### 柵と縁石の絵を入れるとき（#85）
+
+```bash
+python tools/prepare_fence_art.py --preview <確認用フォルダ>
+```
+
+- 原画は 1 区画を正面から見た 1 枚だけ。そこから `<id>`（1 本のとき）、`<id>_post`（杭）、`<id>_rail`（杭の間）を作り、`atlas_overrides.json` を書き換える。そのあと `asset_packer.py` を回す。アイコンも作る。
+- 大きさ：杭の高さは 3 種とも 210px（1 マス 720px。今までの杭 167・板 247 の間）。原画は細長いので、木と白は幅を高さより 1.3 倍広く縮める（`stout`）。縁石は高さ 76px（杭の約 36%）。
+- `_rail` は杭の中心から次の杭の中心まで（横に 360px）から杭の幅を引き、両端を杭の下へ 3px ずつもぐらせた幅。木の横木は引き伸ばし、白と竹は 2 回並べて、杭の間に合わせる。ゲームは `_rail` を立てたまま斜めのマスに沿ってせん断して描く（`drawRunPiece`）ので、絵は 1 枚で両方の斜めに使える。地面の高さは `attachY`（絵の下端より下にあるので 1 を超える）。
+- 切り抜き：白い柵は真っ白（255）だけを背景にする（`cut_plain_white`。塗りは 205 ほどの灰色）。ほかは床の影ごと抜く（`cut_shadowed`）。どちらも縁の色から白の混ざりを戻す。
+- 竹垣：`_rail` は縦の竹を 2 本に 1 本に間引く（`Fence.thin`）。11 本のままでは縮めたときに髪の毛のような線になる。抜いた所へ隣の横木を引き伸ばして埋める（`thin_canes`）。
+- 縁石：絵のレンガの隙間に沿って斜めに切った 1 歯（幅 224px）を 1 マス 7 本並べる（`brick_row`）。両端が同じ斜めなので、1 マスずらして重ねると継ぎ目が消える。最後の歯は次のレンガの黒い縁が角でとげになるので 30px 落とす。絵のレンガは右に傾いているので、右下がりの辺では反転して描き、四辺を同じ見え方にする（`GardenCanvas` の `mirrored`）。
 
 ### 受け取った地面・建物の絵を入れるとき（#40）
 
