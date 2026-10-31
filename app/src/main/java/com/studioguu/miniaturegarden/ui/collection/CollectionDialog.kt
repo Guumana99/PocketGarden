@@ -676,6 +676,8 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.EGGPLANT -> R.string.flavor_eggplant
     CollectionEntry.WHEAT -> R.string.flavor_wheat
     CollectionEntry.CORN -> R.string.flavor_corn
+    CollectionEntry.HAKUSAI -> R.string.flavor_hakusai
+    CollectionEntry.NANOHANA -> R.string.flavor_nanohana
     CollectionEntry.STRAWBERRY -> R.string.flavor_strawberry
     CollectionEntry.WATERMELON -> R.string.flavor_watermelon
     CollectionEntry.LAVENDER -> R.string.flavor_lavender
@@ -698,6 +700,7 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.BENCH -> R.string.flavor_bench
     CollectionEntry.LANTERN -> R.string.flavor_lantern
     CollectionEntry.SPRINKLER -> R.string.flavor_sprinkler
+    CollectionEntry.WEATHERVANE -> R.string.flavor_weathervane
     CollectionEntry.FENCE -> R.string.flavor_fence
     CollectionEntry.FENCE_WHITE -> R.string.flavor_fence_white
     CollectionEntry.FENCE_BAMBOO -> R.string.flavor_fence_bamboo

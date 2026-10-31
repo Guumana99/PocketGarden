@@ -898,10 +898,11 @@ private fun submitObjects(
             // What it stands in comes up around its foot: blades of grass on open ground, crumbs
             // of earth on a bed. Paving is hard and shows nothing. A crop is planted in its bed:
             // crumbs over the bed's own earth read as a second layer of soil on it (#55).
-            // Not for a rock or a bench, whose picture has no foot at this point: a rock's lies under
+            // Not for the weathervane, which stands on a stone (they came out as dots on it), nor
+            // for a rock or a bench, whose picture has no foot at this point: a rock's lies under
             // its own bulk, and a bench stands on four legs round it, so that crumbs and blades came
             // out as dots on the stone or under the seat (device feedback).
-            if (!isGroundCover && structure == null && !obj.isPlant && !obj.objectId.startsWith(ROCK_ID_PREFIX) && obj.objectId != Decoration.BENCH.objectId) {
+            if (!isGroundCover && structure == null && !obj.isPlant && !obj.objectId.startsWith(ROCK_ID_PREFIX) && obj.objectId != Decoration.BENCH.objectId && obj.objectId != Decoration.WEATHERVANE.objectId) {
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
                 val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {

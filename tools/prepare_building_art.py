@@ -514,6 +514,7 @@ PROPS: dict[str, tuple[str, tuple, float]] = {
     "deco_bench": ("deco_bench.png", ("w", 0.56), 0.45),
     "deco_lantern": ("deco_lantern.png", ("h", 0.44), 0.2),
     "deco_sprinkler": ("deco_sprinkler.png", ("h", 0.34), 0.2),
+    "deco_weathervane": ("deco_weathervane.png", ("h", 0.8), 0.08),
     "deco_starter_crate": ("deco_starter_crate.png", ("w", 0.42), 0.2),
     "deco_bench_back": ("bench_back.png", ("w", 0.56), 0.45),
     "deco_rock_flat": ("rock_flat.png", ("w", 0.5), 0.35),
@@ -544,9 +545,21 @@ def cut_from_white(name: str) -> np.ndarray:
     return cut_out(np.array(Image.open(SOURCE / name).convert("RGB")), white_parts=1.0)
 
 
+def without_shut_in_white(rgba: np.ndarray) -> np.ndarray:
+    """[rgba] with the white left in gaps it shuts in: between the weathervane's tail feathers."""
+    v = rgba[:, :, :3].astype(int)
+    white = (v.min(axis=2) > 200) & (v.max(axis=2) - v.min(axis=2) < 24)
+    white[int(white.shape[0] * 0.7):] = False  # its stone base is pale and stays
+    out = rgba.copy()
+    out[dilate(white), 3] = 0
+    return out
+
+
 def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
     name, (kind, size), band = PROPS[asset_id]
     cut = cut_stone(name) if asset_id.startswith("deco_rock_") else cut_from_white(name)
+    if asset_id == "deco_weathervane":
+        cut = without_shut_in_white(cut)
     rgba = crop(keep_main_part(cut))
     if asset_id in PLINTH_BAND:
         return prepare_plinthed(asset_id, rgba, tiles=size)

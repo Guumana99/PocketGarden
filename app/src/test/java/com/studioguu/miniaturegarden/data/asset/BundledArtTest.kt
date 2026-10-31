@@ -121,7 +121,6 @@ class BundledArtTest {
 
     @Test
     fun `every crop has an icon picture, cut out of its background (#72)`() {
-        // Every crop on sale, that is: the hakusai and the nanohana wait for theirs.
         for (species in PlantSpecies.entries.filter(::onSale)) {
             val file = File(main, "res/drawable-nodpi/icon_${species.objectId.removePrefix("plant_")}.png")
             assertTrue("${file.name} is missing", file.isFile)

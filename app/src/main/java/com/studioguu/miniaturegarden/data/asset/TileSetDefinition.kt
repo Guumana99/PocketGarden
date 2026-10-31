@@ -28,6 +28,7 @@ enum class Decoration(val objectId: String) {
     BENCH("deco_bench"),
     LANTERN("deco_lantern"),
     SPRINKLER("deco_sprinkler"),
+    WEATHERVANE("deco_weathervane"),
     POND("deco_pond"),
 }
 
