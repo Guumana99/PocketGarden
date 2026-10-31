@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.studioguu.miniaturegarden.domain.model.AppSettings
+import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
@@ -46,6 +47,7 @@ class SettingsRepositoryImpl @Inject constructor(
             prefs[PLAY_DAYS] = updated.playDays
             prefs[LAST_PLAY_DAY] = updated.lastPlayDay
             prefs[REVIEW_ASKED_AT] = updated.reviewAskedAt
+            prefs[VISITORS_LEFT_AT] = updated.visitorsLeftAt.map { (creature, at) -> "${creature.id}=$at" }.toSet()
             val view = updated.gardenView
             if (view == null) {
                 prefs.remove(VIEW_SCALE)
@@ -75,7 +77,14 @@ class SettingsRepositoryImpl @Inject constructor(
             playDays = prefs[PLAY_DAYS] ?: defaults.playDays,
             lastPlayDay = prefs[LAST_PLAY_DAY] ?: defaults.lastPlayDay,
             reviewAskedAt = prefs[REVIEW_ASKED_AT] ?: defaults.reviewAskedAt,
+            visitorsLeftAt = prefs[VISITORS_LEFT_AT].orEmpty().mapNotNull(::readLeftAt).toMap(),
         ).normalized()
+    }
+
+    /** One `id=millis` line of [VISITORS_LEFT_AT]; null if it makes no sense (a damaged file could hold anything). */
+    private fun readLeftAt(line: String): Pair<Creature, Long>? {
+        val creature = Creature.entries.firstOrNull { it.id == line.substringBefore('=') } ?: return null
+        return line.substringAfter('=').toLongOrNull()?.let { creature to it }
     }
 
     companion object {
@@ -95,5 +104,6 @@ class SettingsRepositoryImpl @Inject constructor(
         private val PLAY_DAYS = intPreferencesKey("play_days")
         private val LAST_PLAY_DAY = longPreferencesKey("last_play_day")
         private val REVIEW_ASKED_AT = longPreferencesKey("review_asked_at")
+        private val VISITORS_LEFT_AT = stringSetPreferencesKey("visitors_left_at")
     }
 }

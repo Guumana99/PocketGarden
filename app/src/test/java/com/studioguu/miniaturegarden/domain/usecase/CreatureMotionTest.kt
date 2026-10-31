@@ -87,11 +87,11 @@ class CreatureMotionTest {
     @Test
     fun `the same moment finds a visitor in the same place, facing the same way`() {
         val visits = listOf(
-            visit(VisitRule.SQUIRREL_AUTUMN, GridCell(5, 4)),
-            visit(VisitRule.FROG_WELL, GridCell(5, 8)),
+            visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 4)),
+            visit(VisitRule.FROG_RAIN, GridCell(5, 8)),
             visit(VisitRule.BUTTERFLY_BLOOMS, GridCell(6, 6), host = objects.first { it.objectId == "plant_sunflower" }),
             visit(VisitRule.DRAGONFLY_AUTUMN, GridCell(2, 1), host = objects.first { it.objectId == GridObject.RIVER_OBJECT_ID }),
-            visit(VisitRule.LADYBUG_TULIPS, GridCell(8, 8), host = objects.first { it.objectId == "plant_tulip" }),
+            visit(VisitRule.LADYBUG_CROPS, GridCell(8, 8), host = objects.first { it.objectId == "plant_tulip" }),
             visit(VisitRule.BIRD_COTTAGE, GridCell(10, 3), host = objects.first { it.objectId == StructureData.COTTAGE.objectId }),
         )
         for (v in visits) {
@@ -117,8 +117,8 @@ class CreatureMotionTest {
 
     @Test
     fun `different visits go different ways`() {
-        val a = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_AUTUMN, GridCell(5, 4), arrivesAt = 1_000_000L), grid)
-        val b = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_AUTUMN, GridCell(5, 4), arrivesAt = 2_000_000L), grid)
+        val a = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 4), arrivesAt = 1_000_000L), grid)
+        val b = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 4), arrivesAt = 2_000_000L), grid)
         val differ = (0 until 200_000L step 1_000L).count { a.poseAt(1_000_000L + it)?.let { p -> p.x to p.y } != b.poseAt(2_000_000L + it)?.let { p -> p.x to p.y } }
         assertTrue(differ > 50)
     }
@@ -128,7 +128,7 @@ class CreatureMotionTest {
     @Test
     fun `those that walk keep off water, buildings, fences, rocks, benches and logs, and to the garden`() {
         val starts = listOf(GridCell(5, 4), GridCell(5, 6), GridCell(4, 5), GridCell(6, 5))
-        for (rule in listOf(VisitRule.SQUIRREL_AUTUMN, VisitRule.BIRD_WINTER_WELL, VisitRule.FROG_WELL)) {
+        for (rule in listOf(VisitRule.SQUIRREL_SUNFLOWER, VisitRule.BIRD_WELL, VisitRule.FROG_RAIN)) {
             for (start in starts) for (arrival in 0 until 12L) {
                 val route = CreatureRoutes.plan(visit(rule, start, arrivesAt = 7_000_000L + arrival * 333_331L), grid)
                 for ((now, pose) in posesOf(route)) {
@@ -150,8 +150,8 @@ class CreatureMotionTest {
         val start = GridCell(5, 8)
         var frogInPond = false
         for (arrival in 0 until 30L) {
-            val frog = CreatureRoutes.plan(visit(VisitRule.FROG_WELL, start, arrivesAt = 3_000_000L + arrival * 299_993L), grid)
-            val squirrel = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_AUTUMN, start, arrivesAt = 3_000_000L + arrival * 299_993L), grid)
+            val frog = CreatureRoutes.plan(visit(VisitRule.FROG_RAIN, start, arrivesAt = 3_000_000L + arrival * 299_993L), grid)
+            val squirrel = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_SUNFLOWER, start, arrivesAt = 3_000_000L + arrival * 299_993L), grid)
             for ((_, pose) in posesOf(frog, 250L)) {
                 assertEquals(pose.cell in ponds, pose.inPond)
                 if (pose.inPond) frogInPond = true
@@ -181,7 +181,7 @@ class CreatureMotionTest {
 
     @Test
     fun `one that walks moves, stops and looks about, without jumping from place to place`() {
-        val route = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_AUTUMN, GridCell(5, 4)), grid)
+        val route = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 4)), grid)
         val poses = posesOf(route)
         val actions = poses.map { it.second.action }.toSet()
         assertTrue(actions.containsAll(listOf(CreatureAction.APPEAR, CreatureAction.STEP, CreatureAction.STAND, CreatureAction.VANISH)))
@@ -206,7 +206,7 @@ class CreatureMotionTest {
     fun `one on what it came for moves about a little on it, drawn by its front cell`() {
         val cottage = objects.first { it.objectId == StructureData.COTTAGE.objectId }
         val tulip = objects.first { it.objectId == "plant_tulip" }
-        for ((rule, host) in listOf(VisitRule.BIRD_COTTAGE to cottage, VisitRule.LADYBUG_TULIPS to tulip)) {
+        for ((rule, host) in listOf(VisitRule.BIRD_COTTAGE to cottage, VisitRule.LADYBUG_CROPS to tulip)) {
             val v = visit(rule, CreatureVisits.frontCell(host), host)
             val route = CreatureRoutes.plan(v, grid)
             val cx = host.gridX + host.footprint.width / 2f
@@ -227,15 +227,15 @@ class CreatureMotionTest {
     @Test
     fun `one that walks pops up where it comes and pops away where it is, quickly`() {
         assertTrue(CreatureRoutes.POP_MILLIS in 300L..500L)
-        for (rule in listOf(VisitRule.SQUIRREL_AUTUMN, VisitRule.FROG_WELL, VisitRule.LADYBUG_TULIPS)) {
+        for (rule in listOf(VisitRule.SQUIRREL_SUNFLOWER, VisitRule.FROG_RAIN, VisitRule.LADYBUG_CROPS)) {
             val tulip = objects.first { it.objectId == "plant_tulip" }
-            val v = if (rule == VisitRule.LADYBUG_TULIPS) visit(rule, GridCell(8, 8), tulip) else visit(rule, GridCell(5, 6))
+            val v = if (rule == VisitRule.LADYBUG_CROPS) visit(rule, GridCell(8, 8), tulip) else visit(rule, GridCell(5, 6))
             val route = CreatureRoutes.plan(v, grid)
             val first = route.poseAt(v.arrivesAt)!!
             assertEquals(CreatureAction.APPEAR, first.action)
             assertEquals(0f, first.progress)
             assertEquals(v.cell, first.cell)
-            if (rule != VisitRule.LADYBUG_TULIPS) {
+            if (rule != VisitRule.LADYBUG_CROPS) {
                 assertEquals(5.5f, first.x)
                 assertEquals(6.5f, first.y)
             }
@@ -258,7 +258,7 @@ class CreatureMotionTest {
 
     @Test
     fun `a pop grows a little past its size and settles, and shrinks away to nothing`() {
-        val v = visit(VisitRule.SQUIRREL_AUTUMN, GridCell(5, 6))
+        val v = visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 6))
         val route = CreatureRoutes.plan(v, grid)
         val sizes = (0..CreatureRoutes.POP_MILLIS step 20L).map { VisitorLook.of(Creature.SQUIRREL, route.poseAt(v.arrivesAt + it.coerceAtMost(CreatureRoutes.POP_MILLIS - 1))!!, 0L).scaleX }
         assertEquals(0f, sizes.first(), 0.001f)
@@ -275,7 +275,7 @@ class CreatureMotionTest {
         val cottage = objects.first { it.objectId == StructureData.COTTAGE.objectId }
         for (arrival in 0 until 10L) {
             for (v in listOf(
-                visit(VisitRule.BIRD_WINTER_WELL, GridCell(5, 6), arrivesAt = 9_000_000L + arrival * 77_777L),
+                visit(VisitRule.BIRD_WELL, GridCell(5, 6), arrivesAt = 9_000_000L + arrival * 77_777L),
                 visit(VisitRule.BIRD_COTTAGE, CreatureVisits.frontCell(cottage), cottage, arrivesAt = 9_000_000L + arrival * 77_777L),
             )) {
                 val route = CreatureRoutes.plan(v, grid)
@@ -301,7 +301,7 @@ class CreatureMotionTest {
 
     @Test
     fun `a move on foot is marked where it sets off and where it stops`() {
-        val route = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_AUTUMN, GridCell(5, 4)), grid)
+        val route = CreatureRoutes.plan(visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 4)), grid)
         val poses = posesOf(route, 10L).map { it.second }
         assertTrue(poses.any { it.setsOff } && poses.any { it.stops })
         // Every move on foot starts with a step that sets off, and ends with one that stops.

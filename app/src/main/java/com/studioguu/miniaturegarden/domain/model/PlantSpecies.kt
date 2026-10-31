@@ -118,6 +118,9 @@ enum class PlantSpecies(
 
     val isRepeatable: Boolean get() = harvestType == HarvestType.REPEATABLE_HARVEST
 
+    /** Whether it is grown for its flowers: what goes on a flower bed. */
+    val isFlower: Boolean get() = ground == PlantGround.FLOWER_BED
+
     /**
      * Where a [HarvestType.REPEATABLE_HARVEST] plant's growth goes back to after a harvest: the
      * start of its second stage (0.5 for a plant drawn in three stages).
