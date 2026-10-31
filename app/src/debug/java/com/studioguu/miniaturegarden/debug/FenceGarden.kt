@@ -10,17 +10,11 @@ import com.studioguu.miniaturegarden.domain.model.StructureData
  * `--ez load true --es garden fences` and `--es garden bridges`.
  *
  *     y\x 0 1 2 3 4 5 6 7 8 9 10          fences
- *      0  W . H . B . E . W H B       W H B E a wood, white, bamboo, brick section alone; the last
- *      1  . . . . . . . . . . .         three side by side, which must not join
- *      2  . W W W . H H H B B B       (the white and the bamboo run touch, and must not join)
- *      3  . . . W . . . H . . B       a run with a corner of each
+ *      0  W . H . . . . . W H B       W H B a wood, white, bamboo section alone; the last three
+ *      1  . . . . . . . . . . .         side by side, which must not join
+ *      2  . W W W . H H H B B B       a run with a corner of each (the white and the bamboo touch,
+ *      3  . . . W . . . H . . B         and must not join)
  *      4  . . . W . . . H . . B
- *      5  . . . . . . . . . . .
- *      6  . . E E E E E . . . .       a ring of brick round a bed of three by three, with crops in
- *      7  . . E t t t E . . . .
- *      8  . . E t t t E . . . .
- *      9  . . E t t t E . . . .
- *     10  . . E E E E E . . . .
  */
 object FenceGarden {
     const val SIZE = 11
@@ -32,17 +26,11 @@ object FenceGarden {
         val wood = RunKind.WOOD_FENCE.objectId
         val white = RunKind.WHITE_FENCE.objectId
         val bamboo = RunKind.BAMBOO_FENCE.objectId
-        val brick = RunKind.BRICK_EDGING.objectId
-        val alone = listOf(at(0, 0, wood), at(2, 0, white), at(4, 0, bamboo), at(6, 0, brick), at(8, 0, wood), at(9, 0, white), at(10, 0, bamboo))
+        val alone = listOf(at(0, 0, wood), at(2, 0, white), at(8, 0, wood), at(9, 0, white), at(10, 0, bamboo))
         val corner = { kind: String, x: Int -> listOf(GridCell(x, 2), GridCell(x + 1, 2), GridCell(x + 2, 2), GridCell(x + 2, 3), GridCell(x + 2, 4)).map { at(it.x, it.y, kind) } }
-        val ring = (2..6).flatMap { x -> (6..10).map { y -> GridCell(x, y) } }.filter { it.x == 2 || it.x == 6 || it.y == 6 || it.y == 10 }
-        val bed = (3..5).flatMap { x -> (7..9).map { y -> GridCell(x, y) } }
-        val crops = listOf("plant_cosmos", "plant_tulip", "plant_cosmos", "plant_rose", "plant_tulip", "plant_rose", "plant_cosmos", "plant_tulip", "plant_cosmos")
         return alone + corner(wood, 1) + corner(white, 5) + corner(bamboo, 8) +
             // Under the white fence, a dark ground and a light one, to see its outline against.
-            (5..7).map { at(it, 2, GridObject.TILLED_SOIL_OBJECT_ID) } + (3..4).map { at(7, it, GridObject.COBBLESTONE_OBJECT_ID) } +
-            ring.map { at(it.x, it.y, brick) } + bed.map { at(it.x, it.y, GridObject.TILLED_SOIL_OBJECT_ID) } +
-            bed.zip(crops) { cell, crop -> at(cell.x, cell.y, crop).copy(growthProgress = 1f) }
+            (5..7).map { at(it, 2, GridObject.TILLED_SOIL_OBJECT_ID) } + (3..4).map { at(7, it, GridObject.COBBLESTONE_OBJECT_ID) }
     }
 
     /**

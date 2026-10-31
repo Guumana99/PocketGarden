@@ -701,7 +701,6 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.FENCE -> R.string.flavor_fence
     CollectionEntry.FENCE_WHITE -> R.string.flavor_fence_white
     CollectionEntry.FENCE_BAMBOO -> R.string.flavor_fence_bamboo
-    CollectionEntry.EDGING_BRICK -> R.string.flavor_edging_brick
     CollectionEntry.WELL -> R.string.flavor_well
     CollectionEntry.HUT -> R.string.flavor_hut
     CollectionEntry.WINDMILL -> R.string.flavor_windmill

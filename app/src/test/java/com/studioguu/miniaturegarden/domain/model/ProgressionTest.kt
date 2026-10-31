@@ -173,7 +173,7 @@ class ProgressionTest {
         assertEquals(setOf(GardenItem.SEED_EGGPLANT), GardenItem.unlockedBetween(5, 6).toSet())
         assertEquals(setOf(GardenItem.DECO_ROCK_STANDING), GardenItem.unlockedBetween(9, 10).toSet())
         assertTrue(GardenItem.unlockedBetween(11, 12).isEmpty())
-        assertEquals(setOf(GardenItem.STRUCT_EDGING_BRICK, GardenItem.STRUCT_BRIDGE), GardenItem.unlockedBetween(15, 17).toSet())
+        assertEquals(setOf(GardenItem.STRUCT_BRIDGE), GardenItem.unlockedBetween(15, 17).toSet())
         assertTrue(GardenItem.unlockedBetween(3, 3).isEmpty())
     }
 
@@ -193,14 +193,14 @@ class ProgressionTest {
         assertEquals(GardenItem.unlockedBetween(1, 4).toSet(), LevelUpNotice(1, 4).unlockedItems.toSet())
         assertTrue(LevelUpNotice(1, 2).unlockedItems.isNotEmpty())
         // A level that opens nothing: the board does not speak of new items.
-        assertTrue(LevelUpNotice(11, 12).unlockedItems.isEmpty())
+        assertTrue(LevelUpNotice(15, 16).unlockedItems.isEmpty())
     }
 
     // --- What has no pictures yet ---
 
     @Test
-    fun `hakusai, nanohana and the weathervane are registered but never on a shelf`() {
-        val waiting = setOf(GardenItem.SEED_HAKUSAI, GardenItem.SEED_NANOHANA, GardenItem.DECO_WEATHERVANE)
+    fun `hakusai, nanohana, the weathervane and the withdrawn edging are registered but never on a shelf`() {
+        val waiting = setOf(GardenItem.SEED_HAKUSAI, GardenItem.SEED_NANOHANA, GardenItem.DECO_WEATHERVANE, GardenItem.STRUCT_EDGING_BRICK)
         assertEquals(waiting, GardenItem.entries.filter { !it.inShop }.toSet())
         for (category in ItemCategory.entries) {
             for (season in Season.entries) assertTrue(GardenItem.shelf(category, season).none { it in waiting })

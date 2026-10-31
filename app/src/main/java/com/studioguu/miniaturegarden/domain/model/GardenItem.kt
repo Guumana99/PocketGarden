@@ -44,7 +44,7 @@ enum class ItemCategory {
  *     structures   fence        from start      15   joins its neighbours of its kind; 20 s to build
  *                  white fence  Lv.5            25   as the fence
  *                  bamboo fence Lv.8            35   as the fence
- *                  brick edging Lv.16           60   joins its neighbours; no fence, but nothing walks through it; 20 s
+ *                  brick edging Lv.16           60   joins its neighbours; no fence, but nothing walks through it; 20 s  withdrawn
  *                  cottage      Lv.3           800   100 XP; symbol building (one per garden, 3x3); 2 h
  *                  well         Lv.5           400   30 XP; soil round it dries half as fast; 30 min to build
  *                  windmill     Lv.9         1,200   45 XP; 2x2, its sails turn; soil within two cells dries a little slower; 45 min
@@ -342,10 +342,15 @@ enum class GardenItem(
         unlock = UnlockCondition.PlayerLevel(8), buildSeconds = 20,
     ),
 
-    /** Bricks set on the slant round a bed. It joins up like a fence, and is not one. */
+    /**
+     * Bricks set on the slant round a bed. It joins up like a fence, and is not one. Withdrawn for
+     * now (#86): not on sale, no page in the book, and a saved garden's are taken up and paid back
+     * ([com.studioguu.miniaturegarden.domain.usecase.RetiredCropsUseCase]). Its pictures and its
+     * [RunKind] are kept, to bring it back.
+     */
     STRUCT_EDGING_BRICK(
         "struct_edging_brick", price = 60, objectId = RunKind.BRICK_EDGING.objectId, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(16), buildSeconds = 20,
+        unlock = UnlockCondition.PlayerLevel(16), buildSeconds = 20, inShop = false,
     ),
 
     /** An arched bridge from bank to bank, one price whatever the river ([GardenGrid.bridgeAcross]). */

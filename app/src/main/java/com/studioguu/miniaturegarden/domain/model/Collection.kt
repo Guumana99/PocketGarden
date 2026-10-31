@@ -66,7 +66,6 @@ enum class CollectionEntry(
     FENCE(GridObject.FENCE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     FENCE_WHITE(RunKind.WHITE_FENCE.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     FENCE_BAMBOO(RunKind.BAMBOO_FENCE.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 20),
-    EDGING_BRICK(RunKind.BRICK_EDGING.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     BENCH("deco_bench", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 20),
     LANTERN("deco_lantern", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     SPRINKLER(Sprinkler.OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
