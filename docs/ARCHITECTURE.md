@@ -850,7 +850,7 @@ Play In-App Review（`StoreReviewManager`）。設定に評価ボタンは置か
 - 1 フレームの描画：水面 1 回＋波 2 枚 × 流れの向き（最大 4）＋きらめき（最大 10）＋岸の `Picture`。マスごとの描画はしない。
 - `RiverFlow`：つながった川ごとに、端（無ければ奥）から幅優先で流れを決める。曲がり角のマスは対角で 2 つに分け、それぞれの向きで流す。
 - `RiverBanks`：マスを 4 分割し、接する 2 辺と角の川の有無で部品を決める（`ALONG_FIRST` `ALONG_SECOND` `BEND` `POINT` `NONE`）。部品は回転だけで 4 隅に使う。
-- 太鼓橋は `GardenGrid` の別の層（`bridges`）にあり、下の川はそのまま残る。橋の下の川は片づけられない（`BRIDGE_ABOVE`）。
+- 太鼓橋は `GardenGrid` の別の層（`bridges`）にあり、下の川はそのまま残る。タップした所の川の幅を `bridgeAcross` が調べ、1 マス幅なら 1×3、2 マス幅なら 1×4（`turned`）で、両端の陸まで掛かる。橋の下の川と両端のマスは片づけられず（`BRIDGE_ABOVE`）、何も置けない。
 
 ## 色変え（#83）
 

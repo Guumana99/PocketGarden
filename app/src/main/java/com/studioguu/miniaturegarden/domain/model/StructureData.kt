@@ -35,9 +35,11 @@ data class Footprint(val width: Int, val height: Int) {
         /**
          * Footprint of the object with this id; anything that is not a [StructureData] covers one
          * cell. Only a long one changes when it is [flipped]: it then runs along the other axis.
+         * [longer]: the bridge over a river two cells wide.
          */
-        fun forObjectId(objectId: String, flipped: Boolean = false): Footprint {
-            val footprint = StructureData.fromObjectId(objectId)?.footprint ?: return SINGLE
+        fun forObjectId(objectId: String, flipped: Boolean = false, longer: Boolean = false): Footprint {
+            val base = StructureData.fromObjectId(objectId)?.footprint ?: return SINGLE
+            val footprint = if (longer && objectId == StructureData.BRIDGE.objectId) Footprint(base.width, base.height + 1) else base
             return if (flipped) Footprint(footprint.height, footprint.width) else footprint
         }
     }
@@ -61,10 +63,11 @@ enum class StructureData(
     HUT("struct_hut", Footprint(width = 2, height = 2), heightSteps = 13f),
 
     /**
-     * An arched wooden bridge over a river two cells wide (see [GardenGrid.spansRiver]). Its long
-     * side runs along gridY, from the near left up to the far right; flipped, along gridX.
+     * An arched wooden bridge from bank to bank (see [GardenGrid.bridgeAcross]): three cells long
+     * over a river one cell wide, a cell longer over one two cells wide ([GridObject.turned]).
+     * Its long side runs along gridY, from the near left up to the far right; flipped, along gridX.
      */
-    BRIDGE("struct_bridge_taiko", Footprint(width = 1, height = 2), heightSteps = 5f),
+    BRIDGE("struct_bridge_taiko", Footprint(width = 1, height = 3), heightSteps = 5f),
 
     /**
      * A round stone well under a little roof, on one cell since #74 (it was 1 x 2 while drawn in

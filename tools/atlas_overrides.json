@@ -34,5 +34,6 @@
   "deco_rock_mossy": {"anchorX": 0.4917, "anchorY": 0.7004},
   "deco_rock_standing": {"anchorX": 0.4069, "anchorY": 0.9219},
   "deco_rock_pebbles": {"anchorX": 0.5, "anchorY": 0.6608},
-  "struct_bridge_taiko": {"anchorX": 0.5, "anchorY": 0.6947}
+  "struct_bridge_taiko": {"anchorX": 0.5, "anchorY": 0.6947, "scale": 1.3333},
+  "struct_bridge_taiko_long": {"anchorX": 0.5, "anchorY": 0.6785, "scale": 1.3333}
 }

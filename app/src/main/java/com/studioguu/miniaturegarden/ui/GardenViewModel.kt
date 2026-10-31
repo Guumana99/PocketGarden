@@ -918,7 +918,8 @@ class GardenViewModel @Inject constructor(
         if (movingId != null) {
             if (tile != null) {
                 val moving = gridObjects.value.firstOrNull { it.instanceId == movingId }
-                val origin = (moving?.footprint ?: Footprint.SINGLE).originFor(tile.x, tile.y, gardenMap.value.size)
+                // A bridge finds its own place from the river at the tap.
+                val origin = if (moving?.isBridge == true) GridCell(tile.x, tile.y) else (moving?.footprint ?: Footprint.SINGLE).originFor(tile.x, tile.y, gardenMap.value.size)
                 act(
                     onSuccess = {
                         _movingId.value = null
@@ -980,7 +981,8 @@ class GardenViewModel @Inject constructor(
                 return
             }
             // A building larger than one cell is fitted round the tapped cell, inside the garden.
-            val footprint = item?.let { Footprint.forObjectId(it.objectId, _placingFlipped.value && GridObject.canFaceEitherWay(it.objectId)) } ?: Footprint.SINGLE
+            // Not so a bridge, which finds its own place from the river at the tap.
+            val footprint = item?.takeIf { it != GardenItem.STRUCT_BRIDGE }?.let { Footprint.forObjectId(it.objectId, _placingFlipped.value && GridObject.canFaceEitherWay(it.objectId)) } ?: Footprint.SINGLE
             val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
             act(
                 onSuccess = {

@@ -280,6 +280,8 @@ python tools/prepare_building_art.py --preview <確認用フォルダ>
 python tools/prepare_water_art.py --preview <確認用フォルダ>
 ```
 
+- 岸の帯は水に 0.20 マス入る（`BANK_DEPTH - CELL_OVERHANG`）。1 マス幅の川の水面はマスの 6 割。白いふちは `strip_white` が消す。
+- 小川のかけらと池のアイコンもここで作る。
 - `--pond` は `res/drawable/pond.png` の水の色を合わせ直す。ファイルをその場で書き換えるので、池の絵を差し替えたときだけ使う。
 
 ### 新しいスプライトを入れるとき

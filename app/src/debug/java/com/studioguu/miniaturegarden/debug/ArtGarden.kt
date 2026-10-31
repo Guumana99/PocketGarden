@@ -9,11 +9,11 @@ import com.studioguu.miniaturegarden.domain.model.StructureData
  * painted buildings (debug builds only), loaded with `--ez load true --es garden art`:
  *
  *     y\x 0 1 2 3 4 5 6 7 8 9 10
- *      0  . . . . . . . . . H H     H hut (painted)
- *      1  ~ ~ B ~ ~ ~ . . . H H     ~ river, two cells wide at first; B the bridge over it
+ *      0  . . B . . . . . . H H     H hut (painted)
+ *      1  ~ ~ B ~ ~ ~ . . . H H     ~ river, two cells wide at first; B the long bridge over it
  *      2  ~ ~ B ~ ~ ~ . . . . .
- *      3  . . . . . ~ . . . . .
- *      4  . . . . . ~ . . ~ . .     round two bends and on to an end
+ *      3  . . B . . ~ . . . . .
+ *      4  . . . . b b b . ~ . .     round two bends and on to an end; b the short bridge, flipped
  *      5  . O O . . ~ . . ~ . .     O a pond of two cells
  *      6  . . . . . ~ ~ ~ ~ . .
  *      7  . ~ . . . . . . . . .     a pool of one cell
@@ -37,7 +37,8 @@ object ArtGarden {
             bench.copy(instanceId = "art_bench_$i", gridX = i).also { bench = bench.quarterTurned() }
         }
         val things = listOf(
-            at(2, 1, StructureData.BRIDGE.objectId),
+            at(2, 0, StructureData.BRIDGE.objectId).copy(turned = true),
+            at(4, 4, StructureData.BRIDGE.objectId).copy(isFlipped = true),
             at(1, 5, GridObject.POND_OBJECT_ID),
             at(2, 5, GridObject.POND_OBJECT_ID),
             at(9, 0, StructureData.HUT.objectId).copy(roofColour = "green", wallColour = "white"),

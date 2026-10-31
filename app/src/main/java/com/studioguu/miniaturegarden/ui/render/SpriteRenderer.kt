@@ -68,8 +68,8 @@ fun DrawScope.drawSpriteSnow(pages: AtlasPages, asset: AssetManifest, anchor: Of
     drawSpriteSnow(pages[asset], asset, anchor, scale, lean, flipped)
 
 /** [drawSpriteShadow] from the page of [pages] that [asset] is on. */
-fun DrawScope.drawSpriteShadow(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, light: SunLight) =
-    drawSpriteShadow(pages[asset], asset, anchor, scale, light)
+fun DrawScope.drawSpriteShadow(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, light: SunLight, flipped: Boolean = false) =
+    drawSpriteShadow(pages[asset], asset, anchor, scale, light, flipped)
 
 /**
  * Draws one atlas sprite so that its anchor point lands on [anchor].
@@ -221,6 +221,7 @@ fun DrawScope.drawSpriteShadow(
     anchor: Offset,
     scale: Float,
     light: SunLight,
+    flipped: Boolean = false,
 ) {
     if (light.alpha <= 0f) return
     val rowsAboveAnchor = (asset.anchorY * asset.height).roundToInt().coerceIn(1, asset.height)
@@ -232,7 +233,12 @@ fun DrawScope.drawSpriteShadow(
         asset.drawLeft(anchor.x, scale).roundToInt(),
         (anchor.y - dstSize.height).roundToInt(),
     )
-    withTransform({ transform(shearAbout(anchor, light.dx, light.dy)) }) {
+    // Mirrored with the thing itself, and then thrown the way the light goes.
+    val mirror = if (flipped && asset.isFlippedAllowed) -1f else 1f
+    withTransform({
+        transform(shearAbout(anchor, light.dx, light.dy))
+        scale(scaleX = mirror, scaleY = 1f, pivot = anchor)
+    }) {
         drawImage(
             image = atlasImage,
             srcOffset = IntOffset(asset.atlasX, asset.atlasY),

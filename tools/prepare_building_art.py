@@ -556,7 +556,7 @@ def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
     scale = size * TILE / (w if kind == "w" else h)
     rgba = crop(resize(rgba, scale, scale))
     if asset_id == "struct_bridge_taiko":
-        return rgba, bridge_anchor(rgba)
+        return rgba, dict(bridge_anchor(rgba), scale=BRIDGE_DRAW_SCALE)
     # It stands on the middle of its base, as a building does.
     cx, side_y, width = base_of(rgba, band)
     ys, _ = np.where(rgba[:, :, 3] > ALPHA_MIN)
@@ -567,6 +567,44 @@ def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
         nx, ny = nozzle_of(rgba, cx, cy)
         override["attachX"], override["attachY"] = round(nx / w, 4), round(ny / h, 4)
     return rgba, override
+
+
+#: The bridge's picture is made 1.5 tiles across and drawn 2: three cells long, end to end.
+BRIDGE_DRAW_SCALE = 1.3333
+
+#: How much longer the bridge over a river two cells wide is: four cells to three, across the screen.
+BRIDGE_LONG = 1.25
+
+#: How much of the picture at each end, where the deck lies on the bank, keeps its shape.
+BRIDGE_ENDS = 0.2
+
+#: How much higher the middle of the long arch rises, as a share of the picture's height.
+BRIDGE_RISE = 0.09
+
+
+def lengthen_bridge(rgba: np.ndarray) -> np.ndarray:
+    """
+    The long bridge, made from the short one by stretching along its length only. Both ends keep
+    their shape; the part between them is drawn out, each column staying upright so that the posts
+    stay upright, and moved up along the bridge's slope so that the far end lands in its place.
+    The arch rises with it, smoothly, so that the longer span is a bigger arch and not a flatter one.
+    """
+    h, w = rgba.shape[:2]
+    wide = int(w * BRIDGE_LONG)
+    end = w * BRIDGE_ENDS
+    mid_from, mid_to = wide * 0.0 + end, wide - end
+    rise = h * BRIDGE_RISE
+    slope = 0.5  # across the screen, the long side climbs half a pixel a pixel
+    # Room above for the far end's climb and the arch's rise.
+    climb = (wide - w) * slope
+    tall = int(h + climb + rise) + 2
+    yy, xx = np.mgrid[0:tall, 0:wide].astype(float)
+    source_x = np.interp(xx, [0, mid_from, mid_to, wide], [0, end, w - end, w])
+    t = np.clip((xx - mid_from) / (mid_to - mid_from), 0, 1)
+    lift = rise * np.sin(np.pi * t) ** 2
+    # Where the column's picture starts, from the top of the room left above.
+    source_y = yy - (climb + rise) + (xx - source_x) * slope + lift
+    return crop(bilinear(rgba, source_x, source_y))
 
 
 def bridge_anchor(rgba: np.ndarray) -> dict:
@@ -778,6 +816,9 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     out.update(prepare_windmill())
     for asset_id in PROPS:
         out[asset_id] = prepare_prop(asset_id)
+    short = out["struct_bridge_taiko"][0]
+    long_bridge = lengthen_bridge(short)
+    out["struct_bridge_taiko_long"] = (long_bridge, dict(bridge_anchor(long_bridge), scale=BRIDGE_DRAW_SCALE))
     out["mask_struct_cottage"] = (cottage_mask(out["struct_cottage"][0]), {})
     out["mask_struct_hut"] = (hut_mask(out["struct_hut"][0]), {})
     out["plant_daikon_stage3"] = (prepare_daikon(), {})

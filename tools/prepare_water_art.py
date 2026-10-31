@@ -40,8 +40,8 @@ OUT = RES / "drawable-nodpi"
 #: Pixels to a cell in the bank's pictures.
 CELL = 512
 #: How far the land edge of the bank lies outside the cell, and how deep the bank is, in cells.
-CELL_OVERHANG = 0.12
-BANK_DEPTH = 0.40
+CELL_OVERHANG = 0.08
+BANK_DEPTH = 0.28
 #: The colour the water is brought to on average: that of the pond, a little greener and lighter.
 WATER_COLOUR = (146.0, 178.0, 174.0)
 WATER_SIZE = 512
@@ -110,17 +110,48 @@ def unmultiply(pre: np.ndarray) -> np.ndarray:
     return np.clip(np.concatenate([rgb, a], axis=2), 0, 255).round().astype(np.uint8)
 
 
+def strip_white(rgba: np.ndarray) -> np.ndarray:
+    """
+    Takes what is left of the white background off the outline: the pale, half-mixed pixels within
+    reach of the clear, a little at a time, so that a pale stone only loses its rim. Then the
+    outline is pulled in a pixel, and the colours just inside it are taken from further in.
+    """
+    from prepare_building_art import dilate
+    out = rgba.astype(np.uint8).copy()
+    v = out[:, :, :3].astype(int)
+    pale = (v.min(axis=2) > 150) & (v.max(axis=2) - v.min(axis=2) < 46)
+    for _ in range(5):
+        clear = out[:, :, 3] <= 40
+        fringe = pale & ~clear & dilate(clear, 2)
+        if not fringe.any():
+            break
+        out[fringe, 3] = 0
+    solid = out[:, :, 3] > 200
+    rim = dilate(~solid, 2) & solid
+    out[rim, 3] = 150
+    out[~solid & ~rim, 3] = 0
+    return out
+
+
 def bank_strip() -> np.ndarray:
     """The bank premultiplied, one cell long and running on into itself, [CELL] px to a cell."""
     from prepare_drawable_art import cut_out
     rgba = cut_out(np.array(Image.open(SOURCE / "river_bank.png").convert("RGB")), white_parts=1.0).astype(float)
     solid = rgba[:, :, 3] > 40
     rows = np.where(solid.sum(axis=1) > solid.shape[1] * 0.02)[0]
-    rgba = rgba[rows.min():rows.max() + 1]
+    rgba = strip_white(rgba[rows.min():rows.max() + 1]).astype(float)
     # Premultiplied, so that the white it was cut from does not come back at the edges.
     pre = np.concatenate([rgba[:, :, :3] * rgba[:, :, 3:4] / 255.0, rgba[:, :, 3:4]], axis=2)
-    strip = tile(pre, 110, axes=(1,))
-    size = (CELL, int(BANK_DEPTH * CELL))
+    # The bank is narrower than the picture would make it at one copy to a cell, with its stones
+    # at the size that goes with that: so it needs more length than the picture has, and goes on
+    # mirrored, which joins it to itself.
+    depth = BANK_DEPTH * CELL
+    wanted = int(pre.shape[0] * CELL / depth)
+    run = pre
+    while run.shape[1] < wanted + 110:
+        run = np.concatenate([run, run[:, ::-1]], axis=1)
+    strip = tile(run[:, :wanted + 110], 110, axes=(1,))
+    size = (CELL, int(depth))
     return np.array(Image.fromarray(unmultiply(strip), "RGBA").convert("RGBa").resize(size, Image.LANCZOS)).astype(float)
 
 
@@ -150,6 +181,34 @@ def bends(strip: np.ndarray) -> dict[str, np.ndarray]:
     along = (np.pi / 4 - np.abs(angle - np.pi / 4)) * half * 0.5
     convex = sample(strip, along, radius + over)
     return {"river_bank_concave": unmultiply(concave), "river_bank_convex": unmultiply(convex)}
+
+
+def river_icon(pictures: dict[str, np.ndarray]) -> np.ndarray:
+    """A piece of the stream as the garden draws it: water between its two banks, on a slab of ground."""
+    from prepare_building_art import flat_to_tile
+    top = Image.fromarray(pictures["water_surface"]).convert("RGBA").resize((CELL, CELL))
+    bank = Image.fromarray(pictures["river_bank"], "RGBA")
+    land = int(CELL_OVERHANG * CELL)
+    top.alpha_composite(bank.crop((0, land, CELL, bank.height)), (0, 0))
+    top.alpha_composite(bank.crop((0, land, CELL, bank.height)).rotate(180), (0, CELL - (bank.height - land)))
+    rgba, _ = flat_to_tile(top.convert("RGB"), side_depth=54)
+    # The sides of the slab are earth, as on the other pieces of ground, not the colours of the
+    # face's edge run down.
+    h, w = rgba.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    face = np.abs(xx + 0.5 - w / 2) / (w / 2) + np.abs(yy + 0.5 - w / 4) / (w / 4) <= 1.0
+    side = (rgba[:, :, 3] > 0) & ~face
+    grain = np.random.default_rng(7).normal(0, 9, (h, w))
+    shade = np.where(xx < w / 2, 0.8, 1.0)[..., None]
+    earth = (np.array([132.0, 104.0, 74.0]) + grain[..., None]) * shade
+    rgba[:, :, :3][side] = np.clip(earth, 0, 255).astype(np.uint8)[side]
+    return rgba
+
+
+def pond_icon() -> np.ndarray:
+    """The pond as the garden draws it, with its water as it is now."""
+    from prepare_building_art import crop
+    return crop(np.array(Image.open(RES / "drawable" / "pond.png").convert("RGBA")))
 
 
 def pond() -> np.ndarray:
@@ -182,6 +241,10 @@ def main() -> int:
     for name, picture in pictures.items():
         Image.fromarray(picture).save(OUT / f"{name}.png", optimize=True)
         print(name, picture.shape)
+    from prepare_drawable_art import to_icon
+    icons = {"icon_tile_river": river_icon(pictures), "icon_deco_pond": pond_icon()}
+    for name, picture in icons.items():
+        Image.fromarray(to_icon(picture), "RGBA").save(OUT / f"{name}.png", optimize=True)
     if args.pond:
         Image.fromarray(pond()).save(RES / "drawable" / "pond.png", optimize=True)
     if args.preview:

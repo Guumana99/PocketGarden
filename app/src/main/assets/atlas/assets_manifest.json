@@ -19,13 +19,13 @@
     },
     {
       "file": "world_0.png",
-      "width": 2034,
-      "height": 2038
+      "width": 2020,
+      "height": 1961
     },
     {
       "file": "world_1.png",
-      "width": 1828,
-      "height": 241
+      "width": 1862,
+      "height": 435
     }
   ],
   "assets": [
@@ -37,8 +37,8 @@
       "height": 311,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1000,
-      "atlasY": 1189
+      "atlasX": 2,
+      "atlasY": 1648
     },
     {
       "assetId": "deco_bench_back",
@@ -48,8 +48,8 @@
       "height": 270,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1544,
-      "atlasY": 1630
+      "atlasX": 1633,
+      "atlasY": 1648
     },
     {
       "assetId": "deco_lantern",
@@ -58,9 +58,9 @@
       "width": 141,
       "height": 225,
       "isFlippedAllowed": true,
-      "page": 3,
-      "atlasX": 1833,
-      "atlasY": 1630
+      "page": 4,
+      "atlasX": 733,
+      "atlasY": 2
     },
     {
       "assetId": "deco_rock",
@@ -70,7 +70,7 @@
       "height": 159,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 968,
+      "atlasX": 1625,
       "atlasY": 2
     },
     {
@@ -80,9 +80,9 @@
       "width": 256,
       "height": 109,
       "isFlippedAllowed": true,
-      "page": 3,
-      "atlasX": 2,
-      "atlasY": 1927
+      "page": 4,
+      "atlasX": 625,
+      "atlasY": 283
     },
     {
       "assetId": "deco_rock_mossy",
@@ -92,7 +92,7 @@
       "height": 201,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 219,
+      "atlasX": 876,
       "atlasY": 2
     },
     {
@@ -103,8 +103,8 @@
       "height": 142,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1560,
-      "atlasY": 2
+      "atlasX": 357,
+      "atlasY": 283
     },
     {
       "assetId": "deco_rock_standing",
@@ -114,7 +114,7 @@
       "height": 348,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 853,
+      "atlasX": 1623,
       "atlasY": 1189
     },
     {
@@ -125,7 +125,7 @@
       "height": 174,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 753,
+      "atlasX": 1410,
       "atlasY": 2,
       "attachX": 0.4983,
       "attachY": 0.3673
@@ -138,7 +138,7 @@
       "height": 237,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 2,
+      "atlasX": 516,
       "atlasY": 2
     },
     {
@@ -149,7 +149,7 @@
       "height": 439,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 2,
+      "atlasX": 772,
       "atlasY": 1189
     },
     {
@@ -159,9 +159,9 @@
       "width": 512,
       "height": 279,
       "isFlippedAllowed": false,
-      "page": 3,
-      "atlasX": 1030,
-      "atlasY": 1630
+      "page": 4,
+      "atlasX": 2,
+      "atlasY": 2
     },
     {
       "assetId": "mask_struct_cottage",
@@ -1040,8 +1040,21 @@
       "height": 457,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1058,
-      "atlasY": 625
+      "atlasX": 2,
+      "atlasY": 1189,
+      "drawScale": 1.3333
+    },
+    {
+      "assetId": "struct_bridge_taiko_long",
+      "anchorX": 0.5,
+      "anchorY": 0.6785,
+      "width": 960,
+      "height": 550,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 616,
+      "atlasY": 625,
+      "drawScale": 1.3333
     },
     {
       "assetId": "struct_cottage",
@@ -1063,8 +1076,8 @@
       "height": 150,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1205,
-      "atlasY": 2
+      "atlasX": 2,
+      "atlasY": 283
     },
     {
       "assetId": "struct_fence_post",
@@ -1074,8 +1087,8 @@
       "height": 119,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1976,
-      "atlasY": 1630
+      "atlasX": 1922,
+      "atlasY": 1648
     },
     {
       "assetId": "struct_fence_rail",
@@ -1085,7 +1098,7 @@
       "height": 176,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 477,
+      "atlasX": 1134,
       "atlasY": 2
     },
     {
@@ -1108,7 +1121,7 @@
       "height": 514,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 616,
+      "atlasX": 1578,
       "atlasY": 625
     },
     {
@@ -1119,7 +1132,7 @@
       "height": 424,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 517,
+      "atlasX": 1287,
       "atlasY": 1189,
       "drawScale": 3.2802,
       "attachX": 0.8422,
@@ -1133,8 +1146,8 @@
       "height": 303,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1289,
-      "atlasY": 1189,
+      "atlasX": 291,
+      "atlasY": 1648,
       "drawScale": 3.2802
     },
     {
@@ -1145,8 +1158,8 @@
       "height": 295,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 2,
-      "atlasY": 1630
+      "atlasX": 605,
+      "atlasY": 1648
     },
     {
       "assetId": "tile_grass_dark",
@@ -1156,8 +1169,8 @@
       "height": 295,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 516,
-      "atlasY": 1630
+      "atlasX": 1119,
+      "atlasY": 1648
     }
   ]
 }

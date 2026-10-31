@@ -99,7 +99,7 @@
 | 苔むした岩（`deco_rock_mossy`） | ✅ | Recraft | `deco_rock_mossy`（原画 `rock_mossy.png`）。幅 0.5 マス |
 | 立て石（`deco_rock_standing`） | ✅ | Recraft | `deco_rock_standing`（原画 `rock_standing.png`）。高さ 0.68 マス、根元が接地点 |
 | 小石の山（`deco_rock_pebbles`） | ✅ | Recraft | `deco_rock_pebbles`（原画 `rock_pebbles.png`）。幅 0.52 マス |
-| 太鼓橋（`struct_bridge_taiko`） | ✅ | Recraft | `struct_bridge_taiko`（原画 `bridge_taiko.png`）。幅 1.5 マス（1×2 の対角の長さ） |
+| 太鼓橋（`struct_bridge_taiko`） | ✅ | Recraft | `struct_bridge_taiko`（1×3）、`struct_bridge_taiko_long`（1×4。長さ方向だけ伸ばしたもの）。原画 `bridge_taiko.png` |
 | ベンチ（`deco_bench`） | ✅ | Recraft | `deco_bench`（原画 `deco_bench.png`、Recraft（#74。C2PA を grep で確認））。幅 0.56 マス、4 本の脚の真ん中に立つ。裏側 `deco_bench_back`（原画 `bench_back.png`）と反転で 4 方向 |
 | 石灯籠（`deco_lantern`） | ✅ | Recraft | `deco_lantern`（原画 `deco_lantern.png`、Recraft（#74。C2PA を grep で確認））。高さ 0.44 マス |
 | スプリンクラー（`deco_sprinkler`） | ✅＋⬜ | Recraft | 本体 `deco_sprinkler`（原画 `deco_sprinkler.png`、Recraft（#74。C2PA を grep で確認）。高さ 0.34 マス）。水しぶき（`SprinklerSpray`）は演出としてコードで描き、本体の絵の腕の軸（取り付け点）から出る。しぶきの絵を入れるなら `deco_sprinkler_spray_0`〜`_7` |

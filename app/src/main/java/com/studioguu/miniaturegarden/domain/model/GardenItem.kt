@@ -329,7 +329,7 @@ enum class GardenItem(
         unlock = UnlockCondition.PlayerLevel(13),
     ),
 
-    /** An arched bridge over a river two cells wide ([GardenGrid.spansRiver]). */
+    /** An arched bridge from bank to bank, one price whatever the river ([GardenGrid.bridgeAcross]). */
     STRUCT_BRIDGE(
         "struct_bridge_taiko", price = 3500, objectId = StructureData.BRIDGE.objectId, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(17),

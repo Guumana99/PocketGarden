@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.BridgeFit
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
@@ -37,8 +38,8 @@ class StartRemovalUseCase @Inject constructor(
                 ?: return@runInTransaction ActionResult.NOT_FOUND
             val item = StoreObjectUseCase.itemFor(target)
             if (toBag && item == null) return@runInTransaction ActionResult.NOT_RETURNABLE
-            // The river stays while a bridge stands over it.
-            if (target.isTerrain && carriesBridge(target, gardenRepository.getGridObjects())) return@runInTransaction ActionResult.BRIDGE_ABOVE
+            // The river and the banks stay while a bridge stands over them.
+            if (carriesBridge(target, gardenRepository.getGridObjects())) return@runInTransaction ActionResult.BRIDGE_ABOVE
             // A greenhouse with something growing in it stays until that is harvested or cleared.
             if (target.isGreenhouse && gardenRepository.getGridObjects().any { it.isPlant && it.gridX == target.gridX && it.gridY == target.gridY }) {
                 return@runInTransaction ActionResult.IN_USE
@@ -72,9 +73,9 @@ class StartRemovalUseCase @Inject constructor(
     }
 }
 
-/** Whether a bridge stands over the river cell [river]. */
-private fun carriesBridge(river: GridObject, objects: List<GridObject>): Boolean =
-    objects.any { it.isBridge && GridCell(river.gridX, river.gridY) in it.occupiedCells() }
+/** Whether a bridge stands over [thing]: the river under it, or what lies under one of its ends. */
+private fun carriesBridge(thing: GridObject, objects: List<GridObject>): Boolean = !thing.isBridge &&
+    objects.any { bridge -> bridge.isBridge && thing.occupiedCells().any { it in bridge.occupiedCells() } }
 
 /** A job on the garden that came to its end. */
 data class FinishedWork(val objectId: String, val kind: WorkKind)
@@ -180,13 +181,14 @@ class MoveObjectUseCase @Inject constructor(
             if (target.isWorking) return@runInTransaction ActionResult.BUSY
             if (target.gridX == gridX && target.gridY == gridY) return@runInTransaction ActionResult.SUCCESS
 
-            if (target.isTerrain && carriesBridge(target, objects)) return@runInTransaction ActionResult.BRIDGE_ABOVE
+            if (carriesBridge(target, objects)) return@runInTransaction ActionResult.BRIDGE_ABOVE
             // Checked against the garden as it would be with the thing lifted off it.
             val others = GardenGrid(gardenMap.current(), objects.filter { it.instanceId != instanceId })
             if (target.isBridge) {
-                val fit = others.fits(target.objectId, gridX, gridY, target.isFlipped)
-                if (fit != ActionResult.SUCCESS) return@runInTransaction fit
-                gardenRepository.upsertGridObject(target.copy(gridX = gridX, gridY = gridY))
+                when (val fit = others.bridgeAcross(gridX, gridY, target.isFlipped)) {
+                    is BridgeFit.Refused -> return@runInTransaction bridgeRefusal(fit.why)
+                    is BridgeFit.Across -> gardenRepository.upsertGridObject(target.copy(gridX = fit.origin.x, gridY = fit.origin.y, turned = fit.longer))
+                }
                 return@runInTransaction ActionResult.SUCCESS
             }
             when (others.checkPlacement(target.footprint, gridX, gridY, PlacementKind.forObjectId(target.objectId), target.objectId)) {

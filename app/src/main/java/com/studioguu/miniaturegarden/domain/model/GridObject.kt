@@ -34,7 +34,10 @@ data class GridObject(
     val bloomColour: String? = null,
     /** Of a gift box: what is inside ([Gift.encoded]); null for a box from before there were gifts. */
     val gift: String? = null,
-    /** Of something with a back to show (the bench): whether it is turned that way ([quarterTurned]). */
+    /**
+     * Of something with a back to show (the bench): whether it is turned that way ([quarterTurned]).
+     * Of a bridge: whether it is the long one, over a river two cells wide.
+     */
     val turned: Boolean = false,
     /** Of a painted building ([BuildingPaint]): its roof's and its walls' colours; null for the picture's own. */
     val roofColour: String? = null,
@@ -113,7 +116,7 @@ data class GridObject(
     val isBridge: Boolean get() = objectId == StructureData.BRIDGE.objectId
 
     /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
-    val footprint: Footprint get() = Footprint.forObjectId(objectId, isFlipped)
+    val footprint: Footprint get() = Footprint.forObjectId(objectId, isFlipped, longer = turned)
 
     /**
      * This thing turned round once. What has a back (the bench) goes a quarter turn each time, by

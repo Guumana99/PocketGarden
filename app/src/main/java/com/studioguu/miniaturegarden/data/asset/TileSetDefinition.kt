@@ -68,7 +68,9 @@ object TileSetDefinition {
      * (or `<objectId>_withered`); everything else uses its object id unchanged.
      */
     fun assetIdFor(gridObject: GridObject): String {
-        if (!gridObject.isPlant) return if (gridObject.turned) "${gridObject.objectId}_back" else gridObject.objectId
+        if (!gridObject.isPlant) {
+            return if (!gridObject.turned) gridObject.objectId else "${gridObject.objectId}${if (gridObject.isBridge) "_long" else "_back"}"
+        }
         val species = PlantSpecies.forObjectId(gridObject.objectId)
         if (gridObject.status == PlantStatus.WITHERED && species.canWither) return witheredId(gridObject.objectId)
         val stage = growthStage(gridObject.growthProgress, species.growthStages)
@@ -167,7 +169,7 @@ object TileSetDefinition {
             (objectIds - PlantSpecies.entries.map { it.objectId }.toSet() - DRAWABLE_OBJECT_IDS) +
             WINDMILL_SAILS +
             (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId) +
-            "deco_bench_back" + BuildingPaint.PAINTABLE_OBJECT_IDS.map { "mask_$it" }
+            "deco_bench_back" + "struct_bridge_taiko_long" + BuildingPaint.PAINTABLE_OBJECT_IDS.map { "mask_$it" }
 
     /** 1-based stage; the last stage is reserved for a fully grown plant (progress 1.0). */
     fun growthStage(growthProgress: Float, stages: Int): Int {
