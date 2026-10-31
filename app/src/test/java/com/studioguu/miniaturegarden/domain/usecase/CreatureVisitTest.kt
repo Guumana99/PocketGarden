@@ -10,7 +10,9 @@ import com.studioguu.miniaturegarden.domain.model.GardenSnapshot
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.SeasonPhase
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.VisitCondition
@@ -33,31 +35,31 @@ class CreatureVisitTest {
         instanceId = "o${nextId++}", gridX = x, gridY = y, objectId = objectId, growthProgress = growth, lastUpdatedTimestamp = 0L,
     )
 
+    private fun water(vararg xs: Int, objectId: String = GridObject.RIVER_OBJECT_ID) = xs.map { at(it, 4, objectId) }
+
     /** A garden made for each combination, and nothing else. */
     private fun gardenFor(rule: VisitRule): List<GridObject> = when (rule) {
         VisitRule.BUTTERFLY_BLOOMS -> listOf(at(1, 1, "plant_tulip", 1f), at(2, 1, "plant_rose", 1f))
-        VisitRule.LADYBUG_TULIPS -> listOf(at(1, 1, "plant_tulip"), at(2, 1, "plant_tulip"), at(3, 1, "plant_tulip"), at(5, 5, "ground_grass"))
-        VisitRule.BIRD_BENCH -> listOf(at(4, 4, "deco_bench"), at(0, 0, "struct_fence"), at(1, 0, "struct_fence"), at(2, 0, "struct_fence"))
+        VisitRule.BUTTERFLY_LAVENDER -> listOf(at(1, 1, "plant_tulip", 1f), at(2, 1, "plant_rose", 1f), at(3, 1, "plant_lavender"))
+        VisitRule.LADYBUG_CROPS, VisitRule.LADYBUG_SPRING ->
+            listOf(at(1, 1, "plant_tomato"), at(2, 1, "plant_tulip"), at(3, 1, "plant_carrot"), at(5, 5, "ground_grass"))
+        VisitRule.BIRD_BENCH -> listOf(at(4, 4, "deco_bench"))
+        VisitRule.BIRD_FENCE -> listOf(at(0, 0, "struct_fence"), at(1, 0, "struct_fence"), at(2, 0, "struct_fence"))
         VisitRule.BIRD_COTTAGE -> listOf(at(3, 3, StructureData.COTTAGE.objectId))
-        VisitRule.SQUIRREL_SUNFLOWER -> listOf(at(1, 1, "plant_sunflower", 1f), at(5, 5, "deco_rock"))
-        VisitRule.FROG_RAIN, VisitRule.FROG_SUMMER ->
-            listOf(at(0, 4, GridObject.RIVER_OBJECT_ID), at(1, 4, GridObject.RIVER_OBJECT_ID), at(2, 4, GridObject.RIVER_OBJECT_ID))
-        VisitRule.SQUIRREL_AUTUMN -> listOf(at(5, 5, "deco_rock"))
-        VisitRule.DRAGONFLY_AUTUMN -> listOf(at(0, 4, GridObject.RIVER_OBJECT_ID), at(1, 4, GridObject.RIVER_OBJECT_ID))
-        VisitRule.BUTTERFLY_LAVENDER -> listOf(at(1, 1, "plant_lavender"), at(2, 1, "plant_lavender"))
-        VisitRule.LADYBUG_STRAWBERRY -> listOf(at(1, 1, "plant_strawberry"), at(2, 1, "plant_strawberry"))
         VisitRule.BIRD_HUT -> listOf(at(3, 3, StructureData.HUT.objectId))
-        VisitRule.BIRD_WINTER_WELL, VisitRule.FROG_WELL -> listOf(at(4, 4, StructureData.WELL.objectId))
+        VisitRule.BIRD_WELL -> listOf(at(4, 4, StructureData.WELL.objectId))
         VisitRule.SQUIRREL_SHIITAKE -> listOf(at(4, 4, "plant_shiitake", 1f))
+        VisitRule.SQUIRREL_SUNFLOWER -> listOf(at(1, 1, "plant_sunflower", 1f), at(5, 5, "deco_rock"))
+        VisitRule.FROG_RAIN, VisitRule.FROG_SUMMER -> water(0, 1, 2)
+        VisitRule.DRAGONFLY_AUTUMN -> water(0, 1)
     }
 
-    private fun weatherFor(rule: VisitRule) = if (rule == VisitRule.FROG_RAIN || rule == VisitRule.FROG_WELL) WeatherType.RAINY else sunny
+    private fun weatherFor(rule: VisitRule) = if (rule == VisitRule.FROG_RAIN) WeatherType.RAINY else sunny
 
-    /** The season a combination needs; spring for those that come in any. */
+    /** The season each combination is the best one in; spring for those that come in any. */
     private fun seasonFor(rule: VisitRule) = when (rule) {
-        VisitRule.FROG_SUMMER -> Season.SUMMER
-        VisitRule.SQUIRREL_AUTUMN, VisitRule.DRAGONFLY_AUTUMN -> Season.AUTUMN
-        VisitRule.BIRD_WINTER_WELL -> Season.WINTER
+        VisitRule.FROG_SUMMER, VisitRule.LADYBUG_CROPS -> Season.SUMMER
+        VisitRule.DRAGONFLY_AUTUMN -> Season.AUTUMN
         else -> Season.SPRING
     }
 
@@ -140,10 +142,10 @@ class CreatureVisitTest {
     @Test
     fun `each combination comes about as often as its chance says`() {
         for (rule in VisitRule.entries) {
-            val periods = 2_000
+            val periods = 4_000
             val came = visitsOver(periods, gardenFor(rule), weatherFor(rule), seasonFor(rule)).count { it.rule == rule }
             val rate = came.toFloat() / periods
-            assertTrue("${rule.name}: $rate against ${rule.chance}", kotlin.math.abs(rate - rule.chance) < 0.05f)
+            assertTrue("${rule.name}: $rate against ${rule.chance}", kotlin.math.abs(rate - rule.chance) < 0.03f)
         }
     }
 
@@ -190,7 +192,7 @@ class CreatureVisitTest {
         for (rule in VisitRule.entries) {
             val objects = gardenFor(rule)
             val grid = GardenGrid(map, objects)
-            val visits = visitsOver(100, objects, weatherFor(rule), seasonFor(rule)).filter { it.rule == rule }
+            val visits = visitsOver(400, objects, weatherFor(rule), seasonFor(rule)).filter { it.rule == rule }
             assertTrue(rule.name, visits.isNotEmpty())
             for (visit in visits) {
                 when (rule.placement) {
@@ -216,7 +218,7 @@ class CreatureVisitTest {
     @Test
     fun `a bird on the cottage sits on it, drawn at its front cell`() {
         val cottage = at(3, 3, StructureData.COTTAGE.objectId)
-        val visit = visitsOver(50, listOf(cottage)).first()
+        val visit = visitsOver(300, listOf(cottage)).first()
         assertEquals(cottage, visit.host)
         assertEquals(GridCell(5, 5), visit.cell)
     }
@@ -240,98 +242,185 @@ class CreatureVisitTest {
         assertFalse(visit.isPresentAt(200_000))
     }
 
-    // --- The combinations added with the lavender, strawberry, pumpkin (now the shiitake), hut and well ---
+    // --- The chances ---
 
-    private val added = listOf(
-        VisitRule.BUTTERFLY_LAVENDER, VisitRule.LADYBUG_STRAWBERRY, VisitRule.BIRD_HUT,
-        VisitRule.BIRD_WINTER_WELL, VisitRule.SQUIRREL_SHIITAKE, VisitRule.FROG_WELL,
-    )
+    private fun chanceOf(creature: Creature, garden: GardenSnapshot) =
+        VisitRule.forCreature(creature).filter { it.isMetBy(garden) }.maxOf { it.chanceIn(garden) }
 
     @Test
-    fun `the added combinations come after the older ones, which keep their places`() {
-        assertEquals(added, VisitRule.entries.takeLast(added.size))
-        assertEquals(VisitRule.DRAGONFLY_AUTUMN, VisitRule.entries[8])
-        assertEquals(15, VisitRule.entries.size)
+    fun `butterflies come at a fifth of the time, a quarter with lavender about, flowering or not`() {
+        val blooms = gardenFor(VisitRule.BUTTERFLY_BLOOMS)
+        assertEquals(0.2f, chanceOf(Creature.BUTTERFLY, GardenSnapshot(blooms, sunny)))
+        val lavender = gardenFor(VisitRule.BUTTERFLY_LAVENDER)
+        assertEquals(0.25f, chanceOf(Creature.BUTTERFLY, GardenSnapshot(lavender, sunny)))
+        // Lavender alone is not a garden in bloom.
+        val onlyLavender = listOf(at(1, 1, "plant_lavender"), at(2, 1, "plant_lavender"))
+        assertFalse(VisitRule.BUTTERFLY_LAVENDER.isMetBy(GardenSnapshot(onlyLavender, sunny)))
+        // It settles on the lavender, and rolls once: no more often than the better chance.
+        val visits = visitsOver(4_000, lavender).filter { it.creature == Creature.BUTTERFLY }
+        assertTrue(visits.all { it.rule == VisitRule.BUTTERFLY_LAVENDER && it.host?.objectId == "plant_lavender" })
+        assertTrue(kotlin.math.abs(visits.size / 4_000f - 0.25f) < 0.03f)
     }
 
     @Test
-    fun `butterflies come for the scent of lavender, flowering or not, but not in the rain`() {
-        val young = gardenFor(VisitRule.BUTTERFLY_LAVENDER)
-        for (season in Season.entries) assertTrue(VisitRule.BUTTERFLY_LAVENDER.isMetBy(GardenSnapshot(young, sunny, season)))
-        assertFalse(VisitRule.BUTTERFLY_LAVENDER.isMetBy(GardenSnapshot(young, WeatherType.RAINY)))
-        // Young lavender is not a garden in bloom, so this is the butterfly's only reason to come.
-        assertFalse(VisitRule.BUTTERFLY_BLOOMS.isMetBy(GardenSnapshot(young, sunny)))
-        assertTrue(visitsOver(100, young).filter { it.creature == Creature.BUTTERFLY }.all { it.rule == VisitRule.BUTTERFLY_LAVENDER })
-        // In full bloom it comes too, for either reason, and is still one butterfly.
-        val blooming = young.map { it.copy(growthProgress = 1f) }
-        assertTrue(VisitRule.BUTTERFLY_LAVENDER.isMetBy(GardenSnapshot(blooming, sunny)))
-        assertTrue(VisitRule.BUTTERFLY_BLOOMS.isMetBy(GardenSnapshot(blooming, sunny)))
-        // One lavender is not enough.
-        assertFalse(VisitRule.BUTTERFLY_LAVENDER.isMetBy(GardenSnapshot(young.take(1), sunny)))
+    fun `only flowers in bloom count as flowers`() {
+        val vegetables = listOf(at(1, 1, "plant_tomato", 1f), at(2, 1, "plant_carrot", 1f))
+        assertFalse(VisitRule.BUTTERFLY_BLOOMS.isMetBy(GardenSnapshot(vegetables, sunny)))
+        for (species in listOf(PlantSpecies.TULIP, PlantSpecies.ROSE, PlantSpecies.LAVENDER, PlantSpecies.SUNFLOWER)) assertTrue(species.isFlower)
+        assertFalse(PlantSpecies.SHIITAKE.isFlower)
     }
 
     @Test
-    fun `ladybugs visit strawberries only in spring`() {
-        val strawberries = gardenFor(VisitRule.LADYBUG_STRAWBERRY)
+    fun `ladybugs like any three crops and grass, and spring best`() {
+        val crops = gardenFor(VisitRule.LADYBUG_CROPS)
         for (season in Season.entries) {
-            assertEquals(season.name, season == Season.SPRING, VisitRule.LADYBUG_STRAWBERRY.isMetBy(GardenSnapshot(strawberries, sunny, season)))
+            assertEquals(season.name, if (season == Season.SPRING) 0.2f else 0.15f, chanceOf(Creature.LADYBUG, GardenSnapshot(crops, sunny, season)))
         }
     }
 
     @Test
-    fun `a bird sits on the hut's roof, at its front cell`() {
-        val hut = at(3, 3, StructureData.HUT.objectId)
-        val visit = visitsOver(100, listOf(hut)).first { it.rule == VisitRule.BIRD_HUT }
-        assertEquals(hut, visit.host)
-        assertEquals(GridCell(4, 4), visit.cell)
-        // Not while it is still going up.
-        val site = hut.copy(workKind = WorkKind.BUILDING)
-        assertFalse(VisitRule.BIRD_HUT.isMetBy(GardenSnapshot(listOf(site), sunny)))
-    }
-
-    @Test
-    fun `the well draws a bird in winter and a frog in the rain, and a frog needs no river`() {
-        val well = gardenFor(VisitRule.FROG_WELL)
-        for (season in Season.entries) {
-            assertEquals(season.name, season == Season.WINTER, VisitRule.BIRD_WINTER_WELL.isMetBy(GardenSnapshot(well, sunny, season)))
+    fun `any of a bird's places will do, and a flower in bloom doubles the chance`() {
+        val birds = listOf(VisitRule.BIRD_BENCH, VisitRule.BIRD_FENCE, VisitRule.BIRD_COTTAGE, VisitRule.BIRD_HUT, VisitRule.BIRD_WELL)
+        assertEquals(birds.toSet(), VisitRule.forCreature(Creature.BIRD).toSet())
+        val bloom = at(9, 9, "plant_tulip", 1f)
+        for (rule in birds) {
+            for (season in Season.entries) assertTrue(rule.name, rule.isMetBy(GardenSnapshot(gardenFor(rule), sunny, season)))
+            assertEquals(rule.name, 0.1f, chanceOf(Creature.BIRD, GardenSnapshot(gardenFor(rule), sunny)))
+            assertEquals(rule.name, 0.2f, chanceOf(Creature.BIRD, GardenSnapshot(gardenFor(rule) + bloom, sunny)))
+            // A flower still growing is not in bloom.
+            assertEquals(rule.name, 0.1f, chanceOf(Creature.BIRD, GardenSnapshot(gardenFor(rule) + bloom.copy(growthProgress = 0.9f), sunny)))
         }
-        assertTrue(VisitRule.FROG_WELL.isMetBy(GardenSnapshot(well, WeatherType.RAINY)))
-        assertFalse(VisitRule.FROG_WELL.isMetBy(GardenSnapshot(well, sunny)))
-        assertFalse(VisitRule.FROG_WELL.isMetBy(GardenSnapshot(well, WeatherType.CLOUDY)))
-        // A garden with a well and no river: in the rain, a frog does come, beside the well.
-        val frogs = visitsOver(200, well, WeatherType.RAINY).filter { it.creature == Creature.FROG }
-        assertTrue(frogs.isNotEmpty())
-        assertTrue(frogs.all { it.rule == VisitRule.FROG_WELL && it.host == null })
+        assertFalse(VisitRule.BIRD_FENCE.isMetBy(GardenSnapshot(gardenFor(VisitRule.BIRD_FENCE).take(2), sunny)))
     }
 
     @Test
-    fun `a squirrel waits beside a shiitake log once it is ready to pick, in any season`() {
-        val young = listOf(at(4, 4, "plant_shiitake", 0.9f))
-        assertFalse(VisitRule.SQUIRREL_SHIITAKE.isMetBy(GardenSnapshot(young, sunny)))
-        val ripe = gardenFor(VisitRule.SQUIRREL_SHIITAKE)
-        for (season in Season.entries) assertTrue(VisitRule.SQUIRREL_SHIITAKE.isMetBy(GardenSnapshot(ripe, sunny, season)))
-        // A withered one draws nobody.
-        val withered = listOf(ripe.single().copy(status = PlantStatus.WITHERED))
+    fun `a bird with two places as good comes to both`() {
+        val visits = visitsOver(800, gardenFor(VisitRule.BIRD_BENCH) + gardenFor(VisitRule.BIRD_FENCE))
+        assertTrue(visits.any { it.rule == VisitRule.BIRD_BENCH })
+        assertTrue(visits.any { it.rule == VisitRule.BIRD_FENCE })
+    }
+
+    @Test
+    fun `a squirrel comes to a ripe log or a sunflower by a rock, and more often in autumn`() {
+        for (rule in listOf(VisitRule.SQUIRREL_SHIITAKE, VisitRule.SQUIRREL_SUNFLOWER)) {
+            for (season in Season.entries) {
+                assertEquals(rule.name, if (season == Season.AUTUMN) 0.25f else 0.2f, chanceOf(Creature.SQUIRREL, GardenSnapshot(gardenFor(rule), sunny, season)))
+            }
+        }
+        assertFalse(VisitRule.SQUIRREL_SHIITAKE.isMetBy(GardenSnapshot(listOf(at(4, 4, "plant_shiitake", 0.9f)), sunny)))
+        val withered = gardenFor(VisitRule.SQUIRREL_SHIITAKE).map { it.copy(status = PlantStatus.WITHERED) }
         assertFalse(VisitRule.SQUIRREL_SHIITAKE.isMetBy(GardenSnapshot(withered, sunny)))
+        // A rock by itself draws nobody, even in autumn.
+        val rock = listOf(at(5, 5, "deco_rock"))
+        for (rule in VisitRule.entries) assertFalse(rule.name, rule.isMetBy(GardenSnapshot(rock, sunny, Season.AUTUMN)))
     }
 
     @Test
-    fun `winter now has a visitor of its own, besides the ones that come in any season`() {
-        val winterOnly = VisitRule.entries.filter { rule ->
-            rule.conditions.any { it is VisitCondition.SeasonIs && it.seasons == setOf(Season.WINTER) }
+    fun `whatever counts as a rock is counted and sat beside, however many kinds there are`() {
+        val rocks = VisitRule.SQUIRREL_SUNFLOWER.anchor.objectIds
+        assertTrue("deco_rock" in rocks)
+        val needs = VisitRule.SQUIRREL_SUNFLOWER.conditions.filterIsInstance<VisitCondition.Things>().single()
+        assertEquals(rocks, needs.objectIds)
+    }
+
+    @Test
+    fun `a pond counts as water as much as a river`() {
+        val mixed = water(0, 1) + water(2, objectId = GridObject.POND_OBJECT_ID)
+        assertTrue(VisitRule.FROG_RAIN.isMetBy(GardenSnapshot(mixed, WeatherType.RAINY)))
+        assertTrue(VisitRule.FROG_SUMMER.isMetBy(GardenSnapshot(mixed, sunny, Season.SUMMER)))
+        val pond = water(0, 1, objectId = GridObject.POND_OBJECT_ID)
+        assertTrue(VisitRule.DRAGONFLY_AUTUMN.isMetBy(GardenSnapshot(pond, sunny, Season.AUTUMN)))
+        assertFalse(VisitRule.FROG_RAIN.isMetBy(GardenSnapshot(pond, WeatherType.RAINY)))
+    }
+
+    @Test
+    fun `a frog takes the better of rain and summer`() {
+        val river = gardenFor(VisitRule.FROG_RAIN)
+        assertEquals(0.25f, chanceOf(Creature.FROG, GardenSnapshot(river, WeatherType.RAINY, Season.SPRING)))
+        assertEquals(0.1f, chanceOf(Creature.FROG, GardenSnapshot(river, sunny, Season.SUMMER)))
+        assertEquals(0.25f, chanceOf(Creature.FROG, GardenSnapshot(river, WeatherType.RAINY, Season.SUMMER)))
+    }
+
+    @Test
+    fun `the dragonfly comes from the end of summer through autumn`() {
+        val river = gardenFor(VisitRule.DRAGONFLY_AUTUMN)
+        fun comes(season: Season, phase: SeasonPhase) =
+            VisitRule.DRAGONFLY_AUTUMN.isMetBy(GardenSnapshot(river, sunny, season, phase = phase))
+        for (phase in SeasonPhase.entries) {
+            assertEquals(phase.name, phase == SeasonPhase.LATE, comes(Season.SUMMER, phase))
+            assertTrue(phase.name, comes(Season.AUTUMN, phase))
+            assertFalse(phase.name, comes(Season.SPRING, phase))
+            assertFalse(phase.name, comes(Season.WINTER, phase))
         }
-        assertEquals(listOf(VisitRule.BIRD_WINTER_WELL), winterOnly)
-        val wintry = visitsOver(200, gardenFor(VisitRule.BIRD_WINTER_WELL), season = Season.WINTER)
-        assertTrue(wintry.any { it.rule == VisitRule.BIRD_WINTER_WELL })
+        // The time of year reaches the rules from the visits themselves.
+        val late = (0 until 300).flatMap {
+            CreatureVisits.visitorsAt(it * CreatureVisits.PERIOD_MILLIS + 1, river, sunny, map, Season.SUMMER, phase = SeasonPhase.LATE)
+        }
+        assertTrue(late.isNotEmpty())
+    }
+
+    // --- Staying away ---
+
+    /** Goes through [periods] periods as the game does: what has come is remembered from then on. */
+    private fun played(periods: Int, objects: List<GridObject>): List<CreatureVisit> {
+        val leftAt = HashMap<Creature, Long>()
+        return (0 until periods).flatMap { period ->
+            CreatureVisits.visitorsAt(period * CreatureVisits.PERIOD_MILLIS + 1, objects, sunny, map, leftAt = leftAt)
+                .onEach { leftAt[it.creature] = it.leavesAt }
+        }
+    }
+
+    @Test
+    fun `a creature that has left stays away for a quarter of an hour`() {
+        assertEquals(15L * 60 * 1000, CreatureVisits.AWAY_MILLIS)
+        val visits = played(4_000, gardenFor(VisitRule.BUTTERFLY_LAVENDER))
+        assertTrue(visits.size > 100)
+        for ((before, after) in visits.zipWithNext()) {
+            assertTrue(after.arrivesAt - before.leavesAt >= CreatureVisits.AWAY_MILLIS)
+        }
+        // One creature staying away keeps nobody else out.
+        val both = gardenFor(VisitRule.BUTTERFLY_BLOOMS) + gardenFor(VisitRule.BIRD_COTTAGE).map { it.copy(gridX = 5, gridY = 5) }
+        val seen = played(2_000, both)
+        assertTrue(seen.any { it.creature == Creature.BUTTERFLY } && seen.any { it.creature == Creature.BIRD })
+    }
+
+    @Test
+    fun `once the time is up it may come again`() {
+        val objects = gardenFor(VisitRule.BUTTERFLY_LAVENDER)
+        val visit = visitsOver(100, objects).first()
+        val again = visitsOver(4_000, objects).first {
+            CreatureVisits.periodOf(it.arrivesAt) > CreatureVisits.periodOf(visit.arrivesAt) && it.arrivesAt >= visit.leavesAt + CreatureVisits.AWAY_MILLIS
+        }
+        val now = again.arrivesAt
+        val leftAt = mapOf(Creature.BUTTERFLY to visit.leavesAt)
+        assertEquals(listOf(again), CreatureVisits.visitorsAt(now, objects, sunny, map, leftAt = leftAt))
+    }
+
+    @Test
+    fun `its own stay this period does not count as having left`() {
+        val objects = gardenFor(VisitRule.BUTTERFLY_LAVENDER)
+        val visit = visitsOver(100, objects).first()
+        val now = visit.arrivesAt + 1_000
+        // Written when it arrived, and looked at again when the garden changes under it.
+        val leftAt = mapOf(Creature.BUTTERFLY to visit.leavesAt)
+        assertEquals(listOf(visit), CreatureVisits.visitorsAt(now, objects, sunny, map, leftAt = leftAt))
+    }
+
+    @Test
+    fun `a time from the future, the clock having been put back, keeps nobody away`() {
+        val objects = gardenFor(VisitRule.BUTTERFLY_LAVENDER)
+        val visit = visitsOver(100, objects).first()
+        val leftAt = mapOf(Creature.BUTTERFLY to visit.leavesAt + 24 * 60 * 60 * 1000L)
+        assertEquals(listOf(visit), CreatureVisits.visitorsAt(visit.arrivesAt, objects, sunny, map, leftAt = leftAt))
     }
 
     @Test
     fun `butterflies, dragonflies and frogs stay away on a snowy day`() {
-        for (rule in listOf(VisitRule.BUTTERFLY_BLOOMS, VisitRule.BUTTERFLY_LAVENDER, VisitRule.DRAGONFLY_AUTUMN, VisitRule.FROG_RAIN, VisitRule.FROG_WELL)) {
+        for (rule in listOf(VisitRule.BUTTERFLY_BLOOMS, VisitRule.BUTTERFLY_LAVENDER, VisitRule.DRAGONFLY_AUTUMN, VisitRule.FROG_RAIN)) {
             assertFalse(rule.name, rule.isMetBy(GardenSnapshot(gardenFor(rule), WeatherType.SNOWY, seasonFor(rule))))
         }
         // The rest do not mind the snow.
-        assertTrue(VisitRule.BIRD_WINTER_WELL.isMetBy(GardenSnapshot(gardenFor(VisitRule.BIRD_WINTER_WELL), WeatherType.SNOWY, Season.WINTER)))
+        assertTrue(VisitRule.BIRD_WELL.isMetBy(GardenSnapshot(gardenFor(VisitRule.BIRD_WELL), WeatherType.SNOWY, Season.WINTER)))
         assertTrue(VisitRule.SQUIRREL_SUNFLOWER.isMetBy(GardenSnapshot(gardenFor(VisitRule.SQUIRREL_SUNFLOWER), WeatherType.SNOWY)))
         // Clouds are fair weather.
         assertTrue(VisitRule.BUTTERFLY_BLOOMS.isMetBy(GardenSnapshot(gardenFor(VisitRule.BUTTERFLY_BLOOMS), WeatherType.CLOUDY)))

@@ -28,6 +28,8 @@ data class AppSettings(
     val lastPlayDay: Long = 0L,
     /** When the store's review sheet was last asked for; 0 if it never has been. */
     val reviewAskedAt: Long = 0L,
+    /** When each creature last left the garden: it stays away a while ([CreatureVisits.AWAY_MILLIS]). */
+    val visitorsLeftAt: Map<Creature, Long> = emptyMap(),
 ) {
     /** The same settings with both volumes forced into 0..1; a non-number falls back to the default. */
     /** These settings with the garden opened on [day]: a new day counts, the same day does not. */

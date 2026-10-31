@@ -50,11 +50,9 @@ class NatureNotesEngineTest {
 
     @Test
     fun `the seasonal combinations come only in their season`() {
-        val rock = listOf(at(5, 5, "deco_rock"))
         val stream = river(0, 1, 2)
         for (s in Season.entries) {
             assertEquals(s.name, s == Season.SUMMER, VisitRule.FROG_SUMMER.isMetBy(GardenSnapshot(stream, sunny, s)))
-            assertEquals(s.name, s == Season.AUTUMN, VisitRule.SQUIRREL_AUTUMN.isMetBy(GardenSnapshot(rock, sunny, s)))
             assertEquals(s.name, s == Season.AUTUMN, VisitRule.DRAGONFLY_AUTUMN.isMetBy(GardenSnapshot(stream, sunny, s)))
         }
         // The dragonfly keeps away from the rain; the frog of summer does not mind it.
@@ -73,22 +71,7 @@ class NatureNotesEngineTest {
     }
 
     @Test
-    fun `a rock alone draws the squirrel in autumn, and nobody in spring`() {
-        val rock = listOf(at(5, 5, "deco_rock"))
-        assertTrue(visitors(rock, Season.AUTUMN).any { it.rule == VisitRule.SQUIRREL_AUTUMN })
-        assertTrue(visitors(rock, Season.SPRING).isEmpty())
-    }
-
-    @Test
-    fun `the older combinations keep their places, so who comes when does not change`() {
-        // A visit is rolled from the combination's place in the table: new ones go at the end.
-        assertEquals(
-            listOf(
-                VisitRule.BUTTERFLY_BLOOMS, VisitRule.LADYBUG_TULIPS, VisitRule.BIRD_BENCH, VisitRule.BIRD_COTTAGE,
-                VisitRule.SQUIRREL_SUNFLOWER, VisitRule.FROG_RAIN,
-            ),
-            VisitRule.entries.take(6),
-        )
+    fun `the creatures keep their places, so their pages in the book do not move`() {
         assertEquals(Creature.FROG, Creature.entries[4])
         assertEquals(Creature.DRAGONFLY, Creature.entries.last())
     }
@@ -137,7 +120,7 @@ class NatureNotesEngineTest {
     @Test
     fun `each new creature is counted once, and opening one leaves the others new`() = runBlocking {
         record(VisitRule.DRAGONFLY_AUTUMN, t0)
-        record(VisitRule.SQUIRREL_AUTUMN, t0)
+        record(VisitRule.SQUIRREL_SHIITAKE, t0)
         record(VisitRule.SQUIRREL_SUNFLOWER, t0)
         assertEquals(2, notes().unopened)
         open(Creature.SQUIRREL)

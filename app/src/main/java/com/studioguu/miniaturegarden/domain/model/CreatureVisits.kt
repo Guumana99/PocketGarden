@@ -26,17 +26,22 @@ data class CreatureVisit(
 
 /**
  * Who comes to the garden, and when. Time is cut into periods of [PERIOD_MILLIS]; at the start of
- * each, every combination the garden meets ([VisitRule]) rolls its [VisitRule.chance]. A creature
- * that comes arrives a little after the period begins and leaves a little before it ends, so one
- * staying on is seen to go and come back rather than to blink.
+ * each, every creature rolls once, at the best chance among the combinations the garden meets
+ * ([VisitRule.chanceIn]). When several are as good, the period picks which it comes for. A
+ * creature that comes arrives a little after the period begins and leaves a little before it
+ * ends. Once it has gone, it stays away for [AWAY_MILLIS].
  *
- * Everything is decided from the time and the garden alone, so the same moment always gives the
- * same visitors: they do not change when the screen is turned or the app comes back, and no
- * visit has to be stored. At most [MAX_VISITORS] come at once, one of each kind.
+ * Everything is decided from the time, the garden and when each creature last left, so the same
+ * moment always gives the same visitors: they do not change when the screen is turned or the app
+ * comes back, and nothing of a visit has to be stored but that one time. At most [MAX_VISITORS]
+ * come at once, one of each kind; the creatures earlier in [Creature] are tried first.
  */
 object CreatureVisits {
     const val PERIOD_MILLIS = 5L * 60 * 1000
     const val MAX_VISITORS = 2
+
+    /** How long a creature that has left stays away. */
+    const val AWAY_MILLIS = 15L * 60 * 1000
 
     /** The least and most a visitor waits after the period begins, and leaves before it ends. */
     const val MIN_MARGIN_MILLIS = 20_000L
@@ -48,8 +53,9 @@ object CreatureVisits {
 
     /**
      * The visitors of the period [now] falls in, for the garden as it is: [objects] on [map],
-     * under [weather], in [season], at [timeOfDay]. Visits whose time has already passed are
-     * included; see [CreatureVisit.isPresentAt].
+     * under [weather], in [season] and its [phase], at [timeOfDay], with [leftAt] saying when each
+     * creature last left. Visits whose time has already passed are included; see
+     * [CreatureVisit.isPresentAt].
      */
     fun visitorsAt(
         now: Long,
@@ -58,25 +64,33 @@ object CreatureVisits {
         map: GardenMap,
         season: Season = Season.SPRING,
         timeOfDay: TimeOfDay = TimeOfDay.DAY,
+        phase: SeasonPhase = SeasonPhase.EARLY,
+        leftAt: Map<Creature, Long> = emptyMap(),
     ): List<CreatureVisit> {
         val period = periodOf(now)
-        val garden = GardenSnapshot(objects, weather, season, timeOfDay)
+        val start = periodStart(period)
+        val garden = GardenSnapshot(objects, weather, season, timeOfDay, phase)
         val grid = GardenGrid(map, objects)
         val taken = HashSet<GridCell>()
         val visits = ArrayList<CreatureVisit>()
-        for (rule in VisitRule.entries) {
+        for (creature in Creature.entries) {
             if (visits.size >= MAX_VISITORS) break
-            if (visits.any { it.creature == rule.creature }) continue
-            if (!rule.isMetBy(garden)) continue
-            if (roll(period, rule, salt = 0) >= rule.chance) continue
-            val spot = spotFor(rule, garden, grid, map, period, taken) ?: continue
+            val dice = roll(period, creature)
+            val (rule, spot) = VisitRule.forCreature(creature).filter { it.isMetBy(garden) }
+                .sortedWith(compareBy({ -it.chanceIn(garden) }, { hash(period, it.ordinal, salt = 4) }))
+                .takeWhile { dice < it.chanceIn(garden) }
+                .firstNotNullOfOrNull { rule -> spotFor(rule, garden, grid, map, period, taken)?.let { rule to it } }
+                ?: continue
+            val arrivesAt = start + margin(period, rule, salt = 1)
+            // A stay in this very period is the one being worked out again, not one that is over.
+            val left = leftAt[creature]
+            if (left != null && left < start && arrivesAt < left + AWAY_MILLIS) continue
             taken += spot.first
-            val start = periodStart(period)
             visits += CreatureVisit(
                 rule = rule,
                 cell = spot.first,
                 host = spot.second,
-                arrivesAt = start + margin(period, rule, salt = 1),
+                arrivesAt = arrivesAt,
                 leavesAt = start + PERIOD_MILLIS - margin(period, rule, salt = 2),
             )
         }
@@ -120,16 +134,16 @@ object CreatureVisits {
         GridCell(cell.x, cell.y - 1), GridCell(cell.x + 1, cell.y), GridCell(cell.x, cell.y + 1), GridCell(cell.x - 1, cell.y),
     )
 
-    /** A number in [0, 1) fixed by the period, the rule and [salt]. */
-    fun roll(period: Long, rule: VisitRule, salt: Int): Float = (hash(period, rule, salt) % 10_000L) / 10_000f
+    /** A number in [0, 1) fixed by the period and the creature. */
+    private fun roll(period: Long, creature: Creature): Float = (hash(period, creature.ordinal, salt = 0) % 10_000L) / 10_000f
 
-    private fun pick(period: Long, rule: VisitRule, size: Int): Int = (hash(period, rule, salt = 3) % size).toInt()
+    private fun pick(period: Long, rule: VisitRule, size: Int): Int = (hash(period, rule.ordinal, salt = 3) % size).toInt()
 
     private fun margin(period: Long, rule: VisitRule, salt: Int): Long =
-        MIN_MARGIN_MILLIS + (hash(period, rule, salt) % (MAX_MARGIN_MILLIS - MIN_MARGIN_MILLIS))
+        MIN_MARGIN_MILLIS + (hash(period, rule.ordinal, salt) % (MAX_MARGIN_MILLIS - MIN_MARGIN_MILLIS))
 
-    private fun hash(period: Long, rule: VisitRule, salt: Int): Long {
-        var h = period * 0x9E3779B97F4A7C15uL.toLong() + (rule.ordinal + 1) * 0xBF58476D1CE4E5B9uL.toLong() + salt * 0x94D049BB133111EBuL.toLong()
+    private fun hash(period: Long, key: Int, salt: Int): Long {
+        var h = period * 0x9E3779B97F4A7C15uL.toLong() + (key + 1) * 0xBF58476D1CE4E5B9uL.toLong() + salt * 0x94D049BB133111EBuL.toLong()
         h = (h xor (h ushr 31)) * 0x94D049BB133111EBuL.toLong()
         h = h xor (h ushr 29)
         return h and Long.MAX_VALUE

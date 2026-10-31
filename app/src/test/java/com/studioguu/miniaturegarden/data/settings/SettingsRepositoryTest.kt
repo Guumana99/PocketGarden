@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import com.studioguu.miniaturegarden.domain.model.AppSettings
+import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.InventorySort
 import java.io.File
@@ -239,5 +240,14 @@ class SettingsRepositoryTest {
 
     private companion object {
         const val WATCH_TIMEOUT_MILLIS = 10_000L
+    }
+
+    @Test
+    fun `when each creature left is kept across a restart`() = runBlocking {
+        val (first, job) = openRepository()
+        first.update { it.copy(visitorsLeftAt = mapOf(Creature.BIRD to 1_700_000_000_000L, Creature.FROG to 5L)) }
+        job.cancelAndJoin()
+        val (second, _) = openRepository()
+        assertEquals(mapOf(Creature.BIRD to 1_700_000_000_000L, Creature.FROG to 5L), second.settings.first().visitorsLeftAt)
     }
 }

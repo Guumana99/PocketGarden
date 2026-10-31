@@ -605,13 +605,14 @@ class GardenViewModel @Inject constructor(
         }
         viewModelScope.launch {
             initJob.join()
-            combine(gridObjects, _weather, gardenMap, combine(season, timeOfDay, ::Pair), combine(periods, ShowcaseControls.showcase, ::Pair)) {
-                    objects, weather, map, (season, time), (period, showcase) ->
-                Visiting(objects, weather, map, season, time, period) to showcase
+            combine(gridObjects, _weather, gardenMap, combine(season, timeOfDay, seasonPhase, ::Triple), combine(periods, ShowcaseControls.showcase, ::Pair)) {
+                    objects, weather, map, (season, time, phase), (period, showcase) ->
+                Visiting(objects, weather, map, season, time, phase, period) to showcase
             }
                 .collectLatest { (visiting, showcase) ->
                     val now = System.currentTimeMillis()
-                    val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay)
+                    val leftAt = settingsRepository.settings.first().visitorsLeftAt
+                    val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay, visiting.phase, leftAt)
                         .filter { it.leavesAt > now }
                         .let { showcase?.visitors(it, visiting.objects) ?: it }
                     _visitors.value = visits
@@ -619,6 +620,7 @@ class GardenViewModel @Inject constructor(
                         for (visit in visits) {
                             launch {
                                 delay((visit.arrivesAt - now).coerceAtLeast(0L))
+                                settingsRepository.update { it.copy(visitorsLeftAt = it.visitorsLeftAt + (visit.creature to visit.leavesAt)) }
                                 announceVisit(visit)
                             }
                         }
@@ -633,6 +635,7 @@ class GardenViewModel @Inject constructor(
         val map: GardenMap,
         val season: Season,
         val timeOfDay: TimeOfDay,
+        val phase: SeasonPhase,
         val period: Long,
     )
 
