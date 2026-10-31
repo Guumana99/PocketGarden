@@ -68,7 +68,7 @@ enum class ActionResult {
     /** Something that is not an item (a growing plant, tilled soil) was to go back into the bag. */
     NOT_RETURNABLE,
 
-    /** Something that is in the ground (a plant, tilled soil) was to be moved. */
+    /** Something that stays where it is (tilled soil, a withered crop) was to be moved. */
     NOT_MOVABLE,
 
     /** Something that has only one way to face was to be turned round. */
@@ -228,6 +228,40 @@ class CareForPlantUseCase @Inject constructor(
 }
 
 /**
+ * Whether [objectId] can go with its first cell at ([x], [y]) in the garden as it stands:
+ * [ActionResult.SUCCESS], or what to tell the player. Every cell of it must be inside the grid, on
+ * buildable ground and free in its own layer, and a crop only goes on the ground it grows on
+ * ([PlantGround]). The same whether it comes out of the bag or is replanted from elsewhere.
+ */
+internal fun GardenGrid.fits(objectId: String, x: Int, y: Int): ActionResult {
+    val check = checkPlacement(Footprint.forObjectId(objectId), x, y, PlacementKind.forObjectId(objectId), objectId)
+    when (check) {
+        PlacementCheck.OUT_OF_BOUNDS -> return ActionResult.OUT_OF_BOUNDS
+        PlacementCheck.NOT_BUILDABLE -> return ActionResult.TILE_NOT_BUILDABLE
+        else -> Unit
+    }
+    // Something standing in the way is in the way. What only lies on the ground (a lawn,
+    // pebbles, flowers, a pond) is the ground, and a crop is told where it can go instead.
+    val inTheWay = check == PlacementCheck.OCCUPIED && occupantAt(x, y)?.let { it.isGroundCover || it.isPond } != true
+    if (inTheWay) return ActionResult.TILE_OCCUPIED
+    // A crop goes only on the ground it grows on ([PlantGround]).
+    val species = if (objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(objectId) else null
+    if (species != null && !species.ground.allows(groundAt(x, y))) return wrongGround(species.ground)
+    return if (check == PlacementCheck.OCCUPIED) ActionResult.TILE_OCCUPIED else ActionResult.SUCCESS
+}
+
+/** What to tell the player who put a crop that grows on [ground] somewhere else. */
+private fun wrongGround(ground: PlantGround): ActionResult = when (ground) {
+    PlantGround.BED -> ActionResult.NEEDS_RIDGE
+    PlantGround.FLOWER_BED -> ActionResult.NEEDS_TILLED_SOIL
+    PlantGround.LOG -> ActionResult.NEEDS_OPEN_GROUND
+}
+
+/** How much food a crop of [species] (or anything else, for null) finds at ([x], [y]): it keeps a copy of its soil's. */
+internal fun GardenGrid.foodAt(species: PlantSpecies?, x: Int, y: Int): Float =
+    floorAt(x, y)?.takeIf { it.isSoil && species?.ground?.usesSoil == true }?.nutritionLevel ?: 1f
+
+/**
  * Takes one item out of an inventory slot and puts its object on the garden with its first cell
  * at (gridX, gridY). Every cell of the object's footprint must be inside the grid, on buildable
  * ground (not the river) and free in its own layer: paving goes under things, and things can
@@ -252,24 +286,8 @@ class PlaceItemUseCase @Inject constructor(
             val grid = GardenGrid(gardenMap.current(), gardenRepository.getGridObjects())
             // The symbol building is one of a kind: a second one never goes up.
             if (item.isSymbol && grid.hasSymbol) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
-            val kind = PlacementKind.forObjectId(item.objectId)
-            val check = grid.checkPlacement(Footprint.forObjectId(item.objectId), gridX, gridY, kind, item.objectId)
-            when (check) {
-                PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
-                PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
-                else -> Unit
-            }
-            // Something standing in the way is in the way. What only lies on the ground (a lawn,
-            // pebbles, flowers, a pond) is the ground, and a crop is told where it can go instead.
-            val inTheWay = check == PlacementCheck.OCCUPIED &&
-                grid.occupantAt(gridX, gridY)?.let { it.isGroundCover || it.isPond } != true
-            if (inTheWay) return@runInTransaction ActionResult.TILE_OCCUPIED
-            // A crop goes only on the ground it grows on ([PlantGround]).
-            val species = if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(item.objectId) else null
-            if (species != null && !species.ground.allows(grid.groundAt(gridX, gridY))) {
-                return@runInTransaction wrongGround(species.ground)
-            }
-            if (check == PlacementCheck.OCCUPIED) return@runInTransaction ActionResult.TILE_OCCUPIED
+            val fit = grid.fits(item.objectId, gridX, gridY)
+            if (fit != ActionResult.SUCCESS) return@runInTransaction fit
             // Out of its season a crop only grows under glass. Seeds bought earlier stay in the
             // bag for when their season comes round again.
             val season = gardenRepository.getProgress()?.season
@@ -278,7 +296,8 @@ class PlaceItemUseCase @Inject constructor(
             }
 
             // A crop takes its food from the soil of its cell: a plant keeps a copy of how much there is.
-            val food = grid.floorAt(gridX, gridY)?.takeIf { it.isSoil && species?.ground?.usesSoil == true }?.nutritionLevel ?: 1f
+            val species = if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(item.objectId) else null
+            val food = grid.foodAt(species, gridX, gridY)
             gardenRepository.upsertGridObject(
                 GridObject(
                     instanceId = UUID.randomUUID().toString(),
@@ -309,13 +328,6 @@ class PlaceItemUseCase @Inject constructor(
             }
             ActionResult.SUCCESS
         }
-
-    /** What to tell the player who put a crop that grows on [ground] somewhere else. */
-    private fun wrongGround(ground: PlantGround): ActionResult = when (ground) {
-        PlantGround.BED -> ActionResult.NEEDS_RIDGE
-        PlantGround.FLOWER_BED -> ActionResult.NEEDS_TILLED_SOIL
-        PlantGround.LOG -> ActionResult.NEEDS_OPEN_GROUND
-    }
 }
 
 /**

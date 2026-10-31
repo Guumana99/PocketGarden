@@ -36,7 +36,7 @@ class ConstructionTest {
     private val remove = RemoveObjectUseCase(repo)
     private val startRemoval = StartRemovalUseCase(repo, store, remove)
     private val complete = CompleteWorkUseCase(repo, store, remove)
-    private val move = MoveObjectUseCase(repo, GardenMap.DEFAULT)
+    private val move = MoveObjectUseCase(repo, GardenMap.DEFAULT, CalculateOfflineProgressUseCase())
     private val unveilBuilding = UnveilBuildingUseCase(repo, RecordCollectionUseCase(repo))
     private suspend fun unveil(id: String, now: Long = t0) = unveilBuilding(id, now)
 
@@ -490,7 +490,7 @@ class ConstructionTest {
     }
 
     @Test
-    fun `plants and beds stay in the ground, and work sites stay put`() = runBlocking {
+    fun `beds stay in the ground, a crop is replanted rather than moved, and work sites stay put`() = runBlocking {
         repo.till(1, 1)
         repo.put(obj("tulip", PlantSpecies.TULIP.objectId, 1, 1))
         repo.put(obj("site", "struct_well", 5, 5).copy(workKind = WorkKind.BUILDING, workStartedAt = t0, workEndsAt = t0 + 120 * second))
@@ -500,7 +500,7 @@ class ConstructionTest {
         assertEquals(ActionResult.BUSY, move("site", 0, 0))
         assertEquals(ActionResult.NOT_FOUND, move("nothing", 0, 0))
 
-        assertFalse(MoveObjectUseCase.canMove(obj("t", PlantSpecies.ROSE.objectId)))
+        assertTrue(MoveObjectUseCase.canMove(obj("t", PlantSpecies.ROSE.objectId)))
         assertTrue(MoveObjectUseCase.canMove(obj("f", GridObject.FENCE_OBJECT_ID)))
         assertTrue(MoveObjectUseCase.canMove(obj("h", "struct_hut")))
     }

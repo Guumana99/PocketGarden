@@ -3,10 +3,15 @@ package com.studioguu.miniaturegarden.domain.usecase
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
+import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
+import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import javax.inject.Inject
@@ -151,19 +156,21 @@ class UnveilBuildingUseCase @Inject constructor(
  * through the bag and nothing has to be built again. The new place must be free by the same rules
  * as for placing the thing there, except that the cells it stands on now do not count as taken.
  *
- * Plants and tilled soil stay where they are (they are in the ground), and so does anything that
- * is being built or taken apart.
+ * A crop is replanted ([replant]). Tilled soil stays where it is, and so does a withered crop and
+ * anything that is being built or taken apart.
  */
 class MoveObjectUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val gardenMap: GardenMapSource,
+    private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
 ) {
+    /** Moves a piece of the layout; a crop goes through [replant]. */
     suspend operator fun invoke(instanceId: String, gridX: Int, gridY: Int): ActionResult =
         gardenRepository.runInTransaction {
             val objects = gardenRepository.getGridObjects()
             val target = objects.firstOrNull { it.instanceId == instanceId }
                 ?: return@runInTransaction ActionResult.NOT_FOUND
-            if (!canMove(target)) return@runInTransaction ActionResult.NOT_MOVABLE
+            if (!canMove(target) || target.isPlant) return@runInTransaction ActionResult.NOT_MOVABLE
             if (target.isWorking) return@runInTransaction ActionResult.BUSY
             if (target.gridX == gridX && target.gridY == gridY) return@runInTransaction ActionResult.SUCCESS
 
@@ -179,11 +186,57 @@ class MoveObjectUseCase @Inject constructor(
             ActionResult.SUCCESS
         }
 
+    /**
+     * Lifts the crop [instanceId] and plants it at ([gridX], [gridY]), on ground it could be
+     * planted on ([fits]). It is brought up to [now] first, where it stood, so that the time so far
+     * counts the way it was spent. What is the plant's goes with it: how far it has grown, its
+     * harvests, water, stress and colour. What is the cell's stays with the cell: the soil is not
+     * touched, and the plant takes on the food of its new soil.
+     *
+     * The season has no say: what is planted is not taken from the player (PHILOSOPHY 13), so it
+     * can come out from under glass, and go under it, at any time of year. It costs nothing.
+     */
+    suspend fun replant(instanceId: String, gridX: Int, gridY: Int, now: Long, weather: WeatherForecast): ActionResult =
+        gardenRepository.runInTransaction {
+            val garden = gardenRepository.getGridObjects()
+            val stored = garden.firstOrNull { it.instanceId == instanceId }
+                ?: return@runInTransaction ActionResult.NOT_FOUND
+            if (!stored.isPlant) return@runInTransaction ActionResult.NOT_A_PLANT
+            if (!canMove(stored)) return@runInTransaction ActionResult.NOT_MOVABLE
+            if (stored.gridX == gridX && stored.gridY == gridY) return@runInTransaction ActionResult.SUCCESS
+
+            val current = calculateOfflineProgress(stored, now, weather, garden)
+            if (current.status == PlantStatus.WITHERED) {
+                gardenRepository.upsertGridObject(current)
+                return@runInTransaction ActionResult.NOT_MOVABLE
+            }
+            val others = GardenGrid(gardenMap.current(), garden.filter { it.instanceId != instanceId })
+            val fit = others.fits(current.objectId, gridX, gridY)
+            if (fit != ActionResult.SUCCESS) return@runInTransaction fit
+            val food = others.foodAt(PlantSpecies.forObjectId(current.objectId), gridX, gridY)
+            gardenRepository.upsertGridObject(
+                current.copy(
+                    gridX = gridX,
+                    gridY = gridY,
+                    nutritionLevel = food,
+                    status = CalculateOfflineProgressUseCase.statusOf(current.moistureLevel.toDouble(), food.toDouble(), current.stressRate.toDouble()),
+                ),
+            )
+            ActionResult.SUCCESS
+        }
+
     companion object {
         /**
          * Whether [gridObject] is the kind of thing that can be moved at all; see [GardenLayout]
          * (which also keeps moving to edit mode, on the screen's side).
          */
         fun canMove(gridObject: GridObject): Boolean = GardenLayout.isMovable(gridObject)
+
+        /** The cells of [map] the crop [plant] could be replanted to, among [objects]; its own among them. */
+        fun cellsFor(plant: GridObject, objects: List<GridObject>, map: GardenMap): Set<GridCell> {
+            val others = GardenGrid(map, objects.filter { it.instanceId != plant.instanceId })
+            return (0 until map.size).flatMap { y -> (0 until map.size).map { x -> GridCell(x, y) } }
+                .filterTo(HashSet()) { others.fits(plant.objectId, it.x, it.y) == ActionResult.SUCCESS }
+        }
     }
 }

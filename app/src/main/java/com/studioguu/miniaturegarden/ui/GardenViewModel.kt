@@ -481,6 +481,16 @@ class GardenViewModel @Inject constructor(
         objects.firstOrNull { it.instanceId == id }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** While a crop is being replanted, the cells it could not go to: the garden darkens them. */
+    val closedCells: StateFlow<Set<GridCell>> = combine(movingObject, gridObjects, gardenMap) { moving, objects, map ->
+        if (moving?.isPlant != true) {
+            emptySet()
+        } else {
+            val open = MoveObjectUseCase.cellsFor(moving, objects, map)
+            (0 until map.size).flatMap { y -> (0 until map.size).map { x -> GridCell(x, y) } }.filterTo(HashSet()) { it !in open }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
     /** Empty until the atlas has loaded, and for good when no artwork is bundled. */
     private val _atlas = MutableStateFlow(SpriteAtlas.EMPTY)
     val atlas: StateFlow<SpriteAtlas> = _atlas.asStateFlow()
@@ -903,15 +913,17 @@ class GardenViewModel @Inject constructor(
         val movingId = _movingId.value
         if (movingId != null) {
             if (tile != null) {
-                val footprint = gridObjects.value.firstOrNull { it.instanceId == movingId }?.footprint ?: Footprint.SINGLE
-                val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
+                val moving = gridObjects.value.firstOrNull { it.instanceId == movingId }
+                val origin = (moving?.footprint ?: Footprint.SINGLE).originFor(tile.x, tile.y, gardenMap.value.size)
                 act(
                     onSuccess = {
                         _movingId.value = null
                         _selectedTile.value = tile
                         audio.play(SoundEffect.PLANT)
                     }
-                ) { _, _ -> moveObject(movingId, origin.x, origin.y) }
+                ) { now, weather ->
+                    if (moving?.isPlant == true) moveObject.replant(movingId, origin.x, origin.y, now, weather) else moveObject(movingId, origin.x, origin.y)
+                }
             }
         } else if (slotIndex == null && !_hoeActive.value && gridObjects.value.objectAt(tile)?.isGiftBox == true) {
             // A gift box is not selected like other things: a tap opens it, in the everyday

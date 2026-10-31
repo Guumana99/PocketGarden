@@ -159,7 +159,8 @@ class DeviceFeedbackTest {
 
     @Test
     fun `placing and moving tell the grid what is being put down`() {
-        assertTrue(source("domain/usecase/GardenActionUseCases.kt").contains("gridX, gridY, kind, item.objectId)"))
+        assertTrue(source("domain/usecase/GardenActionUseCases.kt").contains("PlacementKind.forObjectId(objectId), objectId)"))
+        assertTrue(source("domain/usecase/GardenActionUseCases.kt").contains("val fit = grid.fits(item.objectId, gridX, gridY)"))
         assertTrue(source("domain/usecase/ConstructionUseCases.kt").contains("PlacementKind.forObjectId(target.objectId), target.objectId)) {"))
     }
 
@@ -177,7 +178,9 @@ class DeviceFeedbackTest {
     @Test
     fun `the cottage splits the miss between its sides and its front, like the other buildings`() {
         val cottage = manifest.assets.single { it.assetId == "struct_cottage" }
-        assertEquals(0.7481f, cottage.anchorY, 1e-4f)
+        // Its stone base is flatter than its cells, so that it cannot meet them all: raised a little
+        // from 0.7481 (FB 4), for its side corners to stay off the cells beside it.
+        assertEquals(0.78f, cottage.anchorY, 1e-4f)
         val script = File(tools, "prepare_building_art.py").readText()
         assertTrue(script.contains("out[\"struct_cottage\"] = prepare_building(load(\"building_cottage.png\"), tiles=3)"))
     }

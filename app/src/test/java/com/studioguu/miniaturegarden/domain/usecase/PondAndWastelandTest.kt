@@ -39,7 +39,7 @@ class PondAndWastelandTest {
 
     private val repo = FakeGardenRepository().apply { profile = UserProfile(coins = 500) }
     private val place = PlaceItemUseCase(repo, GardenMap.DEFAULT, RecordCollectionUseCase(repo))
-    private val move = MoveObjectUseCase(repo, GardenMap.DEFAULT)
+    private val move = MoveObjectUseCase(repo, GardenMap.DEFAULT, CalculateOfflineProgressUseCase())
     private val hoe = HoeUseCase(repo, GardenMap.DEFAULT)
 
     private fun obj(id: String, x: Int, y: Int, objectId: String) =

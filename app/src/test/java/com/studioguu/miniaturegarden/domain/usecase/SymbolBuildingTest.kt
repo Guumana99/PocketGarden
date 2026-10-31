@@ -35,7 +35,7 @@ class SymbolBuildingTest {
     private val storedMap = StoredGardenMap(repo)
     private val purchase = PurchaseItemUseCase(repo)
     private val place = PlaceItemUseCase(repo, storedMap, RecordCollectionUseCase(repo))
-    private val move = MoveObjectUseCase(repo, storedMap)
+    private val move = MoveObjectUseCase(repo, storedMap, CalculateOfflineProgressUseCase())
     private val store = StoreObjectUseCase(repo)
     private val expand = ExpandGardenUseCase(repo)
 

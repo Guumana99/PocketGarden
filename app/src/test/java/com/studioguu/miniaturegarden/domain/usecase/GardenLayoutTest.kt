@@ -48,18 +48,21 @@ class GardenLayoutTest {
     }
 
     @Test
-    fun `crops and tilled soil stay where they are, and are cleared away in edit mode only`() {
-        for (inGround in listOf(crop, soil, crop.copy(status = com.studioguu.miniaturegarden.domain.model.PlantStatus.WITHERED))) {
+    fun `tilled soil and withered crops stay where they are, and all of the ground is cleared away in edit mode only`() {
+        val withered = crop.copy(status = com.studioguu.miniaturegarden.domain.model.PlantStatus.WITHERED)
+        for (inGround in listOf(crop, soil, withered)) {
             assertFalse(GardenLayout.isLayoutPiece(inGround))
             for (editing in listOf(false, true)) {
-                assertEquals(LayoutCheck.IN_THE_GROUND, GardenLayout.check(LayoutAction.MOVE, inGround, editing))
+                if (inGround != crop) assertEquals(LayoutCheck.IN_THE_GROUND, GardenLayout.check(LayoutAction.MOVE, inGround, editing))
                 assertEquals(LayoutCheck.IN_THE_GROUND, GardenLayout.check(LayoutAction.STORE, inGround, editing))
             }
             // Since #49 nothing in the garden is cleared away outside edit mode.
             assertEquals(LayoutCheck.NEEDS_EDIT_MODE, GardenLayout.check(LayoutAction.DISCARD, inGround, editing = false))
             assertEquals(LayoutCheck.OK, GardenLayout.check(LayoutAction.DISCARD, inGround, editing = true))
         }
-        assertFalse(MoveObjectUseCase.canMove(crop))
+        assertTrue(MoveObjectUseCase.canMove(crop))
+        assertFalse(MoveObjectUseCase.canMove(withered))
+        assertFalse(MoveObjectUseCase.canMove(soil))
     }
 
     @Test

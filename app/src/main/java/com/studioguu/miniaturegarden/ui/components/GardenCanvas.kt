@@ -160,6 +160,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param weather decides how hard the wind blows and how strong the shadows are.
  * @param auraCells cells to mark softly on the ground: the reach of the selected building's effect.
  * @param hintCells cells the first steps point at: a few small stars twinkle quietly over each.
+ * @param closedCells cells to darken: where a crop being replanted cannot go.
  * @param visitors creatures staying in the garden; each goes about it on its own route ([CreatureRoutes]).
  * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
  *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
@@ -203,6 +204,7 @@ fun GardenCanvas(
     weather: WeatherType = WeatherType.SUNNY,
     auraCells: Set<GridCell> = emptySet(),
     hintCells: Set<GridCell> = emptySet(),
+    closedCells: Set<GridCell> = emptySet(),
     fadedObjectIds: Set<String> = emptySet(),
     visitors: List<CreatureVisit> = emptyList(),
     savedView: GardenView? = null,
@@ -447,6 +449,12 @@ fun GardenCanvas(
         if (showGrid) {
             pipeline.submit(RenderLayer.GRID_OVERLAY) { drawIsometricGrid(transform, metrics.gridSize) }
         }
+        // Last of what lies on the ground, so that it is over the lawns too, and under what stands there.
+        if (closedCells.isNotEmpty()) {
+            pipeline.submit(RenderLayer.BOTTOM_OBJECTS, Float.MAX_VALUE) {
+                for (cell in closedCells) drawPath(transform.tilePath(cell.x, cell.y), CLOSED_CELL)
+            }
+        }
         if (auraCells.isNotEmpty()) {
             pipeline.submit(RenderLayer.GRID_OVERLAY, depth = 0.5f) {
                 for (cell in auraCells) {
@@ -525,6 +533,7 @@ fun GardenCanvas(
 
 private val AURA_FILL = Color(0x334FC3F7)
 private val AURA_EDGE = Color(0x994FC3F7)
+private val CLOSED_CELL = Color(0x73000000)
 
 /** How long the garden waits between two frames of wind. */
 private const val WIND_FRAME_MILLIS = 50L

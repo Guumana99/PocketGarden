@@ -174,6 +174,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val notificationInviteDue by viewModel.notificationInviteDue.collectAsStateWithLifecycle()
     val visitors by viewModel.visitors.collectAsStateWithLifecycle()
     val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
+    val closedCells by viewModel.closedCells.collectAsStateWithLifecycle()
     val tutorialStep by viewModel.tutorialStep.collectAsStateWithLifecycle()
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
     val openingGift by viewModel.openingGift.collectAsStateWithLifecycle()
@@ -295,6 +296,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 showGrid = editMode && !cameraMode,
                 auraCells = if (cameraMode) emptySet() else aura,
                 hintCells = if (cameraMode) emptySet() else hintCells,
+                closedCells = closedCells,
                 brokenCells = brokenGround,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
