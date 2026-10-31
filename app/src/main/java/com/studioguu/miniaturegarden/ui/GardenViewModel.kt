@@ -651,9 +651,20 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    /** The player tapped a visitor: that is when it goes into the nature notes. */
-    fun onVisitorTapped(visit: CreatureVisit) {
-        if (!notedVisits.add(CreatureVisits.periodOf(visit.arrivesAt) to visit.rule)) return
+    /** The nature notes as they stand, for what a tap on a visitor means. */
+    private val natureNotes: StateFlow<NatureNotes> = gardenRepository.observeNatureNotes().map(::NatureNotes)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, NatureNotes(emptyList()))
+
+    /**
+     * The player tapped near a visitor: that is when it goes into the nature notes.
+     *
+     * @return whether the tap went to the visitor. Only one with something new for the notes takes
+     *   it: a creature stays a good while on a crop or a bench, and with every tap going to it
+     *   (and nothing to show for it) the cells round it could not be selected (device feedback).
+     */
+    fun onVisitorTapped(visit: CreatureVisit): Boolean {
+        val news = natureNotes.value.isNews(visit.rule)
+        if (!notedVisits.add(CreatureVisits.periodOf(visit.arrivesAt) to visit.rule)) return false
         viewModelScope.launch {
             when (actionMutex.withLock { recordNatureNote(visit.rule, clock.now()) }) {
                 NoteResult.NEW_CREATURE -> {
@@ -666,6 +677,7 @@ class GardenViewModel @Inject constructor(
                 NoteResult.SEEN_BEFORE -> Unit
             }
         }
+        return news
     }
 
     /** The tip the garden calls for now; null when there is none, or it is not the time. */
@@ -1031,16 +1043,19 @@ class GardenViewModel @Inject constructor(
         return !lockedByEditMode()
     }
 
+    /**
+     * The words for why what is in [slotIndex] stays in the bag for now, or null if it can be taken
+     * out. A seed out of its season waits there; only under glass can it go in now.
+     */
+    fun waitsInBag(slotIndex: Int): Int? {
+        val item = inventorySlots.value.firstOrNull { it.slotIndex == slotIndex }?.let { GardenItem.fromItemId(it.itemId) } ?: return null
+        val season = progress.value?.season ?: return null
+        return InventoryOrder.waitsFor(item, season, greenhouse = gridObjects.value.any { it.isGreenhouse })?.let(::plantInSeasonMessage)
+    }
+
     fun startPlacing(slotIndex: Int) {
         // Things are put down in the everyday garden, not in edit mode (#50).
         if (lockedByEditMode()) return
-        // A seed out of its season waits in the bag; only under glass can it go in now.
-        val item = inventorySlots.value.firstOrNull { it.slotIndex == slotIndex }?.let { GardenItem.fromItemId(it.itemId) }
-        val season = progress.value?.season
-        if (item != null && season != null && InventoryOrder.isOutOfSeason(item, season) && gridObjects.value.none { it.isGreenhouse }) {
-            _messages.trySend(plantInSeasonMessage(InventoryOrder.nextSeason(item, season)))
-            return
-        }
         // Each thing taken out of the bag starts facing the usual way.
         _placingFlipped.value = false
         _hoeActive.value = false

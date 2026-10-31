@@ -69,7 +69,10 @@ private const val COLUMNS = 4
  *
  * @param slots the slots the player has, in slot order.
  * @param season the garden's season, for sorting by season.
- * @param onSlotSelected called with the chosen slot's index; the caller closes the sheet.
+ * @param notice said in place of the line under the title, so that nothing below it moves: why
+ *   the seed just tapped stays in the bag.
+ * @param onSlotSelected called with the chosen slot's index; the caller closes the sheet, or
+ *   leaves it open with a [notice].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +85,7 @@ fun InventoryBottomSheet(
     season: Season,
     onSlotSelected: (slotIndex: Int) -> Unit,
     onDismiss: () -> Unit,
+    notice: String? = null,
 ) {
     val arranged = remember(slots, sort, filter, season) { InventoryOrder.arrange(slots, sort, filter, season) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
@@ -90,9 +94,10 @@ fun InventoryBottomSheet(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.inventory_title), style = MaterialTheme.typography.titleLarge)
                     Text(
-                        text = stringResource(R.string.inventory_hint),
+                        text = notice ?: stringResource(R.string.inventory_hint),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (notice != null) GardenColors.WoodDark else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (notice != null) FontWeight.Bold else FontWeight.Normal,
                     )
                 }
                 SortButton(sort, onSortChange)

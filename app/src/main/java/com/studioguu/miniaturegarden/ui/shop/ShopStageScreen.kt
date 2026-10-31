@@ -75,6 +75,7 @@ import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.ui.actionResultMessage
 import com.studioguu.miniaturegarden.ui.collection.flavorText
 import com.studioguu.miniaturegarden.ui.components.CarvedButton
+import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
 import com.studioguu.miniaturegarden.ui.components.WoodButton
@@ -165,17 +166,17 @@ fun ShopStageScreen(
         ParchmentDialog(
             onDismissRequest = { shortFor = null },
             title = stringResource(R.string.msg_not_enough_coins),
-            buttons = {
-                CarvedButton(text = stringResource(R.string.action_close), onClick = { shortFor = null })
-                WoodButton(
-                    text = stringResource(R.string.reward_bonus_short),
-                    onClick = {
+            actions = listOf(
+                DialogAction(stringResource(R.string.action_close), { shortFor = null }),
+                DialogAction(
+                    stringResource(R.string.reward_bonus_short),
+                    {
                         shortFor = null
                         confirmBonus = true
                     },
                     enabled = bonusAvailable,
-                )
-            },
+                ),
+            ),
         ) {
             Text(stringResource(R.string.shop_short_by, price - coins), color = GardenColors.Ink)
         }

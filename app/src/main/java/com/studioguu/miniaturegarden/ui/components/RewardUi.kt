@@ -3,12 +3,11 @@ package com.studioguu.miniaturegarden.ui.components
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import java.time.LocalDate
 
 /** Today as a day number in the device's time zone; the day's reward claims are counted against it. */
@@ -32,15 +31,11 @@ fun RewardConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        modifier = Modifier.popIn(),
+    ParchmentDialog(
         onDismissRequest = onDismiss,
-        text = { Text(message) },
-        dismissButton = {
-            WoodButton(text = stringResource(R.string.action_cancel), onClick = onDismiss)
-        },
-        confirmButton = {
-            WoodButton(text = confirmLabel, onClick = onConfirm)
-        },
-    )
+        title = null,
+        actions = listOf(DialogAction(stringResource(R.string.action_cancel), onDismiss), DialogAction(confirmLabel, onConfirm)),
+    ) {
+        Text(message, color = GardenColors.Ink)
+    }
 }

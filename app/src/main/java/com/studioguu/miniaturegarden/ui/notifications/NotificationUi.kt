@@ -41,10 +41,10 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.NotificationAccess
 import com.studioguu.miniaturegarden.domain.model.TurnOnStep
-import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.components.WoodToggle
 import com.studioguu.miniaturegarden.ui.components.findActivity
-import com.studioguu.miniaturegarden.ui.components.popIn
+import com.studioguu.miniaturegarden.ui.onboarding.WoodBoard
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 /** Whether POST_NOTIFICATIONS is granted; always true below Android 13, where it is not asked for. */
@@ -180,47 +180,19 @@ fun NotificationSettingRow(enabledInGame: Boolean, onEnabledChange: (Boolean) ->
 @Composable
 fun NotificationPermissionDialog(onOk: () -> Unit, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier.popIn(),
-            shape = RoundedCornerShape(14.dp),
-            color = GardenColors.Wood,
-            border = BorderStroke(3.dp, GardenColors.WoodDark),
-            shadowElevation = 10.dp,
+        WoodBoard(
+            title = "🔔 " + stringResource(R.string.notification_permission_title),
+            actions = listOf(
+                DialogAction(stringResource(R.string.notification_permission_cancel), onDismiss),
+                DialogAction(stringResource(R.string.notification_permission_ok), onOk),
+            ),
         ) {
-            Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "🔔 " + stringResource(R.string.notification_permission_title),
-                    color = GardenColors.Cream,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleSmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = 6.dp),
-                )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = GardenColors.Parchment,
-                    border = BorderStroke(1.dp, GardenColors.WoodLight),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("✉️ 🍂", fontSize = 26.sp)
-                        Text(
-                            text = stringResource(R.string.notification_permission_text),
-                            color = GardenColors.Ink,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.padding(top = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    WoodButton(text = stringResource(R.string.notification_permission_cancel), onClick = onDismiss)
-                    WoodButton(text = stringResource(R.string.notification_permission_ok), onClick = onOk)
-                }
-            }
+            Text("✉️ 🍂", fontSize = 26.sp)
+            Text(
+                text = stringResource(R.string.notification_permission_text),
+                color = GardenColors.Ink,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }
@@ -233,47 +205,19 @@ fun NotificationPermissionDialog(onOk: () -> Unit, onDismiss: () -> Unit) {
 @Composable
 fun NotificationInviteDialog(onAccept: () -> Unit, onLater: () -> Unit) {
     Dialog(onDismissRequest = onLater) {
-        Surface(
-            modifier = Modifier.popIn(),
-            shape = RoundedCornerShape(14.dp),
-            color = GardenColors.Wood,
-            border = BorderStroke(3.dp, GardenColors.WoodDark),
-            shadowElevation = 10.dp,
+        WoodBoard(
+            title = "🔔 " + stringResource(R.string.notification_invite_title),
+            actions = listOf(
+                DialogAction(stringResource(R.string.notification_invite_later), onLater),
+                DialogAction(stringResource(R.string.notification_invite_ok), onAccept),
+            ),
         ) {
-            Column(modifier = Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "🔔 " + stringResource(R.string.notification_invite_title),
-                    color = GardenColors.Cream,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleSmall,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = 6.dp),
-                )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = GardenColors.Parchment,
-                    border = BorderStroke(1.dp, GardenColors.WoodLight),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("🌷 💧 🏡", fontSize = 26.sp)
-                        Text(
-                            text = stringResource(R.string.notification_invite_text),
-                            color = GardenColors.Ink,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 8.dp),
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.padding(top = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    WoodButton(text = stringResource(R.string.notification_invite_later), onClick = onLater)
-                    WoodButton(text = stringResource(R.string.notification_invite_ok), onClick = onAccept)
-                }
-            }
+            Text("🌷 💧 🏡", fontSize = 26.sp)
+            Text(
+                text = stringResource(R.string.notification_invite_text),
+                color = GardenColors.Ink,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }

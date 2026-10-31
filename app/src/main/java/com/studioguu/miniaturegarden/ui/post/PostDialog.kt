@@ -43,7 +43,8 @@ import com.studioguu.miniaturegarden.domain.model.Letter
 import com.studioguu.miniaturegarden.domain.model.LetterKind
 import com.studioguu.miniaturegarden.domain.model.LetterTip
 import com.studioguu.miniaturegarden.domain.model.Season
-import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.DialogAction
+import com.studioguu.miniaturegarden.ui.components.DialogButtons
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.objectDisplayName
@@ -87,17 +88,15 @@ fun PostDialog(letters: List<Letter>, onRead: (letterId: String) -> Unit, onDism
                 if (opened != null) {
                     LaunchedEffect(opened.letterId) { if (!opened.read) onRead(opened.letterId) }
                     LetterPage(opened)
-                    WoodButton(
-                        text = stringResource(R.string.post_back),
-                        onClick = { openedId = null },
-                        modifier = Modifier.padding(top = 10.dp),
+                    DialogButtons(
+                        listOf(DialogAction(stringResource(R.string.post_back), { openedId = null })),
+                        Modifier.padding(top = 10.dp),
                     )
                 } else {
                     LetterList(letters, onOpen = { openedId = it })
-                    WoodButton(
-                        text = stringResource(R.string.action_close),
-                        onClick = onDismiss,
-                        modifier = Modifier.padding(top = 10.dp),
+                    DialogButtons(
+                        listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
+                        Modifier.padding(top = 10.dp),
                     )
                 }
             }

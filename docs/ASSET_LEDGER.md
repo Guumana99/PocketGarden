@@ -46,7 +46,7 @@
 | 小麦（`plant_wheat`） | Lv7 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58） |
 | トウモロコシ（`plant_corn`） | Lv13 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#57、枯れは #58）。段階 1 は 16 本の苗から 3 本、段階 2 は 2 本に左右反転の 1 本を足して 3 本に並べ直した |
 | パプリカ（`plant_paprika`） | Lv11 | 🟡 | 🟡 | 🟡 | ➖ | 🟡 | ✅ | Recraft（#39）。アイコンは #72（Recraft、C2PA を grep で確認）。株は旧画風のまま |
-| 大根（`plant_daikon`） | Lv4 | 🟡 | 🟡 | 🟡 | ➖ | 🟡 | ✅ | Recraft（#39）。段階 3 は描くときに幅 0.85 マスまで縮める（#60）。アイコンは #72（Recraft、C2PA を grep で確認）。株は旧画風のまま。白い根が欠けないよう、アイコンは真っ白だけを背景として抜いた |
+| 大根（`plant_daikon`） | Lv4 | 🟡 | 🟡 | 🟡 | ➖ | 🟡 | ✅ | Recraft（#39）。段階 3 は描くときに幅 0.76 マスまで縮める（#60、FB④）。絵には白い根の先しか描かれていないので、根を見せるには作り直しが要る。アイコンは #72（Recraft、C2PA を grep で確認）。株は旧画風のまま。白い根が欠けないよう、アイコンは真っ白だけを背景として抜いた |
 | コスモス（`plant_cosmos`） | 最初から | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#63。C2PA を grep で確認）。#63 で 4 段階から 3 段階に。葉が細く、白との混ざりを絵全体で戻して切り抜いた |
 | スノードロップ（`plant_snowdrop`） | 最初から | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#64。C2PA を grep で確認）。#64 で 4 段階から 3 段階に。段階 1 はひげ根を切り落とし、白い花びらは花のまわりだけ弱く切り抜いた。アイコンは #64 で届いた絵が枯れた絵の複製だったため、#66 で置き直したもの（Recraft） |
 | ミント（`plant_mint`） | 最初から | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#62。C2PA を grep で確認）。#62 で 4 段階から 3 段階に |
@@ -75,7 +75,7 @@
 | 井戸（`struct_well`） | ✅ | Recraft | `struct_well`（原画 `building_well.png`、Recraft（#74。C2PA を grep で確認））。#74 で 1×2 から 1×1 に。丸い石の井戸に屋根と桶 |
 | 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた） |
 | 小屋（`struct_hut`） | ✅ | Recraft | `struct_hut`（原画 `building_hut.png`、Recraft（#74。C2PA を grep で確認））。土台の石が明るいクリーム色なので、真っ白だけを抜いて切り抜いた |
-| コテージ（`struct_cottage`） | ✅ | Recraft | `struct_cottage`（原画 `building_cottage.png`） |
+| コテージ（`struct_cottage`） | ✅ | Recraft | `struct_cottage`（原画 `building_cottage.png`）。石の土台がマス目より平たいので作り直しの候補。今はアンカーを上げ、手前のすき間はコードの影で隠している（FB④） |
 | ガラスの温室（`floor_greenhouse`） | ✅ | Recraft | `floor_greenhouse`（原画 `building_greenhouse.png`）。中の床は `floor_tilled` |
 | 工事現場（シート・足場） | ⬜ | — | 演出としてコードで描く（建てる途中の進み具合で足場とシートが変わる）。建物ごとの絵は無い |
 

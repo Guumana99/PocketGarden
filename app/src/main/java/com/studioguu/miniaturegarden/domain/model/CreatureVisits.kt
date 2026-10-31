@@ -168,6 +168,9 @@ class NatureNotes(notes: List<NatureNote>) {
 
     fun hasFound(rule: VisitRule): Boolean = ruleKey(rule) in byId
 
+    /** Whether a visitor that came for [rule] would add anything to the notes. */
+    fun isNews(rule: VisitRule): Boolean = !hasMet(rule.creature) || !hasFound(rule)
+
     fun noteOf(creature: Creature): NatureNote? = byId[creatureKey(creature)]
 
     /** Creatures met so far. */

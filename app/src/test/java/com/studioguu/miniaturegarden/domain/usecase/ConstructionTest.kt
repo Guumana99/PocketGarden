@@ -412,7 +412,7 @@ class ConstructionTest {
     @Test
     fun `a broken save builds nothing - the job starts over`() = runBlocking {
         val security = Untrusted()
-        val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, security), CalculateOfflineProgressUseCase())
+        val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, security), CalculateOfflineProgressUseCase(), RecordCollectionUseCase(repo))
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_HUT.itemId, 1))
         place(0, 3, 3, t0)
 
@@ -430,7 +430,7 @@ class ConstructionTest {
 
     @Test
     fun `an honest sync leaves the job's clock alone`() = runBlocking {
-        val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, Trusted()), CalculateOfflineProgressUseCase())
+        val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, Trusted()), CalculateOfflineProgressUseCase(), RecordCollectionUseCase(repo))
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_WELL.itemId, 1))
         place(0, 3, 3, t0)
 

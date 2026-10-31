@@ -195,6 +195,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val hideUi = showcase?.hideUi == true
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
+    // Why the seed just tapped stays in the bag: said in the bag, which stays open over the toasts.
+    var bagNotice by rememberSaveable { mutableStateOf<Int?>(null) }
     // The bag's tab is kept while the app is open; its sort order is kept in the settings.
     var inventoryFilter by rememberSaveable { mutableStateOf(InventoryFilter.ALL) }
     var showShop by rememberSaveable { mutableStateOf(false) }
@@ -652,11 +654,18 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             filter = inventoryFilter,
             onFilterChange = { inventoryFilter = it },
             season = season,
+            notice = bagNotice?.let { stringResource(it) },
             onSlotSelected = { slotIndex ->
-                viewModel.startPlacing(slotIndex)
+                bagNotice = viewModel.waitsInBag(slotIndex)
+                if (bagNotice == null) {
+                    viewModel.startPlacing(slotIndex)
+                    showInventory = false
+                }
+            },
+            onDismiss = {
+                bagNotice = null
                 showInventory = false
             },
-            onDismiss = { showInventory = false },
         )
     }
     if (showSettings) {

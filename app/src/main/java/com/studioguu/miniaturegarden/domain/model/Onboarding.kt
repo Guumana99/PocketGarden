@@ -109,6 +109,9 @@ enum class TutorialStep {
     /** Whether the shop gives [item] away at this step. */
     fun givesAway(item: GardenItem): Boolean = this == BUY_SEED && item == PracticeGarden.SEED
 
+    /** Whether the first steps have handed [item] over already, and are still under way. */
+    fun hasGivenAway(item: GardenItem): Boolean = this > BUY_SEED && isGuiding && item == PracticeGarden.SEED
+
     /** The feature being introduced at this step, if any. */
     val introducing: GardenFeature? get() = GardenFeature.entries.firstOrNull { it.revealedAt == this }
 

@@ -119,6 +119,13 @@ object InventoryOrder {
     fun isOutOfSeason(item: GardenItem, season: Season): Boolean =
         item.category == ItemCategory.SEED && !item.isInSeason(season)
 
+    /**
+     * The season [item] has to wait for in the bag, or null if it can be taken out now: a seed out
+     * of its [season] can only go in under glass, so it waits unless the garden has a greenhouse.
+     */
+    fun waitsFor(item: GardenItem, season: Season, greenhouse: Boolean): Season? =
+        if (isOutOfSeason(item, season) && !greenhouse) nextSeason(item, season) else null
+
     /** The soonest season after [now] that [item] can be sown in. */
     fun nextSeason(item: GardenItem, now: Season): Season =
         item.seasons.minByOrNull { Math.floorMod(it.ordinal - now.ordinal, Season.entries.size) } ?: now

@@ -74,6 +74,7 @@ import com.studioguu.miniaturegarden.domain.model.BloomColours
 import com.studioguu.miniaturegarden.domain.model.BloomRarity
 import com.studioguu.miniaturegarden.domain.model.CollectionCategory
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
@@ -497,10 +498,10 @@ private fun Spread(
                 }
                 PageState.LOCKED -> Text(
                     text = stringResource(
-                        if (entry.trigger == CollectionTrigger.HARVEST) {
-                            R.string.collection_hint_harvest
-                        } else {
-                            R.string.collection_hint_placement
+                        when {
+                            entry.trigger == CollectionTrigger.HARVEST -> R.string.collection_hint_harvest
+                            entry.objectId == LawnGrowth.OBJECT_ID -> R.string.collection_hint_lawn
+                            else -> R.string.collection_hint_placement
                         }
                     ),
                     color = InkFaded,

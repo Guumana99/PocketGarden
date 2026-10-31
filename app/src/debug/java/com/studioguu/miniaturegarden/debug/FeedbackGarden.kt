@@ -15,13 +15,13 @@ import com.studioguu.miniaturegarden.domain.model.WorkKind
  *     y\x 0 1 2 3 4 5 6 7 8 9 10
  *      0  C C C . H H . W W . .     C cottage, H hut, W windmill (their lit windows at night)
  *      1  C C C . H H . W W . .
- *      2  C C C . . . . . . . .
- *      3  . . . . . . . . . . K     K carrot (grown) on a bed along the edge
+ *      2  C C C c . . . . . . .     c cobblestones along the cottage (does its plinth meet them?)
+ *      3  c c c c . . . . . . K     K carrot (grown) on a bed along the edge
  *      4  . . . . F f F F . . K     F fence, f a fence still going up between two finished ones
- *      5  . L U . . . . . . . t     L stone lantern, U sunflower and Z corn standing in front of it
+ *      5  . L U . . . R B . . t     L stone lantern, U sunflower and Z corn standing in front of it; R rock, B bench
  *      6  . U Z . . . . . . . e     t thirsty tomato, e weak eggplant (no food), a lavender, r a well one
  *      7  . . . . m m m m . . a     m mint on a block of beds (the seams between beds)
- *      8  . . . . m _ _ m . . r     _ an empty bed
+ *      8  . . . . m D _ m . . r     _ an empty bed, D daikon (grown)
  *      9  . . 2 1 0 . . . . . _     2 1 0 tilled earth, fluffy, good and plain
  *     10  . . 2 1 0 S K K s . .     2 1 0 ridges, the same; S shiitake log, s thirsty strawberry
  *
@@ -66,6 +66,7 @@ object FeedbackGarden {
             crop(6, 10, PlantSpecies.CARROT),
             crop(7, 10, PlantSpecies.CARROT),
             crop(8, 10, PlantSpecies.STRAWBERRY, 0.3f).copy(moistureLevel = 0.1f, status = PlantStatus.THIRSTY),
+            crop(5, 8, PlantSpecies.DAIKON),
         ) + listOf(GridCell(4, 7), GridCell(5, 7), GridCell(6, 7), GridCell(7, 7), GridCell(4, 8), GridCell(7, 8))
             .map { crop(it.x, it.y, PlantSpecies.MINT, 0.6f) }
         val things = listOf(
@@ -73,12 +74,15 @@ object FeedbackGarden {
             at(4, 0, StructureData.HUT.objectId),
             at(7, 0, StructureData.WINDMILL.objectId),
             at(1, 5, "deco_lantern"),
+            at(6, 5, "deco_rock"),
+            at(7, 5, "deco_bench"),
             at(4, 4, GridObject.FENCE_OBJECT_ID),
             at(5, 4, GridObject.FENCE_OBJECT_ID).copy(workKind = WorkKind.BUILDING, workStartedAt = now, workEndsAt = now + DAY),
             at(6, 4, GridObject.FENCE_OBJECT_ID),
             at(7, 4, GridObject.FENCE_OBJECT_ID),
         )
-        val placed = beds + crops + things
+        val paving = (cells(3..3, 2..3) + cells(0..2, 3..3)).map { at(it.x, it.y, GridObject.COBBLESTONE_OBJECT_ID) }
+        val placed = beds + crops + things + paving
         val taken = placed.filter { it.objectId != GridObject.FENCE_OBJECT_ID }.flatMap { it.occupiedCells() }.toSet()
         val lawn = cells(0 until SIZE, 0 until SIZE).filter { it !in taken }.map { at(it.x, it.y, "ground_grass", growth = 1f) }
         return placed + lawn

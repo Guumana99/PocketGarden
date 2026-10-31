@@ -364,7 +364,7 @@ class ShopAndEffectsTest {
 
     @Test
     fun `a sync of the whole garden gives each plant the surroundings it stands in`() = runBlocking {
-        val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, Honest), calc)
+        val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, Honest), calc, RecordCollectionUseCase(repo))
         repo.put(obj("well", "struct_well", 4, 4))
         repo.put(tulip("near", 3, 4))
         repo.put(tulip("far", 0, 0))

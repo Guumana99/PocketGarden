@@ -131,11 +131,11 @@ data class GridObject(
          * on it stands on top, and it and paving cannot share a cell.
          */
         /**
-         * The buildings that can be turned to face the other way: drawn mirrored, which on the
+         * The things that can be turned to face the other way: drawn mirrored, which on the
          * isometric grid shows the side that faced away. Their footprints are square, so turning
          * one does not change the cells it stands on. The order is the one they are listed in.
          */
-        val FLIPPABLE_OBJECT_IDS: List<String> = listOf("struct_cottage", "floor_greenhouse", "struct_windmill")
+        val FLIPPABLE_OBJECT_IDS: List<String> = listOf("struct_cottage", "floor_greenhouse", "struct_windmill", "deco_bench")
 
         fun canFaceEitherWay(objectId: String): Boolean = objectId in FLIPPABLE_OBJECT_IDS
 

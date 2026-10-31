@@ -251,6 +251,7 @@
     <string name="collection_unknown">？？？</string>
     <string name="collection_hint_harvest">育てて収穫すると、図鑑に登録されます。</string>
     <string name="collection_hint_placement">お庭に置くと、図鑑に登録されます。</string>
+    <string name="collection_hint_lawn">生えそろうと、図鑑に登録されます。</string>
     <string name="flavor_cosmos">秋風に揺れる、淡い紅色の花。\n細い茎ながら、風にしなやかに耐える。</string>
     <string name="flavor_snowdrop">雪の下から顔を出す、白い小さな花。\nうつむいた鈴の形は、春を待つ合図。</string>
     <string name="flavor_tomato">夏の日差しを浴びて、真っ赤に実る。\n喉が渇きやすいので、水やりはこまめに。</string>

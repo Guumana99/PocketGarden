@@ -70,7 +70,7 @@ class BloomColoursTest {
             profile = UserProfile(coins = 100)
             progress = GardenProgress(tutorialStep = TutorialStep.DONE)
         }
-        val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, Trusted()), CalculateOfflineProgressUseCase())
+        val sync = SyncGardenUseCase(repo, VerifyIntegrityUseCase(repo, Trusted()), CalculateOfflineProgressUseCase(), RecordCollectionUseCase(repo))
         repo.put(GridObject("soil", 0, 0, objectId = GridObject.TILLED_SOIL_OBJECT_ID, lastUpdatedTimestamp = t0))
         repo.put(GridObject("t", 0, 0, objectId = PlantSpecies.TULIP.objectId, growthProgress = 0.5f, lastUpdatedTimestamp = t0))
 

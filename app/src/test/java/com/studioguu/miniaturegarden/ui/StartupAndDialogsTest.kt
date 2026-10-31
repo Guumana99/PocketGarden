@@ -88,15 +88,21 @@ class StartupAndDialogsTest {
             "ui/components/RewardUi.kt",
             "ui/debug/DebugMenuDialog.kt",
             "ui/hud/RemoveConfirmDialog.kt",
+            "ui/hud/ExpandConfirmDialog.kt",
             "ui/notifications/NotificationUi.kt",
+            "ui/onboarding/FirstSteps.kt",
+            "ui/post/PostDialog.kt",
+            "ui/hud/LevelUpDialog.kt",
         )) {
             val text = source(path)
             assertFalse(path, text.contains("TextButton("))
             assertFalse(path, text.contains("OutlinedButton("))
-            assertTrue(path, text.contains("WoodButton("))
+            // Every dialog's buttons are laid out by the one piece, on its own bare terms.
+            assertFalse(path, text.contains("AlertDialog("))
+            assertTrue(path, text.contains("DialogAction("))
         }
         assertTrue(source("ui/hud/ObjectStatusDialog.kt").contains("WoodButton(text = stringResource(R.string.action_close), onClick = onDismiss)"))
-        val notifications = source("ui/notifications/NotificationUi.kt")
-        assertTrue(notifications.contains("WoodButton(text = stringResource(R.string.notification_invite_later), onClick = onLater)"))
+        val cozy = source("ui/components/Cozy.kt")
+        assertTrue(cozy.contains("for (action in actions) DialogButton(action, Modifier.weight(1f))"))
     }
 }

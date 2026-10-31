@@ -5,11 +5,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -22,8 +25,9 @@ import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
 import com.studioguu.miniaturegarden.ui.timeOfDayLabel
 import com.studioguu.miniaturegarden.ui.weatherEmoji
 import com.studioguu.miniaturegarden.ui.weatherLabel
-import com.studioguu.miniaturegarden.ui.components.WoodButton
-import com.studioguu.miniaturegarden.ui.components.popIn
+import com.studioguu.miniaturegarden.ui.components.DialogAction
+import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
+import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import java.util.Locale
 
@@ -54,12 +58,13 @@ fun DebugMenuDialog(
     outlook: WeatherOutlook? = null,
     zoomScale: Float? = null,
 ) {
-    AlertDialog(
-        modifier = Modifier.popIn(),
+    ParchmentDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.debug_menu_title)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        title = stringResource(R.string.debug_menu_title),
+        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
+    ) {
+        CompositionLocalProvider(LocalContentColor provides GardenColors.Ink) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (zoomScale != null) Text(zoomLabel(zoomScale))
                 Text(stringResource(R.string.debug_menu_hint))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -93,11 +98,8 @@ fun DebugMenuDialog(
                     Text(stringResource(R.string.debug_next_season))
                 }
             }
-        },
-        confirmButton = {
-            WoodButton(text = stringResource(R.string.action_close), onClick = onDismiss)
-        },
-    )
+        }
+    }
 }
 
 /** Test tag of the zoom read-out laid over the garden. */

@@ -1,24 +1,18 @@
 package com.studioguu.miniaturegarden.ui.hud
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.usecase.RemoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
-import com.studioguu.miniaturegarden.ui.components.WoodButton
-import com.studioguu.miniaturegarden.ui.components.popIn
+import com.studioguu.miniaturegarden.ui.components.DialogAction
+import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.objectDisplayName
+import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 /**
  * Asked before anything is taken off the garden, so that a stray tap on "remove" costs nothing.
@@ -54,72 +48,43 @@ fun RemoveConfirmDialog(
         gridObject.isPlant -> stringResource(R.string.remove_title_plant, name)
         else -> stringResource(R.string.remove_title, name)
     }
-    AlertDialog(
-        modifier = Modifier.popIn(),
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (explanation != null) Text(stringResource(explanation))
-                if (seconds > 0) {
-                    Text(stringResource(R.string.remove_text_takes_time, durationText(seconds)))
-                } else if (gridObject.workKind == WorkKind.BUILDING) {
-                    Text(stringResource(R.string.remove_text_cancel_build))
-                }
-            }
-        },
-        // The choices are stacked: the safe one on top, the way out at the bottom.
-        confirmButton = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (returnable) {
-                    WoodButton(
-                        text = stringResource(R.string.remove_store),
-                        onClick = onStore,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                WoodButton(
-                    text = stringResource(
-                        when {
-                            gridObject.isHoedSoil -> R.string.remove_soil
-                            gridObject.isPlant -> R.string.remove_pull
-                            else -> R.string.remove_discard
-                        },
-                    ),
-                    onClick = onDiscard,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                WoodButton(
-                    text = stringResource(R.string.remove_cancel),
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        },
+    val discard = DialogAction(
+        stringResource(
+            when {
+                gridObject.isHoedSoil -> R.string.remove_soil
+                gridObject.isPlant -> R.string.remove_pull
+                else -> R.string.remove_discard
+            },
+        ),
+        onDiscard,
     )
+    val cancel = DialogAction(stringResource(R.string.remove_cancel), onDismiss)
+    ParchmentDialog(
+        onDismissRequest = onDismiss,
+        title = title,
+        // With three, the safe one on top and the way out at the bottom.
+        actions = if (returnable) listOf(DialogAction(stringResource(R.string.remove_store), onStore), discard, cancel) else listOf(cancel, discard),
+    ) {
+        if (explanation != null) Text(stringResource(explanation), color = GardenColors.Ink)
+        if (seconds > 0) {
+            Text(stringResource(R.string.remove_text_takes_time, durationText(seconds)), color = GardenColors.Ink)
+        } else if (gridObject.workKind == WorkKind.BUILDING) {
+            Text(stringResource(R.string.remove_text_cancel_build), color = GardenColors.Ink)
+        }
+    }
 }
 
 /** Asked before the ground under [plant] is turned back, when the plant goes with it ([Soil.takesPlantBack]). */
 @Composable
 fun TurnBackConfirmDialog(plant: GridObject, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        modifier = Modifier.popIn(),
+    ParchmentDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.turn_back_title, objectDisplayName(plant.objectId))) },
-        text = { Text(stringResource(R.string.remove_text_soil)) },
-        confirmButton = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                WoodButton(text = stringResource(R.string.remove_soil), onClick = onConfirm, modifier = Modifier.fillMaxWidth())
-                WoodButton(text = stringResource(R.string.remove_cancel), onClick = onDismiss, modifier = Modifier.fillMaxWidth())
-            }
-        },
-    )
+        title = stringResource(R.string.turn_back_title, objectDisplayName(plant.objectId)),
+        actions = listOf(
+            DialogAction(stringResource(R.string.remove_cancel), onDismiss),
+            DialogAction(stringResource(R.string.remove_soil), onConfirm),
+        ),
+    ) {
+        Text(stringResource(R.string.remove_text_soil), color = GardenColors.Ink)
+    }
 }

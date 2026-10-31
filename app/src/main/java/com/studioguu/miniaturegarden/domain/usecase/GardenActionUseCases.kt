@@ -16,6 +16,7 @@ import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.HarvestType
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
+import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.nextAcquisition
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
@@ -298,9 +299,10 @@ class PlaceItemUseCase @Inject constructor(
             gardenRepository.upsertInventorySlot(
                 if (remaining > 0) slot.copy(amount = remaining) else InventorySlot(slotIndex)
             )
-            // A building earns and is recorded when it is unveiled; anything else now.
+            // A building earns and is recorded when it is unveiled; anything else now, but for a
+            // lawn, which goes into the book once it has grown in (SyncGardenUseCase).
             if (item.buildSeconds <= 0) {
-                recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
+                if (item.objectId != LawnGrowth.OBJECT_ID) recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
                 if (item.placeXp > 0) {
                     gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
                 }
@@ -591,8 +593,8 @@ class RemoveObjectUseCase @Inject constructor(
 /**
  * Buys one [GardenItem]: tops up an existing stack of it if one has room, otherwise takes the
  * first empty slot. Coins are only spent when the item actually fits. Items the player has not
- * unlocked yet cannot be bought, whatever they can afford. During the first steps the shop only
- * gives away their one seed, and answers anything more with [ActionResult.NOT_THIS_STEP].
+ * unlocked yet cannot be bought, whatever they can afford. The first steps' seed is given once:
+ * asking for it again is answered with [ActionResult.NOT_THIS_STEP].
  */
 class PurchaseItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -606,10 +608,10 @@ class PurchaseItemUseCase @Inject constructor(
         if (season != null && !item.isInSeason(season)) return@runInTransaction ActionResult.OUT_OF_SEASON
         // One symbol building per garden, and one in the bag counts as well.
         if (item.isSymbol && gardenRepository.ownsSymbolBuilding()) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
-        // The first steps hand one seed over the counter for nothing, however often it is tapped:
-        // nothing else is for sale there, and nothing more once the seed is in the bag.
+        // The first steps hand one seed over the counter for nothing, however often it is tapped.
         val step = gardenRepository.getProgress()?.tutorialStep
-        if (step?.isGuiding == true && (!step.givesAway(item) || gardenRepository.getInventory().any { it.itemId == item.itemId && !it.isEmpty })) {
+        val inBag = gardenRepository.getInventory().any { it.itemId == item.itemId && !it.isEmpty }
+        if (step?.hasGivenAway(item) == true || (step?.givesAway(item) == true && inBag)) {
             return@runInTransaction ActionResult.NOT_THIS_STEP
         }
         val price = if (step?.givesAway(item) == true) 0 else item.price
@@ -640,6 +642,7 @@ class SyncGardenUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val verifyIntegrity: VerifyIntegrityUseCase,
     private val calculateOfflineProgress: CalculateOfflineProgressUseCase,
+    private val recordCollection: RecordCollectionUseCase,
 ) {
     suspend operator fun invoke(now: Long, weather: WeatherForecast, random: Random = Random.Default): IntegrityResult {
         val integrity = verifyIntegrity()
@@ -667,6 +670,12 @@ class SyncGardenUseCase @Inject constructor(
             val opened = aged.map { BloomColours.settled(it, aged, level, season, random) }
             val changed = opened.filterIndexed { index, obj -> obj != objects[index] }
             if (changed.isNotEmpty()) gardenRepository.upsertGridObjects(changed)
+            // The first lawn to have grown in goes into the book.
+            if (opened.any { LawnGrowth.isLawn(it) && it.growthProgress >= 1f } &&
+                gardenRepository.getCollection().none { it.entryId == LawnGrowth.OBJECT_ID }
+            ) {
+                recordCollection(LawnGrowth.OBJECT_ID, CollectionTrigger.PLACEMENT, now)
+            }
             gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it) }
         }
         return integrity
