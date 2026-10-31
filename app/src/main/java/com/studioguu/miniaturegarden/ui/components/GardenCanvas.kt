@@ -139,6 +139,9 @@ private val HEIGHT_STEP = 16.dp
 /** The least reach round a bubble for a tap, about half a fingertip, however far the garden is zoomed out. */
 private val BUBBLE_MIN_REACH = 22.dp
 
+/** The least distance round a visitor that counts as a tap on it: a finger's half-width. */
+private val VISITOR_MIN_REACH = 24.dp
+
 /** Stores a camera as [scale, pan.x, pan.y]; an empty list stands for "not set yet". */
 private val CameraSaver = Saver<GardenCamera?, List<Float>>(
     save = { camera -> camera?.let { listOf(it.scale, it.pan.x, it.pan.y) } ?: emptyList() },
@@ -389,7 +392,7 @@ fun GardenCanvas(
                     val transform = camera?.toTransform(metrics, size.toSize()) ?: return@detectTapGestures
                     // A visitor can come before what it stands on, but never while a cell is being
                     // looked for.
-                    val visitor = if (currentEditing) null else visitorAt(position, currentRoutes, transform, System.currentTimeMillis())
+                    val visitor = if (currentEditing) null else visitorAt(position, currentRoutes, transform, System.currentTimeMillis(), VISITOR_MIN_REACH.toPx())
                     if (visitor != null && currentOnVisitorTapped(visitor)) return@detectTapGestures
                     // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
                     val sprites = currentAtlas
@@ -1366,12 +1369,12 @@ private fun visitorBase(transform: IsometricTransform, visit: CreatureVisit, pos
     return transform.worldToScreen(pose.x, pose.y, lift)
 }
 
-/** The visitor under [position] at [now], if any: a generous circle, as they are small and move. */
-private fun visitorAt(position: Offset, routes: List<CreatureRoute>, transform: IsometricTransform, now: Long): CreatureVisit? =
+/** The visitor under [position] at [now], if any: a generous circle ([TapTargets.visitorReach]). */
+private fun visitorAt(position: Offset, routes: List<CreatureRoute>, transform: IsometricTransform, now: Long, minReach: Float): CreatureVisit? =
     routes.mapNotNull { route ->
         val pose = route.poseAt(now) ?: return@mapNotNull null
         val body = visitorBase(transform, route.visit, pose) - Offset(0f, (pose.altitude + VISITOR_BODY_HEIGHT) * transform.tileWidth)
-        (route.visit to (body - position).getDistance()).takeIf { it.second <= transform.tileWidth * VISITOR_TAP_REACH }
+        (route.visit to (body - position).getDistance()).takeIf { it.second <= TapTargets.visitorReach(transform.tileWidth, minReach) }
     }.minByOrNull { it.second }?.first
 
 /**
@@ -1392,9 +1395,8 @@ private fun DrawScope.drawCottageGroundShade(transform: IsometricTransform, obj:
 
 private val COTTAGE_GROUND_SHADE = Color(0x66302010)
 
-/** Where a visitor's body is over its feet, in tile widths, and how far a tap can miss it. */
+/** Where a visitor's body is over its feet, in tile widths. */
 private const val VISITOR_BODY_HEIGHT = 0.12f
-private const val VISITOR_TAP_REACH = 0.55f
 
 /** How far up its flower's picture a butterfly settles: on the bloom, just below the top. */
 private const val BLOOM_SHARE = 0.8f

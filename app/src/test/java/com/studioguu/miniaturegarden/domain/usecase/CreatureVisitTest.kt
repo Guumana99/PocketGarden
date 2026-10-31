@@ -20,6 +20,10 @@ import com.studioguu.miniaturegarden.domain.model.VisitPlacement
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
+import com.studioguu.miniaturegarden.ui.render.TapTargets
+import java.io.File
+import com.studioguu.miniaturegarden.domain.model.NatureNote
+import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -435,14 +439,12 @@ class CreatureVisitTest {
             assertEquals(rule.name, listOf(true, true, false, false), TimeOfDay.entries.map { comesAt(rule, it) })
         }
         assertEquals(listOf(false, true, true, false), TimeOfDay.entries.map { comesAt(VisitRule.DRAGONFLY_AUTUMN, it) })
-        // Birds are gone to roost at night.
-        for (rule in VisitRule.entries.filter { it.creature == Creature.BIRD }) {
+        // Birds, ladybirds and squirrels have gone to rest at night.
+        for (rule in VisitRule.entries.filter { it.creature in setOf(Creature.BIRD, Creature.LADYBUG, Creature.SQUIRREL) }) {
             assertEquals(rule.name, listOf(true, true, true, false), TimeOfDay.entries.map { comesAt(rule, it) })
         }
-        // The others come at any hour.
-        for (rule in VisitRule.entries.filter { it.creature in setOf(Creature.LADYBUG, Creature.SQUIRREL, Creature.FROG) }) {
-            assertTrue(rule.name, TimeOfDay.entries.all { comesAt(rule, it) })
-        }
+        // Frogs come at any hour.
+        for (rule in VisitRule.forCreature(Creature.FROG)) assertTrue(rule.name, TimeOfDay.entries.all { comesAt(rule, it) })
     }
 
     /** PHILOSOPHY 12: a rumour hints at what a creature likes; it never spells out counts. */
@@ -459,4 +461,45 @@ class CreatureVisitTest {
             }
         }
     }
+
+    // --- Who is out at night, and a tap near a visitor ---
+
+    @Test
+    fun `at night the frogs stay out, and the ladybirds and the squirrels have gone to rest`() {
+        val outAtNight = VisitRule.entries.filter { rule ->
+            rule.conditions.filterIsInstance<VisitCondition.TimeIs>().all { TimeOfDay.NIGHT in it.times }
+        }
+        assertEquals(setOf(Creature.FROG), outAtNight.map { it.creature }.toSet())
+        // By day they come as before.
+        for (rule in VisitRule.forCreature(Creature.LADYBUG) + VisitRule.forCreature(Creature.SQUIRREL)) {
+            assertTrue(rule.name, rule.conditions.filterIsInstance<VisitCondition.TimeIs>().single().times.containsAll(listOf(TimeOfDay.MORNING, TimeOfDay.DAY, TimeOfDay.EVENING)))
+        }
+    }
+
+    @Test
+    fun `a visitor takes a tap only with something new for the notes, and the tap is otherwise the garden's`() {
+        val rule = VisitRule.BIRD_BENCH
+        assertTrue(NatureNotes(emptyList()).isNews(rule))
+        val creature = NatureNote(NatureNotes.creatureKey(rule.creature), 0L, 1)
+        val combination = NatureNote(NatureNotes.ruleKey(rule), 0L, 1)
+        // A creature met before, here for something new.
+        assertTrue(NatureNotes(listOf(creature)).isNews(rule))
+        assertFalse(NatureNotes(listOf(creature, combination)).isNews(rule))
+        val canvas = sourceOf("ui/components/GardenCanvas.kt")
+        assertTrue(canvas.contains("if (visitor != null && currentOnVisitorTapped(visitor)) return@detectTapGestures"))
+        // And with a cell being looked for, no visitor comes into it.
+        assertTrue(canvas.contains("val visitor = if (currentEditing) null else visitorAt("))
+    }
+
+    @Test
+    fun `a visitor can be tapped however far out the garden is zoomed`() {
+        val finger = 63f
+        // Up close, the circle goes with the tile; far out, it stays a finger across.
+        assertEquals(330f * TapTargets.VISITOR_REACH, TapTargets.visitorReach(330f, finger), 1e-3f)
+        assertEquals(finger, TapTargets.visitorReach(60f, finger), 0f)
+    }
+
+    private fun sourceOf(path: String): String =
+        listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+            .resolve("java/com/studioguu/miniaturegarden/$path").readText()
 }
