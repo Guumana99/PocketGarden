@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.annotation.DrawableRes
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.ui.render.WaterArt
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.FileNotFoundException
@@ -56,11 +57,10 @@ class SpriteAtlas(
  * Flat, seen-from-above pictures that are laid onto the ground. Each is optional: with one
  * missing, that kind of tile is drawn as a plain shape instead.
  *
- * @property riverAutotile river tiles, one per neighbour mask, in one 4 x 4 block per animation
- *   frame with the blocks stacked top to bottom (see RiverAutotile).
+ * @property water the river's and the pond's water, and the river's banks ([WaterArt]).
  */
 class TerrainTextures(
-    val riverAutotile: Bitmap? = null,
+    val water: WaterArt? = null,
     /** Paving seen from straight above, one copy to a cell (`floor_cobblestone.png`, #74). */
     val cobblestone: Bitmap? = null,
     /**
@@ -71,9 +71,8 @@ class TerrainTextures(
     /** The pond, a cell of water in a ring of stones and logs ([GroundSlab.POND]). */
     val pond: Bitmap? = null,
     /**
-     * Open water seen from straight above, made to tile ([FlatGround.tileable]): what is laid
-     * where two ponds join (#54). Since #57 it is the face of `pond_center.png`, a cell of water
-     * alone, rather than the middle of the pond's own picture.
+     * Open water seen from straight above, made to tile: what is laid where two ponds join (#54),
+     * the same water as the river's ([WaterArt.surface]).
      */
     val pondWater: Bitmap? = null,
     /**
@@ -190,33 +189,19 @@ class AssetRepository @Inject constructor(
         val rest = terrainMutex.withLock {
             cachedTerrain ?: withContext(Dispatchers.IO) {
                 coroutineScope {
-                    val river = async { decodeUnscaled(R.drawable.tile_river_autotile) }
+                    val water = async { decodeWater() }
                     val cobblestone = async { decodeGround(R.drawable.floor_cobblestone) }
                     val pebbles = async { decodeGround(R.drawable.ground_pebble) }
                     val flowers = async { decodeGround(R.drawable.ground_flowers) }
                     val woodDeck = async { decodeGround(R.drawable.floor_wood) }
                     val pond = async { decodeUnscaled(R.drawable.pond) }
-                    val pondWater = async(Dispatchers.Default) {
-                        decodeUnscaled(R.drawable.pond_center)?.let { picture ->
-                            val square = FlatGround.region(picture, GroundSlab.POND_CENTER, POND_WATER_FROM, POND_WATER_TO, POND_WATER_SIZE)
-                            picture.recycle()
-                            // In the colour of the pond's own water, which it runs between (#57: as it
-                            // came, it was paler and bluer, and showed as a strip across a join).
-                            pond.await()?.let { ring ->
-                                val own = FlatGround.region(ring, GroundSlab.POND, POND_OWN_WATER_FROM, POND_OWN_WATER_TO, POND_WATER_SIZE / 4)
-                                FlatGround.matchMean(square, own)
-                                own.recycle()
-                            }
-                            FlatGround.tileable(square, POND_WATER_EVEN_OUT).also { square.recycle() }
-                        }
-                    }
                     val tilled = async(Dispatchers.Default) { bedFace(R.drawable.soil_tilled, GroundSlab.TILLED) }
                     val broken = async(Dispatchers.Default) { bedFace(R.drawable.soil_revived, GroundSlab.REVIVED) }
                     TerrainTextures(
-                        riverAutotile = river.await(),
+                        water = water.await(),
                         cobblestone = cobblestone.await(),
                         pond = pond.await(),
-                        pondWater = pondWater.await(),
+                        pondWater = water.await()?.surface,
                         tilled = tilled.await(),
                         broken = broken.await(),
                         pebbles = pebbles.await(),
@@ -228,8 +213,20 @@ class AssetRepository @Inject constructor(
         }
         val ground = wasteland?.await() ?: return@coroutineScope rest
         TerrainTextures(
-            rest.riverAutotile, rest.cobblestone, ground, rest.pond, rest.pondWater, rest.tilled, rest.broken,
+            rest.water, rest.cobblestone, ground, rest.pond, rest.pondWater, rest.tilled, rest.broken,
             rest.pebbles, rest.flowers, rest.woodDeck,
+        )
+    }
+
+    /** The river's pictures; null if any is missing. */
+    private fun decodeWater(): WaterArt? {
+        return WaterArt(
+            surface = decodeUnscaled(R.drawable.water_surface) ?: return null,
+            rippleA = decodeUnscaled(R.drawable.water_ripple_a) ?: return null,
+            rippleB = decodeUnscaled(R.drawable.water_ripple_b) ?: return null,
+            bank = decodeUnscaled(R.drawable.river_bank) ?: return null,
+            bankBend = decodeUnscaled(R.drawable.river_bank_concave) ?: return null,
+            bankPoint = decodeUnscaled(R.drawable.river_bank_convex) ?: return null,
         )
     }
 
@@ -360,7 +357,7 @@ class AssetRepository @Inject constructor(
         const val POND_WATER_EVEN_OUT = 20
 
         /** How much of a cell one copy of [TerrainTextures.pondWater] spans: the part of the face its tile came from. */
-        const val POND_WATER_CELLS = (POND_WATER_TO - POND_WATER_FROM) * FlatGround.TILE_SIZE / FlatGround.SIZE
+        const val POND_WATER_CELLS = 2f
 
         /** The folder under the cache directory where made ground is kept. */
         const val GROUND_CACHE_DIR = "ground"

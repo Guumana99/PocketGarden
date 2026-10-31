@@ -309,6 +309,30 @@ enum class GardenItem(
     FLOOR_GREENHOUSE(
         "floor_greenhouse", price = 3000, objectId = GridObject.GREENHOUSE_OBJECT_ID, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(18), placeXp = 40,
+    ),
+
+    /** The other kinds of rock: the shop keeps them with the first ([ROCK_KINDS]), under "石". */
+    DECO_ROCK_FLAT(
+        "deco_rock_flat", price = 80, objectId = "deco_rock_flat", category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(4),
+    ),
+    DECO_ROCK_MOSSY(
+        "deco_rock_mossy", price = 150, objectId = "deco_rock_mossy", category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(7),
+    ),
+    DECO_ROCK_STANDING(
+        "deco_rock_standing", price = 250, objectId = "deco_rock_standing", category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(10),
+    ),
+    DECO_ROCK_PEBBLES(
+        "deco_rock_pebbles", price = 300, objectId = "deco_rock_pebbles", category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(13),
+    ),
+
+    /** An arched bridge over a river two cells wide ([GardenGrid.spansRiver]). */
+    STRUCT_BRIDGE(
+        "struct_bridge_taiko", price = 3500, objectId = StructureData.BRIDGE.objectId, category = ItemCategory.STRUCTURE,
+        unlock = UnlockCondition.PlayerLevel(17),
     );
 
     /** A symbol building: one per garden, see [StructureData.isSymbol]. */
@@ -377,8 +401,14 @@ enum class GardenItem(
          * not on sale yet ([inShop]) is never on it.
          */
         fun shelf(category: ItemCategory, season: Season? = null): List<GardenItem> =
-            entries.filter { it.inShop && it.category == category && (season == null || it.isInSeason(season)) }
+            entries.filter { it.inShop && it.category == category && (season == null || it.isInSeason(season)) && it !in ROCK_KINDS.drop(1) }
                 .sortedWith(compareBy({ it.openingRank }, { it.price }))
+
+        /**
+         * The kinds of rock, in the order they open. One stands on the shelf for all of them, the
+         * first: tapping it shows the lot, those not open yet as shadows.
+         */
+        val ROCK_KINDS: List<GardenItem> get() = listOf(DECO_ROCK, DECO_ROCK_FLAT, DECO_ROCK_MOSSY, DECO_ROCK_STANDING, DECO_ROCK_PEBBLES)
 
         /** Items that are locked at [previousLevel] and for sale at [newLevel]. */
         fun unlockedBetween(previousLevel: Int, newLevel: Int): List<GardenItem> = entries.filter {

@@ -59,6 +59,10 @@ enum class CollectionEntry(
     DECK(GridObject.WOOD_DECK_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     POND(GridObject.POND_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     ROCK("deco_rock", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
+    ROCK_FLAT("deco_rock_flat", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
+    ROCK_MOSSY("deco_rock_mossy", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 20),
+    ROCK_STANDING("deco_rock_standing", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
+    ROCK_PEBBLES("deco_rock_pebbles", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     FENCE(GridObject.FENCE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     BENCH("deco_bench", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 20),
     LANTERN("deco_lantern", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
@@ -67,7 +71,8 @@ enum class CollectionEntry(
     HUT(StructureData.HUT.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 80),
     COTTAGE(StructureData.COTTAGE.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 100),
     WINDMILL(StructureData.WINDMILL.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 60),
-    GREENHOUSE(GridObject.GREENHOUSE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 60);
+    GREENHOUSE(GridObject.GREENHOUSE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 60),
+    BRIDGE(StructureData.BRIDGE.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 80);
 
     companion object {
         fun fromObjectId(objectId: String): CollectionEntry? = entries.firstOrNull { it.objectId == objectId }

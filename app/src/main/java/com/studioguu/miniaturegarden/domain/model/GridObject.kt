@@ -34,6 +34,11 @@ data class GridObject(
     val bloomColour: String? = null,
     /** Of a gift box: what is inside ([Gift.encoded]); null for a box from before there were gifts. */
     val gift: String? = null,
+    /** Of something with a back to show (the bench): whether it is turned that way ([quarterTurned]). */
+    val turned: Boolean = false,
+    /** Of a painted building ([BuildingPaint]): its roof's and its walls' colours; null for the picture's own. */
+    val roofColour: String? = null,
+    val wallColour: String? = null,
 ) {
     /** Whether this is a work site: being built (or built and not yet unveiled), taken apart or packed up. */
     val isWorking: Boolean get() = workKind != WorkKind.NONE
@@ -104,8 +109,19 @@ data class GridObject(
     /** The garden's landmark building, of which there is one at most. */
     val isSymbol: Boolean get() = StructureData.isSymbol(objectId)
 
+    /** The arched bridge, which stands over the river. */
+    val isBridge: Boolean get() = objectId == StructureData.BRIDGE.objectId
+
     /** Cells covered, starting at (gridX, gridY); 1x1 for everything but structures. */
-    val footprint: Footprint get() = Footprint.forObjectId(objectId)
+    val footprint: Footprint get() = Footprint.forObjectId(objectId, isFlipped)
+
+    /**
+     * This thing turned round once. What has a back (the bench) goes a quarter turn each time, by
+     * way of its four pictures: its front, its back mirrored, its back, its front mirrored.
+     * Anything else only has its two sides, and changes to the other.
+     */
+    fun quarterTurned(): GridObject =
+        if (objectId in TURNING_OBJECT_IDS) copy(turned = turned == isFlipped, isFlipped = !isFlipped) else copy(isFlipped = !isFlipped)
 
     fun occupiedCells(): List<GridCell> = footprint.cells(gridX, gridY)
 
@@ -135,7 +151,14 @@ data class GridObject(
          * isometric grid shows the side that faced away. Their footprints are square, so turning
          * one does not change the cells it stands on. The order is the one they are listed in.
          */
-        val FLIPPABLE_OBJECT_IDS: List<String> = listOf("struct_cottage", "floor_greenhouse", "struct_windmill", "deco_bench")
+        val FLIPPABLE_OBJECT_IDS: List<String> = listOf(
+            "struct_cottage", "floor_greenhouse", "struct_windmill", "deco_bench",
+            "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles",
+            "struct_bridge_taiko",
+        )
+
+        /** What is drawn from behind as well as from the front, and so has four ways to face. */
+        val TURNING_OBJECT_IDS: Set<String> = setOf("deco_bench")
 
         fun canFaceEitherWay(objectId: String): Boolean = objectId in FLIPPABLE_OBJECT_IDS
 

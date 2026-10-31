@@ -198,15 +198,22 @@ class BuildingArtTest {
 
     private val repo = FakeGardenRepository().apply { profile = UserProfile(coins = 0, playerLevel = 20) }
     private val place = PlaceItemUseCase(repo, GardenMap.allGrass(), RecordCollectionUseCase(repo))
-    private val flip = FlipObjectUseCase(repo)
+    private val flip = FlipObjectUseCase(repo, GardenMap.DEFAULT)
 
     @Test
-    fun `the cottage, the greenhouse, the windmill and the bench can face either way, nothing else`() {
-        assertEquals(listOf("struct_cottage", "floor_greenhouse", "struct_windmill", "deco_bench"), GridObject.FLIPPABLE_OBJECT_IDS)
+    fun `the cottage, the greenhouse, the windmill, the bench, the rocks and the bridge can face either way, nothing else`() {
+        assertEquals(
+            listOf(
+                "struct_cottage", "floor_greenhouse", "struct_windmill", "deco_bench",
+                "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles", "struct_bridge_taiko",
+            ),
+            GridObject.FLIPPABLE_OBJECT_IDS,
+        )
         for (id in GridObject.FLIPPABLE_OBJECT_IDS) {
-            // Turning round must not change the cells: their footprints are square.
+            // Turning round must not change the cells: their footprints are square. The bridge,
+            // which is long, has to fit the other way (FlipObjectUseCase).
             val footprint = StructureData.fromObjectId(id)?.footprint
-            if (footprint != null) assertEquals(id, footprint.width, footprint.height)
+            if (footprint != null && id != StructureData.BRIDGE.objectId) assertEquals(id, footprint.width, footprint.height)
         }
         assertFalse(GridObject.canFaceEitherWay(StructureData.HUT.objectId))
         assertFalse(GridObject.canFaceEitherWay("plant_tulip"))
@@ -216,7 +223,7 @@ class BuildingArtTest {
     @Test
     fun `a building can be put down facing the other way`() = runBlocking {
         repo.putSlot(InventorySlot(0, GardenItem.STRUCT_WINDMILL.itemId, 1))
-        repo.putSlot(InventorySlot(1, GardenItem.DECO_ROCK.itemId, 1))
+        repo.putSlot(InventorySlot(1, GardenItem.DECO_LANTERN.itemId, 1))
 
         assertEquals(ActionResult.SUCCESS, place(0, 0, 0, 0L, flipped = true))
         // A thing that has only one way to face ignores the choice.
@@ -224,7 +231,7 @@ class BuildingArtTest {
 
         val mill = repo.objects.values.single { it.objectId == StructureData.WINDMILL.objectId }
         assertTrue(mill.isFlipped)
-        assertFalse(repo.objects.values.single { it.objectId == "deco_rock" }.isFlipped)
+        assertFalse(repo.objects.values.single { it.objectId == "deco_lantern" }.isFlipped)
     }
 
     @Test

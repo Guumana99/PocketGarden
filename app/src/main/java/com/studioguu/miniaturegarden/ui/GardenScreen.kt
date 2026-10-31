@@ -107,6 +107,7 @@ import com.studioguu.miniaturegarden.ui.effects.RainStyle
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
 import com.studioguu.miniaturegarden.ui.hud.LevelUpDialog
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
+import com.studioguu.miniaturegarden.ui.hud.PaintDialog
 import com.studioguu.miniaturegarden.ui.hud.QuickActionBar
 import com.studioguu.miniaturegarden.ui.hud.RemoveConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TurnBackConfirmDialog
@@ -212,6 +213,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var showCollection by rememberSaveable { mutableStateOf(false) }
     var confirmRain by rememberSaveable { mutableStateOf(false) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
+    var paintingBuilding by rememberSaveable { mutableStateOf(false) }
     // Growing the garden is asked about first (#55).
     // Camera mode: nothing on screen but the garden, a viewfinder and a shutter.
     var cameraMode by rememberSaveable { mutableStateOf(false) }
@@ -557,6 +559,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 onMove = viewModel::startMovingSelected,
                                 onDismiss = viewModel::clearSelection,
                                 onFlip = viewModel::flipSelected,
+                                onPaint = { paintingBuilding = true },
                                 modifier = Modifier.fillMaxWidth(),
                                 surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },
                                 editing = editMode,
@@ -761,11 +764,15 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onDismiss = { confirmTurnBack = false },
         )
     }
+    if (paintingBuilding && removing != null) {
+        PaintDialog(building = removing, onPaint = viewModel::paintSelected, onDismiss = { paintingBuilding = false })
+    }
     // If the selection goes away under the dialog, the question goes with it.
     LaunchedEffect(removing == null) {
         if (removing == null) {
             confirmRemove = false
             confirmTurnBack = false
+            paintingBuilding = false
         }
     }
     if (showCollection) {

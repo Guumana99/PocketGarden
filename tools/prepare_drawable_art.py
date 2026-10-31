@@ -700,7 +700,7 @@ def write(crops, icons) -> None:
     for object_id in GROUND_TEXTURES:
         Image.fromarray(ground_texture(object_id), "RGB").save(ICONS / f"{object_id}.png", optimize=True)
         print(f"{object_id:28s} {GROUND_SIZE}x{GROUND_SIZE} (ground)")
-    for name in ("soil_wasteland", "soil_tilled", "soil_revived", "pond_center"):
+    for name in ("soil_wasteland", "soil_tilled", "soil_revived"):
         print(f"GroundSlab {name:16s} anchorX, anchorY, topWidth = {slab_of(GROUND / f'{name}.png')}")
 
 

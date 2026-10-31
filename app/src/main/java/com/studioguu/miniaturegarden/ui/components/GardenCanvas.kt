@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
@@ -93,7 +94,9 @@ import com.studioguu.miniaturegarden.ui.render.RenderCommand
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.AtlasPages
 import com.studioguu.miniaturegarden.ui.render.FeatheredLawn
-import com.studioguu.miniaturegarden.ui.render.RiverAutotile
+import com.studioguu.miniaturegarden.ui.render.BuildingPainter
+import com.studioguu.miniaturegarden.ui.render.WaterArt
+import com.studioguu.miniaturegarden.ui.render.RiverScene
 import com.studioguu.miniaturegarden.ui.render.SoilTexture
 import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
@@ -116,7 +119,6 @@ import com.studioguu.miniaturegarden.ui.render.VisitorLook
 import com.studioguu.miniaturegarden.ui.render.drawFenceArmShadows
 import com.studioguu.miniaturegarden.ui.render.drawFenceArms
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
-import com.studioguu.miniaturegarden.ui.render.drawRiverTile
 import com.studioguu.miniaturegarden.ui.render.drawSprite
 import com.studioguu.miniaturegarden.ui.render.drawSpriteShadow
 import com.studioguu.miniaturegarden.ui.render.drawSwayingSprite
@@ -281,8 +283,11 @@ fun GardenCanvas(
     val atlasImage = remember(atlas) { AtlasPages.of(atlas) }
     val lawn = remember(atlas) { FeatheredLawn.from(atlas, GroundTile.GRASS.assetId) }
     val pipeline = remember { LayerPipeline() }
-    val waterTick by rememberWaterTick(running = !paused && gridObjects.any { it.isTerrain })
+    val riverCells = remember(gridObjects) { gridObjects.filter { it.isTerrain }.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) } }
+    val river = remember(riverCells, terrain) { terrain.water?.takeIf { riverCells.isNotEmpty() }?.let { RiverScene(it, riverCells) } }
     val grid = remember(gardenMap, gridObjects) { GardenGrid(gardenMap, gridObjects) }
+    val painter = remember { BuildingPainter() }
+    val painted = remember(gridObjects, atlas) { painter.picturesFor(gridObjects, atlas) }
     // Each visitor's way about the garden, worked out once as it comes (and again only if the
     // garden changes under it); every frame then only looks up where it has got to.
     val routes = remember(visitors, grid) { visitors.map { CreatureRoutes.plan(it, grid) } }
@@ -478,10 +483,10 @@ fun GardenCanvas(
         }
         val pops = if (bursts.isEmpty()) emptyMap() else bursts.associate { it.gridObject.instanceId to it.progress.value }
         val fades = if (fadeAlpha >= 1f) emptyMap() else fadingIds.associateWith { fadeAlpha }
-        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, waterTick, ambience, pops = pops, fades = fades, lawn = lawn)
+        submitObjects(pipeline, gridObjects, grid, transform, atlas, atlasImage, terrain, ambience, pops = pops, fades = fades, lawn = lawn, painted = painted, river = river)
         for (ghost in ghosts) {
             submitObjects(
-                pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, waterTick, ambience,
+                pipeline, listOf(ghost.gridObject), grid, transform, atlas, atlasImage, terrain, ambience,
                 vanish = ghost.progress.value, crumbles = ghost.crumbles, lawn = lawn,
             )
         }
@@ -533,6 +538,7 @@ fun GardenCanvas(
 
 private val AURA_FILL = Color(0x334FC3F7)
 private val AURA_EDGE = Color(0x994FC3F7)
+private const val ROCK_ID_PREFIX = "deco_rock"
 private val CLOSED_CELL = Color(0x73000000)
 
 /** How long the garden waits between two frames of wind. */
@@ -576,22 +582,10 @@ private class Ambience(
 }
 
 /**
- * A counter that steps while there is water on show, a few times a second, and stands still
- * otherwise. River tiles take their animation frame from it, so every tile moves in step.
- */
-@Composable
-private fun rememberWaterTick(running: Boolean): State<Int> = produceState(0, running) {
-    while (running) {
-        delay(RiverAutotile.FRAME_MILLIS)
-        value = (value + 1) % WATER_TICK_CYCLE
-    }
-}
-
-/**
  * Queues everything lying or standing on the garden: river and paving with the ground, the rest
  * in the object layers, sorted by depth.
  *
- * @param waterTick animation counter for the river, see [rememberWaterTick].
+ * @param river the river as a whole ([RiverScene]), drawn once; a cell of it fading away is drawn plain.
  * @param pops for things that were unveiled a moment ago, by instance id: how far along the
  *   unveiling is, 0 to 1.
  */
@@ -603,13 +597,15 @@ private fun submitObjects(
     atlas: SpriteAtlas,
     atlasImage: AtlasPages?,
     terrain: TerrainTextures,
-    waterTick: Int,
     ambience: Ambience,
     vanish: Float? = null,
     /** With [vanish]: the plant is being pulled up, and crumbles into its bed ([drawCrumbling]). */
     crumbles: Boolean = false,
     pops: Map<String, Float> = emptyMap(),
     fades: Map<String, Float> = emptyMap(),
+    /** The pictures of painted buildings, by instance id ([BuildingPainter]). */
+    painted: Map<String, ImageBitmap> = emptyMap(),
+    river: RiverScene? = null,
     /** The feathered lawn, for a lawn sown on the bare earth ([LawnGrowth]). */
     lawn: FeatheredLawn? = null,
 ) {
@@ -661,20 +657,17 @@ private fun submitObjects(
             pipeline.submit(layer, depth, inGarden = true) { drawVanishing(pivot, vanish, transform.tileHeight, draw) }
         }
     }
+    if (river != null && vanish == null) {
+        // The water with the ground; the banks over the lawns round it, which they lie on.
+        pipeline.submit(RenderLayer.BASE_TERRAIN, 1f, inGarden = true) { river.drawWater(this, transform, ambience.windMillis ?: 0L) }
+        pipeline.submit(RenderLayer.BOTTOM_OBJECTS, Float.MAX_VALUE, inGarden = true) { river.drawBanks(this, transform) }
+    }
     for (obj in gridObjects) {
         if (obj.isTerrain) {
-            // River: part of the ground, drawn with the terrain right after the lawn. Its
-            // picture depends on which neighbours are river too, so the tiles join up.
-            val isRiver = { x: Int, y: Int -> grid.occupantAt(x, y)?.isTerrain == true }
-            val autotile = terrain.riverAutotile
-            submit(obj, RenderLayer.BASE_TERRAIN, 1f) {
-                if (autotile != null) {
-                    val mask = RiverAutotile.maskAt(obj.gridX, obj.gridY, isRiver)
-                    val frame = RiverAutotile.frameFor(waterTick, obj.gridX, obj.gridY)
-                    drawRiverTile(autotile, mask, frame, transform, obj.gridX, obj.gridY)
-                } else {
-                    drawWaterTile(transform, obj.gridX, obj.gridY, waterTick % WATER_PHASES, isRiver)
-                }
+            // River: part of the ground. All of it is drawn at once, below.
+            if (river == null || vanish != null) {
+                val isRiver = { x: Int, y: Int -> grid.occupantAt(x, y)?.isTerrain == true }
+                submit(obj, RenderLayer.BASE_TERRAIN, 1f) { drawWaterTile(transform, obj.gridX, obj.gridY, 0, isRiver) }
             }
             continue
         }
@@ -751,7 +744,7 @@ private fun submitObjects(
             // Its water moves on the garden's clock: glints and spreading rings (PondWater).
             val ripples = PondWater.frameAt(ambience.windMillis ?: 0L, seed = obj.gridX * 31 + obj.gridY * 17)
             // The middle of a pool (a pond on all four sides, #61) has no bank of its own: it is
-            // open water, pond_center.png's, and the joins round it run into it.
+            // open water, the river's own, and the joins round it run into it.
             val isPondHere: (Int, Int) -> Boolean = { px, py -> grid.occupantAt(px, py)?.let { it.isPond && !it.isWorking } == true }
             val centre = vanish == null && PondJoin.isCentre(obj.gridX, obj.gridY, isPondHere)
             submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {
@@ -763,7 +756,7 @@ private fun submitObjects(
                 } else {
                     drawPondInCode(transform, obj.gridX, obj.gridY)
                 }
-                drawPondWater(transform, obj.gridX, obj.gridY, ripples)
+                drawPondWater(transform, obj.gridX, obj.gridY, ripples, terrain.water, ambience.windMillis ?: 0L)
             }
             // Ponds side by side are one pool (PondJoin): the water runs through where they meet.
             // Painted after both ponds of a join (at the later one's depth), so that neither one's
@@ -843,7 +836,6 @@ private fun submitObjects(
         // is there in any light, and the one the sun throws, which turns with the time of day.
         if (!isGroundCover) {
             submit(obj, RenderLayer.SHADOWS, depth) {
-                if (obj.objectId == StructureData.COTTAGE.objectId && !obj.isWorking) drawCottageGroundShade(transform, obj)
                 if (sprite != null && atlasImage != null) {
                     drawContactShadow(base, min(sprite.drawnWidth(spriteScale) * 0.62f, unit * 0.7f))
                     drawSpriteShadow(atlasImage, sprite, base, spriteScale, light)
@@ -866,7 +858,10 @@ private fun submitObjects(
                     else -> sway * PLANT_LEAN
                 }
                 // With no food in its soil a crop is weak: a little smaller, and its colour dulled.
-                if (obj.status == PlantStatus.UNNOURISHED) {
+                val painting = painted[obj.instanceId]
+                if (painting != null) {
+                    drawSprite(painting, sprite.copy(atlasX = 0, atlasY = 0), base, spriteScale, flipped = obj.isFlipped)
+                } else if (obj.status == PlantStatus.UNNOURISHED) {
                     scale(WEAK_PLANT_SCALE, WEAK_PLANT_SCALE, pivot = base) {
                         drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped, colorFilter = WEAK_PLANT_FILTER)
                     }
@@ -898,7 +893,7 @@ private fun submitObjects(
             // of earth on a bed. Paving is hard and shows nothing. A crop is planted in its bed:
             // crumbs over the bed's own earth read as a second layer of soil on it (#55).
             // A rock's foot lies under its own bulk: blades there were drawn on the stone (device feedback).
-            if (!isGroundCover && structure == null && !obj.isPlant && obj.objectId != Decoration.ROCK.objectId) {
+            if (!isGroundCover && structure == null && !obj.isPlant && !obj.objectId.startsWith(ROCK_ID_PREFIX)) {
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
                 val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
@@ -1386,24 +1381,6 @@ private fun visitorAt(position: Offset, routes: List<CreatureRoute>, transform: 
         (route.visit to (body - position).getDistance()).takeIf { it.second <= TapTargets.visitorReach(transform.tileWidth, minReach) }
     }.minByOrNull { it.second }?.first
 
-/**
- * Shade over the cottage's cells. Its picture's stone base is drawn flatter than the cells it
- * stands on and stops short of their front corner: until the picture is redone, the ground left
- * bare there reads as the base's shadow, which ends on the cell's edge like paving beside it.
- */
-private fun DrawScope.drawCottageGroundShade(transform: IsometricTransform, obj: GridObject) {
-    val x0 = obj.gridX.toFloat()
-    val y0 = obj.gridY.toFloat()
-    val x1 = x0 + obj.footprint.width
-    val y1 = y0 + obj.footprint.height
-    drawPath(
-        quad(transform.worldToScreen(x0, y0), transform.worldToScreen(x1, y0), transform.worldToScreen(x1, y1), transform.worldToScreen(x0, y1)),
-        COTTAGE_GROUND_SHADE,
-    )
-}
-
-private val COTTAGE_GROUND_SHADE = Color(0x66302010)
-
 /** Where a visitor's body is over its feet, in tile widths. */
 private const val VISITOR_BODY_HEIGHT = 0.12f
 
@@ -1411,7 +1388,7 @@ private const val VISITOR_BODY_HEIGHT = 0.12f
 private const val BLOOM_SHARE = 0.8f
 
 /** How high the ridge of the cottage's picture is over the middle of its footprint, in height steps (#70, on the emulator). */
-private const val COTTAGE_RIDGE_LIFT = 12.85f
+private const val COTTAGE_RIDGE_LIFT = 13.2f
 
 /** How high a ladybird on a crop is, up among its leaves, in height steps. */
 private const val ON_LEAVES_LIFT = 0.35f
@@ -1601,7 +1578,8 @@ fun ObjectPreview(
     val atlasImage = remember(atlas) { AtlasPages.of(atlas) }
     val lawn = remember(atlas) { FeatheredLawn.from(atlas, GroundTile.GRASS.assetId) }
     val pipeline = remember { LayerPipeline() }
-    val waterTick by rememberWaterTick(running = scene.objects.any { it.isTerrain })
+    val riverCells = remember(scene) { scene.objects.filter { it.isTerrain }.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) } }
+    val river = remember(riverCells, terrain) { terrain.water?.takeIf { riverCells.isNotEmpty() }?.let { RiverScene(it, riverCells) } }
 
     Canvas(modifier) {
         // Everything the picture shows, buildings included, fitted into the frame and centred
@@ -1626,7 +1604,7 @@ fun ObjectPreview(
                 sprite != null
             }
         }
-        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, waterTick, Ambience.CALM, lawn = lawn)
+        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, Ambience.CALM, lawn = lawn, river = river)
         pipeline.render(this)
     }
 }
@@ -2015,6 +1993,7 @@ private fun DrawScope.drawStructureShadow(
     val height = when (structure) {
         StructureData.HUT -> 5.5f
         StructureData.COTTAGE -> 6f
+        StructureData.BRIDGE -> 3f
         StructureData.WINDMILL -> 8f
         StructureData.WELL -> 1.8f
     } * transform.heightStep
@@ -2395,7 +2374,6 @@ private const val WATER_PIXELS = 8
 private const val WATER_PHASES = 6
 
 /** The water counter wraps here: a multiple of every frame count in use, so no loop ever jumps. */
-private const val WATER_TICK_CYCLE = 12 * WATER_PHASES
 private val WATER_DEEP = Color(0xFF2B6CA3)
 private val WATER_MID = Color(0xFF3F8CCB)
 private val WATER_LIGHT = Color(0xFF6BB5E6)
@@ -2491,13 +2469,14 @@ private val POND_RING = Color(0xFFEAF6FB)
  * The pond's water moving ([PondWater]): glints of light and rings spreading over it, kept to
  * the open water inside the logs. Laid flat on the water, like everything on the ground.
  */
-private fun DrawScope.drawPondWater(transform: IsometricTransform, x: Int, y: Int, frame: PondWater.Frame) {
+private fun DrawScope.drawPondWater(transform: IsometricTransform, x: Int, y: Int, frame: PondWater.Frame, art: WaterArt?, clockMillis: Long) {
     val from = PondWater.WATER_FROM
     val span = PondWater.WATER_TO - PondWater.WATER_FROM
     fun at(u: Float, v: Float) = transform.worldToScreen(x + from + span * u, y + from + span * v)
     val water = quad(at(0f, 0f), at(1f, 0f), at(1f, 1f), at(0f, 1f))
     // A width on the water, in screen pixels: the water is [span] of a cell across.
     val across = transform.tileWidth * span
+    if (art != null) RiverScene.drawStillWaves(this, art, transform, water, clockMillis)
     clipPath(water) {
         for (ripple in frame.ripples) {
             if (ripple.alpha <= 0f) continue
@@ -2527,7 +2506,7 @@ private fun DrawScope.drawPondWater(transform: IsometricTransform, x: Int, y: In
 }
 
 // The water and the stones of the pond's picture, as measured from it, for where ponds join.
-private val POND_JOIN_WATER = Color(0xFFA3AAB4)
+private val POND_JOIN_WATER = Color(0xFF92B2AE)
 private val POND_JOIN_SHADE = Color(0xFF55606C)
 private val POND_BANK_STONE = Color(0xFFC9C3B8)
 private val POND_BANK_STONE_LIGHT = Color(0xFFE7E2DA)
@@ -3076,12 +3055,12 @@ private val LAMPS: Map<String, List<Lamp>> = mapOf(
     // The fire box under the lantern's roof.
     "deco_lantern" to listOf(Lamp(0.505f, 0.39f, 0.3f, 0.09f)),
     // The open window between the shutters, on its left face, which runs away down to the right.
-    StructureData.HUT.objectId to listOf(Lamp(0.314f, 0.457f, 0.104f, 0.164f, skew = 0.044f)),
+    StructureData.HUT.objectId to listOf(Lamp(0.3147f, 0.4703f, 0.1066f, 0.111f, skew = 0.0406f)),
     // Two windows on the long face, one on the gable end (whose wall runs the other way).
     StructureData.COTTAGE.objectId to listOf(
-        Lamp(0.243f, 0.494f, 0.043f, 0.098f, skew = 0.011f),
-        Lamp(0.3695f, 0.5475f, 0.037f, 0.092f, skew = 0.007f),
-        Lamp(0.718f, 0.5406f, 0.046f, 0.1006f, skew = -0.0104f),
+        Lamp(0.243f, 0.4486f, 0.043f, 0.089f, skew = 0.01f),
+        Lamp(0.3695f, 0.4972f, 0.037f, 0.0835f, skew = 0.0064f),
+        Lamp(0.718f, 0.4909f, 0.046f, 0.0914f, skew = -0.0094f),
     ),
 )
 

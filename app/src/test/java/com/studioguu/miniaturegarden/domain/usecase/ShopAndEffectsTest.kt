@@ -53,12 +53,13 @@ class ShopAndEffectsTest {
         val shelves = ItemCategory.entries.associateWith(GardenItem::shelf)
         assertTrue(shelves.values.none { it.isEmpty() })
         // Everything on sale, that is: what waits for its pictures is on no shelf.
-        val onSale = GardenItem.entries.filter { it.inShop }
+        // And of the rocks one stands for all of them.
+        val onSale = GardenItem.entries.filter { it.inShop && it !in GardenItem.ROCK_KINDS.drop(1) }
         assertEquals(onSale.toSet(), shelves.values.flatten().toSet())
         assertEquals(onSale.size, shelves.values.sumOf { it.size })
 
         assertEquals(18, shelves.getValue(ItemCategory.SEED).size)
-        assertEquals(6, shelves.getValue(ItemCategory.STRUCTURE).size)
+        assertEquals(7, shelves.getValue(ItemCategory.STRUCTURE).size)
         assertEquals(11, shelves.getValue(ItemCategory.DECORATION).size)
     }
 
@@ -89,7 +90,7 @@ class ShopAndEffectsTest {
         assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(9, 11))
 
         assertEquals(
-            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.FLOOR_GREENHOUSE),
+            listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_BRIDGE, GardenItem.FLOOR_GREENHOUSE),
             GardenItem.shelf(ItemCategory.STRUCTURE),
         )
         assertEquals(
@@ -145,14 +146,14 @@ class ShopAndEffectsTest {
     }
 
     @Test
-    fun `the dearest things are the late buildings, the greenhouse dearest of all`() {
+    fun `the dearest things are the late buildings, the bridge dearest of all`() {
         // Since the progression change a crop is priced for what a bed earns in a day
         // (ProgressionTest), not to climb with its level: the eggplant's seed is cheaper than the
         // lavender's, and the cottage, at Lv.3, dearer than the well at Lv.5.
         val byPrice = GardenItem.entries.sortedByDescending { it.price }
         assertEquals(
-            listOf(GardenItem.FLOOR_GREENHOUSE, GardenItem.STRUCT_HUT, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_COTTAGE),
-            byPrice.take(4),
+            listOf(GardenItem.STRUCT_BRIDGE, GardenItem.FLOOR_GREENHOUSE, GardenItem.STRUCT_HUT, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_COTTAGE),
+            byPrice.take(5),
         )
     }
 
@@ -247,7 +248,7 @@ class ShopAndEffectsTest {
     @Test
     fun `every building has its effect and nothing else has one`() {
         // A symbol building does something else instead: it lets the garden grow.
-        for (structure in StructureData.entries.filter { !it.isSymbol }) assertTrue(structure.name, StructureEffect.of(structure) != null)
+        for (structure in StructureData.entries.filter { !it.isSymbol && it != StructureData.BRIDGE }) assertTrue(structure.name, StructureEffect.of(structure) != null)
         assertNull(StructureEffect.of(StructureData.COTTAGE))
         assertEquals(StructureEffect.WELL, StructureEffect.forObjectId("struct_well"))
         assertEquals(StructureEffect.HUT, StructureEffect.forObjectId("struct_hut"))

@@ -56,7 +56,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
             val pending = goAsync()
             scope.launch {
                 try {
-                    loadGarden(feedback = intent.getStringExtra(EXTRA_GARDEN) == "fb")
+                    loadGarden(intent.getStringExtra(EXTRA_GARDEN))
                     Log.i(TAG, "showcase garden loaded")
                 } finally {
                     pending.finish()
@@ -70,13 +70,15 @@ class ShowcaseReceiver : BroadcastReceiver() {
         Log.i(TAG, "showcase set: $showcase")
     }
 
-    private suspend fun loadGarden(feedback: Boolean) {
+    private suspend fun loadGarden(garden: String?) {
+        val art = garden == "art"
+        val feedback = garden == "fb" || art
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
         gardenRepository.runInTransaction {
             gardenRepository.getGridObjects().forEach { gardenRepository.deleteGridObject(it.instanceId) }
-            gardenRepository.upsertGridObjects(if (feedback) FeedbackGarden.objects(now) else ShowcaseGarden.objects(now))
+            gardenRepository.upsertGridObjects(if (art) ArtGarden.objects(now) else if (feedback) FeedbackGarden.objects(now) else ShowcaseGarden.objects(now))
             gardenRepository.saveProgress(
                 GardenProgress(
                     season = Season.AUTUMN,

@@ -32,8 +32,14 @@ data class Footprint(val width: Int, val height: Int) {
     companion object {
         val SINGLE = Footprint(1, 1)
 
-        /** Footprint of the object with this id; anything that is not a [StructureData] covers one cell. */
-        fun forObjectId(objectId: String): Footprint = StructureData.fromObjectId(objectId)?.footprint ?: SINGLE
+        /**
+         * Footprint of the object with this id; anything that is not a [StructureData] covers one
+         * cell. Only a long one changes when it is [flipped]: it then runs along the other axis.
+         */
+        fun forObjectId(objectId: String, flipped: Boolean = false): Footprint {
+            val footprint = StructureData.fromObjectId(objectId)?.footprint ?: return SINGLE
+            return if (flipped) Footprint(footprint.height, footprint.width) else footprint
+        }
     }
 }
 
@@ -52,7 +58,13 @@ enum class StructureData(
     val isSymbol: Boolean = false,
 ) {
     /** A garden shed. As tall as its picture (#74): the ridge of its roof stands 11 steps up. */
-    HUT("struct_hut", Footprint(width = 2, height = 2), heightSteps = 11f),
+    HUT("struct_hut", Footprint(width = 2, height = 2), heightSteps = 13f),
+
+    /**
+     * An arched wooden bridge over a river two cells wide (see [GardenGrid.spansRiver]). Its long
+     * side runs along gridY, from the near left up to the far right; flipped, along gridX.
+     */
+    BRIDGE("struct_bridge_taiko", Footprint(width = 1, height = 2), heightSteps = 5f),
 
     /**
      * A round stone well under a little roof, on one cell since #74 (it was 1 x 2 while drawn in

@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.BloomColours
+import com.studioguu.miniaturegarden.domain.model.BuildingPaint
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.Footprint
@@ -18,6 +19,8 @@ import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.nextAcquisition
+import com.studioguu.miniaturegarden.domain.model.PaintColour
+import com.studioguu.miniaturegarden.domain.model.PaintPart
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantGround
@@ -25,6 +28,7 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.SoilGrade
+import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.HarvestReward
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
@@ -103,6 +107,15 @@ enum class ActionResult {
 
     /** Only the sprinkler can be switched on and off. */
     NOT_SWITCHABLE,
+
+    /** A cell of river was to go from under a bridge. */
+    BRIDGE_ABOVE,
+
+    /** A bridge was to go anywhere but across a river two cells wide ([GardenGrid.spansRiver]). */
+    NEEDS_RIVER_ACROSS,
+
+    /** Only a building with a mask can be painted ([BuildingPaint]), and only in its own colours. */
+    NOT_PAINTABLE,
 }
 
 /**
@@ -233,8 +246,13 @@ class CareForPlantUseCase @Inject constructor(
  * buildable ground and free in its own layer, and a crop only goes on the ground it grows on
  * ([PlantGround]). The same whether it comes out of the bag or is replanted from elsewhere.
  */
-internal fun GardenGrid.fits(objectId: String, x: Int, y: Int): ActionResult {
-    val check = checkPlacement(Footprint.forObjectId(objectId), x, y, PlacementKind.forObjectId(objectId), objectId)
+internal fun GardenGrid.fits(objectId: String, x: Int, y: Int, flipped: Boolean = false): ActionResult {
+    val footprint = Footprint.forObjectId(objectId, flipped)
+    if (objectId == StructureData.BRIDGE.objectId) {
+        if (footprint.cells(x, y).any { !map.isInside(it.x, it.y) }) return ActionResult.OUT_OF_BOUNDS
+        return if (spansRiver(footprint, x, y)) ActionResult.SUCCESS else ActionResult.NEEDS_RIVER_ACROSS
+    }
+    val check = checkPlacement(footprint, x, y, PlacementKind.forObjectId(objectId), objectId)
     when (check) {
         PlacementCheck.OUT_OF_BOUNDS -> return ActionResult.OUT_OF_BOUNDS
         PlacementCheck.NOT_BUILDABLE -> return ActionResult.TILE_NOT_BUILDABLE
@@ -286,7 +304,8 @@ class PlaceItemUseCase @Inject constructor(
             val grid = GardenGrid(gardenMap.current(), gardenRepository.getGridObjects())
             // The symbol building is one of a kind: a second one never goes up.
             if (item.isSymbol && grid.hasSymbol) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
-            val fit = grid.fits(item.objectId, gridX, gridY)
+            val facing = flipped && GridObject.canFaceEitherWay(item.objectId)
+            val fit = grid.fits(item.objectId, gridX, gridY, facing)
             if (fit != ActionResult.SUCCESS) return@runInTransaction fit
             // Out of its season a crop only grows under glass. Seeds bought earlier stay in the
             // bag for when their season comes round again.
@@ -303,7 +322,7 @@ class PlaceItemUseCase @Inject constructor(
                     instanceId = UUID.randomUUID().toString(),
                     gridX = gridX,
                     gridY = gridY,
-                    isFlipped = flipped && GridObject.canFaceEitherWay(item.objectId),
+                    isFlipped = facing,
                     objectId = item.objectId,
                     nutritionLevel = food,
                     status = if (Soil.isEmpty(food)) PlantStatus.UNNOURISHED else PlantStatus.HEALTHY,
@@ -735,14 +754,41 @@ class SkipTimeUseCase @Inject constructor(
  */
 class FlipObjectUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
+    private val gardenMap: GardenMapSource,
 ) {
     suspend operator fun invoke(instanceId: String): ActionResult = gardenRepository.runInTransaction {
-        val target = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+        val objects = gardenRepository.getGridObjects()
+        val target = objects.firstOrNull { it.instanceId == instanceId }
             ?: return@runInTransaction ActionResult.NOT_FOUND
         if (!target.canFlip) return@runInTransaction ActionResult.NOT_FLIPPABLE
         // Turned round once it stands (#50): a work site is sheeting, with no front to face.
         if (target.isWorking) return@runInTransaction ActionResult.BUSY
-        gardenRepository.upsertGridObject(target.copy(isFlipped = !target.isFlipped))
+        val turned = target.quarterTurned()
+        // A bridge turned round runs the other way, and has to fit that way.
+        if (target.isBridge) {
+            val others = GardenGrid(gardenMap.current(), objects.filter { it.instanceId != instanceId })
+            val fit = others.fits(target.objectId, target.gridX, target.gridY, turned.isFlipped)
+            if (fit != ActionResult.SUCCESS) return@runInTransaction fit
+        }
+        gardenRepository.upsertGridObject(turned)
+        ActionResult.SUCCESS
+    }
+}
+
+/**
+ * Paints the building [instanceId]: free, and at any time ([BuildingPaint]). The picture's own
+ * colour is stored as none.
+ */
+class PaintBuildingUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+) {
+    suspend operator fun invoke(instanceId: String, part: PaintPart, colour: PaintColour): ActionResult = gardenRepository.runInTransaction {
+        val target = gardenRepository.getGridObjects().firstOrNull { it.instanceId == instanceId }
+            ?: return@runInTransaction ActionResult.NOT_FOUND
+        val colours = BuildingPaint.colours(target.objectId, part)
+        if (colour !in colours) return@runInTransaction ActionResult.NOT_PAINTABLE
+        val stored = colour.id.takeIf { colour != colours.first() }
+        gardenRepository.upsertGridObject(if (part == PaintPart.ROOF) target.copy(roofColour = stored) else target.copy(wallColour = stored))
         ActionResult.SUCCESS
     }
 }

@@ -32,7 +32,7 @@ import com.studioguu.miniaturegarden.data.local.entity.WeatherDayEntity
         LetterEntity::class,
         WeatherDayEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -240,6 +240,15 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN gift TEXT")
                 db.execSQL("UPDATE grid_objects SET bloomColour = 'by_id' WHERE objectId = 'plant_tulip' AND growthProgress >= 1")
                 db.execSQL("UPDATE grid_objects SET soilProgress = soilProgress * 2")
+            }
+        }
+
+        /** Adds the way a bench is turned, and the colours of a painted building. */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN turned INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN roofColour TEXT")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN wallColour TEXT")
             }
         }
     }

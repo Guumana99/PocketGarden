@@ -37,6 +37,8 @@ import com.studioguu.miniaturegarden.domain.model.InventorySort
 import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.LevelUpNotice
 import com.studioguu.miniaturegarden.domain.model.NatureNotes
+import com.studioguu.miniaturegarden.domain.model.PaintColour
+import com.studioguu.miniaturegarden.domain.model.PaintPart
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
@@ -73,6 +75,7 @@ import com.studioguu.miniaturegarden.domain.usecase.NoteResult
 import com.studioguu.miniaturegarden.domain.usecase.RecordNatureNoteUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ScheduleGardenNotificationsUseCase
 import com.studioguu.miniaturegarden.domain.usecase.FlipObjectUseCase
+import com.studioguu.miniaturegarden.domain.usecase.PaintBuildingUseCase
 import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.HarvestPlantUseCase
@@ -137,6 +140,7 @@ class GardenViewModel @Inject constructor(
     private val completeWork: CompleteWorkUseCase,
     private val moveObject: MoveObjectUseCase,
     private val flipObject: FlipObjectUseCase,
+    private val paintBuilding: PaintBuildingUseCase,
     private val unveilBuilding: UnveilBuildingUseCase,
     private val skipTime: SkipTimeUseCase,
     private val hoe: HoeUseCase,
@@ -976,7 +980,7 @@ class GardenViewModel @Inject constructor(
                 return
             }
             // A building larger than one cell is fitted round the tapped cell, inside the garden.
-            val footprint = item?.let { Footprint.forObjectId(it.objectId) } ?: Footprint.SINGLE
+            val footprint = item?.let { Footprint.forObjectId(it.objectId, _placingFlipped.value && GridObject.canFaceEitherWay(it.objectId)) } ?: Footprint.SINGLE
             val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
             act(
                 onSuccess = {
@@ -1217,6 +1221,11 @@ class GardenViewModel @Inject constructor(
 
     fun flipSelected() = withSelectedObject { obj ->
         act(onSuccess = { audio.play(SoundEffect.PLANT) }) { _, _ -> flipObject(obj.instanceId) }
+    }
+
+    /** Paints [part] of the selected building [colour]. */
+    fun paintSelected(part: PaintPart, colour: PaintColour) = withSelectedObject { obj ->
+        act { _, _ -> paintBuilding(obj.instanceId, part, colour) }
     }
 
     /** Pays to bring the selected withered plant back. */

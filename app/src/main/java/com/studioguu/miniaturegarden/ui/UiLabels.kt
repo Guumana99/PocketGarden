@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.PaintColour
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
@@ -52,6 +53,11 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "deco_weathervane" -> R.string.object_deco_weathervane
     "floor_greenhouse" -> R.string.object_floor_greenhouse
     "deco_rock" -> R.string.object_deco_rock
+    "deco_rock_flat" -> R.string.object_deco_rock_flat
+    "deco_rock_mossy" -> R.string.object_deco_rock_mossy
+    "deco_rock_standing" -> R.string.object_deco_rock_standing
+    "deco_rock_pebbles" -> R.string.object_deco_rock_pebbles
+    "struct_bridge_taiko" -> R.string.object_struct_bridge_taiko
     "struct_hut" -> R.string.object_struct_hut
     "struct_well" -> R.string.object_struct_well
     "struct_cottage" -> R.string.object_struct_cottage
@@ -107,7 +113,8 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_TULIP -> "🌷"
     GardenItem.SEED_SUNFLOWER -> "🌻"
     GardenItem.SEED_ROSE -> "🌹"
-    GardenItem.DECO_ROCK -> "🪨"
+    GardenItem.DECO_ROCK, GardenItem.DECO_ROCK_FLAT, GardenItem.DECO_ROCK_MOSSY, GardenItem.DECO_ROCK_STANDING, GardenItem.DECO_ROCK_PEBBLES -> "🪨"
+    GardenItem.STRUCT_BRIDGE -> "🌉"
     GardenItem.STRUCT_HUT -> "🛖"
     GardenItem.STRUCT_WELL -> "🪣"
     GardenItem.GROUND_GRASS -> "🌿"
@@ -174,6 +181,11 @@ fun itemIconRes(item: GardenItem): Int? = when (item) {
     GardenItem.STRUCT_HUT -> R.drawable.icon_struct_hut
     GardenItem.STRUCT_WELL -> R.drawable.icon_struct_well
     GardenItem.DECO_ROCK -> R.drawable.icon_deco_rock
+    GardenItem.DECO_ROCK_FLAT -> R.drawable.icon_deco_rock_flat
+    GardenItem.DECO_ROCK_MOSSY -> R.drawable.icon_deco_rock_mossy
+    GardenItem.DECO_ROCK_STANDING -> R.drawable.icon_deco_rock_standing
+    GardenItem.DECO_ROCK_PEBBLES -> R.drawable.icon_deco_rock_pebbles
+    GardenItem.STRUCT_BRIDGE -> R.drawable.icon_struct_bridge_taiko
     GardenItem.DECO_BENCH -> R.drawable.icon_deco_bench
     GardenItem.DECO_LANTERN -> R.drawable.icon_deco_lantern
     GardenItem.DECO_SPRINKLER -> R.drawable.icon_deco_sprinkler
@@ -305,6 +317,9 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.NOT_RETURNABLE -> R.string.msg_not_returnable
     ActionResult.NOT_MOVABLE -> R.string.msg_not_movable
     ActionResult.NOT_FLIPPABLE -> R.string.msg_not_flippable
+    ActionResult.NEEDS_RIVER_ACROSS -> R.string.msg_needs_river_across
+    ActionResult.BRIDGE_ABOVE -> R.string.msg_bridge_above
+    ActionResult.NOT_PAINTABLE -> R.string.msg_not_paintable
     ActionResult.BUSY -> R.string.msg_busy
     ActionResult.ONLY_ONE_SYMBOL -> R.string.msg_only_one_symbol
     ActionResult.EXPANSION_LOCKED -> R.string.msg_expansion_locked
@@ -397,6 +412,21 @@ fun soilGradeName(grade: SoilGrade): Int = when (grade) {
 }
 
 /** The word that a seed out of season can go in when [season] comes. */
+@StringRes
+fun paintColourName(colour: PaintColour): Int = when (colour.id) {
+    "red" -> R.string.paint_red
+    "blue" -> R.string.paint_blue
+    "green" -> R.string.paint_green
+    "dark_brown" -> R.string.paint_dark_brown
+    "grey" -> R.string.paint_grey
+    "white" -> R.string.paint_white
+    "cream" -> R.string.paint_cream
+    "pale_blue" -> R.string.paint_pale_blue
+    "pale_pink" -> R.string.paint_pale_pink
+    "wood" -> R.string.paint_wood
+    else -> R.string.paint_pale_green
+}
+
 @StringRes
 fun plantInSeasonMessage(season: Season): Int = when (season) {
     Season.SPRING -> R.string.msg_plant_in_spring

@@ -127,6 +127,7 @@ object TapTargets {
         StructureData.WELL -> 2.4f
         StructureData.COTTAGE -> 8.2f
         StructureData.WINDMILL -> 10f
+        StructureData.BRIDGE -> 3f
         null -> 0f
     }
 

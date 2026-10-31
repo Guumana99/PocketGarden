@@ -342,7 +342,8 @@ class OnboardingTest {
         // As large as a garden grows once its cottage stands.
         assertEquals(GardenExpansion.STAGES.first().size, TitleSampleGarden.SIZE)
         val ids = TitleSampleGarden.objects(0).map { it.objectId }.toSet()
-        assertTrue(StructureData.entries.all { it.objectId in ids })
+        // All but the bridge, which wants a river two cells wide.
+        assertTrue(StructureData.entries.filter { it != StructureData.BRIDGE }.all { it.objectId in ids })
         // Every crop that has its artwork; the ones drawn in code wait for theirs.
         assertTrue(listOf(PlantSpecies.TULIP, PlantSpecies.SUNFLOWER, PlantSpecies.ROSE).all { it.objectId in ids })
         assertTrue(TitleSampleGarden.visitors.isNotEmpty())

@@ -56,7 +56,12 @@ class GardenGrid(
         for (obj in objects) if (LawnGrowth.isLawn(obj)) for (cell in obj.occupiedCells()) put(cell, obj)
     }
     private val standing: Map<GridCell, GridObject> = buildMap {
-        for (obj in objects) if (!obj.isFloor && !LawnGrowth.isLawn(obj)) for (cell in obj.occupiedCells()) put(cell, obj)
+        for (obj in objects) if (!obj.isFloor && !LawnGrowth.isLawn(obj) && !obj.isBridge) for (cell in obj.occupiedCells()) put(cell, obj)
+    }
+
+    /** A bridge stands over its river, in a layer of its own: the river goes on under it. */
+    private val bridges: Map<GridCell, GridObject> = buildMap {
+        for (obj in objects) if (obj.isBridge) for (cell in obj.occupiedCells()) put(cell, obj)
     }
 
     /**
@@ -102,8 +107,27 @@ class GardenGrid(
     /** Whether a symbol building stands in the garden, finished or not. */
     val hasSymbol: Boolean = objects.any { it.isSymbol }
 
-    /** What a tap on (x, y) means: the thing standing there, or else the paving under it. */
-    fun objectAt(x: Int, y: Int): GridObject? = occupantAt(x, y) ?: floorAt(x, y)
+    /** What a tap on (x, y) means: the bridge over it, the thing standing there, or else the paving under it. */
+    fun objectAt(x: Int, y: Int): GridObject? = bridges[GridCell(x, y)] ?: occupantAt(x, y) ?: floorAt(x, y)
+
+    /** The bridge over (x, y), if any. */
+    fun bridgeAt(x: Int, y: Int): GridObject? = bridges[GridCell(x, y)]
+
+    /**
+     * Whether a bridge with [footprint] goes with its first cell at (originX, originY): all of it
+     * is over the river, free of other bridges, and it reaches land at both ends. So it crosses a
+     * river two cells wide, from bank to bank, and cannot lie along one.
+     */
+    fun spansRiver(footprint: Footprint, originX: Int, originY: Int): Boolean {
+        val cells = footprint.cells(originX, originY)
+        fun river(x: Int, y: Int) = standing[GridCell(x, y)]?.isTerrain == true
+        if (cells.any { !river(it.x, it.y) || it in bridges }) return false
+        return if (footprint.width > footprint.height) {
+            !river(originX - 1, originY) && !river(originX + footprint.width, originY)
+        } else {
+            !river(originX, originY - 1) && !river(originX, originY + footprint.height)
+        }
+    }
 
     /**
      * Whether something of [kind] with [footprint] fits with its first cell at

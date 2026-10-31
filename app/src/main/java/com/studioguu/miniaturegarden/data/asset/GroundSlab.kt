@@ -35,8 +35,6 @@ data class GroundSlab(val anchorX: Float, val anchorY: Float, val topWidth: Floa
          */
         val REVIVED = GroundSlab(anchorX = 0.502f, anchorY = 0.478f, topWidth = 0.988f)
 
-        /** A cell of open water, the middle of a pond (`res/drawable/pond_center.png`, #57). */
-        val POND_CENTER = GroundSlab(anchorX = 0.5f, anchorY = 0.479f, topWidth = 0.999f)
 
         /** The pond (`res/drawable/pond.png`): its ring of stones is the face. */
         val POND = GroundSlab(anchorX = 0.502f, anchorY = 0.502f, topWidth = 0.962f)

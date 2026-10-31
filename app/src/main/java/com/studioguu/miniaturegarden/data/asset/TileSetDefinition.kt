@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.data.asset
 
 import com.studioguu.miniaturegarden.domain.model.BloomColours
+import com.studioguu.miniaturegarden.domain.model.BuildingPaint
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.FencePart
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -19,6 +20,10 @@ enum class GroundTile(val assetId: String) {
 
 enum class Decoration(val objectId: String) {
     ROCK("deco_rock"),
+    ROCK_FLAT("deco_rock_flat"),
+    ROCK_MOSSY("deco_rock_mossy"),
+    ROCK_STANDING("deco_rock_standing"),
+    ROCK_PEBBLES("deco_rock_pebbles"),
     BENCH("deco_bench"),
     LANTERN("deco_lantern"),
     SPRINKLER("deco_sprinkler"),
@@ -63,7 +68,7 @@ object TileSetDefinition {
      * (or `<objectId>_withered`); everything else uses its object id unchanged.
      */
     fun assetIdFor(gridObject: GridObject): String {
-        if (!gridObject.isPlant) return gridObject.objectId
+        if (!gridObject.isPlant) return if (gridObject.turned) "${gridObject.objectId}_back" else gridObject.objectId
         val species = PlantSpecies.forObjectId(gridObject.objectId)
         if (gridObject.status == PlantStatus.WITHERED && species.canWither) return witheredId(gridObject.objectId)
         val stage = growthStage(gridObject.growthProgress, species.growthStages)
@@ -161,7 +166,8 @@ object TileSetDefinition {
             PlantSpecies.entries.flatMap(::spriteIdsFor) +
             (objectIds - PlantSpecies.entries.map { it.objectId }.toSet() - DRAWABLE_OBJECT_IDS) +
             WINDMILL_SAILS +
-            (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId)
+            (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId) +
+            "deco_bench_back" + BuildingPaint.PAINTABLE_OBJECT_IDS.map { "mask_$it" }
 
     /** 1-based stage; the last stage is reserved for a fully grown plant (progress 1.0). */
     fun growthStage(growthProgress: Float, stages: Int): Int {

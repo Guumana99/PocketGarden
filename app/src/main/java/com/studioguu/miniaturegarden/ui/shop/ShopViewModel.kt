@@ -113,6 +113,11 @@ class ShopViewModel @Inject constructor(
             .combine(guiding) { shelves, guided -> if (guided) ShopShelves.firstSteps(shelves) else shelves }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** The kinds of rock, as the list under the shelf's one rock shows them. */
+    val rockKinds: StateFlow<List<ShelfItem>> = combine(playerStats, coins, held) { stats, coins, counts ->
+        ShopShelves.rockKinds(stats, coins, counts)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Whether the garden can be grown now, and what it takes; offered in the workshop. */
     val expansion: StateFlow<ExpansionOffer> =
         combine(gardenRepository.observeProgress(), gardenRepository.observeUserProfile()) { progress, profile ->
