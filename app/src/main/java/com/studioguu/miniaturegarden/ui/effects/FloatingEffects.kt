@@ -36,49 +36,31 @@ sealed interface GardenEffect {
      */
     data class Harvest(override val id: Long, val coins: Int, val bounty: Boolean = false) : GardenEffect
 
-    /** A page of the encyclopedia became ready to be filled in. */
-    data class Discovery(override val id: Long) : GardenEffect
-
     /**
-     * A building was finished, or taking one apart was. [newPage]: finishing it also made a page
-     * of the encyclopedia ready, said on the same plaque rather than on a second one over it.
-     * The experience its unveiling pays is not said here: "完成", the new page and "+XP" at once
-     * were too much to read, and the level bar shows it filling.
+     * A building was finished, or taking one apart was. The experience its unveiling pays is not
+     * said here: the level bar shows it filling. A page of the encyclopedia made ready is not said
+     * either: the red dot on the book's button tells of that.
      */
     data class WorkDone(
         override val id: Long,
         val objectId: String,
         val kind: WorkKind,
-        val newPage: Boolean = false,
     ) : GardenEffect
 }
 
 /**
- * [effect] added to the effects on screen. A building's first completion also makes its page of
- * the book ready, and the two would otherwise float up in the same place at the same moment: the
- * news of the page joins the plaque of the building instead, whichever of the two comes first.
- *
- * Effects of one kind float up from the same spot, so a second of a kind while the first is
- * still up is merged into it rather than laid over it (#59: several pages ready at once, or a
- * row of crops harvested in a run, stacked into an unreadable pile). The merged effect takes the
- * new id, so it starts afresh: a harvest's sums add up, a page's news is said once, and a tool's
- * rank is the newest one.
+ * [effect] added to the effects on screen. Effects of one kind float up from the same spot, so a
+ * second harvest while the first is still up is merged into it rather than laid over it (#59: a
+ * row of crops harvested in a run stacked into an unreadable pile). The merged effect takes the
+ * new id, so it starts afresh, and its sums add up.
  */
-fun List<GardenEffect>.plusEffect(effect: GardenEffect): List<GardenEffect> {
-    val built = indexOfLast { it is GardenEffect.WorkDone && it.kind == WorkKind.BUILDING }
-    return when {
-        effect is GardenEffect.Discovery && built >= 0 ->
-            toMutableList().also { it[built] = (it[built] as GardenEffect.WorkDone).copy(newPage = true) }
-        effect is GardenEffect.WorkDone && effect.kind == WorkKind.BUILDING && any { it is GardenEffect.Discovery } ->
-            filterNot { it is GardenEffect.Discovery } + effect.copy(newPage = true)
-        effect is GardenEffect.Harvest && any { it is GardenEffect.Harvest } ->
-            filterNot { it is GardenEffect.Harvest } +
-                effect.copy(coins = effect.coins + filterIsInstance<GardenEffect.Harvest>().sumOf { it.coins })
-        effect is GardenEffect.Discovery && any { it is GardenEffect.Discovery } ->
-            filterNot { it is GardenEffect.Discovery } + effect
-        else -> this + effect
+fun List<GardenEffect>.plusEffect(effect: GardenEffect): List<GardenEffect> =
+    if (effect is GardenEffect.Harvest && any { it is GardenEffect.Harvest }) {
+        filterNot { it is GardenEffect.Harvest } +
+            effect.copy(coins = effect.coins + filterIsInstance<GardenEffect.Harvest>().sumOf { it.coins })
+    } else {
+        this + effect
     }
-}
 
 private const val DURATION_MILLIS = 2_600
 private val RISE = 96.dp
@@ -86,28 +68,21 @@ private val RISE = 96.dp
 /**
  * How long an effect is on screen, and for what share of that it is fully visible before it
  * fades. The sums of a harvest float up and go after about two seconds of being readable; news of
- * a building (finished, taken down, packed away) or of a new page for the book stays a good
- * while, so that it can be read (#49, #52).
+ * a building (finished, taken down, packed away) stays a good while, so that it can be read (#49).
  */
 data class EffectTiming(val durationMillis: Int, val visibleShare: Float, val riseShare: Float)
 
 fun effectTiming(effect: GardenEffect): EffectTiming = when (effect) {
     is GardenEffect.WorkDone -> EffectTiming(durationMillis = 3_600, visibleShare = 0.8f, riseShare = 0.35f)
-    // A new page for the book is news too: it stays nearly as long as a building's (#52).
-    is GardenEffect.Discovery -> EffectTiming(durationMillis = 3_200, visibleShare = 0.78f, riseShare = 0.45f)
     // The sums of a harvest: readable for about two seconds before they fade (#52: one was too quick).
     else -> EffectTiming(durationMillis = DURATION_MILLIS, visibleShare = 0.72f, riseShare = 0.8f)
 }
 
-/**
- * One action can set off several effects at once (harvest, first discovery). Each kind
- * starts one step higher than the last so they stack instead of overlap.
- */
+/** A building's news starts one step above a harvest's, so that the two stack instead of overlap. */
 private val LIFT_STEP = 60.dp
 
 private fun liftSteps(effect: GardenEffect): Int = when (effect) {
     is GardenEffect.Harvest -> 0
-    is GardenEffect.Discovery -> 1
     is GardenEffect.WorkDone -> 1
 }
 
@@ -144,7 +119,6 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
     val lift = LIFT_STEP * liftSteps(effect)
     val text = when (effect) {
         is GardenEffect.Harvest -> stringResource(if (effect.bounty) R.string.effect_harvest_bounty else R.string.effect_harvest, effect.coins)
-        is GardenEffect.Discovery -> stringResource(R.string.effect_discovery)
         is GardenEffect.WorkDone -> stringResource(
             when (effect.kind) {
                 WorkKind.DEMOLISHING -> R.string.effect_demolished
@@ -152,7 +126,7 @@ private fun FloatingEffectText(effect: GardenEffect, onFinished: (Long) -> Unit)
                 else -> R.string.effect_built
             },
             objectDisplayName(effect.objectId),
-        ) + if (effect.newPage) "\n" + stringResource(R.string.effect_discovery) else ""
+        )
     }
     Text(
         text = text,

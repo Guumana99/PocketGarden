@@ -144,6 +144,19 @@ class OnboardingTest {
     }
 
     @Test
+    fun `tapping again and again gets one seed of the first steps, and costs nothing`() = runBlocking {
+        repo.progress = GardenProgress(tutorialStep = TutorialStep.BUY_SEED)
+        val buy = PurchaseItemUseCase(repo)
+        assertEquals(ActionResult.SUCCESS, buy(PracticeGarden.SEED))
+        // Before the step has moved on, and after.
+        assertEquals(ActionResult.NOT_THIS_STEP, buy(PracticeGarden.SEED))
+        assertEquals(TutorialStep.PLANT_SEED, follow())
+        assertEquals(ActionResult.NOT_THIS_STEP, buy(PracticeGarden.SEED))
+        assertEquals(1, repo.getInventory().filter { it.itemId == PracticeGarden.SEED.itemId }.sumOf { it.amount })
+        assertEquals(UserProfile.STARTING_COINS, repo.profile!!.coins)
+    }
+
+    @Test
     fun `leaving the practice garden the first time brings the closing board and the first gift`() = runBlocking {
         val practice = FakePractice()
         val leave = LeavePracticeUseCase(repo, practice, PlaceGiftUseCase(repo, GardenMap.DEFAULT))

@@ -624,11 +624,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             ShopStageScreen(onLeave = { showShop = false })
         }
 
-        // The first steps can be left at any moment, whatever is on show.
-        if (tutorialStep?.isGuiding == true) {
+        // The first steps can be left at any moment in the garden; the shop keeps to its one seed.
+        if (tutorialStep?.isGuiding == true && !showShop) {
             SkipTutorialButton(
                 onClick = {
-                    showShop = false
                     showInventory = false
                     viewModel.leavePractice()
                 },

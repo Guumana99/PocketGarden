@@ -333,8 +333,8 @@ di/       Hilt の束ね
 - **天候**は `WeatherType`（晴れ・くもり・雨・雪）。決め方と保存は「天気（#75）」。
   ただし**初回プレイ中は晴れに固定**（#61、`WeatherForecast.forGarden(tutorialStep, diary)`）：導きの段階と完了の札（`TutorialStep.isFirstPlay` = `FINISHED` まで）の間は、保存した天気に関係なく晴れ。
   季節は新しい庭がいつも春から始まる（`GardenProgress.NEW_GARDEN`、季節の時計は最初の同期で動き出す）。`GardenViewModel` は `gardenForecast()` を通して天気を決め、`watchFirstPlayWeather` で初回プレイの終わりに表示を切り替える。
-- **慈雨**（`GrantRewardUseCase.blessedRain`）：生きている作物をすべて今まで進めてから、**水分を 100% にし**、残りの成長時間を半分に（育ちきった作物は水だけ）。状態は水分・栄養・ストレスから計算し直すので、のどが渇いた作物は元気に戻る。枯れた作物はそのまま。
-  #61 まで水分に触れておらず、慈雨のあとも水分が回復しなかった。
+- **雨乞い**（`GrantRewardUseCase.blessedRain`。旧称「慈雨」）：生きている作物をすべて今まで進めてから、**水分を 100% にし**、残りの成長時間を半分に（育ちきった作物は水だけ）。状態は水分・栄養・ストレスから計算し直すので、のどが渇いた作物は元気に戻る。枯れた作物はそのまま。
+  #61 まで水分に触れておらず、雨のあとも水分が回復しなかった。
   雨と雪（`isProtective`）は水分を満たし、ストレスの増加をすべて止める。雪は成長 1.0 倍（雨は 1.2 倍）。
 - `WeatherForecast` を渡すと、不在期間を**天気の変わり目で区切って**計算する（`WeatherForecast.nextChangeAfter`。保存した天気 `WeatherDiary` は朝 5 時ごと）。
   `WeatherType` 自体も「ずっとその天気」という予報として渡せる（テストはこれを使う。変わり目は無い）。
@@ -560,7 +560,7 @@ FINISHED ──タップ──▶ REVEAL_EDIT ──タップ──▶ REVEAL_RA
   - 作物のパネルは導きの間は状態と水やりだけ（`HARVEST` の段階は収穫も）。
 
 - 編集モード（✏️）も段階解放の 1 つ（`GardenFeature.EDIT_MODE`、最初に渡す）。それまで ✏️ は出さない。
-- **機能の段階解放**（`GardenFeature`）：「編集モード」「慈雨」「図鑑」「カメラ」「ポスト」は導きの間と `FINISHED` では画面に出さない。
+- **機能の段階解放**（`GardenFeature`）：「編集モード」「雨乞い」「図鑑」「カメラ」「ポスト」は導きの間と `FINISHED` では画面に出さない。
   `TutorialStep.reveals(feature)` が true になった順に、ボタンがぽんと現れる（`GardenScreen` の `RevealedFeature`）。
   紹介中（`TutorialStep.introducing`）のボタンには金色の光る枠（`revealGlow`）と「NEW」札、画面の中央に木の札（`FeatureRevealCard`、名前・ひとこと・場所・「わかった」）。
   札はダイアログにせず庭に重ねるので、光るボタンが同時に見える。「わかった」で `FollowTutorialUseCase.acknowledge` が次へ進める（今の段階と違う札のタップは無視）。

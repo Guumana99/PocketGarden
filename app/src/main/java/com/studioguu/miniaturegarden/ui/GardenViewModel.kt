@@ -915,7 +915,7 @@ class GardenViewModel @Inject constructor(
                     _selectedTile.value = null
                     audio.play(SoundEffect.LEVEL_UP)
                     // Its experience comes now, not when the site went up (#50). The plaque says only
-                    // that it is finished (and a new page, if any): no "+XP" on it or beside it.
+                    // that it is finished: no "+XP" on it or beside it.
                     showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
                     happyMoment()
                 }
@@ -1280,8 +1280,8 @@ class GardenViewModel @Inject constructor(
     }
 
     /**
-     * Says so when a page of the encyclopedia becomes ready. Filling it in, and the coins for
-     * that, happen in the book, at the player's tap.
+     * Watches the encyclopedia. A page made ready is told by the red dot on the book's button
+     * alone; filling it in, and the coins for that, happen in the book, at the player's tap.
      */
     private fun watchCollection() {
         viewModelScope.launch {
@@ -1296,7 +1296,6 @@ class GardenViewModel @Inject constructor(
 
                 val found = CollectionEntry.entries.filter { it.objectId in now && it.objectId !in before }
                 if (found.isNotEmpty()) {
-                    showEffect { GardenEffect.Discovery(it) }
                     // The first harvest of a crop is one of the good moments.
                     if (found.any { it.trigger == CollectionTrigger.HARVEST }) happyMoment()
                 } else if (CollectionEntry.entries.any { entry -> entry.objectId in before && newColour(entry, before, now) }) {
@@ -1330,8 +1329,8 @@ class GardenViewModel @Inject constructor(
             }
             when (result) {
                 ActionResult.SUCCESS -> onSuccess()
-                // Hard ground giving a little is not a mistake, and it makes no sound: the knock
-                // played here sounded out of place. The words "地面が固いようです" say it.
+                // Hard ground giving a little is not a mistake: no sound and no words, the earth
+                // coming through in patches says it.
                 ActionResult.HOE_STRUCK -> Unit
                 else -> audio.play(SoundEffect.ERROR)
             }

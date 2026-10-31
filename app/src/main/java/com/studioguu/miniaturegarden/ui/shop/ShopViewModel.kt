@@ -195,6 +195,8 @@ class ShopViewModel @Inject constructor(
         _notice.value = null
         viewModelScope.launch {
             val result = purchaseItem(item).also { if (it == ActionResult.SUCCESS) followTutorial() }
+            // Another tap on the first steps' seed, which has been handed over: nothing to say.
+            if (result == ActionResult.NOT_THIS_STEP) return@launch
             audio.play(if (result == ActionResult.SUCCESS) SoundEffect.COIN else SoundEffect.ERROR)
             _feedback.value = PurchaseFeedback(item, result)
         }

@@ -591,7 +591,8 @@ class RemoveObjectUseCase @Inject constructor(
 /**
  * Buys one [GardenItem]: tops up an existing stack of it if one has room, otherwise takes the
  * first empty slot. Coins are only spent when the item actually fits. Items the player has not
- * unlocked yet cannot be bought, whatever they can afford.
+ * unlocked yet cannot be bought, whatever they can afford. During the first steps the shop only
+ * gives away their one seed, and answers anything more with [ActionResult.NOT_THIS_STEP].
  */
 class PurchaseItemUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
@@ -605,8 +606,13 @@ class PurchaseItemUseCase @Inject constructor(
         if (season != null && !item.isInSeason(season)) return@runInTransaction ActionResult.OUT_OF_SEASON
         // One symbol building per garden, and one in the bag counts as well.
         if (item.isSymbol && gardenRepository.ownsSymbolBuilding()) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
-        // The first steps hand their seed over the counter for nothing.
-        val price = if (gardenRepository.getProgress()?.tutorialStep?.givesAway(item) == true) 0 else item.price
+        // The first steps hand one seed over the counter for nothing, however often it is tapped:
+        // nothing else is for sale there, and nothing more once the seed is in the bag.
+        val step = gardenRepository.getProgress()?.tutorialStep
+        if (step?.isGuiding == true && (!step.givesAway(item) || gardenRepository.getInventory().any { it.itemId == item.itemId && !it.isEmpty })) {
+            return@runInTransaction ActionResult.NOT_THIS_STEP
+        }
+        val price = if (step?.givesAway(item) == true) 0 else item.price
         if (profile.coins < price) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
 
         val slots = gardenRepository.getInventory().filter { it.slotIndex < profile.inventoryCapacity }

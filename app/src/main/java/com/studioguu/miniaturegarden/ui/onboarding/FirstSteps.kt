@@ -154,7 +154,7 @@ fun WelcomeDialog(onClose: () -> Unit) = TutorialBoard(
     onClose = onClose,
 )
 
-/** What the fertilizer did and did not do, and the one time that time is brought on. */
+/** What the fertilizer did, and the one time that time is brought on. */
 @Composable
 fun PracticeGrowDialog(onClose: () -> Unit) = TutorialBoard(
     title = stringResource(R.string.tutorial_grow_title),

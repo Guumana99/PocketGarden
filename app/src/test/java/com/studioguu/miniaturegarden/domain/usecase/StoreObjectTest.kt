@@ -199,8 +199,13 @@ class StoreObjectTest {
     @Test
     fun `the rain reward goes by its new name everywhere`() {
         assertFalse(strings.contains("恵みの雨"))
-        for (name in listOf("reward_rain_button", "reward_rain_confirm", "msg_blessed_rain_done")) {
-            assertTrue(name, string(name).contains("慈雨"))
+        assertFalse(strings.contains("慈雨"))
+        for (name in listOf("reward_rain_button", "reward_rain_confirm", "reveal_rain_name")) {
+            assertTrue(name, string(name).contains("雨乞い"))
+        }
+        // What it does is told without numbers.
+        for (name in listOf("reward_rain_confirm", "msg_blessed_rain_done", "reveal_rain_text")) {
+            assertFalse(name, string(name).any { it.isDigit() })
         }
         // The button is just its name: no count of how many are left, no numbers at all.
         val button = string("reward_rain_button")

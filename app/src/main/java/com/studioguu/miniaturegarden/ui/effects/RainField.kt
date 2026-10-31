@@ -9,7 +9,7 @@ enum class RainStyle {
     /** Ordinary rain: quick, thin streaks, slanted by the wind. */
     RAIN,
 
-    /** The blessed rain (慈雨): slower, softer drops, warm in colour, a few of them glinting. */
+    /** The blessed rain, called down with 雨乞い: slower, softer drops, warm in colour, a few of them glinting. */
     BLESSED,
 }
 
