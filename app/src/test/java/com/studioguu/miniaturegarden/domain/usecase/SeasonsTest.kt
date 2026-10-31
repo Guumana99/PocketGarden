@@ -214,7 +214,7 @@ class SeasonsTest {
     @Test
     fun `the seed shelf holds what is in season and what grows all year`() {
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TULIP, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_ROSE, GardenItem.SEED_CARROT),
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_TULIP, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_ROSE, GardenItem.SEED_CARROT, GardenItem.SEED_NANOHANA),
             GardenItem.shelf(ItemCategory.SEED, Season.SPRING).toSet(),
         )
         assertEquals(
@@ -232,7 +232,7 @@ class SeasonsTest {
             GardenItem.shelf(ItemCategory.SEED, Season.AUTUMN).toSet(),
         )
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_SNOWDROP, GardenItem.SEED_POINSETTIA, GardenItem.SEED_DAIKON),
+            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_SNOWDROP, GardenItem.SEED_POINSETTIA, GardenItem.SEED_DAIKON, GardenItem.SEED_HAKUSAI),
             GardenItem.shelf(ItemCategory.SEED, Season.WINTER).toSet(),
         )
         // The other shelves are the same in every season.
@@ -292,7 +292,7 @@ class SeasonsTest {
             }
             assertFalse(GardenItem.SEED_SHIITAKE in sown)
             for ((j, seed) in sown.withIndex()) {
-                assertEquals("$seed in $s", ActionResult.SUCCESS, sow(seed, j % 9, i + 4 * (j / 9), inGreenhouse = true))
+                assertEquals("$seed in $s", ActionResult.SUCCESS, sow(seed, j % 11, i + 4 * (j / 11), inGreenhouse = true))
                 repo.objects.values.removeIf { it.isPlant }
             }
         }

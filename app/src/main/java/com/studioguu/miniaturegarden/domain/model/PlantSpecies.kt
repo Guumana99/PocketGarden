@@ -102,14 +102,12 @@ enum class PlantSpecies(
     CORN("plant_corn", growthHours = 42, dryOutHours = 18, harvestCoins = 165, harvestXp = 63, growthStages = 3),
 
     /**
-     * Winter's leafy head at Lv.10: grown and pulled up like the daikon. It has no pictures yet, so
-     * it is not on sale ([GardenItem.SEED_HAKUSAI]).
+     * Winter's leafy head at Lv.10: grown and pulled up like the daikon.
      */
     HAKUSAI("plant_hakusai", growthHours = 30, dryOutHours = 26, harvestCoins = 105, harvestXp = 43, growthStages = 3),
 
     /**
-     * Spring's yellow field flower at Lv.12, light like the cosmos. It has no pictures yet, so it
-     * is not on sale ([GardenItem.SEED_NANOHANA]).
+     * Spring's yellow field flower at Lv.12, light like the cosmos.
      */
     NANOHANA("plant_nanohana", growthHours = 32, dryOutHours = 20, harvestCoins = 115, harvestXp = 45, growthStages = 3, ground = PlantGround.FLOWER_BED);
 

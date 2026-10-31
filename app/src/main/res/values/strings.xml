@@ -297,6 +297,8 @@
 乾いた日にも、よく耐える。</string>
     <string name="flavor_corn">背の高い茎に、黄色い粒がぎっしり。
 実るまでは、少し気長に。</string>
+    <string name="flavor_hakusai">葉を幾重にも巻いた、冬の大きな株。\n霜に当たるほど、甘みが増すという。</string>
+    <string name="flavor_nanohana">春を告げる、まぶしい黄色の花。\n畑いっぱいに咲くと、お庭が明るくなる。</string>
     <string name="flavor_mint">季節を選ばない、丈夫な葉。\n触れると、すっと涼やかな香りが立つ。</string>
     <string name="flavor_greenhouse">ガラスの中は、いつもぽかぽか。\n季節外れの花も、ここなら育つ。</string>
     <string name="flavor_tulip">春のお庭の定番。\n育てやすく、初めての人にもやさしい。</string>
@@ -310,6 +312,7 @@
     <string name="flavor_bench">ひと休みにちょうどいい。\n腰かけて、お庭を眺めよう。</string>
     <string name="flavor_lantern">苔むした、石の灯り。\n夕暮れに、ぽっと灯る。</string>
     <string name="flavor_sprinkler">くるくる回って、まわりの畑に水をまく。\n止めておけば、ただの飾り。</string>
+    <string name="flavor_weathervane">風を読む、鉄のおんどり。\nこれがあると、あしたの天気が分かる。</string>
     <string name="flavor_rock">どっしりと構えた、大きな岩。\nまるでお庭の主のような顔をしている。</string>
     <string name="flavor_rock_flat">上が平らな、低い石。\n腰かけると、日なたのぬくもりが伝わる。</string>
     <string name="flavor_rock_mossy">緑の衣をまとった岩。\n雨の翌日は、苔がいちだんと色づく。</string>

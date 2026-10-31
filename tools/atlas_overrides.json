@@ -43,5 +43,6 @@
   "struct_fence_bamboo_post": {"anchorX": 0.5, "anchorY": 0.97},
   "struct_fence_bamboo_rail": {"anchorX": 0.5, "anchorY": 1.0, "attachX": 0.5, "attachY": 1.1228},
   "struct_edging_brick": {"anchorX": 0.5, "anchorY": 0.8},
-  "struct_edging_brick_rail": {"anchorX": 0.5, "anchorY": 0.8, "attachX": 0.5, "attachY": 0.8}
+  "struct_edging_brick_rail": {"anchorX": 0.5, "anchorY": 0.8, "attachX": 0.5, "attachY": 0.8},
+  "deco_weathervane": {"anchorX": 0.5, "anchorY": 0.9377}
 }

@@ -168,11 +168,9 @@ class ProgressionTest {
             setOf(GardenItem.SEED_SUNFLOWER, GardenItem.DECO_BENCH, GardenItem.STRUCT_COTTAGE, GardenItem.SEED_DAIKON, GardenItem.DECO_POND, GardenItem.DECO_ROCK_FLAT),
             GardenItem.unlockedBetween(2, 4).toSet(),
         )
-        // What has no pictures yet is not in the news: Lv.6 brings the eggplant alone, Lv.10 only
-        // a rock, and Lv.12 nothing at all.
-        assertEquals(setOf(GardenItem.SEED_EGGPLANT), GardenItem.unlockedBetween(5, 6).toSet())
-        assertEquals(setOf(GardenItem.DECO_ROCK_STANDING), GardenItem.unlockedBetween(9, 10).toSet())
-        assertTrue(GardenItem.unlockedBetween(11, 12).isEmpty())
+        assertEquals(setOf(GardenItem.SEED_EGGPLANT, GardenItem.DECO_WEATHERVANE), GardenItem.unlockedBetween(5, 6).toSet())
+        assertEquals(setOf(GardenItem.DECO_ROCK_STANDING, GardenItem.SEED_HAKUSAI), GardenItem.unlockedBetween(9, 10).toSet())
+        assertEquals(setOf(GardenItem.SEED_NANOHANA), GardenItem.unlockedBetween(11, 12).toSet())
         assertEquals(setOf(GardenItem.STRUCT_BRIDGE), GardenItem.unlockedBetween(15, 17).toSet())
         assertTrue(GardenItem.unlockedBetween(3, 3).isEmpty())
     }
@@ -196,11 +194,11 @@ class ProgressionTest {
         assertTrue(LevelUpNotice(15, 16).unlockedItems.isEmpty())
     }
 
-    // --- What has no pictures yet ---
+    // --- What is registered and not on sale ---
 
     @Test
-    fun `hakusai, nanohana, the weathervane and the withdrawn edging are registered but never on a shelf`() {
-        val waiting = setOf(GardenItem.SEED_HAKUSAI, GardenItem.SEED_NANOHANA, GardenItem.DECO_WEATHERVANE, GardenItem.STRUCT_EDGING_BRICK)
+    fun `the withdrawn edging is registered but never on a shelf`() {
+        val waiting = setOf(GardenItem.STRUCT_EDGING_BRICK)
         assertEquals(waiting, GardenItem.entries.filter { !it.inShop }.toSet())
         for (category in ItemCategory.entries) {
             for (season in Season.entries) assertTrue(GardenItem.shelf(category, season).none { it in waiting })

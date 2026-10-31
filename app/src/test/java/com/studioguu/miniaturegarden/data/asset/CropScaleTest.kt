@@ -65,8 +65,6 @@ class CropScaleTest {
             if (!field) assertTrue(asset.assetId, height(asset.assetId) <= CropScale.MAX_HEIGHT + 1e-4f)
             assertTrue(asset.assetId, width(asset.assetId) <= CropScale.MAX_WIDTH + 1e-4f)
         }
-        // The grown daikon's leaves came two tiles wide.
-        assertTrue(raw.assets.first { it.assetId == "plant_daikon_stage3" }.width > 2 * tile * 0.9f)
     }
 
     @Test

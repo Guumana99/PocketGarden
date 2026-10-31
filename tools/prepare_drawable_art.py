@@ -34,6 +34,11 @@ This script:
         it: each picture is sized by its log alone ("log"), so that the log is as long in all of
         them, and stood on the foot of the log (log_anchor);
       - poinsettia (#69): three stages and a withered one, as they came; a round bush;
+      - hakusai (#87): the same; stage 2 came with its roots showing, which are cut off, so that it
+        stands on the foot of its leaves (hakusai_stages), and stage 3 is tall, sized by its height;
+      - nanohana (#87): the same; a wide flowering clump, sized by its width from stage 2 on;
+      - cosmos stage 1 (#87): a young plant so pale and fine that it vanished on the soil; it is
+        brought to the colour of stage 2's leaves and its strands are firmed up (deepened);
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
         each is as tall (or as wide) as WITHERED says;
   * icons: icon_<crop>.png, cut out and brought to ICON_SIZE, to res/drawable-nodpi for the bag:
@@ -66,7 +71,7 @@ from PIL import Image
 
 from prepare_building_art import (
     ALPHA_MIN, OVERRIDES, RAW, SOURCE, TILE, border, components, crop, dilate,
-    reconstruct, resize, top_face_of,
+    keep_main_part, reconstruct, resize, top_face_of,
 )
 
 ROOT = SOURCE.parent.parent
@@ -91,9 +96,11 @@ STAGES: dict[str, list] = {
     "cosmos": [0.3, 0.64, 0.85],
     "snowdrop": [0.3, 0.48, 0.62],
     "watermelon": [0.3, ("w", 0.7), ("w", 0.85)],
-    "lavender": [0.3, 0.5, 0.66],
+    "lavender": [0.26, 0.42, 0.56],
     "shiitake": [("log", 0.5), ("log", 0.5), ("log", 0.5)],
     "poinsettia": [0.3, 0.55, 0.7],
+    "hakusai": [0.3, 0.46, 0.8],
+    "nanohana": [0.3, ("w", 0.55), ("w", 0.72)],
 }
 
 #: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
@@ -107,6 +114,8 @@ CUT: dict[str, dict] = {
     "snowdrop": {"white_parts": 0.8},
     "lavender": {"throughout": True, "solid": 100.0},
     "shiitake": {"white_parts": 0.8},
+    "hakusai": {"white_parts": 1.0},
+    "nanohana": {"throughout": True, "solid": 100.0},
 }
 
 #: The same for an icon, where it is cut out differently from its plant: the lavender's bunch is
@@ -118,6 +127,7 @@ ICON_CUT: dict[str, dict] = {
     "daikon": {"white_parts": 1.0},
     "eggplant": {"shadow": 0.7},
     "watermelon": {"white_parts": 1.0},
+    "nanohana": {"white_parts": 1.0},
 }
 
 #: Crops whose icon is made here though their plants are not (#72): the rose, paprika and daikon
@@ -131,6 +141,15 @@ ICON_ONLY = {"rose", "paprika", "daikon"}
 LEAF_GAIN: dict[str, float] = {
     "plant_watermelon_stage2": 1.3,
 }
+
+#: How [deepened] takes a picture: contrast about its middle colour, and the power its alpha is
+#: raised to (below 1, half see-through strands come up).
+DEEPEN_CONTRAST = 1.25
+DEEPEN_FIRMNESS = 0.6
+
+#: How much of the foot of the hakusai's stage 2 is its roots: thin hairs that fan out no wider
+#: than the stalks, so that [without_roots] does not see them.
+HAKUSAI_ROOTS = 0.04
 
 #: The tulip's flowers (#58): red is its plain stage 3, the others are variants of it.
 TULIP_COLOURS = ["pink", "yellow", "white", "purple", "blue"]
@@ -176,9 +195,11 @@ WITHERED: dict[str, object] = {
     "cosmos": 0.85,
     "snowdrop": 0.62,
     "watermelon": ("w", 0.85),
-    "lavender": 0.66,
+    "lavender": 0.56,
     "shiitake": ("log", 0.5),
     "poinsettia": 0.7,
+    "hakusai": 0.7,
+    "nanohana": ("w", 0.72),
 }
 
 
@@ -374,6 +395,36 @@ def without_roots(rgba: np.ndarray, flare: float = 1.15) -> np.ndarray:
     return crop(rgba[:foot].copy())
 
 
+def hakusai_stages() -> list[np.ndarray]:
+    stages = simple_stages("hakusai", "_stage")
+    # The seedling's shadow left a few specks beside its foot.
+    grown = stages[1]
+    return [crop(keep_main_part(stages[0])), crop(grown[:int(grown.shape[0] * (1 - HAKUSAI_ROOTS))].copy()), stages[2]]
+
+
+def deepened(rgba: np.ndarray, like: np.ndarray) -> np.ndarray:
+    """
+    [rgba], pale and fine, brought to the colour of [like]'s leaves: each channel scaled until its
+    median meets theirs, with the contrast about that median raised, and its see-through strands
+    firmed up, so that it keeps its shape on dark soil and on light ground alike.
+    """
+    solid = rgba[:, :, 3] > 128
+    leaves = like[:, :, 3] > 200
+    own = np.median(rgba[:, :, :3][solid], axis=0)
+    target = np.median(like[:, :, :3][leaves], axis=0)
+    rgb = rgba[:, :, :3].astype(float) * target / np.maximum(own, 1.0)
+    rgb = target + (rgb - target) * DEEPEN_CONTRAST
+    out = rgba.copy()
+    out[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    out[:, :, 3] = (255.0 * (rgba[:, :, 3] / 255.0) ** DEEPEN_FIRMNESS).astype(np.uint8)
+    return out
+
+
+def cosmos_stages() -> list[np.ndarray]:
+    stages = simple_stages("cosmos", "_stage")
+    return [deepened(stages[0], stages[1])] + stages[1:]
+
+
 def snowdrop_stages() -> list[np.ndarray]:
     stages = simple_stages("snowdrop", "_stage")
     return [without_roots(stages[0])] + stages[1:]
@@ -451,12 +502,14 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "tulip": [crop(load_cut(f"crop_tulip_stage{n}.png")) for n in (1, 2)] + [crop(load_cut("crop_tulip_red_stage3.png"))],
         "sunflower": simple_stages("sunflower", "_stage"),
         "mint": simple_stages("mint", "_stage"),
-        "cosmos": simple_stages("cosmos", "_stage"),
+        "cosmos": cosmos_stages(),
         "snowdrop": snowdrop_stages(),
         "watermelon": simple_stages("watermelon", "_stage"),
         "lavender": simple_stages("lavender", "_stage"),
         "shiitake": simple_stages("shiitake", "_stage"),
         "poinsettia": simple_stages("poinsettia", "_stage"),
+        "hakusai": hakusai_stages(),
+        "nanohana": simple_stages("nanohana", "_stage"),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():
@@ -542,6 +595,7 @@ CUT_ICONS: dict[str, Path] = {
     "floor_greenhouse": RAW / "floor_greenhouse.png",
     # The panel of fence the garden draws for one standing alone (item_fence_wood.png is a sheet of parts).
     "struct_fence": RAW / "struct_fence.png",
+    "deco_weathervane": RAW / "deco_weathervane.png",
 }
 
 

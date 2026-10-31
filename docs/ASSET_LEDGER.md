@@ -54,8 +54,8 @@
 | ラベンダー（`plant_lavender`） | Lv5 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#67。C2PA を grep で確認）。#67 で 4 段階から 3 段階に。細かい葉の白いもやを絵全体で戻して切り抜いた。アイコンの麻ひもは消えないよう白だけを抜いた |
 | しいたけ（`plant_shiitake`） | Lv14 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#68。C2PA を grep で確認）。#68 でカボチャと入れ替えた作物。丸太の長さが全段階で同じになるよう大きさを決めた。枯れの白っぽい樹皮は白だけを抜いて切り抜いた |
 | ポインセチア（`plant_poinsettia`） | Lv15 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#69。C2PA を grep で確認）。#69 で 4 段階から 3 段階に。段階 2 の苞はピンク、段階 3 は赤（届いた絵のまま） |
-| 白菜（`plant_hakusai`） | Lv10 | ⬜ | ⬜ | ⬜ | ➖ | ⬜ | ⬜ | **未作成**。データだけ登録し、ショップには出していない（`GardenItem.inShop = false`）。絵を入れたら `inShop` を外す。原画の候補が `tools/source_art/` に未追跡のまま置かれている（未確認・未加工） |
-| 菜の花（`plant_nanohana`） | Lv12 | ⬜ | ⬜ | ⬜ | ➖ | ⬜ | ⬜ | **未作成**。白菜と同じ扱い（ショップに出していない） |
+| 白菜（`plant_hakusai`） | Lv10 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87）。段階 2 のひげ根を切り落とす。葉が白っぽいので真っ白だけを抜く（`white_parts`）。段階 3 は縦長で高さ 0.8 マス |
+| 菜の花（`plant_nanohana`） | Lv12 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87）。切り抜きはコスモスと同じ（`throughout`）。段階 2 から幅で大きさを決める（0.55・0.72 マス） |
 
 - 仮（⬜）の作物に絵を入れるときは、**その作物の段階と枯れを全部そろえて**入れる（一部だけだと `CodeArtTest` が落ちる）。段階の数を 3 に変えるなら `PlantSpecies.growthStages` も直す。
 - アイコンの絵は `res/drawable-nodpi/icon_<作物>.png`（256×256、`tools/prepare_drawable_art.py` が原画から作る）を置き、`UiLabels.itemIconRes` に 1 行足す。
@@ -64,8 +64,8 @@
 
 | | ✅ 採用 | 🟡 旧画風 | 🔁 代用 | ⬜ 仮 |
 |---|---|---|---|---|
-| 段階・枯れの枠（80） | 59 | 13 | 0 | 8 |
-| アイコン（20） | 18 | — | — | 2 |
+| 段階・枯れの枠（80） | 67 | 13 | 0 | 0 |
+| アイコン（20） | 20 | — | — | 0 |
 
 ## 建物
 
@@ -106,7 +106,7 @@
 | ベンチ（`deco_bench`） | ✅ | Recraft | `deco_bench`（原画 `deco_bench.png`、Recraft（#74。C2PA を grep で確認））。幅 0.56 マス、4 本の脚の真ん中に立つ。裏側 `deco_bench_back`（原画 `bench_back.png`）と反転で 4 方向 |
 | 石灯籠（`deco_lantern`） | ✅ | Recraft | `deco_lantern`（原画 `deco_lantern.png`、Recraft（#74。C2PA を grep で確認））。高さ 0.44 マス |
 | スプリンクラー（`deco_sprinkler`） | ✅＋⬜ | Recraft | 本体 `deco_sprinkler`（原画 `deco_sprinkler.png`、Recraft（#74。C2PA を grep で確認）。高さ 0.34 マス）。水しぶき（`SprinklerSpray`）は演出としてコードで描き、本体の絵の腕の軸（取り付け点）から出る。しぶきの絵を入れるなら `deco_sprinkler_spray_0`〜`_7` |
-| 風見鶏（`deco_weathervane`） | ⬜ | — | **未作成**。Lv6・500 コインの 1 マスの置き物。データだけ登録し、ショップには出していない（`GardenItem.inShop = false`）。置いてある庭だけ明日の天気が見られる（`WeatherOutlook.isReadable`）。原画の候補が `tools/source_art/deco_weathervane.png` に未追跡のまま置かれている（未確認・未加工） |
+| 風見鶏（`deco_weathervane`） | ✅ | Recraft | `deco_weathervane`（原画 `deco_weathervane.png`、#87）。高さ 0.8 マス、柱の土台の中心がマスの中心 |
 | おくりものの箱（`deco_starter_crate`。#79 で名前だけ変更、絵は同じ） | ✅ | Recraft | `deco_starter_crate`（原画 `deco_starter_crate.png`、Recraft（#74。C2PA を grep で確認））。幅 0.42 マス、ふたが開いて苗と種袋が見える |
 
 ## ショップのアイコン
@@ -124,9 +124,9 @@
 | 風車（`struct_windmill`） | ✅ | `icon_struct_windmill.png`（#77、本体と羽根の切り抜きを、庭と同じ取り付け点で重ねた） |
 | 池・芝生（`deco_pond` `ground_grass`） | ✅ | `icon_deco_pond.png`（#77、`pond.png`）・`icon_ground_grass.png`（#77、`tile_grass_iso.png` を板の形のまま） |
 | 小川のかけら（`tile_river`） | ⚙️ | `icon_tile_river.png`（#77、スクリプトで作った `tile_river_autotile.png` のまっすぐなひと続きを、庭のマスと同じひし形に） |
-| 白菜・菜の花・風見鶏（ショップに出していない） | ⬜ | 絵文字。白菜・菜の花のアイコンの原画らしい画像が `tools/source_art/` に未追跡で置かれている（未確認・未加工） |
+| 風見鶏（`deco_weathervane`） | ✅ | `icon_deco_weathervane.png`（#87、原画 `deco_weathervane.png` から） |
 
-**集計（作物以外の品物のアイコン 21。ショップに出している品はすべて絵）**：✅ 19、⚙️ 1、⬜ 1（風見鶏、未作成）。
+**集計（作物以外の品物のアイコン 21。すべて絵）**：✅ 20、⚙️ 1。
 
 ## 演出としてコードで描くもの
 
@@ -165,7 +165,7 @@
 | 庭の木枠、影、風の筋、天気（雨・雨乞いの雨・雪）、時間帯の光と夜の明かり | ⬜ | 演出としてコードで描く（上の「演出としてコードで描くもの」。雪・時間帯・明かりは #75） |
 | 木のボタン・トースト・図鑑の本・看板 | ⬜ | Compose のコード描画（`ui/components/` ほか） |
 | 店の内装（棚・カウンター） | ⬜ | コード。商品はすべてアイコンの絵（#77。上の「ショップのアイコン」） |
-| アプリのアイコン（ランチャー） | ⬜ | `res/drawable/ic_launcher_foreground.xml`（鉢植えの単純なベクター）。リリース前に作る |
+| アプリのアイコン（ランチャー） | ✅ | 出所 Recraft。原画 `app_icon_frame.png`（箱庭）・`app_icon_bg_sky.png`（空と丘）。`res/mipmap-*/ic_launcher_{foreground,background,monochrome}.png`、旧形式 `ic_launcher.png` `ic_launcher_round.png`（#87、`tools/prepare_app_icon.py`）。モノクロは箱庭の輪郭の形 |
 | 通知の小さなアイコン | ✅ | `res/drawable/ic_stat_garden.xml`（芽の形の単色ベクター。ステータスバー用で単色が必須） |
 
 ## 音
@@ -181,7 +181,7 @@
 
 | 物 | 状態 |
 |---|---|
-| 高解像度アイコン（512×512） | 未作成 |
+| 高解像度アイコン（512×512） | ✅。出所 Recraft。`docs/store/icon_512.png`（#87、原画 `app_icon_frame.png` `app_icon_bg_sky.png`。背景込みの正方形、角は丸めない） |
 | フィーチャーグラフィック（1024×500） | 未作成 |
 | スクリーンショット | 未作成 |
 

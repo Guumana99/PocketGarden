@@ -17,7 +17,7 @@
 | `app/src/main/res/drawable/soil_wasteland.png` | 荒れ地（何も敷いていないマス）。ひび割れた明るい土の板（#57 で差し替え） | 受け取ったまま（1024×1024、白背景・透過なし）。上面の位置は `GroundSlab.WASTELAND` |
 | `app/src/main/res/drawable/soil_tilled.png` | 耕した土（畝 3 本）の板（#57）。上面を畑の 1 マスに敷く | 受け取ったまま（1024×1024、白背景）。`GroundSlab.TILLED` |
 | `app/src/main/res/drawable/soil_revived.png` | 耕した土（#78。畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
-| `app/src/main/res/drawable-nodpi/icon_<作物>.png`（作物 18 種すべて） | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
+| `app/src/main/res/drawable-nodpi/icon_<作物>.png`（作物 20 種すべて） | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
 | `app/src/main/res/drawable/pond.png` | 池（`deco_pond`） | `tools/source_art/pond.png` をそのままコピー（1536×768）。上面の位置は `GroundSlab.POND` |
 | `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
 
@@ -89,7 +89,7 @@
 
 ### ショップの取扱一覧（プログレッション改定時点）
 
-`domain/model/GardenItem.kt` の全 46 品（うち 3 品は絵が無く、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
+`domain/model/GardenItem.kt` の全 46 品（うち縁石 1 品は取り下げ中で、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
 「確定アセット」は庭に置いたときの絵が受け取った画像素材のもの、「コード描画（仮置き）」は絵が無くプログラムで描いているもの。
 アイコンは、ショップに出している品すべてが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`。作物は #72、建物・飾り・地面は #74 と #77）。絵文字（`itemEmoji`）は絵が無いときの予備で、いまはショップに出していない白菜・菜の花・風見鶏だけ。
 
@@ -112,8 +112,8 @@
 | 種 | ニンジンの種（`seed_carrot`） | 20 | Lv2 | 確定アセット | `plant_carrot_*`（#57、2 段階目は 3 段階目から作成）、アイコン画像あり |
 | 種 | ナスの苗（`seed_eggplant`） | 15 | Lv6 | 確定アセット | `plant_eggplant_*`（#57）、アイコン画像あり |
 | 種 | 小麦の種（`seed_wheat`） | 35 | Lv7 | 確定アセット | `plant_wheat_*`（#57）、アイコン画像あり |
-| 種 | 白菜の種（`seed_hakusai`） | 40 | Lv10 | コード描画（仮置き） | **未作成**。ショップに出していない（`inShop = false`） |
-| 種 | 菜の花の種（`seed_nanohana`） | 45 | Lv12 | コード描画（仮置き） | **未作成**。ショップに出していない（`inShop = false`） |
+| 種 | 白菜の種（`seed_hakusai`） | 40 | Lv10 | 確定アセット | `plant_hakusai_*`（#87）、アイコン画像あり |
+| 種 | 菜の花の種（`seed_nanohana`） | 45 | Lv12 | 確定アセット | `plant_nanohana_*`（#87）、アイコン画像あり |
 | 種 | トウモロコシの種（`seed_corn`） | 65 | Lv13 | 確定アセット | `plant_corn_*`（#57）、アイコン画像あり |
 | 建物 | 木の柵（`struct_fence`） | 15 | 最初から | 確定アセット | `struct_fence` `_post` `_rail`（#85）、アイコン画像あり |
 | 建物 | 白い柵（`struct_fence_white`） | 25 | Lv5 | 確定アセット | `struct_fence_white` `_post` `_rail`（#85）、アイコン画像あり。ショップでは「柵」の一覧から |
@@ -139,7 +139,7 @@
 | 飾り | ベンチ（`deco_bench`） | 100 | Lv3 | 確定アセット | `deco_bench`（#74）、アイコン画像あり |
 | 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 4 ページ | 確定アセット | `deco_lantern`（#74）、アイコン画像あり |
 | 飾り | スプリンクラー（`deco_sprinkler`） | 450 | Lv7 | 確定アセット＋コード | `deco_sprinkler`（#74）、アイコン画像あり。水しぶきは `SprinklerSpray` のコードで、絵の腕の軸から出る |
-| 飾り | 風見鶏（`deco_weathervane`） | 500 | Lv6 | コード描画（仮置き） | **未作成**。ショップに出していない（`inShop = false`）。置くと明日の天気が見られる |
+| 飾り | 風見鶏（`deco_weathervane`） | 500 | Lv6 | 確定アセット | `deco_weathervane`（#87）、アイコン画像あり |
 | 飾り | 池（`deco_pond`） | 120 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |
 
 集計：確定アセット 34（うちコード併用 3、旧画風 3）、生成アセット 1、コード描画（仮置き） 0、未作成（ショップに出していない） 3。
@@ -190,6 +190,9 @@
 
 | ファイル | 状態 |
 |---|---|
+| `crop_hakusai_*` `crop_nanohana_*` `icon_hakusai.png` `icon_nanohana.png` `deco_weathervane.png` | 白菜・菜の花・風見鶏（#87、Recraft、白背景 1024×1024） |
+| `app_icon_frame.png` `app_icon_bg_sky.png` | アプリのアイコンの箱庭と空（#87、Recraft） |
+| `crop_cosmos_stage1.png` | コスモス段階 1（#87 で差し替え）。淡いので `deepened` で段階 2 の葉の色に寄せ、半透明の筋を濃くする |
 | `item_fence_wood.png` | **#85 から未使用（保管）**。正面向きのパーツ集。#84 まで柵・支柱・横木を切り出していた |
 | `struct_fence_wood.png` `struct_fence_white.png` `struct_fence_bamboo.png` `struct_edging_brick.png` | 柵 3 種と縁石（#85、Recraft、白背景 1024×1024）。1 区画を正面から見た絵。`tools/prepare_fence_art.py` で切り出す |
 | `creature_{squirrel,squirrel_run,bird,bird_fly,frog,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures_0.png` に |
@@ -251,6 +254,17 @@ python tools/prepare_fence_art.py --preview <確認用フォルダ>
 - `_rail` は杭の中心から次の杭の中心まで（横に 360px）から杭の幅を引き、両端を杭の下へ 3px ずつもぐらせた幅。引き伸ばさず、中央を繰り返して杭の間に合わせる（#86）。木は 3 回（継ぎ目は原画の 60 列で溶かす）、白と竹は 2 回で、竹は原画の密度のまま。ゲームは `_rail` を立てたまま斜めのマスに沿ってせん断して描く（`drawRunPiece`）ので、絵は 1 枚で両方の斜めに使える。地面の高さは `attachY`（絵の下端より下にあるので 1 を超える）。
 - 切り抜き：白い柵は真っ白（255）だけを背景にする（`cut_plain_white`。塗りは 205 ほどの灰色）。ほかは床の影ごと抜く（`cut_shadowed`）。どちらも縁の色から白の混ざりを戻す。
 - 縁石（#86 で取り下げ、作り方は残してある）：絵のレンガの隙間に沿って斜めに切った 1 歯（幅 224px）を 1 マス 7 本並べる（`brick_row`）。両端が同じ斜めなので、1 マスずらして重ねると継ぎ目が消える。最後の歯は次のレンガの黒い縁が角でとげになるので 30px 落とす。絵のレンガは右に傾いているので、右下がりの辺では反転して描き、四辺を同じ見え方にする（`GardenCanvas` の `mirrored`）。
+
+### アプリのアイコン（#87）
+
+```bash
+python tools/prepare_app_icon.py --preview <確認用.png>
+```
+
+- 原画 `app_icon_frame.png` を切り抜いて前景、`app_icon_bg_sky.png` の下寄り 68% を背景にする（丘が見える範囲に入るように）。箱の横幅は 108dp のキャンバスの 72dp、箱の中心は真ん中から 1.5% 上。下に濃さ 22% のぼかした影。
+- 切り抜き：外周につながる白に加え、葉の間に閉じた真っ白（24 画素以上）も抜き、縁は白の混ざりを戻す。
+- モノクロ（テーマアイコン、Android 13 以上）は箱庭全体の輪郭だけの形。濃淡で分けると細部がつぶれた。
+- `mipmap-anydpi-v26` がアダプティブ。minSdk は 26 なので旧形式の PNG は普通は使われないが、対応しないランチャーのために置く。`--preview` は円・角丸・しずく形で切った一覧を出す。
 
 ### 受け取った地面・建物の絵を入れるとき（#40）
 

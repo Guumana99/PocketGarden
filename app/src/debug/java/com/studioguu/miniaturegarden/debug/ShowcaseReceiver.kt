@@ -75,7 +75,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val art = garden == "art"
         val fences = garden == "fences"
         val bridges = garden == "bridges"
-        val feedback = garden == "fb" || art || fences || bridges
+        val crops = garden == "crops"
+        val feedback = garden == "fb" || art || fences || bridges || crops
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -86,6 +87,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     art -> ArtGarden.objects(now)
                     fences -> FenceGarden.fences(now)
                     bridges -> FenceGarden.bridges(now)
+                    crops -> CropGarden.objects(now)
                     feedback -> FeedbackGarden.objects(now)
                     else -> ShowcaseGarden.objects(now)
                 },

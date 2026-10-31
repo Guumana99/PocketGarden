@@ -35,9 +35,9 @@ enum class ItemCategory {
  *                  wheat        Lv.7            35   90 coins + 39 XP after 30 h (autumn)
  *                  rose         Lv.8            40   105 coins + 40 XP after 36 h (spring and autumn)
  *                  watermelon   Lv.9            40   100 coins + 42 XP after 30 h (summer)
- *                  hakusai      Lv.10           40   105 coins + 43 XP after 30 h (winter)      not on sale yet
+ *                  hakusai      Lv.10           40   105 coins + 43 XP after 30 h (winter)
  *                  paprika      Lv.11           40   90 coins + 58 XP after 32 h (summer); regrows 45 + 29 in 16 h
- *                  nanohana     Lv.12           45   115 coins + 45 XP after 32 h (spring)      not on sale yet
+ *                  nanohana     Lv.12           45   115 coins + 45 XP after 32 h (spring)
  *                  corn         Lv.13           65   165 coins + 63 XP after 42 h (summer)
  *                  shiitake     Lv.14           45   100 coins + 65 XP after 48 h (autumn), on a log; regrows 50 + 33 in 24 h
  *                  poinsettia   Lv.15           70   175 coins + 67 XP after 40 h (winter)
@@ -60,7 +60,7 @@ enum class ItemCategory {
  *                  bench        Lv.3           100   ornament
  *                  pond         Lv.4           120   water; ponds side by side are one pool
  *                  lantern      4 book pages    60   ornament
- *                  weathervane  Lv.6           500   ornament; tomorrow's weather can be read      not on sale yet
+ *                  weathervane  Lv.6           500   ornament; tomorrow's weather can be read
  *                  sprinkler    Lv.7           450   while on, the soil round it hardly dries
  *
  * Which of these have finished pictures and which are drawn in code for now: docs/ASSETS.md,
@@ -283,26 +283,25 @@ enum class GardenItem(
         unlock = UnlockCondition.PlayerLevel(13),
     ),
 
-    /** Winter's leafy head. No pictures yet: registered, but not on sale ([inShop]). */
+    /** Winter's leafy head. */
     SEED_HAKUSAI(
         "seed_hakusai", price = 40, objectId = PlantSpecies.HAKUSAI.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(10), inShop = false,
+        unlock = UnlockCondition.PlayerLevel(10),
     ),
 
-    /** Spring's field of yellow. No pictures yet: registered, but not on sale ([inShop]). */
+    /** Spring's field of yellow. */
     SEED_NANOHANA(
         "seed_nanohana", price = 45, objectId = PlantSpecies.NANOHANA.objectId, category = ItemCategory.SEED,
-        unlock = UnlockCondition.PlayerLevel(12), inShop = false,
+        unlock = UnlockCondition.PlayerLevel(12),
     ),
 
     /**
      * A weathervane: a one-cell ornament. While a finished one stands in the garden, tomorrow's
-     * weather can be read as well as today's ([WeatherOutlook.isReadable]). No picture yet:
-     * registered, but not on sale ([inShop]).
+     * weather can be read as well as today's ([WeatherOutlook.isReadable]).
      */
     DECO_WEATHERVANE(
         "deco_weathervane", price = 500, objectId = WeatherOutlook.WEATHERVANE_OBJECT_ID, category = ItemCategory.DECORATION,
-        unlock = UnlockCondition.PlayerLevel(6), inShop = false,
+        unlock = UnlockCondition.PlayerLevel(6),
     ),
 
     /**
