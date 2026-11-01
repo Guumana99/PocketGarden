@@ -25,6 +25,15 @@ class NanohanaArtTest {
     }
 
     @Test
+    fun `in bud, it stands well between the seedling and the grown plant`() {
+        val seedling = sprite("stage1")
+        val budding = sprite("stage2")
+        val grown = sprite("stage3")
+        assertTrue(budding.width > seedling.width * 1.3f && budding.height > seedling.height * 1.3f)
+        assertTrue(budding.width < grown.width * 0.8f && budding.height < grown.height * 0.8f)
+    }
+
+    @Test
     fun `withered, it is about the size it was grown`() {
         val grown = sprite("stage3")
         val dead = sprite("withered")

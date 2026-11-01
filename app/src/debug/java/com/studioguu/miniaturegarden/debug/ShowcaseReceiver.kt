@@ -117,7 +117,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     lawnThings -> GroundGarden.lawnThings(now)
                     greenhouse -> GroundGarden.greenhouse(now)
                     hakusai -> GroundGarden.field(now, PlantSpecies.HAKUSAI)
-                    nanohana -> GroundGarden.field(now, PlantSpecies.NANOHANA)
+                    nanohana -> GroundGarden.field(now, PlantSpecies.NANOHANA, young = 0.5f)
                     bridgePlaces -> FenceGarden.bridgePlaces(now)
                     feedback -> FeedbackGarden.objects(now)
                     else -> ShowcaseGarden.objects(now)
