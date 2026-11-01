@@ -13,8 +13,10 @@ Outputs:
                                                      adaptive icons: a rounded square and a circle
   docs/store/icon_512.png                            for the Play listing: square, corners not rounded
 
-An adaptive icon is a 108 dp canvas of which about the middle 72 dp show. The box is 72 dp wide,
-in the middle, a little above it; the butterfly and the sunflower may reach out of the safe 66 dp.
+An adaptive icon is a 108 dp canvas of which about the middle 72 dp show, and of that only a circle
+66 dp across is sure to, whatever shape the launcher cuts. The picture stands in the middle of the
+canvas, top to bottom, as large as it can be with all of it, butterfly and box corners alike,
+inside that circle ([SAFE_DIAMETER]).
 
 Usage:
   python tools/prepare_app_icon.py                 # writes the icons
@@ -43,12 +45,8 @@ DENSITIES = {"mdpi": 1.0, "hdpi": 1.5, "xhdpi": 2.0, "xxhdpi": 3.0, "xxxhdpi": 4
 #: The size everything is made at before it is brought down.
 CANVAS = 1296
 
-#: The box's width on the 108 dp canvas, and how far above the middle it goes (a share of the canvas).
-BOX_SHARE = 72 / 108
-LIFT = 0.015
-
-#: The box from its back corner to its front one, as a share of its width.
-BOX_TALL = 0.54
+#: The circle every launcher shows, on the 108 dp canvas (a share of it).
+SAFE_DIAMETER = 66 / 108
 
 #: The part of the sky's square that is used, a share of its side, from the bottom: the hills
 #: otherwise lie below what an adaptive icon shows.
@@ -90,25 +88,24 @@ def cut_box() -> np.ndarray:
     return crop(np.dstack([clean, alpha * 255.0]).round().astype(np.uint8))
 
 
-def box_columns(rgba: np.ndarray) -> tuple[int, int]:
-    """The left and right ends of the box: the widest part of the picture, in its lower half."""
-    solid = rgba[:, :, 3] > 128
-    h = solid.shape[0]
-    xs = np.where(solid[h // 2:].any(axis=0))[0]
-    return int(xs.min()), int(xs.max())
+def middle_and_reach(rgba: np.ndarray) -> tuple[float, float, float]:
+    """The middle of the picture's width and height, and how far from there its furthest point is."""
+    ys, xs = np.where(rgba[:, :, 3] > 128)
+    cx = (xs.min() + xs.max() + 1) / 2
+    cy = (ys.min() + ys.max() + 1) / 2
+    return cx, cy, float(np.hypot(xs - cx, ys - cy).max())
 
 
 def foreground() -> Image.Image:
     box = cut_box()
-    left, right = box_columns(box)
-    scale = CANVAS * BOX_SHARE / (right - left + 1)
+    cx, cy, reach = middle_and_reach(box)
+    scale = CANVAS * SAFE_DIAMETER / (2 * reach)
     h, w = box.shape[:2]
     size = (round(w * scale), round(h * scale))
     sprite = Image.fromarray(box, "RGBA").convert("RGBa").resize(size, Image.LANCZOS).convert("RGBA")
     canvas = Image.new("RGBA", (CANVAS, CANVAS), (0, 0, 0, 0))
-    # The middle of the box, not of what stands on it, goes on the middle of the canvas.
-    x = round(CANVAS / 2 - (left + right + 1) / 2 * scale)
-    y = round(CANVAS * (0.5 - LIFT) - (h - (right - left + 1) * BOX_TALL / 2) * scale)
+    x = round(CANVAS / 2 - cx * scale)
+    y = round(CANVAS / 2 - cy * scale)
     shadow = Image.new("L", (CANVAS, CANVAS), 0)
     shadow.paste(sprite.getchannel("A"), (x, y + round(CANVAS * 0.012)))
     shadow = shadow.filter(ImageFilter.GaussianBlur(CANVAS * SHADOW_BLUR)).point(lambda v: int(v * SHADOW_ALPHA))

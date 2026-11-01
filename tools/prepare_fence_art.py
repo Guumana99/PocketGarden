@@ -18,6 +18,10 @@ overlap and fade into one another, as its rails do not end where they could meet
 the grid a rail keeps its height on the screen but is thinner across, so the wood's bars are made
 that much taller ([SHEAR_THICKNESS]): across they are as thick as on the section standing alone.
 
+The colours are graded on the way in ([Grade]): as they came, the wood and the bamboo were the
+colours of the bare ground and sank into it, by day and by night. The drawing stays as it is, with
+no outline added.
+
 Usage:
   python tools/prepare_fence_art.py                 # writes raw_assets/ and the overrides
   python tools/prepare_fence_art.py --preview out/  # also a picture of them all joined up
@@ -67,6 +71,14 @@ BRICK_SEAM_BOTTOM = (272, 650)
 
 
 @dataclass(frozen=True)
+class Grade:
+    """How a fence's colours are moved: everything times [gain], after [contrast] round its own middle tone and [saturation]."""
+    gain: float
+    contrast: float
+    saturation: float
+
+
+@dataclass(frozen=True)
 class Fence:
     source: str
     #: The post kept: the columns of its shaft, top and bottom row. [cap] is the columns and the
@@ -84,12 +96,13 @@ class Fence:
     #: The rows of the bars that run across, top and bottom, made up for the shear; none for
     #: what has uprights in front of its rails.
     bars: tuple[tuple[int, int], ...] = ()
+    grade: Grade = Grade(1.0, 1.0, 1.0)
 
 
 FENCES: dict[str, Fence] = {
-    "struct_fence": Fence("struct_fence_wood.png", (223, 333, 121, 955), None, (338, 684), stout=1.3, repeats=3, overlap=60, bars=((226, 320), (601, 692))),
-    "struct_fence_white": Fence("struct_fence_white.png", (226, 318, 169, 858), (205, 340, 224), (319, 701), stout=1.3, repeats=2),
-    "struct_fence_bamboo": Fence("struct_fence_bamboo.png", (160, 236, 213, 815), None, (288, 781), stout=1.0, repeats=2),
+    "struct_fence": Fence("struct_fence_wood.png", (223, 333, 121, 955), None, (338, 684), stout=1.3, repeats=3, overlap=60, bars=((226, 320), (601, 692)), grade=Grade(0.78, 1.65, 1.25)),
+    "struct_fence_white": Fence("struct_fence_white.png", (226, 318, 169, 858), (205, 340, 224), (319, 701), stout=1.3, repeats=2, grade=Grade(1.14, 1.35, 1.0)),
+    "struct_fence_bamboo": Fence("struct_fence_bamboo.png", (160, 236, 213, 815), None, (288, 781), stout=1.0, repeats=2, grade=Grade(0.86, 1.55, 1.3)),
 }
 
 
@@ -98,6 +111,19 @@ def unmix(rgb: np.ndarray, alpha: np.ndarray) -> np.ndarray:
     a = alpha[..., None]
     clean = (rgb.astype(float) - (1 - a) * 255.0) / np.maximum(a, 0.05)
     return np.clip(clean, 0, 255)
+
+
+def graded(cut: np.ndarray, grade: Grade) -> np.ndarray:
+    """[cut] with its colours moved by [grade]; its outline stays where it is."""
+    rgb = cut[..., :3].astype(float)
+    solid = cut[..., 3] > 128
+    tone = rgb.mean(axis=2, keepdims=True)
+    middle = float(tone[solid].mean())
+    toned = middle + (tone - middle) * grade.contrast
+    moved = (toned + (rgb - tone) * grade.saturation) * grade.gain
+    out = cut.copy()
+    out[..., :3] = np.clip(moved, 0, 255).round().astype(np.uint8)
+    return out
 
 
 def cut_plain_white(name: str) -> np.ndarray:
@@ -235,6 +261,7 @@ def brick_row(cut: np.ndarray) -> np.ndarray:
 
 def prepare_fence(asset_id: str, fence: Fence) -> dict[str, tuple[np.ndarray, dict]]:
     cut = cut_plain_white(fence.source) if asset_id == "struct_fence_white" else cut_shadowed(fence.source)
+    cut = graded(cut, fence.grade)
     _, _, top, bottom = fence.post
     sy = POST_HEIGHT / (bottom + 1 - top)
     sx = sy * fence.stout

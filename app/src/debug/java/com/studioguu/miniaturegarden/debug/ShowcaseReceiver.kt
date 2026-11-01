@@ -33,8 +33,11 @@ import kotlinx.coroutines.launch
  *         --ez load true                      # replaces the saved garden with [ShowcaseGarden]
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
+ *         --es garden ground                  # ... or with [GroundGarden] (or fencelook), with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
+ *         --ef clock_hour 22                  # what the device's clock is taken to say
+ *         --ez audit_text true                # only checks how all the strings wrap ([TextAudit])
  *         --ef scale 0.32 --ef pan_x 0 --ef pan_y 0 \
  *         --ez butterfly true                 # one comes now to ShowcaseGarden.BUTTERFLY_FLOWER
  *
@@ -47,6 +50,17 @@ class ShowcaseReceiver : BroadcastReceiver() {
     @Inject lateinit var clock: GameClock
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.getBooleanExtra("audit_text", false)) {
+            val pending = goAsync()
+            scope.launch {
+                try {
+                    Log.i(TAG, "text audit: ${TextAudit.run(context)}")
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
         if (intent.getBooleanExtra(EXTRA_CLEAR, false)) {
             ShowcaseControls.set(null)
             Log.i(TAG, "showcase cleared")
@@ -76,7 +90,9 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val fences = garden == "fences"
         val bridges = garden == "bridges"
         val crops = garden == "crops"
-        val feedback = garden == "fb" || art || fences || bridges || crops
+        val ground = garden == "ground"
+        val fenceLook = garden == "fencelook"
+        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -88,6 +104,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     fences -> FenceGarden.fences(now)
                     bridges -> FenceGarden.bridges(now)
                     crops -> CropGarden.objects(now)
+                    ground -> GroundGarden.ground(now)
+                    fenceLook -> GroundGarden.fencesOnGrounds(now)
                     feedback -> FeedbackGarden.objects(now)
                     else -> ShowcaseGarden.objects(now)
                 },
@@ -128,6 +146,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
             return Showcase(
                 season = intent.getStringExtra("season")?.let { name -> Season.entries.first { it.name == name } },
                 timeOfDay = intent.getStringExtra("time")?.let { name -> TimeOfDay.entries.first { it.name == name } },
+                clockHour = intent.takeIf { it.hasExtra("clock_hour") }?.getFloatExtra("clock_hour", 0f),
                 weather = intent.getStringExtra("weather")?.let { name -> WeatherType.entries.first { it.name == name } },
                 hideUi = intent.getBooleanExtra("hide_ui", false),
                 creatures = when (val kinds = intent.getStringExtra("creatures")) {

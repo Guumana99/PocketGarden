@@ -198,9 +198,9 @@ fun NotificationPermissionDialog(onOk: () -> Unit, onDismiss: () -> Unit) {
 }
 
 /**
- * Asked once, after the first steps are done (Android 13+ only, where the device needs the
- * permission): would the player like to hear about the garden? A wooden board like the starter
- * crate's popup; "not now" is as easy as yes, and the settings can change it later.
+ * Asked once, when the first steps are done and the garden is back as it started: may the garden
+ * tell the player how it is doing? A wooden board like the starter crate's popup; "later" is as
+ * easy as yes. Only yes goes on to the device's own question (Android 13+).
  */
 @Composable
 fun NotificationInviteDialog(onAccept: () -> Unit, onLater: () -> Unit) {
@@ -217,6 +217,7 @@ fun NotificationInviteDialog(onAccept: () -> Unit, onLater: () -> Unit) {
                 text = stringResource(R.string.notification_invite_text),
                 color = GardenColors.Ink,
                 style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
             )
         }
     }

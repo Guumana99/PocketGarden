@@ -89,6 +89,12 @@ enum class TutorialStep {
      */
     val isFirstPlay: Boolean get() = this <= FINISHED
 
+    /**
+     * The time of day the garden is shown at whatever the clock says, or null for the clock's own:
+     * the morning through the first play, as the night is too dark to learn in.
+     */
+    val shownTimeOfDay: TimeOfDay? get() = if (isFirstPlay) TimeOfDay.MORNING else null
+
     /** Whether [feature] is in the player's hands at this step. */
     fun reveals(feature: GardenFeature): Boolean = this >= feature.revealedAt
 

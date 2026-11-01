@@ -3,9 +3,13 @@ package com.studioguu.miniaturegarden.ui.theme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.unit.dp
 
 /** The game's palette: carved wood for controls, parchment for panels, dark ink for text. */
@@ -70,7 +74,37 @@ private val GardenShapes = Shapes(
     extraLarge = RoundedCornerShape(16.dp),
 )
 
+/**
+ * How every text in the game wraps: at the seams between phrases (Android 13 and up; the text has to
+ * say it is Japanese for that, whatever language the device is set to), with its lines kept
+ * about as long as one another, so that a line is not left with a character or two on it.
+ */
+private val PhraseLineBreak = LineBreak(LineBreak.Strategy.Balanced, LineBreak.Strictness.Strict, LineBreak.WordBreak.Phrase)
+private val Japanese = LocaleList("ja")
+
+private fun TextStyle.inPhrases() = copy(lineBreak = PhraseLineBreak, localeList = Japanese)
+
+internal val GardenTypography = Typography().run {
+    copy(
+        displayLarge = displayLarge.inPhrases(),
+        displayMedium = displayMedium.inPhrases(),
+        displaySmall = displaySmall.inPhrases(),
+        headlineLarge = headlineLarge.inPhrases(),
+        headlineMedium = headlineMedium.inPhrases(),
+        headlineSmall = headlineSmall.inPhrases(),
+        titleLarge = titleLarge.inPhrases(),
+        titleMedium = titleMedium.inPhrases(),
+        titleSmall = titleSmall.inPhrases(),
+        bodyLarge = bodyLarge.inPhrases(),
+        bodyMedium = bodyMedium.inPhrases(),
+        bodySmall = bodySmall.inPhrases(),
+        labelLarge = labelLarge.inPhrases(),
+        labelMedium = labelMedium.inPhrases(),
+        labelSmall = labelSmall.inPhrases(),
+    )
+}
+
 @Composable
 fun GardenTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = GardenColorScheme, shapes = GardenShapes, content = content)
+    MaterialTheme(colorScheme = GardenColorScheme, shapes = GardenShapes, typography = GardenTypography, content = content)
 }

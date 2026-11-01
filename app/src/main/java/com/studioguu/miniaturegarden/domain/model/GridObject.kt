@@ -163,6 +163,11 @@ data class GridObject(
             "struct_bridge_taiko",
         )
 
+        private const val ROCK_ID_PREFIX = "deco_rock"
+
+        /** Whether [objectId] is one of the rocks. */
+        fun isRock(objectId: String): Boolean = objectId.startsWith(ROCK_ID_PREFIX)
+
         /** What is drawn from behind as well as from the front, and so has four ways to face. */
         val TURNING_OBJECT_IDS: Set<String> = setOf("deco_bench")
 

@@ -64,6 +64,19 @@ object FlatGround {
     /** Patches a side of the field, each taken from its own place in the tile. */
     const val FIELD_CELLS = 6
 
+    /** Pixels of the loose earth's field ([looseField]) to a cell of the garden. */
+    const val LOOSE_SIDE = 256
+
+    /** Pixels a side of the loose earth's field, and the cells it spans: no multiple of a bed's one. */
+    const val LOOSE_FIELD_SIZE = 768
+    const val LOOSE_CELLS = LOOSE_FIELD_SIZE / LOOSE_SIDE.toFloat()
+
+    /** Patches a side of the loose earth's field. */
+    const val LOOSE_FIELD_PATCHES = 5
+
+    /** The smallest light and dark taken out of the loose earth: less than its mound, more than its crumbs. */
+    const val LOOSE_EVEN_OUT_RADIUS = 18
+
     /** How large the light and dark [evenOut] takes out are, at least: a box blur's radius in pixels, three passes. */
     const val EVEN_OUT_RADIUS = 32
 
@@ -152,6 +165,22 @@ object FlatGround {
         val tileSize = tileSize(size)
         val tile = evenOut(seamless(pixels, size), tileSize, radius, colourKept = 1f)
         return Bitmap.createBitmap(tile, tileSize, tileSize, Bitmap.Config.ARGB_8888)
+    }
+
+    /**
+     * [square] (the face of the loose earth, [LOOSE_SIDE] pixels a cell) made into ground that runs
+     * on from cell to cell ([seamless], then [evenOut], all its colour kept, then [field]): laid one
+     * copy to a cell, the mound in the picture's middle made every cell a board of its own.
+     */
+    fun looseField(square: Bitmap): Bitmap {
+        val size = square.width
+        val pixels = IntArray(size * size)
+        square.getPixels(pixels, 0, size, 0, 0, size, size)
+        val tileSize = tileSize(size)
+        val tile = evenOut(seamless(pixels, size), tileSize, LOOSE_EVEN_OUT_RADIUS, colourKept = 1f)
+        val out = Bitmap.createBitmap(LOOSE_FIELD_SIZE, LOOSE_FIELD_SIZE, Bitmap.Config.ARGB_8888)
+        out.setPixels(field(tile, tileSize, LOOSE_FIELD_SIZE, LOOSE_FIELD_PATCHES), 0, LOOSE_FIELD_SIZE, 0, 0, LOOSE_FIELD_SIZE, LOOSE_FIELD_SIZE)
+        return out
     }
 
     /**
