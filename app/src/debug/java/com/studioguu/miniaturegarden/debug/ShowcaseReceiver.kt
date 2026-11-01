@@ -9,6 +9,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GardenView
@@ -19,8 +20,11 @@ import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.repository.GameClock
+import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.ui.debug.Showcase
+import com.studioguu.miniaturegarden.ui.components.todayEpochDay
+import com.studioguu.miniaturegarden.ui.hud.RainCloudState
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -37,10 +41,14 @@ import kotlinx.coroutines.launch
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai), with load
+ *         --es tutorial REVEAL_RAIN           # ... at this step of the first steps, with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
  *         --ef clock_hour 22                  # what the device's clock is taken to say
  *         --ez audit_text true                # only checks how all the strings wrap ([TextAudit])
+ *         --ez ad_ready true --ei bonus_coins 120   # an ad waiting; a coin bonus just paid in the shop
+ *         --es cloud PARCHED --ef rain_glint 0.5    # what the rain cloud shows; the crops' glint
+ *         --ei use_bonus 5 --ei use_rain 1    # only spends the day's rewards
  *         --ef scale 0.32 --ef pan_x 0 --ef pan_y 0 \
  *         --ez butterfly true                 # one comes now to ShowcaseGarden.BUTTERFLY_FLOWER
  *
@@ -51,8 +59,21 @@ import kotlinx.coroutines.launch
 class ShowcaseReceiver : BroadcastReceiver() {
     @Inject lateinit var gardenRepository: GardenRepository
     @Inject lateinit var clock: GameClock
+    @Inject lateinit var rewardLimits: RewardLimitRepository
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.hasExtra("use_bonus") || intent.hasExtra("use_rain")) {
+            val pending = goAsync()
+            scope.launch {
+                try {
+                    repeat(intent.getIntExtra("use_bonus", 0)) { rewardLimits.tryConsume(RewardType.COIN_BONUS, todayEpochDay()) }
+                    repeat(intent.getIntExtra("use_rain", 0)) { rewardLimits.tryConsume(RewardType.BLESSED_RAIN, todayEpochDay()) }
+                } finally {
+                    pending.finish()
+                }
+            }
+            return
+        }
         if (intent.getBooleanExtra("audit_text", false)) {
             val pending = goAsync()
             scope.launch {
@@ -74,21 +95,21 @@ class ShowcaseReceiver : BroadcastReceiver() {
             val pending = goAsync()
             scope.launch {
                 try {
-                    loadGarden(intent.getStringExtra(EXTRA_GARDEN))
+                    loadGarden(intent.getStringExtra(EXTRA_GARDEN), intent.getStringExtra("tutorial")?.let(TutorialStep::valueOf) ?: TutorialStep.DONE)
                     Log.i(TAG, "showcase garden loaded")
                 } finally {
                     pending.finish()
                 }
             }
         }
-        val keys = intent.extras?.keySet().orEmpty() - setOf(EXTRA_LOAD, EXTRA_GARDEN)
+        val keys = intent.extras?.keySet().orEmpty() - setOf(EXTRA_LOAD, EXTRA_GARDEN, "tutorial")
         if (keys.isEmpty()) return
         val showcase = showcaseOf(intent)
         ShowcaseControls.set(showcase)
         Log.i(TAG, "showcase set: $showcase")
     }
 
-    private suspend fun loadGarden(garden: String?) {
+    private suspend fun loadGarden(garden: String?, step: TutorialStep) {
         val art = garden == "art"
         val fences = garden == "fences"
         val bridges = garden == "bridges"
@@ -126,7 +147,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
             gardenRepository.saveProgress(
                 GardenProgress(
                     season = Season.AUTUMN,
-                    tutorialStep = TutorialStep.DONE,
+                    tutorialStep = step,
                     gardenSize = if (feedback) FeedbackGarden.SIZE else ShowcaseGarden.SIZE,
                     seasonStartedAt = now,
                 ),
@@ -170,6 +191,10 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 },
                 view = if (scale > 0f) GardenView(scale, intent.getFloatExtra("pan_x", 0f), intent.getFloatExtra("pan_y", 0f)) else null,
                 butterfly = if (intent.getBooleanExtra("butterfly", false)) ShowcaseGarden.BUTTERFLY_FLOWER else null,
+                adReady = intent.takeIf { it.hasExtra("ad_ready") }?.getBooleanExtra("ad_ready", false),
+                bonusCoins = intent.takeIf { it.hasExtra("bonus_coins") }?.getIntExtra("bonus_coins", 0),
+                cloud = intent.getStringExtra("cloud")?.let(RainCloudState::valueOf),
+                rainGlint = intent.takeIf { it.hasExtra("rain_glint") }?.getFloatExtra("rain_glint", 0f),
             )
         }
     }

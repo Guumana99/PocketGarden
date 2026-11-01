@@ -157,11 +157,12 @@ class PolishTest {
     }
 
     @Test
-    fun `the rain button names the rain and nothing else`() {
+    fun `the rain cloud is called the rain and nothing else`() {
         assertEquals("雨乞い", string("reward_rain_button"))
-        // And the screen does not pass it any counts to show.
-        val screen = source("ui/GardenScreen.kt")
-        assertTrue(screen.contains("stringResource(R.string.reward_rain_button)"))
+        // Read out by name; it has no words on it, and no counts to show.
+        val cloud = source("ui/hud/RainCloud.kt")
+        assertTrue(cloud.contains("stringResource(R.string.reward_rain_button)"))
+        assertFalse(cloud.contains("Text("))
     }
 
     @Test

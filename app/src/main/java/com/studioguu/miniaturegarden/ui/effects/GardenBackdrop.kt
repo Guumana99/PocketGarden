@@ -233,7 +233,7 @@ fun GardenBackdrop(weather: WeatherType, modifier: Modifier = Modifier, season: 
 }
 
 /** A cloud of the given half-width: three overlapping puffs on a flat base. */
-private fun DrawScope.drawCloud(center: Offset, radius: Float, color: Color) {
+internal fun DrawScope.drawCloud(center: Offset, radius: Float, color: Color) {
     drawOval(color, center + Offset(-radius * 1.5f, -radius * 0.15f), Size(radius * 3f, radius * 0.8f))
     drawCircle(color, radius * 0.62f, center + Offset(-radius * 0.65f, -radius * 0.05f))
     drawCircle(color, radius * 0.85f, center + Offset(radius * 0.05f, -radius * 0.35f))

@@ -46,6 +46,7 @@ class ShopStageContentTest {
         var message by mutableStateOf<ShopMessage?>(null)
         val bought = mutableListOf<GardenItem>()
         var left = false
+        var rested = false
     }
 
     private fun open(visit: Visit, coins: Long = 500, ownsSymbol: Boolean = false, held: Map<GardenItem, Int> = emptyMap()) {
@@ -66,6 +67,7 @@ class ShopStageContentTest {
                     onPutBack = { visit.inHand = null },
                     onBuy = { visit.bought += it },
                     onBonus = {},
+                    onBonusResting = { visit.rested = true },
                     onLeave = { visit.left = true },
                 )
             }
@@ -110,6 +112,14 @@ class ShopStageContentTest {
         compose.onNodeWithTag(shelfTag(GardenItem.SEED_TULIP)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.shop_stage_sundries)).performClick()
         assertEquals(ShopStage.SUNDRIES, visit.stage)
+    }
+
+    @Test
+    fun `a bonus that cannot be had is a board that still answers a tap`() {
+        val visit = Visit()
+        open(visit)
+        compose.onNodeWithTag(BONUS_RESTING_TAG).performClick()
+        assertTrue(visit.rested)
     }
 
     @Test

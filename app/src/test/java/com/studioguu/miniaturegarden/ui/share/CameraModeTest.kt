@@ -89,7 +89,7 @@ class CameraModeTest {
         for (piece in listOf("TopStatusBar(", "QuickActionBar(", "SideButton(", "ObjectStatusDialog(", "ToolBanner(", "FloatingEffectsHost(")) {
             assertFalse("$piece is shown in camera mode", camera.contains(piece))
         }
-        for (piece in listOf("QuickActionBar(", "SideButton(", "ObjectStatusDialog(", "FloatingEffectsHost(", "reward_rain_button")) {
+        for (piece in listOf("QuickActionBar(", "SideButton(", "ObjectStatusDialog(", "FloatingEffectsHost(", "RainCloud(")) {
             assertTrue("$piece is missing from the normal screen", hud.contains(piece))
         }
         assertTrue(camera.contains("onClose = { cameraMode = false }"))
