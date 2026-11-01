@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.asStateFlow
  *
  * @property season shown in place of the garden's own; null for its own.
  * @property timeOfDay the garden is lit for; null for the clock's.
+ * @property clockHour what the device's clock is taken to say; null for what it says. Unlike
+ *   [timeOfDay] it gives way to what the game fixes, as the first steps' morning.
  * @property weather in place of the day's; null for the day's own.
  * @property hideUi nothing on screen but the garden: no figures, buttons, panels or system bars.
  * @property creatures which kinds may visit; null for any.
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 data class Showcase(
     val season: Season? = null,
     val timeOfDay: TimeOfDay? = null,
+    val clockHour: Float? = null,
     val weather: WeatherType? = null,
     val hideUi: Boolean = false,
     val creatures: Set<Creature>? = null,

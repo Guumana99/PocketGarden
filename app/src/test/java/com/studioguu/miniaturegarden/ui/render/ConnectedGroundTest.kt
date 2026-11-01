@@ -84,7 +84,7 @@ class ConnectedGroundTest {
     @Test
     fun `the garden draws its beds joined, from what is next to them`() {
         val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
-        assertTrue(canvas.contains("SoilJoins.at(obj.gridX, obj.gridY) { bx, by -> grid.floorAt(bx, by)?.isHoedSoil == true }"))
+        assertTrue(canvas.contains("SoilJoins.at(obj.gridX, obj.gridY, grid::meetsBed)"))
         // The bed is not the old one-cell picture any more (that was a slab with edges all round).
         val tilled = canvas.substringAfter("if (obj.isHoedSoil) {").substringBefore("} else if (obj.isGreenhouse")
         assertFalse(tilled.contains("drawSprite("))

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import com.studioguu.miniaturegarden.domain.model.CreatureRoute
+import com.studioguu.miniaturegarden.data.asset.FlatGround
 import com.studioguu.miniaturegarden.ui.render.LawnPatches
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
@@ -436,7 +437,7 @@ fun GardenCanvas(
             val floor = grid.floorAt(cell.x, cell.y)
             if (!gardenMap.isInside(cell.x, cell.y) || (floor != null && !floor.isLooseSoil)) continue
             pipeline.submit(RenderLayer.BASE_TERRAIN, 1.5f + LayerPipeline.depthOf(cell.x, cell.y), inGarden = true) {
-                drawHalfTurnedGround(transform, cell.x, cell.y, if (floor == null) terrain.broken else terrain.tilled)
+                drawHalfTurnedGround(transform, cell.x, cell.y, if (floor == null) terrain.broken else terrain.tilled, if (floor == null) FlatGround.LOOSE_CELLS else 1f)
             }
         }
         for (hop in hops) {
@@ -538,7 +539,6 @@ fun GardenCanvas(
 
 private val AURA_FILL = Color(0x334FC3F7)
 private val AURA_EDGE = Color(0x994FC3F7)
-private const val ROCK_ID_PREFIX = "deco_rock"
 private val CLOSED_CELL = Color(0x73000000)
 
 /** How long the garden waits between two frames of wind. */
@@ -681,8 +681,9 @@ private fun submitObjects(
             submit(obj, RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(obj.gridX, obj.gridY)) {
                 if (obj.isHoedSoil) {
                     // Beds side by side are one field: each knows which of its sides carry on (#47).
-                    val joins = SoilJoins.at(obj.gridX, obj.gridY) { bx, by -> grid.floorAt(bx, by)?.isHoedSoil == true }
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = if (obj.isLooseSoil) terrain.broken else terrain.tilled)
+                    // It runs right up to whatever else is laid on the ground beside it as well.
+                    val joins = SoilJoins.at(obj.gridX, obj.gridY, grid::meetsBed)
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = if (obj.isLooseSoil) terrain.broken else terrain.tilled, cellsPerCopy = if (obj.isLooseSoil) FlatGround.LOOSE_CELLS else 1f)
                 } else if (obj.isGreenhouse && soil != null && atlasImage != null) {
                     // Better soil is deeper in colour.
                     val center = transform.tileCenter(obj.gridX, obj.gridY)
@@ -804,13 +805,15 @@ private fun submitObjects(
             val alone = mask == 0 && whole != null && atlasImage != null
             val onLawn = ambience.bareGround == BareGround.LAWN || grid.lawnAt(obj.gridX, obj.gridY) != null
             val grassy = run.isFence && grid.floorAt(obj.gridX, obj.gridY) == null && onLawn
+            // A thin thing on open ground: darker at its foot than something broad, or it floats.
+            val fenceLight = light.copy(alpha = light.alpha * FENCE_SHADOW_GAIN)
             submit(obj, RenderLayer.SHADOWS, depth) {
                 if (alone) {
-                    drawContactShadow(base, min(whole!!.width * spriteScale * 0.62f, unit * 0.7f))
-                    drawSpriteShadow(atlasImage!!, whole, base, spriteScale, light)
+                    drawContactShadow(base, min(whole!!.width * spriteScale * 0.62f, unit * 0.7f), FENCE_FOOT_SHADOW)
+                    drawSpriteShadow(atlasImage!!, whole, base, spriteScale, fenceLight)
                 } else if (post != null && atlasImage != null) {
-                    drawContactShadow(base, unit * 0.1f)
-                    drawSpriteShadow(atlasImage, post, base, spriteScale, light)
+                    drawContactShadow(base, unit * 0.16f, FENCE_FOOT_SHADOW)
+                    drawSpriteShadow(atlasImage, post, base, spriteScale, fenceLight)
                 }
             }
             // A work site stands for all of itself: its rails come with it when it is finished.
@@ -821,7 +824,7 @@ private fun submitObjects(
                     // Bricks lean one way in their picture: mirrored on the other slope, the four
                     // sides of a bed look alike.
                     val mirrored = !run.hasPosts && direction == FenceAutotile.EAST
-                    submit(obj, RenderLayer.SHADOWS, depth) { drawRunPieceShadow(atlasImage, rail, base, next, spriteScale, light, mirrored) }
+                    submit(obj, RenderLayer.SHADOWS, depth) { drawRunPieceShadow(atlasImage, rail, base, next, spriteScale, fenceLight, mirrored) }
                     submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.RAIL_DEPTH) { drawRunPiece(atlasImage, rail, base, next, spriteScale, mirrored) }
                 }
             }
@@ -902,7 +905,7 @@ private fun submitObjects(
             // for a rock or a bench, whose picture has no foot at this point: a rock's lies under
             // its own bulk, and a bench stands on four legs round it, so that crumbs and blades came
             // out as dots on the stone or under the seat (device feedback).
-            if (!isGroundCover && structure == null && !obj.isPlant && !obj.objectId.startsWith(ROCK_ID_PREFIX) && obj.objectId != Decoration.BENCH.objectId && obj.objectId != Decoration.WEATHERVANE.objectId) {
+            if (!isGroundCover && structure == null && !obj.isPlant && !GridObject.isRock(obj.objectId) && obj.objectId != Decoration.BENCH.objectId && obj.objectId != Decoration.WEATHERVANE.objectId) {
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
                 val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
@@ -1950,15 +1953,16 @@ private fun DrawScope.drawEarthAtFoot(base: Offset, unit: Float, reach: Float, s
  * ground. It is what makes a thing look as if it touches the ground at all.
  *
  * @param width how wide the patch is on screen.
+ * @param strength how dark it is in the middle.
  */
-private fun DrawScope.drawContactShadow(base: Offset, width: Float) {
+private fun DrawScope.drawContactShadow(base: Offset, width: Float, strength: Float = 0.34f) {
     val radius = width / 2f
     if (radius <= 0f) return
     scale(scaleX = 1f, scaleY = 0.36f, pivot = base) {
         drawCircle(
             brush = Brush.radialGradient(
-                0f to Color.Black.copy(alpha = 0.34f),
-                0.55f to Color.Black.copy(alpha = 0.2f),
+                0f to Color.Black.copy(alpha = strength),
+                0.55f to Color.Black.copy(alpha = strength * 0.6f),
                 1f to Color.Transparent,
                 center = base,
                 radius = radius,
@@ -2051,6 +2055,10 @@ private val DIRT_DRY = Color(SoilPalette.DRY)
 private val DIRT_DUST = Color(SoilPalette.DUST)
 private const val FURROWS = 4
 
+/** How much darker a fence's shadows are than something broad's, and how dark its foot. */
+private const val FENCE_SHADOW_GAIN = 1.45f
+private const val FENCE_FOOT_SHADOW = 0.6f
+
 /** How strongly the rim and clods are drawn round a bed laid with its picture (#57). */
 private const val PICTURED_BED_EDGE = 0.45f
 
@@ -2070,9 +2078,9 @@ private const val PICTURED_BED_EDGE = 0.45f
  * those of the cells round it too, clipped to itself, so a patch carries across the joins.
  *
  * With a [face] (#57: the picture of a tilled or a composted bed, seen from above,
- * [TerrainTextures.bedFace]) the bed's earth, furrows and grains are that picture, one copy to
- * the cell, so that the furrows of beds side by side run on; the rim, the spilled earth and the
- * low front face are drawn round it as before.
+ * [TerrainTextures.bedFace]) the bed's earth, furrows and grains are that picture, [cellsPerCopy]
+ * cells to a copy, so that beds side by side run on; the rim, the spilled earth and the low front
+ * face are drawn round it as before.
  */
 private fun DrawScope.drawTilledSoil(
     transform: IsometricTransform,
@@ -2083,6 +2091,7 @@ private fun DrawScope.drawTilledSoil(
     onBareEarth: Boolean = false,
     earth: Bitmap? = null,
     face: Bitmap? = null,
+    cellsPerCopy: Float = 1f,
 ) {
     val unit = transform.tileWidth
     val inset = SoilTexture.INSET
@@ -2131,7 +2140,7 @@ private fun DrawScope.drawTilledSoil(
     }
 
     if (face != null) {
-        fillWithTexture(face, transform, bed, cellsPerCopy = 1f)
+        fillWithTexture(face, transform, bed, cellsPerCopy)
         // Better soil is deeper in colour.
         soilTint(quality)?.let { drawPath(bed, it, blendMode = BlendMode.Multiply) }
     } else {
@@ -2168,7 +2177,7 @@ private fun DrawScope.drawTilledSoil(
  * A cell the hoe has struck once: [face], the ground it is on its way to, coming through in soft
  * patches over about half of it. Where the patches go is the cell's own, so they stay put.
  */
-private fun DrawScope.drawHalfTurnedGround(transform: IsometricTransform, x: Int, y: Int, face: Bitmap?) {
+private fun DrawScope.drawHalfTurnedGround(transform: IsometricTransform, x: Int, y: Int, face: Bitmap?, cellsPerCopy: Float) {
     var seed = x * 48271 xor y * 69621
     fun next(): Float {
         seed = seed * 1103515245 + 12345
@@ -2182,7 +2191,7 @@ private fun DrawScope.drawHalfTurnedGround(transform: IsometricTransform, x: Int
         patches.addOval(Rect(at.x - w, at.y - w / 2f, at.x + w, at.y + w / 2f))
     }
     clipPath(transform.tilePath(x, y)) {
-        if (face != null) fillWithTexture(face, transform, patches, cellsPerCopy = 1f) else drawPath(patches, DIRT_DRY)
+        if (face != null) fillWithTexture(face, transform, patches, cellsPerCopy) else drawPath(patches, DIRT_DRY)
     }
 }
 

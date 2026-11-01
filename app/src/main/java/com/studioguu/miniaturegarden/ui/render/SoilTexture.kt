@@ -1,9 +1,11 @@
 package com.studioguu.miniaturegarden.ui.render
 
 /**
- * Which sides of a bed of tilled soil carry on into another bed (#47). In grid terms: [north] is the
- * cell at y - 1, [east] at x + 1, [south] at y + 1, [west] at x - 1. A joined side has no edge: the
- * earth runs straight on into the next cell, so that beds side by side are one field.
+ * Which sides of a bed of tilled soil carry on into another bed (#47), or run up to something else
+ * laid on the ground. In grid terms: [north] is the cell at y - 1, [east] at x + 1, [south] at
+ * y + 1, [west] at x - 1. A joined side has no edge: the earth runs straight on to the edge of
+ * the cell, so that beds side by side are one field and no strip of bare earth is left beside
+ * a lawn or paving.
  */
 data class SoilJoins(
     val north: Boolean = false,
@@ -22,9 +24,9 @@ data class SoilJoins(
     companion object {
         val NONE = SoilJoins()
 
-        /** The joins of the bed at ([x], [y]), given which cells are beds. */
-        fun at(x: Int, y: Int, isBed: (Int, Int) -> Boolean) =
-            SoilJoins(north = isBed(x, y - 1), east = isBed(x + 1, y), south = isBed(x, y + 1), west = isBed(x - 1, y))
+        /** The joins of the bed at ([x], [y]), given which cells it runs up to. */
+        fun at(x: Int, y: Int, meets: (Int, Int) -> Boolean) =
+            SoilJoins(north = meets(x, y - 1), east = meets(x + 1, y), south = meets(x, y + 1), west = meets(x - 1, y))
     }
 }
 

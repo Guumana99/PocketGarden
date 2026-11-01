@@ -83,7 +83,8 @@ class TerrainTextures(
     val tilled: Bitmap? = null,
     /**
      * Ground the hoe has broken up but not yet tilled (#61): loose, turned earth with no furrows
-     * in it, the face of `soil_revived.png` seen from straight above. It is the step between the
+     * in it, the face of `soil_revived.png` seen from straight above and made into a field
+     * ([FlatGround.looseField]), [FlatGround.LOOSE_CELLS] cells to a copy. It is the step between the
      * dry wasteland and a bed, shown on hard ground that has had some of the strikes it needs.
      * (From #57 to #60 it was the face of a composted bed instead.)
      */
@@ -196,7 +197,7 @@ class AssetRepository @Inject constructor(
                     val woodDeck = async { decodeGround(R.drawable.floor_wood) }
                     val pond = async { decodeUnscaled(R.drawable.pond) }
                     val tilled = async(Dispatchers.Default) { bedFace(R.drawable.soil_tilled, GroundSlab.TILLED) }
-                    val broken = async(Dispatchers.Default) { bedFace(R.drawable.soil_revived, GroundSlab.REVIVED) }
+                    val broken = async(Dispatchers.Default) { looseEarth() }
                     TerrainTextures(
                         water = water.await(),
                         cobblestone = cobblestone.await(),
@@ -236,6 +237,11 @@ class AssetRepository @Inject constructor(
      */
     private fun bedFace(@DrawableRes id: Int, slab: GroundSlab): Bitmap? = decodeUnscaled(id)?.let { picture ->
         FlatGround.region(picture, slab, BED_INSET, 1f - BED_INSET, BED_FACE_SIZE).also { picture.recycle() }
+    }
+
+    /** The loose earth ([TerrainTextures.broken]). */
+    private fun looseEarth(): Bitmap? = bedFace(R.drawable.soil_revived, GroundSlab.REVIVED)?.let { face ->
+        FlatGround.looseField(face).also { face.recycle() }
     }
 
     /**

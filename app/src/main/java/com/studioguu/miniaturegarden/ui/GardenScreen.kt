@@ -217,6 +217,11 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // Growing the garden is asked about first (#55).
     // Camera mode: nothing on screen but the garden, a viewfinder and a shutter.
     var cameraMode by rememberSaveable { mutableStateOf(false) }
+    // A level-up waits on its board until OK; it holds back while another board is up, so two
+    // never stack.
+    val levelUpNow = levelUp?.takeIf { openingGift == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideUi }
+    // The question about notifications comes first of what follows the closing board.
+    val inviteNow = notificationInviteDue && openingGift == null && !cameraMode && !hideUi && levelUpNow == null
     var shots by remember { mutableStateOf(0) }
     val toast = remember { GardenToastState() }
     val context = LocalContext.current
@@ -609,7 +614,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
 
             // A feature that has just been handed over: what it is and where it lives, beside the
             // button that lights up for it. Laid last, over the panels above the tool bar. Gone at the player's tap, and the next one follows.
-            val introducing = tutorialStep?.introducing
+            val introducing = tutorialStep?.introducing?.takeIf { !inviteNow }
             if (introducing != null) {
                 key(introducing) {
                     FeatureRevealCard(
@@ -708,23 +713,21 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     if (tutorialStep == TutorialStep.FINISHED && !cameraMode) {
         TutorialDoneDialog(onClose = { viewModel.acknowledgeTutorial(TutorialStep.FINISHED) })
     }
-    // A level-up waits on its board until OK; it holds back while another board is up, so two
-    // never stack.
-    val levelUpNow = levelUp?.takeIf { openingGift == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideUi }
     if (levelUpNow != null) {
         LevelUpDialog(notice = levelUpNow, onOk = viewModel::acknowledgeLevelUp)
     }
-    // Once, after the first steps, and only where the device needs the player's permission.
+    // Once, after the first steps: the garden's own question, and on a yes the device's.
     val requestNotificationPermission = rememberNotificationPermissionRequest { }
-    val inviteNow = notificationInviteDue && openingGift == null && !cameraMode && !hideUi && levelUpNow == null &&
-        NotificationAccess.shouldInvite(Build.VERSION.SDK_INT, context.hasNotificationPermission(), enabledInGame = true, alreadyInvited = false)
     if (inviteNow) {
         NotificationInviteDialog(
             onAccept = {
-                viewModel.markNotificationInviteShown()
-                requestNotificationPermission()
+                viewModel.acceptNotifications()
+                if (NotificationAccess.needsDeviceQuestion(Build.VERSION.SDK_INT, context.hasNotificationPermission())) requestNotificationPermission()
             },
-            onLater = viewModel::markNotificationInviteShown,
+            onLater = {
+                viewModel.declineNotifications()
+                toast.show(context.getString(R.string.notification_invite_later_note))
+            },
         )
     }
     if (confirmRain) {

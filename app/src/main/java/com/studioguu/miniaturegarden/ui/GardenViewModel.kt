@@ -50,6 +50,7 @@ import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.GameDay
 import com.studioguu.miniaturegarden.domain.model.SeasonClock
 import com.studioguu.miniaturegarden.domain.model.SeasonPhase
+import com.studioguu.miniaturegarden.domain.model.NotificationAccess
 import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.WeatherDiary
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
@@ -218,10 +219,11 @@ class GardenViewModel @Inject constructor(
 
     /**
      * The hour the garden is lit for (local time, 0 until 24, minutes as a fraction): the
-     * device's own clock, wherever the player is, or an hour well inside the debug menu's time of day.
+     * device's own clock, wherever the player is, the morning through the first play
+     * ([TutorialStep.shownTimeOfDay]), or an hour well inside the debug menu's time of day.
      */
-    val clockHour: StateFlow<Float> = combine(minutes, _debugTimeOfDay, season, ShowcaseControls.showcase) { _, debug, season, showcase ->
-        (showcase?.timeOfDay ?: debug)?.typicalHour(season) ?: localHour()
+    val clockHour: StateFlow<Float> = combine(minutes, _debugTimeOfDay, season, ShowcaseControls.showcase, tutorialStep) { _, debug, season, showcase, step ->
+        (showcase?.timeOfDay ?: debug ?: step?.shownTimeOfDay)?.typicalHour(season) ?: showcase?.clockHour ?: localHour()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), localHour())
 
     /** Morning, day, evening or night, for how the garden looks and who visits it; nothing else goes by it. */
@@ -766,14 +768,12 @@ class GardenViewModel @Inject constructor(
     }
 
     /**
-     * True when the one-time invitation to turn notifications on is due: the first steps are
-     * over, the player has not switched notifications off, and they have not been asked before.
-     * Whether the device needs asking at all is for the screen to tell.
+     * True when the one-time question about notifications is due ([NotificationAccess.shouldInvite]).
      */
     val notificationInviteDue: StateFlow<Boolean> = combine(settingsRepository.settings, tutorialStep, initialized) { settings, step, ready ->
         // Only once the garden is known to be past its first steps: a new garden's progress is
         // still missing for a moment while it is being made, and that is not "done".
-        ready && step == TutorialStep.DONE && settings.notificationsEnabled && !settings.notificationInviteShown
+        ready && NotificationAccess.shouldInvite(step, settings.notificationsEnabled, settings.notificationInviteShown)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /**
@@ -790,8 +790,14 @@ class GardenViewModel @Inject constructor(
         }
     }
 
-    fun markNotificationInviteShown() {
+    /** The player said yes to the question about notifications. */
+    fun acceptNotifications() {
         viewModelScope.launch { settingsRepository.update { it.copy(notificationInviteShown = true) } }
+    }
+
+    /** The player said "later": nothing is sent and the question is not put again. */
+    fun declineNotifications() {
+        viewModelScope.launch { settingsRepository.update { it.copy(notificationInviteShown = true, notificationsEnabled = false) } }
     }
 
     /** The player has read the welcome of the first steps. */

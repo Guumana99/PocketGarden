@@ -55,6 +55,26 @@ STILLS = [
     Shot("rock_bench_day", "15・19 岩とベンチ", DAY, View(1.8, cell=(7.0, 5.5), lift=60), (720, 600)),
 ]
 
+#: The grounds and the fences (app/src/debug/.../GroundGarden.kt): garden, shots.
+GROUND_STILLS = [
+    Shot("ground_whole", "地面の組み合わせ（全体）", DAY, View(0.5), (1080, 1000)),
+    Shot("ground_lawn_ridge", "1 芝生と畝", DAY, View(1.6, cell=(4.5, 1.5))),
+    Shot("ground_lawn_tilled", "1 芝生と耕した土", DAY, View(1.6, cell=(2.5, 3.0))),
+    Shot("ground_paving", "1 石畳・デッキと芝生・畝", DAY, View(1.4, cell=(6.0, 3.5))),
+    Shot("ground_edge", "1 木枠の際（右の角）", DAY, View(1.3, cell=(10.0, 3.5), lift=60)),
+    Shot("ground_tilled_3x3", "2 耕した土 3×3", DAY, View(1.8, cell=(2.5, 8.5))),
+    Shot("ground_ridge_3x3", "2 畝 3×3", DAY, View(1.8, cell=(6.5, 8.5))),
+    Shot("ground_rocks", "3 芝生の上の岩", DAY, View(1.5, cell=(2.5, 10.0), lift=60)),
+    Shot("ground_x074", "1 ×0.74 のすき間", DAY, View(0.74), (1080, 1100)),
+    Shot("ground_x123", "1 ×1.23 のすき間", DAY, View(1.23), (1080, 1100)),
+]
+FENCE_LOOK_STILLS = [
+    Shot(f"fence_{kind}_{ground}_{time.lower()}", f"4 {label}・{where}・{'夜' if time == 'NIGHT' else '昼'}", Look(time=time), View(1.1, cell=(x, y), lift=40), (720, 420))
+    for kind, label, y in (("wood", "木の柵", 1.5), ("white", "白い柵", 4.5), ("bamboo", "竹垣", 7.5))
+    for ground, where, x in (("bare", "地面", 1.0), ("tilled", "耕した土", 5.0), ("lawn", "芝生", 9.0))
+    for time in ("DAY", "NIGHT")
+]
+
 #: Screens reached through the buttons (garden UI shown): name, caption, what to tap in turn
 #: (texts on screen; the first that is found of each "a|b" is tapped), the part kept (l, t, r, b).
 UI_SHOTS = [
@@ -65,14 +85,14 @@ UI_SHOTS = [
 ]
 
 
-def open_feedback_garden(device: Device, install: bool) -> None:
+def open_feedback_garden(device: Device, install: bool, garden: str = "fb") -> None:
     device.display(None)
     if install:
         print("installing", APK.name)
         device.adb("install", "-r", str(APK))
     device.shell("settings", "put", "secure", "immersive_mode_confirmations", "confirmed")
     device.shell("am", "force-stop", PACKAGE)
-    device.broadcast("--ez", "load", "true", "--es", "garden", "fb")
+    device.broadcast("--ez", "load", "true", "--es", "garden", garden)
     time.sleep(4)
     device.shell("am", "start", "-n", f"{PACKAGE}/.MainActivity")
     seen = False
@@ -158,7 +178,7 @@ def sheet(before: Path, after: Path, target: Path) -> None:
         except OSError:
             continue
     rows = []
-    for shot in [(s.name, s.caption) for s in STILLS] + [(n, c) for n, c, _, _ in UI_SHOTS]:
+    for shot in [(s.name, s.caption) for s in STILLS + GROUND_STILLS + FENCE_LOOK_STILLS] + [(n, c) for n, c, _, _ in UI_SHOTS]:
         shot = Shot(shot[0], shot[1], DAY, View(1.0))
         pair = [before / f"{shot.name}.png", after / f"{shot.name}.png"]
         if not all(p.exists() for p in pair):
@@ -187,6 +207,7 @@ def main() -> int:
     parser.add_argument("--only", nargs="*")
     parser.add_argument("--serial", default="emulator-5554")
     parser.add_argument("--apk", type=Path, help="install this APK instead of the project's debug build")
+    parser.add_argument("--garden", choices=("fb", "ground", "fencelook"), default="fb")
     parser.add_argument("--sheet", nargs=3, type=Path, metavar=("BEFORE", "AFTER", "TARGET"))
     args = parser.parse_args()
     if args.sheet:
@@ -196,13 +217,14 @@ def main() -> int:
     device = Device(args.serial)
     if args.apk:
         device.adb("install", "-r", str(args.apk))
-    open_feedback_garden(device, install=not args.no_install and not args.apk)
+    open_feedback_garden(device, install=not args.no_install and not args.apk, garden=args.garden)
+    stills = {"fb": STILLS, "ground": GROUND_STILLS, "fencelook": FENCE_LOOK_STILLS}[args.garden]
     try:
-        for shot in STILLS:
+        for shot in stills:
             if args.only and shot.name not in args.only:
                 continue
             take(device, shot, args.out)
-        for name, _, taps, box in UI_SHOTS:
+        for name, _, taps, box in UI_SHOTS if args.garden == "fb" else []:
             if args.only and name not in args.only:
                 continue
             take_ui(device, name, taps, box, args.out)

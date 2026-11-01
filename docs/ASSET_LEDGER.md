@@ -71,9 +71,9 @@
 
 | 物（id） | 状態 | 出所 | 素材・メモ |
 |---|---|---|---|
-| 木の柵（`struct_fence`） | ✅ | Recraft | `struct_fence`（1 本のとき）`struct_fence_post` `struct_fence_rail`（つながるとき。#85、原画 `struct_fence_wood.png` から切り出し、横木の中央を 3 回繰り返す（#86））。コードの横木と杭はやめた |
-| 白い柵（`struct_fence_white`） | ✅ | Recraft | `struct_fence_white` `struct_fence_white_post` `struct_fence_white_rail`（#85、原画 `struct_fence_white.png`。真っ白だけを抜く。杭の間は 2 回並べる） |
-| 竹垣（`struct_fence_bamboo`） | ✅ | Recraft | `struct_fence_bamboo` `struct_fence_bamboo_post` `struct_fence_bamboo_rail`（#85、原画 `struct_fence_bamboo.png`。つなぎは原画の密度のまま 2 回並べる（#86）） |
+| 木の柵（`struct_fence`） | ✅ | Recraft | `struct_fence`（1 本のとき）`struct_fence_post` `struct_fence_rail`（つながるとき。#85、原画 `struct_fence_wood.png` から切り出し、横木の中央を 3 回繰り返す（#86））。コードの横木と杭はやめた。11/1 に取り込みの色を調整（`Grade`、絵は同じ） |
+| 白い柵（`struct_fence_white`） | ✅ | Recraft | `struct_fence_white` `struct_fence_white_post` `struct_fence_white_rail`（#85、原画 `struct_fence_white.png`。真っ白だけを抜く。杭の間は 2 回並べる）。11/1 に取り込みの色を調整（`Grade`、絵は同じ） |
+| 竹垣（`struct_fence_bamboo`） | ✅ | Recraft | `struct_fence_bamboo` `struct_fence_bamboo_post` `struct_fence_bamboo_rail`（#85、原画 `struct_fence_bamboo.png`。つなぎは原画の密度のまま 2 回並べる（#86））。11/1 に取り込みの色を調整（`Grade`、絵は同じ） |
 | レンガの縁石（`struct_edging_brick`） | 📦 | Recraft | **#86 で取り下げ（ショップ・図鑑から外した）**。 `struct_edging_brick` `struct_edging_brick_rail`（#85、原画 `struct_edging_brick.png`。歯を 1 マス 7 本に並べ直す。右下がりの辺は反転して描く。杭は無い） |
 | 井戸（`struct_well`） | ✅ | Recraft | `struct_well`（原画 `building_well.png`、Recraft（#74。C2PA を grep で確認））。#74 で 1×2 から 1×1 に。丸い石の井戸に屋根と桶 |
 | 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた） |
@@ -165,7 +165,7 @@
 | 庭の木枠、影、風の筋、天気（雨・雨乞いの雨・雪）、時間帯の光と夜の明かり | ⬜ | 演出としてコードで描く（上の「演出としてコードで描くもの」。雪・時間帯・明かりは #75） |
 | 木のボタン・トースト・図鑑の本・看板 | ⬜ | Compose のコード描画（`ui/components/` ほか） |
 | 店の内装（棚・カウンター） | ⬜ | コード。商品はすべてアイコンの絵（#77。上の「ショップのアイコン」） |
-| アプリのアイコン（ランチャー） | ✅ | 出所 Recraft。原画 `app_icon_frame.png`（箱庭）・`app_icon_bg_sky.png`（空と丘）。`res/mipmap-*/ic_launcher_{foreground,background,monochrome}.png`、旧形式 `ic_launcher.png` `ic_launcher_round.png`（#87、`tools/prepare_app_icon.py`）。モノクロは箱庭の輪郭の形 |
+| アプリのアイコン（ランチャー） | ✅ | 出所 Recraft。原画 `app_icon_frame.png`（箱庭）・`app_icon_bg_sky.png`（空と丘）。`res/mipmap-*/ic_launcher_{foreground,background,monochrome}.png`、旧形式 `ic_launcher.png` `ic_launcher_round.png`（#87、`tools/prepare_app_icon.py`）。モノクロは箱庭の輪郭の形。11/1 に上下の中央・直径 66dp の円の内側へ（モノクロも同じ） |
 | 通知の小さなアイコン | ✅ | `res/drawable/ic_stat_garden.xml`（芽の形の単色ベクター。ステータスバー用で単色が必須） |
 
 ## 音
@@ -181,7 +181,7 @@
 
 | 物 | 状態 |
 |---|---|
-| 高解像度アイコン（512×512） | ✅。出所 Recraft。`docs/store/icon_512.png`（#87、原画 `app_icon_frame.png` `app_icon_bg_sky.png`。背景込みの正方形、角は丸めない） |
+| 高解像度アイコン（512×512） | ✅。出所 Recraft。`docs/store/icon_512.png`（#87、原画 `app_icon_frame.png` `app_icon_bg_sky.png`。背景込みの正方形、角は丸めない）。11/1 にランチャーと同じ位置・大きさへ |
 | フィーチャーグラフィック（1024×500） | 未作成 |
 | スクリーンショット | 未作成 |
 

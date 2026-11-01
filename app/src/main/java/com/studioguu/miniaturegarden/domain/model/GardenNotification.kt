@@ -115,9 +115,18 @@ enum class NotificationAccess {
         fun deviceReady(sdkInt: Int, permissionGranted: Boolean, deviceAllows: Boolean): Boolean =
             (sdkInt < PERMISSION_SDK || permissionGranted) && deviceAllows
 
-        /** Whether to offer the one-time invitation to turn notifications on. */
-        fun shouldInvite(sdkInt: Int, permissionGranted: Boolean, enabledInGame: Boolean, alreadyInvited: Boolean): Boolean =
-            sdkInt >= PERMISSION_SDK && !permissionGranted && enabledInGame && !alreadyInvited
+        /**
+         * Whether to ask, once, if the garden may send notifications. The question is the game's own
+         * and is put on every Android version; the first steps must be over ([step] past the
+         * closing board, whose garden is back as it started) and it comes before the features are
+         * handed over. A player who switched notifications off has answered already.
+         */
+        fun shouldInvite(step: TutorialStep?, enabledInGame: Boolean, alreadyInvited: Boolean): Boolean =
+            step != null && !step.isFirstPlay && enabledInGame && !alreadyInvited
+
+        /** Whether saying yes needs the device's own question as well: Android 13 and up, not yet allowed. */
+        fun needsDeviceQuestion(sdkInt: Int, permissionGranted: Boolean): Boolean =
+            sdkInt >= PERMISSION_SDK && !permissionGranted
     }
 }
 

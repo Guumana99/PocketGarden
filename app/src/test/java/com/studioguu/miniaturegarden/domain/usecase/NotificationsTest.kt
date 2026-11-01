@@ -9,10 +9,12 @@ import com.studioguu.miniaturegarden.domain.model.PlannedNotification
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TurnOnStep
+import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.NotificationScheduler
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
+import java.io.File
 import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
@@ -285,12 +287,41 @@ class NotificationsTest {
     }
 
     @Test
-    fun `the invitation comes once, and only where the device needs asking`() {
-        assertTrue(NotificationAccess.shouldInvite(33, permissionGranted = false, enabledInGame = true, alreadyInvited = false))
-        assertFalse(NotificationAccess.shouldInvite(33, permissionGranted = false, enabledInGame = true, alreadyInvited = true))
-        assertFalse(NotificationAccess.shouldInvite(33, permissionGranted = true, enabledInGame = true, alreadyInvited = false))
-        assertFalse(NotificationAccess.shouldInvite(32, permissionGranted = false, enabledInGame = true, alreadyInvited = false))
+    fun `the question comes once, as soon as the closing board of the first steps is gone`() {
+        // Straight after the closing board, before the features are handed over.
+        assertTrue(NotificationAccess.shouldInvite(TutorialStep.REVEAL_EDIT, enabledInGame = true, alreadyInvited = false))
+        assertTrue(NotificationAccess.shouldInvite(TutorialStep.DONE, enabledInGame = true, alreadyInvited = false))
+        // Not in the practice garden or over the closing board, whichever way they were left.
+        for (step in TutorialStep.entries.filter { it <= TutorialStep.FINISHED }) {
+            assertFalse(step.name, NotificationAccess.shouldInvite(step, enabledInGame = true, alreadyInvited = false))
+        }
+        assertFalse(NotificationAccess.shouldInvite(null, enabledInGame = true, alreadyInvited = false))
+        assertFalse(NotificationAccess.shouldInvite(TutorialStep.DONE, enabledInGame = true, alreadyInvited = true))
         // A player who switched them off is not asked to switch them on.
-        assertFalse(NotificationAccess.shouldInvite(34, permissionGranted = false, enabledInGame = false, alreadyInvited = false))
+        assertFalse(NotificationAccess.shouldInvite(TutorialStep.DONE, enabledInGame = false, alreadyInvited = false))
+    }
+
+    @Test
+    fun `only yes on Android 13 and up goes on to the device's question`() {
+        assertTrue(NotificationAccess.needsDeviceQuestion(33, permissionGranted = false))
+        assertFalse(NotificationAccess.needsDeviceQuestion(33, permissionGranted = true))
+        assertFalse(NotificationAccess.needsDeviceQuestion(32, permissionGranted = false))
+    }
+
+    @Test
+    fun `"later" says where to change it, and the yes alone asks the device`() {
+        val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+        val strings = File(main, "res/values/strings.xml").readText()
+        assertTrue(strings.contains("<string name=\"notification_invite_ok\">はい</string>"))
+        assertTrue(strings.contains("<string name=\"notification_invite_later\">あとで</string>"))
+        assertTrue(strings.contains("<string name=\"notification_invite_later_note\">設定の「その他」から変えられます</string>"))
+        val screen = File(main, "java/com/studioguu/miniaturegarden/ui/GardenScreen.kt").readText().replace("\r\n", "\n")
+        val accept = screen.substringAfter("onAccept = {").substringBefore("onLater = {")
+        assertTrue(accept.contains("requestNotificationPermission()"))
+        val later = screen.substringAfter("onLater = {").substringBefore("}")
+        assertFalse(later.contains("requestNotificationPermission()"))
+        assertTrue(later.contains("R.string.notification_invite_later_note"))
+        // The question comes before the features' cards, not over them.
+        assertTrue(screen.contains("tutorialStep?.introducing?.takeIf { !inviteNow }"))
     }
 }

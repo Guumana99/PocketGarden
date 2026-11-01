@@ -1,9 +1,11 @@
 package com.studioguu.miniaturegarden.ui
 
+import com.studioguu.miniaturegarden.data.asset.FlatGround
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WeatherDiary
@@ -56,6 +58,15 @@ class SoilPondAndFirstPlayTest {
     }
 
     @Test
+    fun `the garden is shown in the morning through the first play, then by the clock`() {
+        for (step in TutorialStep.entries) {
+            assertEquals(step.name, if (step.isFirstPlay) TimeOfDay.MORNING else null, step.shownTimeOfDay)
+        }
+        // The debug menu's and the showcase's own come first; the clock last.
+        assertTrue(source("ui/GardenViewModel.kt").contains("(showcase?.timeOfDay ?: debug ?: step?.shownTimeOfDay)?.typicalHour(season) ?: showcase?.clockHour ?: localHour()"))
+    }
+
+    @Test
     fun `the garden screen runs on the first play's weather`() {
         val viewModel = source("ui/GardenViewModel.kt")
         assertTrue(viewModel.contains("WeatherForecast.forGarden(progress.value?.tutorialStep, diary)"))
@@ -68,19 +79,28 @@ class SoilPondAndFirstPlayTest {
     @Test
     fun `ground the hoe has struck shows the next ground in patches until it is that ground`() {
         val assets = source("data/asset/AssetRepository.kt")
-        assertTrue(assets.contains("val broken = async(Dispatchers.Default) { bedFace(R.drawable.soil_revived, GroundSlab.REVIVED) }"))
+        assertTrue(assets.contains("bedFace(R.drawable.soil_revived, GroundSlab.REVIVED)?.let { face ->"))
+        assertTrue(assets.contains("FlatGround.looseField(face)"))
         assertFalse(assets.contains("composted ?: tilled"))
         val viewModel = source("ui/GardenViewModel.kt")
         assertTrue(viewModel.contains("val brokenGround: StateFlow<Set<GridCell>> = hoeStrikes.map { it.keys }"))
         assertTrue(viewModel.contains("if (it == ActionResult.HOE_STRUCK) all + (cell to strikes + 1) else all - cell"))
         assertTrue(source("ui/GardenScreen.kt").contains("brokenCells = brokenGround,"))
         val canvas = source("ui/components/GardenCanvas.kt")
-        assertTrue(canvas.contains("drawHalfTurnedGround(transform, cell.x, cell.y, if (floor == null) terrain.broken else terrain.tilled)"))
+        assertTrue(canvas.contains("drawHalfTurnedGround(transform, cell.x, cell.y, if (floor == null) terrain.broken else terrain.tilled, if (floor == null) FlatGround.LOOSE_CELLS else 1f)"))
         // Not over ridges or anything else that has been made there since.
         assertTrue(canvas.contains("(floor != null && !floor.isLooseSoil)) continue"))
         // Tilled earth is the flat picture, ridges the furrowed one; better soil is deeper in colour.
         assertTrue(canvas.contains("face = if (obj.isLooseSoil) terrain.broken else terrain.tilled"))
         assertTrue(canvas.contains("soilTint(quality)?.let { drawPath(bed, it, blendMode = BlendMode.Multiply) }"))
+    }
+
+    @Test
+    fun `tilled earth is laid as one field over many cells, not cell by cell`() {
+        assertTrue(FlatGround.LOOSE_CELLS > 1f)
+        // No whole number of copies to a cell: the mound in the picture would come back every cell.
+        assertEquals(3f, FlatGround.LOOSE_CELLS, 0.001f)
+        assertTrue(source("ui/components/GardenCanvas.kt").contains("cellsPerCopy = if (obj.isLooseSoil) FlatGround.LOOSE_CELLS else 1f"))
     }
 
     // --- The middle of a pool ---

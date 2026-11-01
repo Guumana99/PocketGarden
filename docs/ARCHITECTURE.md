@@ -311,7 +311,7 @@ di/       Hilt の束ね
   - 権限はあるが端末の通知設定でアプリが止められている（`OPEN_DEVICE_SETTINGS`）：**端末のアプリ通知設定を開く**。
     戻ってきたとき端末が許可していれば（`NotificationAccess.deviceReady`）、そこで初めてゲームの設定を ON にする（`NotificationSettingRow` の `awaitingDevice`）。
   端末が許可していない間は「端末で、通知が許可されていません。スイッチを入れると、許可の手続きにすすみます。」と「端末の設定を開く」を出す。ゲームはそのまま遊べる。
-- **一度だけの招待**：チュートリアルと機能の解放がすべて終わったあと（`TutorialStep.DONE`）、Android 13 以上で権限が無ければ、木目調のダイアログで「お知らせを受け取る／いまはいい」を聞く。
+- **一度だけの質問**（11/1 の FB で作り直し）：チュートリアルを終えるか「とばす」で抜け、庭が初期状態に戻って締めの板を閉じたあと、機能の紹介より先に、アプリの言葉で「作物が実ったときなどにお知らせしてもいい？」と聞く（`NotificationInviteDialog`、`NotificationAccess.shouldInvite`。Android のどの版でも聞く）。「はい」のときだけ、Android 13 以上で許可が無ければ端末の許可の画面を出す（`needsDeviceQuestion`）。「あとで」は通知を切り（`notificationsEnabled = false`）、トーストで「設定の「その他」から変えられます」と添える。どちらでも二度と自動では聞かない（`AppSettings.notificationInviteShown`）。それまでは `TutorialStep.DONE`（機能の紹介 5 枚のあと）まで待ち、Android 13 以上だけに出していたため、紹介の途中でやめた人には出なかった。既存の庭（チュートリアル済み）では、更新後に最初に庭へ入ったときに出る。
   どちらを選んでも二度と出ない（`AppSettings.notificationInviteShown`）。既存の庭（チュートリアル済み）では、更新後に最初に庭へ入ったときに出る。
   - 「はじめる」直後に一瞬出て消える不具合を #28 で修正：新しい庭の `garden_progress` が作られる前は段階が読めず、以前は「DONE」とみなしていたため。
     今は段階が読めるまで `GardenViewModel.tutorialStep` は null、招待は初期化（`initJob`）が済んでから判定する。
@@ -343,7 +343,7 @@ di/       Hilt の束ね
 ## 時計とゲームの時間（#75）
 
 成長・乾き・季節・建築・天気の日付は、端末の時計ではなく**ゲームの時計**（`domain/repository/GameClock`、実装は `data/security/TrustedClock`）で進む。
-朝・昼・夕方・夜の見た目と生き物の来る時間帯だけは端末の時計（旅行先の時差もそのまま）。
+朝・昼・夕方・夜の見た目と生き物の来る時間帯だけは端末の時計（旅行先の時差もそのまま）。ただしチュートリアルの間（締めの板まで、`TutorialStep.isFirstPlay`）は朝に固定する（`shownTimeOfDay`。夜は暗くて見えにくい）。「とばす」で抜けても、板を閉じれば時計の時間帯に戻る。
 
 - **再起動をはさまない間**：`SystemClock.elapsedRealtime` で測った本当の経過時間だけ進む。基準点（ゲームの時刻・elapsedRealtime・起動回数 `BOOT_COUNT`）を SharedPreferences（`game_clock`）に置き、1 分ごとに書き直す。端末の時計を進めても戻しても、ゲームの時計は変わらない。
 - **再起動をはさんだとき**（起動回数が変わった、または elapsedRealtime が基準より小さい）：Android 13 以上なら `SystemClock.currentNetworkTimeClock()` のネットワーク時刻（取れなければ例外になるので握りつぶす。インターネットの権限は足していない）、取れない・Android 12 以下なら端末の時計を信じる。ただし**前の基準より前には戻らない**（時計を戻すと、追いつくまで庭は止まって待つ）。不在の上限 7 日はそのまま。
@@ -472,7 +472,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 輪郭の揺れ、こぼれた土、土粒の位置をマス座標から決定的に生成する純関数。描画は `drawTilledSoil`。
 
-- **つながった畑（#47）**：`SoilJoins.at(x, y)` が上下左右のマスも耕した土かを見る。つながっている辺は
+- **つながった畑（#47）**：`SoilJoins.at(x, y)` が上下左右のマスも耕した土か、ほかの地面（芝生・石畳・デッキ・小石・野の花）かを見る（`GardenGrid.meetsBed`。11/1 の FB：内側へ寄せた 0.05 マスに荒れ地がのぞいていた）。荒れ地・水辺・庭の端だけが開いた辺。つながっている辺は
   マスの縁にまっすぐ置き（揺れなし・内側への寄せなし）、縁取り・こぼれた土・畝の切れ目を描かない。隣どうしの輪郭がぴったり重なり、1 枚の畑になる。
   - 畝は全マス共通の行（`furrowRows`）なので、横につながると長い畝になる。
   - 土の色は `fieldDampness`（2 マス間隔の格子のなめらかなノイズ）で、マスごとに色が跳ばない。湿った・乾いた斑（`patches`）は周り 8 マスの分も描いて自分の形で切り抜くので、マスの境をまたぐ。
@@ -482,6 +482,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
   （`AssetRepository.bedFace`：`GroundSlab.TILLED` の上面の 8%〜92%、256 px、`TerrainTextures.tilled`）。たい肥入りは #61 から同じ絵を `COMPOST_TINT` で暗くする（乗算）。#77 で葉とわらの粒はやめた。
   `BED_INSET` は #77 から 0.08：`soil_tilled.png` の奥の辺は畝が板の縁より低く、白い背景が 0.068 まで入り込んでいて、0.04 では畑と畑の境目に白い欠けが出ていた。
 - **崩しかけた地面（#61）**：固い地面（`SoilHardness`）はクワを何度か打たないと畑にならない。打った回数は `GardenViewModel.hoeStrikes`（アプリを開いている間だけ）にあり、
+- **耕した土の絵（11/1 の FB）**：`soil_revived.png` は 1 マスの真ん中が盛り上がった絵で、1 マスに 1 枚敷くとマスごとの板に見えた。`FlatGround.looseField` で継ぎ目を消し、盛り上がりを除き（`evenOut`）、768 px・3 マスで 1 枚の模様に組み直して敷く（`LOOSE_CELLS`）。畝は今までどおり 1 マス 1 枚。
   1 回でも打ったマスは `brokenGround` として `GardenCanvas(brokenCells = …)` に渡り、`soil_revived.png` の上面（`GroundSlab.REVIVED`、`TerrainTextures.broken`）を、畝の無いほぐれた土としてマスに敷く（`drawBrokenGround`、縁 0.06 内側、土くれ 6 個）。
   畑になるとそのマスは一覧から外れ、畑の絵になる。荒れ地 → 崩しかけた地面 → 畑の 3 段。保存はしない（#57〜#60 の `soil_revived.png` はたい肥入りの畑の絵だった）。
   これを 1 マスに 1 枚、庭の軸に沿って敷く（`fillWithTexture(cellsPerCopy = 1f)`）。どのマスも同じ絵なので、つながった畑では畝がそのまま続く。
