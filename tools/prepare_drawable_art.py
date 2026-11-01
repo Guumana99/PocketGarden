@@ -39,7 +39,7 @@ This script:
         spread of outer leaves, sized by their width and stood on the foot of the head, the leaves
         lying out in front of it;
       - nanohana (#87): the same; a wide flowering clump, sized by its width from stage 2 on. Stage 3
-        and withered (#93) are stems tipped with spires of small flowers, about as tall as wide;
+        and withered (#93), and stage 2 with its green buds (#94), are stems tipped with spires, about as tall as wide;
         the withered one is pale, and is cut more firmly and deepened ([WITHERED_CUT], [firmed]);
       - cosmos stage 1 (#87): a young plant so pale and fine that it vanished on the soil; it is
         brought to the colour of stage 2's leaves and its strands are firmed up (deepened);
