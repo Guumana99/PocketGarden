@@ -201,10 +201,10 @@ class BuildingArtTest {
     private val flip = FlipObjectUseCase(repo, GardenMap.DEFAULT)
 
     @Test
-    fun `the cottage, the greenhouse, the windmill, the bench, the rocks and the bridge can face either way, nothing else`() {
+    fun `the cottage, the windmill, the bench, the rocks and the bridge can face either way, nothing else`() {
         assertEquals(
             listOf(
-                "struct_cottage", "floor_greenhouse", "struct_windmill", "deco_bench",
+                "struct_cottage", "struct_windmill", "deco_bench",
                 "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles", "struct_bridge_taiko",
             ),
             GridObject.FLIPPABLE_OBJECT_IDS,
@@ -268,9 +268,8 @@ class BuildingArtTest {
     @Test
     fun `the garden draws a building the way it faces, sails included`() {
         val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
-        assertTrue(canvas.contains("drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)"))
+        assertTrue(canvas.contains("drawSwayingSprite(atlasImage, sprite, base, thingScale, lean, flipped = obj.isFlipped)"))
         assertTrue(canvas.contains("sprite.attachmentAt(base.x, base.y, spriteScale, obj.isFlipped)"))
-        assertTrue(canvas.contains("drawSprite(atlasImage, house, center, spriteScale, flipped = obj.isFlipped"))
         val screen = File(main, "java/com/studioguu/miniaturegarden/ui/GardenScreen.kt").readText()
         assertTrue(screen.contains("onFlip = viewModel::flipSelected"))
         assertTrue(screen.contains("onFlip = viewModel::togglePlacingFlip"))

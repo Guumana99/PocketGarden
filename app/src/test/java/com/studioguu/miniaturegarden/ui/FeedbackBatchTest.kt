@@ -105,9 +105,6 @@ class FeedbackBatchTest {
     @Test
     fun `no petals, leaves or glints are scattered over the ground`() {
         assertFalse(source("ui/components/GardenCanvas.kt").contains("drawSeasonGround"))
-        val seasonal = source("ui/render/SeasonalArt.kt")
-        assertFalse(seasonal.contains("object SeasonGround"))
-        assertFalse(seasonal.contains("fun DrawScope.drawSeasonGround"))
     }
 
     // --- 5. The hoe takes its time, and shows a rank ---

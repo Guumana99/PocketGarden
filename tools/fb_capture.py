@@ -85,11 +85,15 @@ LAWN_THINGS_STILLS = [
     Shot("lawn_sprinkler", "1 芝生の上のスプリンクラー", DAY, View(1.6, cell=(5.5, 6.0), lift=60), (1080, 800)),
 ]
 GREENHOUSE_STILLS = [
-    Shot("greenhouse_x074", "8 温室 ×0.74", DAY, View(0.74, cell=(5.5, 4.0), lift=80), (1080, 1400)),
-    Shot("greenhouse_x123", "8 温室 ×1.23", DAY, View(1.23, cell=(5.0, 3.0), lift=120), (1080, 1400)),
-    Shot("greenhouse_near", "8 温室に作物（ひまわり）", DAY, View(2.2, cell=(2.5, 2.5), lift=200), (1080, 1200)),
-    Shot("greenhouse_block", "8 2×2 に並べた温室", DAY, View(1.5, cell=(5.0, 6.0), lift=120), (1080, 1200)),
-    Shot("greenhouse_empty", "8 空の温室とマス", DAY, View(2.2, cell=(10.5, 2.5), lift=120), (1080, 1000)),
+    Shot("gh_x074_back", "温室 1 マス・1×3・2×2 ×0.74", DAY, View(0.74, cell=(4.5, 2.0), lift=120), (1080, 1100)),
+    Shot("gh_x074_front", "温室 3×3・L 字 ×0.74", DAY, View(0.74, cell=(3.5, 6.0), lift=120), (1080, 1100)),
+    Shot("gh_x123_one", "温室 1 マス ×1.23", DAY, View(1.23, cell=(1.5, 1.5), lift=160), (1080, 900)),
+    Shot("gh_x123_row", "温室 1×3 ×1.23", DAY, View(1.23, cell=(4.5, 1.5), lift=160), (1080, 900)),
+    Shot("gh_x123_two", "温室 2×2 ×1.23", DAY, View(1.23, cell=(8.0, 2.0), lift=160), (1080, 900)),
+    Shot("gh_x123_three", "温室 3×3 ×1.23", DAY, View(1.23, cell=(2.5, 5.5), lift=160), (1080, 1200)),
+    Shot("gh_x123_ell", "温室 L 字 ×1.23", DAY, View(1.23, cell=(6.0, 6.5), lift=160), (1080, 1200)),
+    Shot("gh_empty", "空の温室 2×2", DAY, View(1.8, cell=(2.0, 10.0), lift=160), (1080, 1000)),
+    Shot("gh_night", "夜の温室", NIGHT, View(0.74, cell=(3.5, 6.0), lift=120), (1080, 1100)),
 ]
 
 #: Screens reached through the buttons (garden UI shown): name, caption, what to tap in turn

@@ -330,7 +330,7 @@ class ProgressionTest {
                 GardenItem.DECO_ROCK to 60, GardenItem.DECO_BENCH to 100, GardenItem.STRUCT_COTTAGE to 800,
                 GardenItem.DECO_POND to 120, GardenItem.STRUCT_WELL to 400, GardenItem.DECO_WEATHERVANE to 500,
                 GardenItem.DECO_SPRINKLER to 450, GardenItem.STRUCT_WINDMILL to 1_200, GardenItem.STRUCT_HUT to 2_000,
-                GardenItem.FLOOR_GREENHOUSE to 3_000,
+                GardenItem.FLOOR_GREENHOUSE to 1_500,
                 GardenItem.DECO_ROCK_FLAT to 80, GardenItem.DECO_ROCK_MOSSY to 150, GardenItem.DECO_ROCK_STANDING to 250,
                 GardenItem.DECO_ROCK_PEBBLES to 300, GardenItem.STRUCT_BRIDGE to 3_500, GardenItem.STRUCT_FENCE_WHITE to 25, GardenItem.STRUCT_FENCE_BAMBOO to 35,
                 GardenItem.STRUCT_EDGING_BRICK to 60,

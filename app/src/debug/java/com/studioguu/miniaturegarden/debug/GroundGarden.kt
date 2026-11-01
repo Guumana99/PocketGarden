@@ -85,25 +85,27 @@ object GroundGarden {
     }
 
     /**
-     * The greenhouse as it stands (`--es garden greenhouse`): one cell each, full grown crops in
-     * them, the tallest first, and an empty one; and four side by side, where a row of them shows
-     * what joining them up would have to mend.
+     * The joined-up greenhouse (`--es garden greenhouse`): each shape with a mix of tall crops, grown.
      *
-     *     y\x 0 1 2 3 4 5 6 7 8 9 10
-     *      2  . . S . C . T . W . e      S sunflower, C corn, T tomato, W wheat, e empty
-     *      5  . . . . S C . . . . .
-     *      6  . . . . T W . . . . .
-     *      8  . . - - - - - - - . .      - the ground of a row of bare grid cells beside them
+     *     y\\x 0 1 2 3 4 5 6 7 8 9 10
+     *      0  . . . . . . . . . . .
+     *      1  . A . B B B . C C . .      A one cell, B one by three, C two by two
+     *      2  . . . . . . . C C . .
+     *      3  . . . . . . . . . . .
+     *      4  . D D D . . . . . . .      D three by three
+     *      5  . D D D . L . . . . .      L an L
+     *      6  . D D D . L . . . . .
+     *      7  . . . . . L L L . . .
+     *      8  . . . . . . . . . . .
+     *      9  . E E . . . . . . . .      E two by two, empty
+     *     10  . E E . . . . . . . .
      */
     fun greenhouse(now: Long): List<GridObject> {
-        val crops = listOf(
-            GridCell(2, 2) to PlantSpecies.SUNFLOWER, GridCell(4, 2) to PlantSpecies.CORN,
-            GridCell(6, 2) to PlantSpecies.TOMATO, GridCell(8, 2) to PlantSpecies.WHEAT,
-            GridCell(4, 5) to PlantSpecies.SUNFLOWER, GridCell(5, 5) to PlantSpecies.CORN,
-            GridCell(4, 6) to PlantSpecies.TOMATO, GridCell(5, 6) to PlantSpecies.WHEAT,
-        )
-        return place(now, GridObject.GREENHOUSE_OBJECT_ID, crops.map { it.first } + GridCell(10, 2)) +
-            crops.flatMap { (cell, species) -> place(now, species.objectId, listOf(cell)).map { it.copy(growthProgress = 1f) } }
+        val planted = listOf(GridCell(1, 1)) + cells(3..5, 1..1) + cells(7..8, 1..2) + cells(1..3, 4..6) +
+            cells(5..5, 5..7) + cells(6..7, 7..7)
+        val crops = listOf(PlantSpecies.SUNFLOWER, PlantSpecies.CORN, PlantSpecies.TOMATO, PlantSpecies.WHEAT)
+        return place(now, GridObject.GREENHOUSE_OBJECT_ID, planted + cells(1..2, 9..10)) +
+            planted.flatMapIndexed { i, cell -> place(now, crops[i % crops.size].objectId, listOf(cell)).map { it.copy(growthProgress = 1f) } }
     }
 
     fun fencesOnGrounds(now: Long): List<GridObject> {

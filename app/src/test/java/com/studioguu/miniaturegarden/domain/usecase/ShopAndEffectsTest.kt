@@ -152,7 +152,7 @@ class ShopAndEffectsTest {
         // lavender's, and the cottage, at Lv.3, dearer than the well at Lv.5.
         val byPrice = GardenItem.entries.sortedByDescending { it.price }
         assertEquals(
-            listOf(GardenItem.STRUCT_BRIDGE, GardenItem.FLOOR_GREENHOUSE, GardenItem.STRUCT_HUT, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_COTTAGE),
+            listOf(GardenItem.STRUCT_BRIDGE, GardenItem.STRUCT_HUT, GardenItem.FLOOR_GREENHOUSE, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_COTTAGE),
             byPrice.take(5),
         )
     }

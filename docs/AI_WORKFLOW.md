@@ -70,6 +70,7 @@
 | 庭の倍率の保存 | `SettingsRepositoryTest` `IsometricEngineTest` |
 | もちものの並び替え・タブ・入手の記録（DB v9） | `InventorySortTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | ポストのアーカイブ・既読・ヒントと入荷のお便り（DB v12） | `PostTest`（＋季節の手紙 `SeasonsTest`） |
+| 温室の連結・扉・屋根・壁のタップ・中の作物の大きさ | `GreenhouseLayoutTest`（＋タップ `TapTargetsTest`、絵 `BuildingArtTest` `AssetLedgerTest`、値段 `ProgressionTest` `ShopAndEffectsTest`、1 日の稼ぎ `ProgressionPaceTest`） |
 | 四季・お便り・旬のショップ・植え付け制限・温室（DB v10） | `SeasonsTest`（＋棚や数を見る `ShopAndEffectsTest` `ProgressionTest` `CollectionTest` `HoeTest`） |
 
 アイテムや図鑑ページを**増減**したら、数を固定値で見ているテストが落ちる

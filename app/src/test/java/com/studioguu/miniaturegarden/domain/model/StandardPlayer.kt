@@ -95,7 +95,19 @@ object StandardPlayer {
     }
 
     /** How a game went: when the target level came, and on which day the garden grew to each size. */
-    class Pace(val days: Double, val grewTo: List<Pair<Int, Double>>, val levels: Map<Int, Double>)
+    class Pace(
+        val days: Double,
+        val grewTo: List<Pair<Int, Double>>,
+        val levels: Map<Int, Double>,
+        /** The coins taken in at each level, harvests and bonuses less seeds, and the visits spent there. */
+        val coinsAtLevel: Map<Int, Long> = emptyMap(),
+        val visitsAtLevel: Map<Int, Int> = emptyMap(),
+        /** The beds at each level, as they stood when it was left. */
+        val bedsAtLevel: Map<Int, Int> = emptyMap(),
+    ) {
+        /** What the player takes in in a day at [level]. */
+        fun coinsPerDayAt(level: Int): Double = (coinsAtLevel[level] ?: 0L) * VISIT_HOURS.size.toDouble() / (visitsAtLevel[level] ?: 1)
+    }
 
     /** [daysToLevel], with the beds as [plan] has them. */
     fun play(targetLevel: Int, ads: Boolean, plan: BedPlan): Pace {
@@ -105,6 +117,9 @@ object StandardPlayer {
         var size = GridObject.GRID_SIZE
         val grewTo = mutableListOf<Pair<Int, Double>>()
         val levels = sortedMapOf<Int, Double>()
+        val coinsAtLevel = HashMap<Int, Long>()
+        val visitsAtLevel = HashMap<Int, Int>()
+        val bedsAtLevel = HashMap<Int, Int>()
         var profile = UserProfile(coins = UserProfile.STARTING_COINS)
         var lastVisit = VISIT_HOURS.first().toDouble()
         val water = CalculateOfflineProgressUseCase.THIRSTY_THRESHOLD
@@ -113,6 +128,9 @@ object StandardPlayer {
             val season = generateSequence(Season.SPRING, ::next).elementAt((day / SeasonClock.DAYS_PER_SEASON) % 4)
             for (hour in VISIT_HOURS) {
                 val now = day * 24.0 + hour
+                val level = profile.playerLevel
+                val coinsBefore = profile.coins
+                var builtFor = 0L
                 val elapsed = now - lastVisit
                 lastVisit = now
                 // Time passes: a bed grows while its soil is above the thirsty line.
@@ -133,6 +151,7 @@ object StandardPlayer {
                     val next = GardenExpansion.STAGES.firstOrNull { it.size > size }
                     if (next != null && profile.playerLevel >= next.playerLevel && profile.coins >= next.price + plan.seedMoney) {
                         profile = profile.copy(coins = profile.coins - next.price)
+                        builtFor += next.price
                         size = next.size
                         grewTo += size to now / 24.0
                     }
@@ -172,8 +191,11 @@ object StandardPlayer {
                         bed.moisture = 1.0
                     }
                 }
+                coinsAtLevel.merge(level, profile.coins - coinsBefore + builtFor, Long::plus)
+                visitsAtLevel.merge(level, 1, Int::plus)
+                bedsAtLevel[level] = garden.size
                 levels.putIfAbsent(profile.playerLevel, now / 24.0)
-                if (profile.playerLevel >= targetLevel) return Pace(now / 24.0, grewTo, levels)
+                if (profile.playerLevel >= targetLevel) return Pace(now / 24.0, grewTo, levels, coinsAtLevel, visitsAtLevel, bedsAtLevel)
             }
         }
         error("Lv.$targetLevel not reached")

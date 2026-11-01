@@ -158,7 +158,7 @@ data class GridObject(
          * one does not change the cells it stands on. The order is the one they are listed in.
          */
         val FLIPPABLE_OBJECT_IDS: List<String> = listOf(
-            "struct_cottage", "floor_greenhouse", "struct_windmill", "deco_bench",
+            "struct_cottage", "struct_windmill", "deco_bench",
             "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles",
             "struct_bridge_taiko",
         )

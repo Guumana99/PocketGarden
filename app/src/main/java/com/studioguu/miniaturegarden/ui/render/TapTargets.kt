@@ -2,10 +2,12 @@ package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.WorkKind
+import kotlin.math.abs
 
 /**
  * What a tap on the garden means when nothing is in hand.
@@ -17,15 +19,17 @@ import com.studioguu.miniaturegarden.domain.model.WorkKind
  * or two further back, on bare lawn, and only clears the selection. So, in order:
  *
  *  1. a bubble under the finger wins: it is there to be tapped;
- *  2. otherwise, if the ground under the finger holds something, that is what is meant (a crop
+ *  2. a near wall of a greenhouse under the finger stands for its cell, what grows there being
+ *     seen through it, unless the finger is on the middle of a cell further in ([CELL_MIDDLE]);
+ *  3. otherwise, if the ground under the finger holds something, that is what is meant (a crop
  *     behind a cottage is still picked through its roof);
- *  3. otherwise, if the finger is on a building's walls or roof, or just beside them, the
- *     building is picked;
- *  4. otherwise it is the ground: an empty cell, or null off the grid, which clears the
+ *  4. otherwise, a far wall of a greenhouse stands for its cell, and if the finger is on a
+ *     building's walls or roof, or just beside them, the building is picked;
+ *  5. otherwise it is the ground: an empty cell, or null off the grid, which clears the
  *     selection as before.
  *
  * While something is being placed or moved, or the hoe is in hand, the player is looking for a
- * cell and only step 4 applies.
+ * cell and only step 5 applies.
  *
  * Screen sizes here follow [IsometricTransform]: they already include the zoom.
  */
@@ -69,9 +73,37 @@ object TapTargets {
         val ground = TilePicker.pick(screen, transform, grid.map.size)
         if (editing) return ground
         bubbleAt(screen, transform, objects, minReach, plantTop)?.let { return TileCoord(it.gridX, it.gridY) }
+        val walls = GreenhouseLayout.of(objects.filter { it.isGreenhouse }.map { GridCell(it.gridX, it.gridY) }.toSet()).walls
+        greenhouseWallAt(screen, transform, walls.filter { it.side.isFront })?.let { wall ->
+            val inside = ground?.takeIf { grid.isUnderGlass(it.x, it.y) && onCellMiddle(screen, transform, it) }
+            return inside ?: TileCoord(wall.cell.x, wall.cell.y)
+        }
         if (ground != null && grid.objectAt(ground.x, ground.y) != null) return ground
+        greenhouseWallAt(screen, transform, walls)?.let { return TileCoord(it.cell.x, it.cell.y) }
         buildingAt(screen, transform, objects)?.let { return TileCoord(it.gridX, it.gridY) }
         return ground
+    }
+
+    /** How far from a cell's middle, along either side of the grid, a tap is on its middle. */
+    const val CELL_MIDDLE = 0.3f
+
+    private fun onCellMiddle(screen: Offset, transform: IsometricTransform, tile: TileCoord): Boolean {
+        val world = transform.screenToWorld(screen)
+        return abs(world.x - tile.x - 0.5f) <= CELL_MIDDLE && abs(world.y - tile.y - 0.5f) <= CELL_MIDDLE
+    }
+
+    /** The front-most of [walls] with [screen] on it, between its foot and its top. */
+    fun greenhouseWallAt(screen: Offset, transform: IsometricTransform, walls: List<GreenhouseWall>): GreenhouseWall? {
+        val height = transform.tileWidth * GreenhouseLook.WALL_HEIGHT
+        return walls
+            .filter { wall ->
+                val left = transform.worldToScreen(wall.from.x, wall.from.y)
+                val right = transform.worldToScreen(wall.to.x, wall.to.y)
+                val along = (screen.x - left.x) / (right.x - left.x)
+                val foot = left.y + (right.y - left.y) * along
+                along in 0f..1f && screen.y <= foot && screen.y >= foot - height
+            }
+            .maxByOrNull { it.cell.x + it.cell.y }
     }
 
     /** The thing whose bubble is nearest [screen], if the tap is close enough to any. */
