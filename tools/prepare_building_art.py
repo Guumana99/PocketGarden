@@ -754,8 +754,7 @@ def paint_mask(rgba: np.ndarray, roof: np.ndarray, wall: np.ndarray) -> np.ndarr
 def cottage_mask(rgba: np.ndarray) -> np.ndarray:
     """
     The cottage's red tiles, by their colour, inside the outline of the roof (the chimney and the
-    bricks are red too); and its pale plaster, inside the outlines of the walls. The timbers, the
-    windows, the door, the bricks and the stones are dark or saturated, and stay as they are.
+    bricks are red too); and its plaster, panel by panel ([PLASTER]).
     """
     h, w = rgba.shape[:2]
     k = 866 / 640
@@ -764,11 +763,52 @@ def cottage_mask(rgba: np.ndarray) -> np.ndarray:
     solid = rgba[:, :, 3] > 40
     red = (r > g * 1.42) & (r > b * 1.42) & solid
     outline = polygon(rgba.shape, [(x * k, y * k) for x, y in [(100, 212), (185, 0), (480, 92), (348, 296)]])
-    roof = dilate(red & outline) & outline
-    pale = (v.min(axis=2) > 84) & (v.max(axis=2) - v.min(axis=2) < 70) & solid
-    gable = polygon(rgba.shape, [(x * k, y * k) for x, y in [(362, 318), (470, 136), (552, 226), (552, 322), (372, 398)]])
-    front = polygon(rgba.shape, [(x * k, y * k) for x, y in [(118, 278), (276, 336), (276, 352), (118, 296)]])
-    return paint_mask(rgba, roof, pale & (gable | front))
+    # The tiles showing along the far rake of the roof, behind the rafter.
+    rake = polygon(rgba.shape, [(640, 150), (765, 268), (745, 288), (628, 168)])
+    roof = (dilate(red & outline) & outline) | (red & rake)
+    panels = np.zeros(rgba.shape[:2], bool)
+    for panel in PLASTER:
+        panels |= polygon(rgba.shape, panel)
+    # The thin lines between the boards of the plaster stay dark.
+    return paint_mask(rgba, roof, panels & (v.min(axis=2) > 70) & solid)
+
+
+#: The cottage's plaster panels, by hand: its plaster and its boards are too much alike in colour to
+#: tell apart by that (the old cut leaked onto the timbers and missed the stained panels).
+PLASTER = [
+    [(609, 238), (609, 313), (563, 324), (563, 306)],                 # under the rafter
+    [(637, 216), (642, 214), (708, 268), (708, 279), (637, 304)],     # top of the gable
+    [(520, 372), (558, 362), (558, 486), (520, 503)],                 # left of the shutter
+    [(583, 452), (645, 430), (645, 445), (583, 474)],                 # under the window
+    [(682, 318), (722, 302), (722, 408), (682, 428)],                 # right of the shutter
+    [(174, 402), (258, 428), (258, 452), (174, 423)],                 # under the front's left window
+    [(290, 441), (366, 468), (366, 488), (290, 462)],                 # under its right window
+]
+
+#: The plaster's own white, and how much of the light on it stays once its stains are gone.
+PLASTER_WHITE = np.array([244.0, 240.0, 232.0])
+PLASTER_SHADE = 0.22
+
+
+def clean_plaster(rgba: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """[rgba] with the rust-coloured stains the plaster came with gone: the marked parts brought to white."""
+    share = mask[:, :, 1:2].astype(float) / 255.0
+    light = rgba[:, :, :3].astype(float).mean(axis=2, keepdims=True)
+    marked = share[:, :, 0] > 0.5
+    shade = 1.0 + (light / max(float(light[marked].mean()), 1.0) - 1.0) * PLASTER_SHADE
+    out = rgba.copy()
+    clean = np.clip(PLASTER_WHITE * shade, 0, 255)
+    out[:, :, :3] = (rgba[:, :, :3] + (clean - rgba[:, :, :3]) * share).astype(np.uint8)
+    return out
+
+
+def well_mask(rgba: np.ndarray) -> np.ndarray:
+    """The well's red tiles, by their colour, inside the outline of its roof; no walls to paint."""
+    v = rgba[:, :, :3].astype(int)
+    r, g, b = v[:, :, 0], v[:, :, 1], v[:, :, 2]
+    outline = polygon(rgba.shape, [(4, 192), (100, 104), (392, 0), (500, 165), (236, 270), (152, 196), (40, 205)])
+    red = (r > g * 1.18) & (r > b * 1.12) & (rgba[:, :, 3] > 40)
+    return paint_mask(rgba, dilate(red & outline) & outline, np.zeros(rgba.shape[:2], bool))
 
 
 def hut_mask(rgba: np.ndarray) -> np.ndarray:
@@ -846,6 +886,8 @@ def prepare_all() -> dict[str, tuple[np.ndarray, dict]]:
     long_bridge = lengthen_bridge(short)
     out["struct_bridge_taiko_long"] = (long_bridge, bridge_fit(long_bridge, cells=4))
     out["mask_struct_cottage"] = (cottage_mask(out["struct_cottage"][0]), {})
+    out["struct_cottage"] = (clean_plaster(out["struct_cottage"][0], out["mask_struct_cottage"][0]), out["struct_cottage"][1])
+    out["mask_struct_well"] = (well_mask(out["struct_well"][0]), {})
     out["mask_struct_hut"] = (hut_mask(out["struct_hut"][0]), {})
     out["plant_daikon_stage3"] = (prepare_daikon(), {})
     return out
@@ -857,7 +899,7 @@ ICONS_FROM_PICTURE = ("deco_rock_flat", "deco_rock_mossy", "deco_rock_standing",
 
 def write(prepared: dict[str, tuple[np.ndarray, dict]]) -> None:
     from prepare_drawable_art import ICONS, to_icon
-    for asset_id in ICONS_FROM_PICTURE:
+    for asset_id in (a for a in ICONS_FROM_PICTURE if a in prepared):
         Image.fromarray(to_icon(prepared[asset_id][0]), "RGBA").save(ICONS / f"icon_{asset_id}.png", optimize=True)
     overrides = json.loads(OVERRIDES.read_text(encoding="utf-8"))
     for asset_id, (rgba, override) in prepared.items():
@@ -889,9 +931,10 @@ def preview(prepared: dict[str, tuple[np.ndarray, dict]], folder: Path) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--preview", type=Path, help="also write preview pictures into this folder")
+    parser.add_argument("--only", nargs="*", help="write only these pictures")
     args = parser.parse_args()
     prepared = prepare_all()
-    write(prepared)
+    write({k: v for k, v in prepared.items() if not args.only or k in args.only})
     if args.preview:
         preview(prepared, args.preview)
     return 0

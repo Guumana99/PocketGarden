@@ -7,8 +7,8 @@ enum class PaintPart { ROOF, WALL }
 data class PaintColour(val id: String, val argb: Long)
 
 /**
- * What the player can paint: the roofs and walls of the cottage and the hut, free, at any time,
- * every colour from the first. Each building has one picture; its colours are laid over the parts
+ * What the player can paint: the roofs and walls of the cottage and the hut, and the well's roof,
+ * free, at any time, every colour from the first. Each building has one picture; its colours are laid over the parts
  * a mask marks (tools/prepare_building_art.py, [com.studioguu.miniaturegarden.ui.render.BuildingPainter]).
  * The first colour of each list is the picture's own: stored as no colour at all, so that a
  * building never painted is drawn from the atlas like any other.
@@ -27,7 +27,7 @@ object BuildingPaint {
     private val PALE_GREEN = PaintColour("pale_green", 0xFFCFE2C8)
 
     /** What has a mask to be painted through. */
-    val PAINTABLE_OBJECT_IDS: List<String> = listOf(StructureData.COTTAGE.objectId, StructureData.HUT.objectId)
+    val PAINTABLE_OBJECT_IDS: List<String> = listOf(StructureData.COTTAGE.objectId, StructureData.HUT.objectId, StructureData.WELL.objectId)
 
     /** The colours of [part] of the building [objectId], its own first; empty for what cannot be painted. */
     fun colours(objectId: String, part: PaintPart): List<PaintColour> = when (objectId) {
@@ -39,8 +39,15 @@ object BuildingPaint {
             PaintPart.ROOF -> listOf(GREY, DARK_BROWN, GREEN, BLUE)
             PaintPart.WALL -> listOf(WOOD, DARK_BROWN, WHITE, PALE_GREEN)
         }
+        StructureData.WELL.objectId -> when (part) {
+            PaintPart.ROOF -> listOf(RED, BLUE, GREEN, DARK_BROWN)
+            PaintPart.WALL -> emptyList()
+        }
         else -> emptyList()
     }
+
+    /** The parts of the building [objectId] that can be painted. */
+    fun parts(objectId: String): List<PaintPart> = PaintPart.entries.filter { colours(objectId, it).isNotEmpty() }
 
     fun canPaint(objectId: String): Boolean = colours(objectId, PaintPart.ROOF).isNotEmpty()
 

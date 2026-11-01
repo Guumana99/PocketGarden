@@ -308,7 +308,8 @@ python tools/prepare_building_art.py --preview <確認用フォルダ>
 ### 建物の土台・色変えのマスク・石・橋（prepare_building_art.py）
 
 - 土台（`fit_plinth`）：コテージと小屋の絵は石組みがマス目より平たい。土台の下の帯（`PLINTH_BAND`）だけを、列ごとに下へ伸ばし、手前の角と左右の角をマスの角に合わせる。壁と屋根は動かさない。アンカーは左右の角の高さ、中央。
-- 色変えのマスク：`mask_struct_cottage` `mask_struct_hut`（赤＝屋根、緑＝壁）。アルファを絵と同じにしてあるので、アトラスで絵と同じ大きさに切り抜かれる。コテージは赤い瓦と淡い漆喰を色で、小屋は輪郭の多角形で取る。絵を描き替えたら `cottage_mask` `hut_mask` の多角形も直す。
+- 色変えのマスク：`mask_struct_cottage` `mask_struct_hut` `mask_struct_well`（井戸は屋根だけ）（赤＝屋根、緑＝壁）。アルファを絵と同じにしてあるので、アトラスで絵と同じ大きさに切り抜かれる。コテージは赤い瓦と淡い漆喰を色で、小屋は輪郭の多角形で取る。絵を描き替えたら `cottage_mask` `hut_mask` の多角形も直す。
+- コテージの壁（#92）：色では木部と分けられないので、漆喰を 1 枚ずつ多角形で指定する（`PLASTER`）。原画の漆喰には赤茶のしみがあるので、取り込みで白に寄せる（`clean_plaster`）。一部だけ作り直すときは `python tools/prepare_building_art.py --only struct_cottage mask_struct_cottage`。
 - 大根の段階 3（`prepare_daikon`）：土の山を取り、根を上から 62% のところで曲線で切る。パッカーはこれ以上削らない（`crop_soil.SOILLESS`）。
 - 石（`cut_stone`）：外周からつながる淡い灰色だけを抜く（ぬれた小石の光を残すため）。
 

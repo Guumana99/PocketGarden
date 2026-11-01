@@ -20,6 +20,7 @@ import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.Footprint
+import com.studioguu.miniaturegarden.domain.model.BridgeFit
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenTip
@@ -62,6 +63,7 @@ import com.studioguu.miniaturegarden.domain.repository.PracticeMode
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
+import com.studioguu.miniaturegarden.domain.usecase.bridgeRefusal
 import com.studioguu.miniaturegarden.domain.usecase.GardenLayout
 import com.studioguu.miniaturegarden.domain.usecase.LayoutAction
 import com.studioguu.miniaturegarden.domain.usecase.LayoutCheck
@@ -421,6 +423,12 @@ class GardenViewModel @Inject constructor(
     private val _placingSlotIndex = MutableStateFlow<Int?>(null)
 
     private val _placingFlipped = MutableStateFlow(false)
+    private val _bridgeCells = MutableStateFlow<Set<GridCell>>(emptySet())
+    private var bridgeShownFor: TileCoord? = null
+
+    /** The cells a bridge in hand would take at the last tap, shown before it goes down. */
+    val bridgeCells: StateFlow<Set<GridCell>> = _bridgeCells.asStateFlow()
+
 
     /** Which way a building being placed will face; switched on the placing banner. */
     val placingFlipped: StateFlow<Boolean> = _placingFlipped.asStateFlow()
@@ -926,8 +934,9 @@ class GardenViewModel @Inject constructor(
         if (movingId != null) {
             if (tile != null) {
                 val moving = gridObjects.value.firstOrNull { it.instanceId == movingId }
+                val tapped = if (moving?.isBridge == true) (bridgeTap(tile, moving) ?: return) else tile
                 // A bridge finds its own place from the river at the tap.
-                val origin = if (moving?.isBridge == true) GridCell(tile.x, tile.y) else (moving?.footprint ?: Footprint.SINGLE).originFor(tile.x, tile.y, gardenMap.value.size)
+                val origin = if (moving?.isBridge == true) GridCell(tapped.x, tapped.y) else (moving?.footprint ?: Footprint.SINGLE).originFor(tile.x, tile.y, gardenMap.value.size)
                 act(
                     onSuccess = {
                         _movingId.value = null
@@ -982,6 +991,7 @@ class GardenViewModel @Inject constructor(
             _selectedTile.value = tile.takeIf { it != current && !sameThing }
         } else if (tile != null) {
             val item = placingSlot.value?.let { GardenItem.fromItemId(it.itemId) }
+            val tapped = if (item == GardenItem.STRUCT_BRIDGE && !_editMode.value) (bridgeTap(tile, null) ?: return) else tile
             // Nothing new is put down in edit mode (#50); in case it was turned on since.
             if (_editMode.value) {
                 _placingSlotIndex.value = null
@@ -991,7 +1001,7 @@ class GardenViewModel @Inject constructor(
             // A building larger than one cell is fitted round the tapped cell, inside the garden.
             // Not so a bridge, which finds its own place from the river at the tap.
             val footprint = item?.takeIf { it != GardenItem.STRUCT_BRIDGE }?.let { Footprint.forObjectId(it.objectId, _placingFlipped.value && GridObject.canFaceEitherWay(it.objectId)) } ?: Footprint.SINGLE
-            val origin = footprint.originFor(tile.x, tile.y, gardenMap.value.size)
+            val origin = footprint.originFor(tapped.x, tapped.y, gardenMap.value.size)
             act(
                 onSuccess = {
                     audio.play(SoundEffect.PLANT)
@@ -1006,6 +1016,29 @@ class GardenViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * Whether a bridge in hand may go down at this tap. It is looked at first: a tap shows the cells
+     * it would take ([bridgeCells]), or says why it cannot go there, and a tap on those cells puts
+     * it down, as for the tap that showed them.
+     *
+     * @return the tap to put it down for, or null while it is only being shown.
+     */
+    private fun bridgeTap(tile: TileCoord, moving: GridObject?): TileCoord? {
+        if (GridCell(tile.x, tile.y) in _bridgeCells.value) {
+            _bridgeCells.value = emptySet()
+            return bridgeShownFor
+        }
+        val garden = GardenGrid(gardenMap.value, gridObjects.value.filter { it.instanceId != moving?.instanceId })
+        val choice = garden.bridgeFor(tile.x, tile.y, moving?.isFlipped == true)
+        _bridgeCells.value = choice.cells.toSet()
+        bridgeShownFor = tile
+        when (val fit = choice.fit) {
+            is BridgeFit.Refused -> actionResultMessage(bridgeRefusal(fit.why))?.let(_messages::trySend)
+            is BridgeFit.Across -> _messages.trySend(R.string.msg_bridge_tap_again)
+        }
+        return null
     }
 
     /** Picks the hoe up, or puts it down again. Picking it up ends any placing and selection. */
@@ -1036,6 +1069,7 @@ class GardenViewModel @Inject constructor(
     }
 
     fun cancelMoving() {
+        _bridgeCells.value = emptySet()
         _movingId.value = null
     }
 
@@ -1084,6 +1118,7 @@ class GardenViewModel @Inject constructor(
         if (lockedByEditMode()) return
         // Each thing taken out of the bag starts facing the usual way.
         _placingFlipped.value = false
+        _bridgeCells.value = emptySet()
         _hoeActive.value = false
         _movingId.value = null
         _selectedTile.value = null
@@ -1091,6 +1126,7 @@ class GardenViewModel @Inject constructor(
     }
 
     fun cancelPlacing() {
+        _bridgeCells.value = emptySet()
         _placingSlotIndex.value = null
     }
 

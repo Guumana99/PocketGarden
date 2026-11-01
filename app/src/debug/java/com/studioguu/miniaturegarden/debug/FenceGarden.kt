@@ -37,6 +37,27 @@ object FenceGarden {
      * Bridges with an end on each edge of the garden: the long one and the short one along gridY
      * on the far and the near edge, and flipped, along gridX, the same.
      */
+    /**
+     * Rivers to put a bridge over, one for each way it can go (`--es garden bridgeplace`, with
+     * bridges in the bag): one along gridX at y = 3, one along gridY at x = 7, the two crossing at
+     * (7, 3), one three wide, one along the far edge; and buildings painted, to see them in the game.
+     */
+    fun bridgePlaces(now: Long): List<GridObject> {
+        fun at(x: Int, y: Int, objectId: String) = GridObject(
+            instanceId = "bp_${x}_$y", gridX = x, gridY = y, objectId = objectId, lastUpdatedTimestamp = now,
+        )
+        val river = GridObject.RIVER_OBJECT_ID
+        val water = (0..6).map { it to 3 } + (0..10).map { 7 to it } + (8..10).map { it to 3 } +
+            (1..4).flatMap { x -> (6..8).map { y -> x to y } } + (3..6).map { it to 0 }
+        return water.map { (x, y) -> at(x, y, river) } + listOf(
+            at(0, 0, StructureData.COTTAGE.objectId).copy(roofColour = "blue"),
+            at(9, 5, StructureData.HUT.objectId).copy(roofColour = "green", wallColour = "white"),
+            at(9, 8, StructureData.WELL.objectId).copy(roofColour = "blue"),
+            at(9, 9, StructureData.WELL.objectId).copy(roofColour = "green"),
+            at(9, 10, StructureData.WELL.objectId).copy(roofColour = "dark_brown"),
+        )
+    }
+
     fun bridges(now: Long): List<GridObject> {
         fun at(x: Int, y: Int, objectId: String) = GridObject(
             instanceId = "fb_${objectId}_${x}_$y", gridX = x, gridY = y, objectId = objectId, lastUpdatedTimestamp = now,

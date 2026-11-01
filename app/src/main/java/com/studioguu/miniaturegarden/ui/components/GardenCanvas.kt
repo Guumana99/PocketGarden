@@ -124,6 +124,7 @@ import com.studioguu.miniaturegarden.ui.render.drawVisitor
 import com.studioguu.miniaturegarden.ui.render.flies
 import com.studioguu.miniaturegarden.ui.render.VisitorLook
 import com.studioguu.miniaturegarden.ui.render.drawRunPiece
+import com.studioguu.miniaturegarden.ui.render.drawGlassWallShadow
 import com.studioguu.miniaturegarden.ui.render.drawRunPieceShadow
 import com.studioguu.miniaturegarden.ui.render.drawGroundTexture
 import com.studioguu.miniaturegarden.ui.render.drawSprite
@@ -214,6 +215,8 @@ fun GardenCanvas(
     auraCells: Set<GridCell> = emptySet(),
     hintCells: Set<GridCell> = emptySet(),
     closedCells: Set<GridCell> = emptySet(),
+    /** The cells a bridge in hand would take, shown before it goes down. */
+    bridgeCells: Set<GridCell> = emptySet(),
     fadedObjectIds: Set<String> = emptySet(),
     visitors: List<CreatureVisit> = emptyList(),
     savedView: GardenView? = null,
@@ -470,6 +473,15 @@ fun GardenCanvas(
                 for (cell in closedCells) drawPath(transform.tilePath(cell.x, cell.y), CLOSED_CELL)
             }
         }
+        if (bridgeCells.isNotEmpty()) {
+            pipeline.submit(RenderLayer.BOTTOM_OBJECTS, Float.MAX_VALUE) {
+                for (cell in bridgeCells) {
+                    val tile = transform.tilePath(cell.x, cell.y)
+                    drawPath(tile, BRIDGE_CELL_FILL)
+                    drawPath(tile, BRIDGE_CELL_EDGE, style = Stroke(width = transform.tileWidth * 0.02f))
+                }
+            }
+        }
         if (auraCells.isNotEmpty()) {
             pipeline.submit(RenderLayer.GRID_OVERLAY, depth = 0.5f) {
                 for (cell in auraCells) {
@@ -546,6 +558,8 @@ fun GardenCanvas(
     }
 }
 
+private val BRIDGE_CELL_FILL = Color(0x66FFD54F)
+private val BRIDGE_CELL_EDGE = Color(0xE6FFB300)
 private val AURA_FILL = Color(0x334FC3F7)
 private val AURA_EDGE = Color(0x994FC3F7)
 private val CLOSED_CELL = Color(0x73000000)
@@ -724,7 +738,7 @@ private fun submitObjects(
                     val to = transform.worldToScreen(wall.to.x, wall.to.y)
                     submit(obj, RenderLayer.SHADOWS, depth) {
                         drawRunFootShadow(from, to, transform.tileWidth)
-                        drawRunPieceShadow(atlasImage, art, from, to, spriteScale, ambience.light)
+                        drawGlassWallShadow(atlasImage, art, from, to, spriteScale, ambience.light, GreenhouseLook.STONE_SHARE, GreenhouseLook.GLASS_SHADOW)
                     }
                     val place = if (wall.side.isFront) GreenhouseLook.FRONT_WALL_DEPTH else GreenhouseLook.BACK_WALL_DEPTH
                     submit(obj, RenderLayer.GRID_OBJECTS, depth + place) {

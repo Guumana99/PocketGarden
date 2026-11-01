@@ -20,12 +20,12 @@
     {
       "file": "world_0.png",
       "width": 2040,
-      "height": 2048
+      "height": 2018
     },
     {
       "file": "world_1.png",
-      "width": 1863,
-      "height": 460
+      "width": 2001,
+      "height": 742
     }
   ],
   "assets": [
@@ -38,7 +38,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 2,
-      "atlasY": 1648
+      "atlasY": 1705
     },
     {
       "assetId": "deco_bench_back",
@@ -49,7 +49,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 1663,
-      "atlasY": 1648
+      "atlasY": 1705
     },
     {
       "assetId": "deco_lantern",
@@ -59,7 +59,7 @@
       "height": 225,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1247,
+      "atlasX": 1730,
       "atlasY": 2
     },
     {
@@ -70,8 +70,8 @@
       "height": 159,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 2,
-      "atlasY": 299
+      "atlasX": 475,
+      "atlasY": 428
     },
     {
       "assetId": "deco_rock_flat",
@@ -81,8 +81,8 @@
       "height": 109,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1528,
-      "atlasY": 299
+      "atlasX": 2,
+      "atlasY": 631
     },
     {
       "assetId": "deco_rock_mossy",
@@ -92,8 +92,8 @@
       "height": 201,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1390,
-      "atlasY": 2
+      "atlasX": 2,
+      "atlasY": 428
     },
     {
       "assetId": "deco_rock_pebbles",
@@ -103,8 +103,8 @@
       "height": 142,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 779,
-      "atlasY": 299
+      "atlasX": 1252,
+      "atlasY": 428
     },
     {
       "assetId": "deco_rock_standing",
@@ -113,9 +113,9 @@
       "width": 145,
       "height": 348,
       "isFlippedAllowed": true,
-      "page": 3,
-      "atlasX": 1798,
-      "atlasY": 1189
+      "page": 4,
+      "atlasX": 338,
+      "atlasY": 2
     },
     {
       "assetId": "deco_sprinkler",
@@ -125,8 +125,8 @@
       "height": 174,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1648,
-      "atlasY": 2,
+      "atlasX": 260,
+      "atlasY": 428,
       "attachX": 0.4983,
       "attachY": 0.3673
     },
@@ -138,7 +138,7 @@
       "height": 237,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1030,
+      "atlasX": 1513,
       "atlasY": 2
     },
     {
@@ -149,7 +149,7 @@
       "height": 410,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1623,
+      "atlasX": 1729,
       "atlasY": 1189
     },
     {
@@ -160,7 +160,7 @@
       "height": 439,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 772,
+      "atlasX": 1214,
       "atlasY": 1189
     },
     {
@@ -171,7 +171,7 @@
       "height": 279,
       "isFlippedAllowed": false,
       "page": 4,
-      "atlasX": 516,
+      "atlasX": 999,
       "atlasY": 2
     },
     {
@@ -195,6 +195,17 @@
       "page": 3,
       "atlasX": 2,
       "atlasY": 2
+    },
+    {
+      "assetId": "mask_struct_well",
+      "anchorX": 0.5,
+      "anchorY": 1.0,
+      "width": 440,
+      "height": 514,
+      "isFlippedAllowed": true,
+      "page": 3,
+      "atlasX": 1578,
+      "atlasY": 625
     },
     {
       "assetId": "plant_carrot_stage1",
@@ -1139,7 +1150,7 @@
       "height": 457,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 2,
+      "atlasX": 444,
       "atlasY": 1189,
       "drawScale": 1.1241
     },
@@ -1174,9 +1185,9 @@
       "width": 234,
       "height": 54,
       "isFlippedAllowed": true,
-      "page": 3,
-      "atlasX": 239,
-      "atlasY": 1961
+      "page": 4,
+      "atlasX": 497,
+      "atlasY": 631
     },
     {
       "assetId": "struct_edging_brick_rail",
@@ -1185,9 +1196,9 @@
       "width": 304,
       "height": 54,
       "isFlippedAllowed": true,
-      "page": 3,
-      "atlasX": 475,
-      "atlasY": 1961,
+      "page": 4,
+      "atlasX": 733,
+      "atlasY": 631,
       "attachX": 0.5,
       "attachY": 0.8
     },
@@ -1199,8 +1210,8 @@
       "height": 149,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 239,
-      "atlasY": 299
+      "atlasX": 712,
+      "atlasY": 428
     },
     {
       "assetId": "struct_fence_bamboo",
@@ -1210,8 +1221,8 @@
       "height": 149,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 405,
-      "atlasY": 299
+      "atlasX": 878,
+      "atlasY": 428
     },
     {
       "assetId": "struct_fence_bamboo_post",
@@ -1222,7 +1233,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 1952,
-      "atlasY": 1648
+      "atlasY": 1705
     },
     {
       "assetId": "struct_fence_bamboo_rail",
@@ -1232,8 +1243,8 @@
       "height": 122,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1284,
-      "atlasY": 299,
+      "atlasX": 1757,
+      "atlasY": 428,
       "attachX": 0.5,
       "attachY": 1.1228
     },
@@ -1246,7 +1257,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 1972,
-      "atlasY": 1648
+      "atlasY": 1705
     },
     {
       "assetId": "struct_fence_rail",
@@ -1255,9 +1266,9 @@
       "width": 235,
       "height": 85,
       "isFlippedAllowed": true,
-      "page": 3,
-      "atlasX": 2,
-      "atlasY": 1961,
+      "page": 4,
+      "atlasX": 260,
+      "atlasY": 631,
       "attachX": 0.5,
       "attachY": 1.5417
     },
@@ -1269,8 +1280,8 @@
       "height": 149,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 603,
-      "atlasY": 299
+      "atlasX": 1076,
+      "atlasY": 428
     },
     {
       "assetId": "struct_fence_white_post",
@@ -1281,7 +1292,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 2000,
-      "atlasY": 1648
+      "atlasY": 1705
     },
     {
       "assetId": "struct_fence_white_rail",
@@ -1291,8 +1302,8 @@
       "height": 130,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 1047,
-      "atlasY": 299,
+      "atlasX": 1520,
+      "atlasY": 428,
       "attachX": 0.5,
       "attachY": 1.0328
     },
@@ -1305,7 +1316,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 291,
-      "atlasY": 1648,
+      "atlasY": 1705,
       "attachX": 0.5,
       "attachY": 1.0
     },
@@ -1318,7 +1329,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 549,
-      "atlasY": 1648
+      "atlasY": 1705
     },
     {
       "assetId": "struct_greenhouse_wall",
@@ -1329,7 +1340,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 577,
-      "atlasY": 1648,
+      "atlasY": 1705,
       "attachX": 0.5,
       "attachY": 1.0
     },
@@ -1353,8 +1364,8 @@
       "height": 514,
       "isFlippedAllowed": true,
       "page": 3,
-      "atlasX": 1578,
-      "atlasY": 625
+      "atlasX": 2,
+      "atlasY": 1189
     },
     {
       "assetId": "struct_windmill",
@@ -1363,9 +1374,9 @@
       "width": 334,
       "height": 424,
       "isFlippedAllowed": true,
-      "page": 3,
-      "atlasX": 1287,
-      "atlasY": 1189,
+      "page": 4,
+      "atlasX": 2,
+      "atlasY": 2,
       "drawScale": 3.2802,
       "attachX": 0.8422,
       "attachY": 0.25
@@ -1379,7 +1390,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 835,
-      "atlasY": 1648,
+      "atlasY": 1705,
       "drawScale": 3.2802
     },
     {
@@ -1391,7 +1402,7 @@
       "isFlippedAllowed": true,
       "page": 3,
       "atlasX": 1149,
-      "atlasY": 1648
+      "atlasY": 1705
     },
     {
       "assetId": "tile_grass_dark",
@@ -1401,7 +1412,7 @@
       "height": 295,
       "isFlippedAllowed": true,
       "page": 4,
-      "atlasX": 2,
+      "atlasX": 485,
       "atlasY": 2
     }
   ]

@@ -329,6 +329,8 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.NOT_FLIPPABLE -> R.string.msg_not_flippable
     ActionResult.NEEDS_RIVER_ACROSS -> R.string.msg_needs_river_across
     ActionResult.RIVER_TOO_WIDE -> R.string.msg_river_too_wide
+    ActionResult.BRIDGE_OFF_THE_EDGE -> R.string.msg_bridge_off_the_edge
+    ActionResult.BRIDGE_ENDS_TAKEN -> R.string.msg_bridge_ends_taken
     ActionResult.BRIDGE_ABOVE -> R.string.msg_bridge_above
     ActionResult.NOT_PAINTABLE -> R.string.msg_not_paintable
     ActionResult.BUSY -> R.string.msg_busy

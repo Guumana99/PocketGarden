@@ -75,7 +75,7 @@
 | 白い柵（`struct_fence_white`） | ✅ | Recraft | `struct_fence_white` `struct_fence_white_post` `struct_fence_white_rail`（#85、原画 `struct_fence_white.png`。真っ白だけを抜く。杭の間は 2 回並べる）。11/1 に取り込みの色を調整（`Grade`、絵は同じ） |
 | 竹垣（`struct_fence_bamboo`） | ✅ | Recraft | `struct_fence_bamboo` `struct_fence_bamboo_post` `struct_fence_bamboo_rail`（#85、原画 `struct_fence_bamboo.png`。つなぎは原画の密度のまま 2 回並べる（#86））。11/1 に取り込みの色を調整（`Grade`、絵は同じ） |
 | レンガの縁石（`struct_edging_brick`） | 📦 | Recraft | **#86 で取り下げ（ショップ・図鑑から外した）**。 `struct_edging_brick` `struct_edging_brick_rail`（#85、原画 `struct_edging_brick.png`。歯を 1 マス 7 本に並べ直す。右下がりの辺は反転して描く。杭は無い） |
-| 井戸（`struct_well`） | ✅ | Recraft | `struct_well`（原画 `building_well.png`、Recraft（#74。C2PA を grep で確認））。#74 で 1×2 から 1×1 に。丸い石の井戸に屋根と桶 |
+| 井戸（`struct_well`） | ✅ | Recraft | `struct_well`（原画 `building_well.png`、Recraft（#74。C2PA を grep で確認））。#74 で 1×2 から 1×1 に。丸い石の井戸に屋根と桶。屋根の色は `mask_struct_well`（#92、`tools/prepare_building_art.py`） |
 | 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた） |
 | 小屋（`struct_hut`） | ✅ | Recraft | `struct_hut`（原画 `building_hut.png`を差し替え：片流れのトタン屋根・板壁・観音開きの戸）。色変えのマスクは `mask_struct_hut`。土台の石が明るいクリーム色なので、真っ白だけを抜いて切り抜いた |
 | コテージ（`struct_cottage`） | ✅ | Recraft | `struct_cottage`（原画 `building_cottage.png`）。土台の下の帯をマスの角まで伸ばしている。色変えのマスクは `mask_struct_cottage` |

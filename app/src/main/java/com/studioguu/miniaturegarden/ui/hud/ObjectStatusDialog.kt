@@ -238,7 +238,8 @@ fun ObjectStatusDialog(
                     FilledTonalButton(onClick = onMove) { Text(stringResource(R.string.action_move)) }
                 }
                 // A building is turned round where it stands, once it stands: a work site has no front (#50).
-                if (gridObject.canFlip && !gridObject.isWorking) {
+                // A bridge is only ever turned in edit mode: it finds its own way when it is put down.
+                if (gridObject.canFlip && !gridObject.isWorking && (!gridObject.isBridge || editing)) {
                     FilledTonalButton(onClick = onFlip) { Text(stringResource(R.string.action_flip)) }
                 }
                 if (canTurnDoor) {
