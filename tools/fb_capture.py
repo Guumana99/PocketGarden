@@ -67,12 +67,29 @@ GROUND_STILLS = [
     Shot("ground_rocks", "3 芝生の上の岩", DAY, View(1.5, cell=(2.5, 10.0), lift=60)),
     Shot("ground_x074", "1 ×0.74 のすき間", DAY, View(0.74), (1080, 1100)),
     Shot("ground_x123", "1 ×1.23 のすき間", DAY, View(1.23), (1080, 1100)),
+    Shot("edge_lawn_deck", "4 芝生とデッキ（×1.23）", DAY, View(1.23, cell=(3.0, 5.0)), (720, 600)),
+    Shot("edge_lawn_cobble", "4 芝生と石畳（×1.23）", DAY, View(1.23, cell=(6.0, 3.0)), (720, 600)),
+    Shot("edge_lawn_tilled", "4 芝生と耕した土（×1.23）", DAY, View(1.23, cell=(3.0, 3.0)), (720, 600)),
 ]
 FENCE_LOOK_STILLS = [
     Shot(f"fence_{kind}_{ground}_{time.lower()}", f"4 {label}・{where}・{'夜' if time == 'NIGHT' else '昼'}", Look(time=time), View(1.1, cell=(x, y), lift=40), (720, 420))
     for kind, label, y in (("wood", "木の柵", 1.5), ("white", "白い柵", 4.5), ("bamboo", "竹垣", 7.5))
     for ground, where, x in (("bare", "地面", 1.0), ("tilled", "耕した土", 5.0), ("lawn", "芝生", 9.0))
     for time in ("DAY", "NIGHT")
+]
+
+#: The ornaments on a lawn, and the greenhouse as it stands.
+LAWN_THINGS_STILLS = [
+    Shot("lawn_things", "1 芝生の上の置き物", DAY, View(0.74, cell=(5.5, 4.0), lift=80), (1080, 900)),
+    Shot("lawn_things_near", "1 ベンチ・石灯籠・井戸", DAY, View(1.5, cell=(4.5, 3.5), lift=120), (1080, 800)),
+    Shot("lawn_sprinkler", "1 芝生の上のスプリンクラー", DAY, View(1.6, cell=(5.5, 6.0), lift=60), (1080, 800)),
+]
+GREENHOUSE_STILLS = [
+    Shot("greenhouse_x074", "8 温室 ×0.74", DAY, View(0.74, cell=(5.5, 4.0), lift=80), (1080, 1400)),
+    Shot("greenhouse_x123", "8 温室 ×1.23", DAY, View(1.23, cell=(5.0, 3.0), lift=120), (1080, 1400)),
+    Shot("greenhouse_near", "8 温室に作物（ひまわり）", DAY, View(2.2, cell=(2.5, 2.5), lift=200), (1080, 1200)),
+    Shot("greenhouse_block", "8 2×2 に並べた温室", DAY, View(1.5, cell=(5.0, 6.0), lift=120), (1080, 1200)),
+    Shot("greenhouse_empty", "8 空の温室とマス", DAY, View(2.2, cell=(10.5, 2.5), lift=120), (1080, 1000)),
 ]
 
 #: Screens reached through the buttons (garden UI shown): name, caption, what to tap in turn
@@ -207,7 +224,7 @@ def main() -> int:
     parser.add_argument("--only", nargs="*")
     parser.add_argument("--serial", default="emulator-5554")
     parser.add_argument("--apk", type=Path, help="install this APK instead of the project's debug build")
-    parser.add_argument("--garden", choices=("fb", "ground", "fencelook"), default="fb")
+    parser.add_argument("--garden", choices=("fb", "ground", "fencelook", "lawnthings", "greenhouse"), default="fb")
     parser.add_argument("--sheet", nargs=3, type=Path, metavar=("BEFORE", "AFTER", "TARGET"))
     args = parser.parse_args()
     if args.sheet:
@@ -218,7 +235,7 @@ def main() -> int:
     if args.apk:
         device.adb("install", "-r", str(args.apk))
     open_feedback_garden(device, install=not args.no_install and not args.apk, garden=args.garden)
-    stills = {"fb": STILLS, "ground": GROUND_STILLS, "fencelook": FENCE_LOOK_STILLS}[args.garden]
+    stills = {"fb": STILLS, "ground": GROUND_STILLS, "fencelook": FENCE_LOOK_STILLS, "lawnthings": LAWN_THINGS_STILLS, "greenhouse": GREENHOUSE_STILLS}[args.garden]
     try:
         for shot in stills:
             if args.only and shot.name not in args.only:

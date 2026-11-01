@@ -1,5 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.Creature
+import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -9,6 +11,10 @@ import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
+import com.studioguu.miniaturegarden.domain.model.Sprinkler
+import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.ui.render.SoilJoins
 import com.studioguu.miniaturegarden.ui.render.SoilTexture
@@ -96,11 +102,11 @@ class GroundsAndRocksTest {
     }
 
     @Test
-    fun `two rocks do not share a cell, nor a bench a lawn`() {
+    fun `two rocks do not share a cell, nor a hut a lawn`() {
         val rock = GardenGrid(map, listOf(at(3, 3, LawnGrowth.OBJECT_ID), at(3, 3, "deco_rock")))
         assertEquals(PlacementCheck.OCCUPIED, rock.checkPlacement(Footprint.SINGLE, 3, 3, PlacementKind.OBJECT, "deco_rock_flat"))
         val lawn = GardenGrid(map, listOf(at(3, 3, LawnGrowth.OBJECT_ID)))
-        assertEquals(PlacementCheck.OCCUPIED, lawn.checkPlacement(Footprint.SINGLE, 3, 3, PlacementKind.OBJECT, "deco_bench"))
+        assertEquals(PlacementCheck.OCCUPIED, lawn.checkPlacement(Footprint.SINGLE, 3, 3, PlacementKind.OBJECT, GardenItem.STRUCT_HUT.objectId))
     }
 
     @Test
@@ -139,5 +145,104 @@ class GroundsAndRocksTest {
         assertNotNull(grid.lawnAt(3, 3))
         assertNotNull(grid.lawnAt(5, 5))
         assertNull(grid.occupantAt(4, 4))
+    }
+
+    // --- The small ornaments, which stand on a lawn as a rock does ---
+
+    private val ornaments = listOf(GardenItem.DECO_BENCH, GardenItem.DECO_LANTERN, GardenItem.STRUCT_WELL, GardenItem.DECO_SPRINKLER, GardenItem.DECO_WEATHERVANE)
+
+    @Test
+    fun `each small ornament may stand on a lawn, and a lawn be sown under it`() {
+        for (item in ornaments) {
+            val thing = item.objectId
+            val lawn = GardenGrid(map, listOf(at(3, 3, LawnGrowth.OBJECT_ID)))
+            assertEquals(thing, PlacementCheck.OK, lawn.checkPlacement(Footprint.SINGLE, 3, 3, PlacementKind.OBJECT, thing))
+            assertEquals(thing, ActionResult.SUCCESS, lawn.fits(thing, 3, 3))
+            val standing = GardenGrid(map, listOf(at(3, 3, thing)))
+            assertEquals(thing, PlacementCheck.OK, standing.checkPlacement(Footprint.SINGLE, 3, 3, PlacementKind.OBJECT, LawnGrowth.OBJECT_ID))
+        }
+    }
+
+    @Test
+    fun `the buildings and the shiitake log stay off a lawn, and a lawn stays out from under them`() {
+        val lawn = GardenGrid(map, listOf(at(3, 3, LawnGrowth.OBJECT_ID)))
+        for (thing in listOf(GardenItem.STRUCT_HUT, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WINDMILL, GardenItem.SEED_SHIITAKE).map { it.objectId }) {
+            assertFalse(thing, GardenGrid.sharesCellWithLawn(thing))
+            assertTrue(thing, lawn.fits(thing, 3, 3) != ActionResult.SUCCESS)
+            val standing = GardenGrid(map, listOf(at(3, 3, thing)))
+            assertEquals(thing, PlacementCheck.OCCUPIED, standing.checkPlacement(Footprint.SINGLE, 3, 3, PlacementKind.OBJECT, LawnGrowth.OBJECT_ID))
+        }
+    }
+
+    @Test
+    fun `an ornament goes on a lawn, moves, goes back to the bag and is cleared, and the lawn stays each time`() = runBlocking {
+        for (item in ornaments) {
+            val repo = FakeGardenRepository().apply {
+                profile = UserProfile(coins = 100)
+                put(at(3, 3, LawnGrowth.OBJECT_ID))
+                put(at(5, 5, LawnGrowth.OBJECT_ID))
+                putSlot(InventorySlot(0, item.itemId, 2))
+            }
+            val name = item.objectId
+            assertEquals(name, ActionResult.SUCCESS, PlaceItemUseCase(repo, map, RecordCollectionUseCase(repo))(0, 3, 3, 0L))
+            fun thing() = repo.objects.values.first { it.objectId == item.objectId }
+            // A well goes up over its building time; the rest are there at once.
+            repo.put(thing().withoutWork())
+
+            // As read back from the save: the two stand apart, each with its own record.
+            val saved = GardenGrid(map, repo.getGridObjects())
+            assertEquals(name, thing().instanceId, saved.occupantAt(3, 3)?.instanceId)
+            assertNotNull(name, saved.lawnAt(3, 3))
+
+            val move = MoveObjectUseCase(repo, map, CalculateOfflineProgressUseCase())
+            assertEquals(name, ActionResult.SUCCESS, move(thing().instanceId, 5, 5))
+            val moved = GardenGrid(map, repo.getGridObjects())
+            assertEquals(name, LawnGrowth.OBJECT_ID, moved.occupantAt(3, 3)?.objectId)
+            assertEquals(name, item.objectId, moved.occupantAt(5, 5)?.objectId)
+            assertNotNull(name, moved.lawnAt(5, 5))
+
+            assertEquals(name, ActionResult.SUCCESS, StoreObjectUseCase(repo)(thing().instanceId))
+            assertEquals(name, LawnGrowth.OBJECT_ID, GardenGrid(map, repo.getGridObjects()).occupantAt(5, 5)?.objectId)
+            assertEquals(name, 2, repo.getInventory().first { it.itemId == item.itemId }.amount)
+
+            assertEquals(name, ActionResult.SUCCESS, PlaceItemUseCase(repo, map, RecordCollectionUseCase(repo))(0, 5, 5, 0L))
+            assertEquals(name, ActionResult.SUCCESS, RemoveObjectUseCase(repo)(thing().instanceId))
+            val left = GardenGrid(map, repo.getGridObjects())
+            assertEquals(name, LawnGrowth.OBJECT_ID, left.occupantAt(5, 5)?.objectId)
+            assertEquals(name, LawnGrowth.OBJECT_ID, left.occupantAt(3, 3)?.objectId)
+        }
+    }
+
+    @Test
+    fun `creatures walk round an ornament on a lawn, and a crop stays out of its cell`() {
+        val grid = GardenGrid(map, listOf(at(3, 3, LawnGrowth.OBJECT_ID), at(3, 3, "deco_bench"), at(4, 3, LawnGrowth.OBJECT_ID)))
+        assertFalse(CreatureRoutes.canWalk(Creature.SQUIRREL, grid, 3, 3))
+        assertTrue(CreatureRoutes.canWalk(Creature.SQUIRREL, grid, 4, 3))
+        assertEquals(ActionResult.TILE_OCCUPIED, grid.fits(PlantSpecies.TULIP.objectId, 3, 3))
+    }
+
+    @Test
+    fun `a sprinkler on a lawn waters the same ring as on bare ground, and only the beds in it`() {
+        val sprinkler = at(3, 3, Sprinkler.OBJECT_ID)
+        val inReach = listOf(at(2, 2, PlantSpecies.TULIP.objectId), at(3, 4, PlantSpecies.TULIP.objectId), at(4, 3, PlantSpecies.TULIP.objectId))
+        val outOfReach = listOf(at(5, 3, PlantSpecies.TULIP.objectId), at(3, 1, PlantSpecies.TULIP.objectId))
+        val plants = inReach + outOfReach
+        for (lawned in listOf(false, true)) {
+            val garden = plants + sprinkler + if (lawned) listOf(at(3, 3, LawnGrowth.OBJECT_ID)) else emptyList()
+            for (plant in inReach) assertTrue(Sprinkler.waters(plant, garden))
+            for (plant in outOfReach) assertFalse(Sprinkler.waters(plant, garden))
+            assertEquals(Sprinkler.MOISTURE_DRAIN_FACTOR, PlantSurroundings.of(inReach.first(), garden).moistureDrainFactor, 0f)
+            // Switched off, it does nothing.
+            val off = plants + sprinkler.copy(isOn = false)
+            assertFalse(Sprinkler.waters(inReach.first(), off))
+        }
+    }
+
+    @Test
+    fun `a well on a lawn keeps the soil round it damp once it is finished`() {
+        val well = at(3, 3, GardenItem.STRUCT_WELL.objectId)
+        val plant = at(4, 3, PlantSpecies.TULIP.objectId)
+        val garden = listOf(at(3, 3, LawnGrowth.OBJECT_ID), well, plant)
+        assertEquals(StructureEffect.WELL.moistureDrainFactor, PlantSurroundings.of(plant, garden).moistureDrainFactor, 0f)
     }
 }

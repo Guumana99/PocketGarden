@@ -78,7 +78,7 @@
     <string name="object_plant_eggplant">ナス</string>
     <string name="object_plant_wheat">小麦</string>
     <string name="object_plant_corn">トウモロコシ</string>
-    <string name="object_floor_greenhouse">ガラスの温室</string>
+    <string name="object_floor_greenhouse">温室</string>
     <string name="object_deco_rock">丸い岩</string>
     <string name="object_deco_rock_flat">平たい石</string>
     <string name="object_deco_rock_mossy">苔むした岩</string>
@@ -206,7 +206,7 @@
     <string name="item_seed_eggplant">ナスの苗</string>
     <string name="item_seed_wheat">小麦の種</string>
     <string name="item_seed_corn">トウモロコシの種</string>
-    <string name="item_tile_river">小川のかけら</string>
+    <string name="item_tile_river">小川</string>
 
     <!-- Inventory -->
     <string name="inventory_title">持ち物</string>
@@ -523,7 +523,7 @@
     <string name="letter_arrived_body">%1$sは、%2$sが育てられる季節です。ショップで種を手に入れて、さっそく育ててみませんか。</string>
     <string name="letter_arrived_body_none">%1$sになりました。お庭でのんびり過ごしてみませんか。</string>
     <string name="letter_coming_title">%1$s もうすぐ%2$s</string>
-    <string name="letter_coming_body">もうすぐ%1$sがやってきます。今の季節の種は、季節が変わるとショップから姿を消します。育てたい種があれば、今のうちに買っておくと安心です。季節外れの種も、ガラスの温室なら育てられます。</string>
+    <string name="letter_coming_body">もうすぐ%1$sがやってきます。今の季節の種は、季節が変わるとショップから姿を消します。育てたい種があれば、今のうちに買っておくと安心です。季節外れの種も、温室なら育てられます。</string>
     <string name="letter_tip_watering_title">💧 お水のこと</string>
     <string name="letter_tip_watering_body">作物がしおれて見えたら、水が足りていないのかもしれません。じょうろで水をあげると、また元気に育ち始めます。</string>
     <string name="letter_tip_rain_title">☔ 雨の日のこと</string>
@@ -534,8 +534,8 @@
     <string name="letter_tip_store_body">置いた家具や建物は、「持ち物に戻す」でしまって、好きな場所に置き直せます。気分に合わせて、お庭の模様替えをしてみませんか。</string>
     <string name="letter_tip_creatures_title">🐦 小さなお客さまのこと</string>
     <string name="letter_tip_creatures_body">お庭に置いたものの組み合わせや季節に誘われて、生き物たちが遊びに来ます。会えた生き物は、図鑑の「いきもの」に書き留められます。</string>
-    <string name="letter_tip_greenhouse_title">🏡 ガラスの温室のこと</string>
-    <string name="letter_tip_greenhouse_body">温室を使うと、冬でも作物が育ちます。季節外れの種も、ガラスの温室の中ならぽかぽか。レベル18になると、ショップに並びます。</string>
+    <string name="letter_tip_greenhouse_title">🏡 温室のこと</string>
+    <string name="letter_tip_greenhouse_body">温室を使うと、冬でも作物が育ちます。季節外れの種も、温室の中ならぽかぽか。レベル18になると、ショップに並びます。</string>
     <string name="letter_tip_footer">― お庭のひとくちメモ ―</string>
     <string name="letter_stock_title">🛒 ショップに新しい品が入荷しました</string>
     <string name="letter_stock_body">レベル%1$dになったお祝いに、ショップに新しい品が並びました。</string>

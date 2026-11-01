@@ -63,9 +63,9 @@ enum class PlacementKind {
  * (paving) and an occupant (whatever stands there); every object counts on all the cells of
  * its footprint.
  *
- * A lawn is an occupant too, with one exception (#55): a fence, edging or a rock may stand on a
- * lawn, and a lawn be sown under it ([sharesCellWithLawn]). Such a cell holds both; the fence or
- * rock is what stands there ([occupantAt]), and the lawn lies under it ([lawnAt]).
+ * A lawn is an occupant too, with one exception (#55): a fence, edging, a rock or a small ornament
+ * may stand on a lawn, and a lawn be sown under it ([sharesCellWithLawn]). Such a cell holds both;
+ * the thing is what stands there ([occupantAt]), and the lawn lies under it ([lawnAt]).
  */
 class GardenGrid(
     val map: GardenMap,
@@ -92,7 +92,7 @@ class GardenGrid(
      */
     fun occupantAt(x: Int, y: Int): GridObject? = GridCell(x, y).let { standing[it] ?: lawns[it] }
 
-    /** The lawn on (x, y), if any, whether or not a fence or a rock stands on it. */
+    /** The lawn on (x, y), if any, whether or not something stands on it ([sharesCellWithLawn]). */
     fun lawnAt(x: Int, y: Int): GridObject? = lawns[GridCell(x, y)]
 
     /** The paving on (x, y), if any. */
@@ -177,8 +177,8 @@ class GardenGrid(
      * Whether something of [kind] with [footprint] fits with its first cell at
      * (originX, originY). Every cell must be inside the grid and not river, and its layer must
      * be free: paving only needs the floor layer, so it can go under something already standing
-     * there, and anything can be stood on paving. Given its [objectId], a fence or a rock may also
-     * go onto a lawn and a lawn under one.
+     * there, and anything can be stood on paving. Given its [objectId], what [sharesCellWithLawn]
+     * may also go onto a lawn, and a lawn under it.
      */
     fun checkPlacement(
         footprint: Footprint,
@@ -218,7 +218,8 @@ class GardenGrid(
         /** The widest river a bridge crosses. */
         const val MAX_BRIDGED_RIVER = 2
 
-        /** Whether [objectId] can share its cell with a lawn: a fence (#55), the edging or a rock. */
-        fun sharesCellWithLawn(objectId: String): Boolean = RunKind.of(objectId) != null || GridObject.isRock(objectId)
+        /** Whether [objectId] can share its cell with a lawn: a fence (#55), the edging, a rock or a small ornament. */
+        fun sharesCellWithLawn(objectId: String): Boolean =
+            RunKind.of(objectId) != null || GridObject.isRock(objectId) || objectId in GridObject.SMALL_ORNAMENT_IDS
     }
 }

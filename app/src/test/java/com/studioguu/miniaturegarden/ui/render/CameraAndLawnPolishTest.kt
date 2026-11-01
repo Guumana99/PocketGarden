@@ -100,16 +100,16 @@ class CameraAndLawnPolishTest {
         // over the neighbours: no hard line where two cells meet.
         val solidReach = LawnShade.FEATHER_START * LawnShade.FEATHER_OVERLAP
         assertTrue("solid to $solidReach", solidReach in 0.95f..1f)
-        assertTrue(LawnShade.FEATHER_OVERLAP in 1.2f..1.5f)
+        assertTrue(LawnShade.FEATHER_OVERLAP in 1.1f..1.2f)
     }
 
     @Test
     fun `feathering keeps the top face and leaves out the side of the slab`() {
-        // A 9 x 7 opaque picture, its top face a diamond 4 by 2 round (4.5, 3.5).
+        // A 9 x 7 opaque picture, its top face a diamond 3.5 by 2 round (4.5, 3.5).
         val width = 9
         val height = 7
         val pixels = IntArray(width * height) { 0xFF336633.toInt() }
-        val out = LawnShade.feather(pixels, width, centerX = 4.5f, centerY = 3.5f, halfWidth = 4f, halfHeight = 2f)
+        val out = LawnShade.feather(pixels, width, centerX = 4.5f, centerY = 3.5f, halfWidth = 3.5f, halfHeight = 2f)
         fun alphaAt(x: Int, y: Int) = out[y * width + x] ushr 24
         assertEquals(255, alphaAt(4, 3))                 // the middle
         assertEquals(0, alphaAt(0, 6))                   // a corner, outside the face
@@ -144,7 +144,7 @@ class CameraAndLawnPolishTest {
     fun `the stream kit has a cosy name, and no frame in it`() {
         val strings = File(main, "res/values/strings.xml").readText()
         fun string(name: String) = Regex("<string name=\"$name\">(.*?)</string>").find(strings)?.groupValues?.get(1)
-        assertEquals("小川のかけら", string("item_tile_river"))
+        assertEquals("小川", string("item_tile_river"))
         assertEquals("せせらぎ", string("object_terrain_river"))
         assertFalse(strings.contains("せせらぎの木枠"))
     }

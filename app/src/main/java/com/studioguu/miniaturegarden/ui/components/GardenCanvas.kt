@@ -807,12 +807,16 @@ private fun submitObjects(
             val grassy = run.isFence && grid.floorAt(obj.gridX, obj.gridY) == null && onLawn
             // A thin thing on open ground: darker at its foot than something broad, or it floats.
             val fenceLight = light.copy(alpha = light.alpha * FENCE_SHADOW_GAIN)
+            // The wood and the bamboo are the colours of the ground: theirs reaches further out.
+            val earthy = run == RunKind.WOOD_FENCE || run == RunKind.BAMBOO_FENCE
+            val footReach = if (earthy) EARTHY_FENCE_FOOT_REACH else 1f
+            val footShadow = if (earthy) EARTHY_FENCE_FOOT_SHADOW else FENCE_FOOT_SHADOW
             submit(obj, RenderLayer.SHADOWS, depth) {
                 if (alone) {
-                    drawContactShadow(base, min(whole!!.width * spriteScale * 0.62f, unit * 0.7f), FENCE_FOOT_SHADOW)
+                    drawContactShadow(base, min(whole!!.width * spriteScale * 0.62f, unit * 0.7f) * footReach, footShadow)
                     drawSpriteShadow(atlasImage!!, whole, base, spriteScale, fenceLight)
                 } else if (post != null && atlasImage != null) {
-                    drawContactShadow(base, unit * 0.16f, FENCE_FOOT_SHADOW)
+                    drawContactShadow(base, unit * 0.16f * footReach, footShadow)
                     drawSpriteShadow(atlasImage, post, base, spriteScale, fenceLight)
                 }
             }
@@ -824,7 +828,10 @@ private fun submitObjects(
                     // Bricks lean one way in their picture: mirrored on the other slope, the four
                     // sides of a bed look alike.
                     val mirrored = !run.hasPosts && direction == FenceAutotile.EAST
-                    submit(obj, RenderLayer.SHADOWS, depth) { drawRunPieceShadow(atlasImage, rail, base, next, spriteScale, fenceLight, mirrored) }
+                    submit(obj, RenderLayer.SHADOWS, depth) {
+                        if (earthy) drawRunFootShadow(base, next, unit)
+                        drawRunPieceShadow(atlasImage, rail, base, next, spriteScale, fenceLight, mirrored)
+                    }
                     submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.RAIL_DEPTH) { drawRunPiece(atlasImage, rail, base, next, spriteScale, mirrored) }
                 }
             }
@@ -909,6 +916,9 @@ private fun submitObjects(
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
                 val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
+                    // The lantern's stone and the sprinkler's plate lie on the lawn: blades drawn over them
+                    // came out as sticks on the stone.
+                    floor == null && grid.lawnAt(obj.gridX, obj.gridY) != null -> Unit
                     // On the wasteland there is no grass to come up round it: crumbs of the earth instead.
                     floor == null && ambience.bareGround == BareGround.WASTELAND -> drawEarthAtFoot(base, unit, reach, seed = obj.gridX * 31 + obj.gridY * 17)
                     floor == null -> drawGrassAtFoot(base, unit, reach, sway, seed = obj.gridX * 31 + obj.gridY * 17)
@@ -1973,6 +1983,13 @@ private fun DrawScope.drawContactShadow(base: Offset, width: Float, strength: Fl
     }
 }
 
+/** A soft line on the ground from post to post, which ties a run down between its feet. */
+private fun DrawScope.drawRunFootShadow(from: Offset, to: Offset, unit: Float) {
+    val width = unit * RUN_FOOT_WIDTH
+    drawLine(Color.Black.copy(alpha = RUN_FOOT_SHADOW * 0.5f), from, to, strokeWidth = width, cap = StrokeCap.Round)
+    drawLine(Color.Black.copy(alpha = RUN_FOOT_SHADOW), from, to, strokeWidth = width * 0.45f, cap = StrokeCap.Round)
+}
+
 /**
  * The shadow of something round that has no sprite to take an outline from: an oval that
  * stretches away from the light.
@@ -2058,6 +2075,14 @@ private const val FURROWS = 4
 /** How much darker a fence's shadows are than something broad's, and how dark its foot. */
 private const val FENCE_SHADOW_GAIN = 1.45f
 private const val FENCE_FOOT_SHADOW = 0.6f
+
+/** The wood's and the bamboo's foot: how much further it reaches than the white's, and how dark. */
+private const val EARTHY_FENCE_FOOT_REACH = 1.6f
+private const val EARTHY_FENCE_FOOT_SHADOW = 0.72f
+
+/** The soft line along the ground under a run of those two, its width in tiles, and how dark. */
+private const val RUN_FOOT_WIDTH = 0.05f
+private const val RUN_FOOT_SHADOW = 0.26f
 
 /** How strongly the rim and clods are drawn round a bed laid with its picture (#57). */
 private const val PICTURED_BED_EDGE = 0.45f

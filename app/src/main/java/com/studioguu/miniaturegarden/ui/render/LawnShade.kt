@@ -66,14 +66,14 @@ object LawnShade {
     // its edges. The rims vanish into the fade, and no line is left between two cells.
 
     /** How much larger than its diamond each feathered cell of grass is drawn. */
-    const val FEATHER_OVERLAP = 1.32f
+    const val FEATHER_OVERLAP = 1.16f
 
     /**
      * How far out from the middle of the picture's top face (0 the middle, 1 its edge) the fade
      * begins. Drawn at [FEATHER_OVERLAP], that is just inside the cell's own edge, so a cell is
      * whole all over itself and its fade lies over its neighbours.
      */
-    const val FEATHER_START = 0.74f
+    const val FEATHER_START = 0.84f
 
     /** How solid the feathered picture is at [norm], the distance out from its middle ([diamondNorm]). */
     fun featherAlpha(norm: Float): Float {

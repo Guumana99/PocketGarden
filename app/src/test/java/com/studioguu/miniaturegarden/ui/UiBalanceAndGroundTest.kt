@@ -37,8 +37,10 @@ class UiBalanceAndGroundTest {
     @Test
     fun `the start-over dialog's two buttons are side by side in the middle`() {
         val dialog = source("ui/title/TitleScreen.kt").substringAfter("if (confirmStartOver) {")
-        assertTrue(dialog.contains("Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)"))
-        assertTrue(dialog.contains("Modifier.fillMaxWidth()"))
+        // The parchment dialog lays two actions out itself: side by side, of one width.
+        val buttons = source("ui/components/Cozy.kt").substringAfter("fun DialogButtons(")
+        assertTrue(buttons.contains("actions.size <= 2") && buttons.contains("DialogButton(action, Modifier.weight(1f))"))
+        assertTrue(dialog.contains("ParchmentDialog("))
         // Both in one centred row: no separate dismiss button pushed to the right by the dialog.
         assertFalse(dialog.contains("dismissButton"))
         // Cancel first, as in the other wooden dialogs.

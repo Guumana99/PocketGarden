@@ -168,6 +168,11 @@ data class GridObject(
         /** Whether [objectId] is one of the rocks. */
         fun isRock(objectId: String): Boolean = objectId.startsWith(ROCK_ID_PREFIX)
 
+        /** The small things that stand on a lawn as a rock does; buildings and the shiitake log do not. */
+        val SMALL_ORNAMENT_IDS: Set<String> = setOf(
+            "deco_bench", "deco_lantern", StructureData.WELL.objectId, Sprinkler.OBJECT_ID, WeatherOutlook.WEATHERVANE_OBJECT_ID,
+        )
+
         /** What is drawn from behind as well as from the front, and so has four ways to face. */
         val TURNING_OBJECT_IDS: Set<String> = setOf("deco_bench")
 

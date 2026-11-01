@@ -30,8 +30,8 @@
 - ひまわり（#58、4 枚）：`plant_sunflower_stage{1..3}.png` と `_withered.png`。1 段階目は 3 本の双葉で、アンカーは 3 本の真ん中（`atlas_overrides.json`）。
 - #58 で消した旧版：`plant_tulip_stage4`・`plant_tulip_withered`・`plant_sunflower_stage4`（4 段階の手描き風）。旧 1〜3 段階は同じ名前で上書き。
 - 地面と建物（#40、`tools/prepare_building_art.py` で加工）：
-  - `tile_grass`・`tile_grass_dark`（芝生。#57 から `tile_grass_iso.png` の上面から作る。#47 から明るさの傾きを取り除き、1 色で並べる。`tile_grass_dark` は残っているが使っていない）、`floor_tilled`（耕した土。#47 から畑はコード描画になり、ガラスの温室の床でだけ使う）
-  - `struct_cottage`（コテージ）、`floor_greenhouse`（ガラスの温室）、`struct_windmill`（風車の本体）、`struct_windmill_blades`（風車の羽根）
+  - `tile_grass`・`tile_grass_dark`（芝生。#57 から `tile_grass_iso.png` の上面から作る。#47 から明るさの傾きを取り除き、1 色で並べる。`tile_grass_dark` は残っているが使っていない）、`floor_tilled`（耕した土。#47 から畑はコード描画になり、温室の床でだけ使う）
+  - `struct_cottage`（コテージ）、`floor_greenhouse`（温室）、`struct_windmill`（風車の本体）、`struct_windmill_blades`（風車の羽根）
   - スプリンクラー（`deco_sprinkler`、水しぶき `deco_sprinkler_spray_0`〜`_7`）は**アトラスに入っていない**（#61 で確認）。本体も水しぶきもコード描画。絵を入れればその名前で差し替わる
 - 作物 4 種 × 4 枚（#57）：`plant_{corn,eggplant,carrot,wheat}_stage{1..3}.png` と `_withered.png`（3 段階）。トマト・イチゴの `_stage{1..3}` も #57 の絵に差し替え、`_withered` は #58 で届いた絵に差し替え。
   - 受け取ったのは `res/drawable/crop_*.png`（1024×1024、白背景・透過なし）。原画は `tools/source_art/` に移し、`tools/prepare_drawable_art.py` で切り抜いて `raw_assets/` に書く（下の「#57 の絵を入れるとき」）。
@@ -124,11 +124,11 @@
 | 建物 | 小屋（`struct_hut`） | 2000 | Lv11 | 確定アセット | `struct_hut`（#74）、アイコン画像あり |
 | 建物 | コテージ（`struct_cottage`） | 800 | Lv3 | 確定アセット | `struct_cottage` |
 | 建物 | 太鼓橋（`struct_bridge_taiko`） | 3500 | Lv17 | 確定アセット | `struct_bridge_taiko`（原画 `bridge_taiko.png`）、アイコン画像あり |
-| 建物 | ガラスの温室（`floor_greenhouse`） | 3000 | Lv18 | 確定アセット | `floor_greenhouse`、床は `floor_tilled` |
+| 建物 | 温室（`floor_greenhouse`） | 3000 | Lv18 | 確定アセット | `floor_greenhouse`、床は `floor_tilled` |
 | 飾り | 芝生（`ground_grass`） | 10 | 最初から | 確定アセット＋コード | 育ちきると `tile_grass`。育つ途中の苗床と葉の切り抜きはコード（#61） |
 | 飾り | 小石（`ground_pebble`） | 10 | 最初から | 確定アセット | `ground_pebble.png`（#74）、アイコン画像あり |
 | 飾り | 石畳（`floor_cobblestone`） | 10 | 最初から | 確定アセット | `floor_cobblestone.png`（#74 で差し替え）、アイコン画像あり |
-| 飾り | 小川のかけら（`tile_river`） | 10 | 最初から | 生成アセット | `tile_river_autotile.png`（スクリプトで生成）。庭・図鑑での名前は「せせらぎ」 |
+| 飾り | 小川（`tile_river`） | 10 | 最初から | 生成アセット | `tile_river_autotile.png`（スクリプトで生成）。庭・図鑑での名前は「せせらぎ」 |
 | 飾り | 野の花（`ground_flowers`） | 15 | 最初から | 確定アセット | `ground_flowers.png`（#74）、アイコン画像あり |
 | 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 2 ページ | 確定アセット | `floor_wood.png`（#74）、アイコン画像あり |
 | 飾り | 丸い岩（`deco_rock`） | 60 | Lv2 | 確定アセット | `deco_rock`（#74）、アイコン画像あり。ショップでは「石」の 1 つにまとめて、押すと 5 種の一覧が出る |
@@ -198,7 +198,7 @@
 | `creature_{squirrel,squirrel_run,bird,bird_fly,frog,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures_0.png` に |
 | `tile_path_cobblestone.png` | **#74 から未使用（保管）**。イラスト調の石畳（#40）。#73 まで `build_terrain_assets.py`（#85 で削除）が 4 分の 1 を切り出して石畳の床にしていた。#74 で `tile_cobblestone_iso.png` から作った `floor_cobblestone.png` に差し替え |
 | `building_cottage.png` | コテージ（#40）。透過はきれいだった。切り抜いて 3 マス分の幅で描く（描画倍率 約 2.5）。土台が 2:1 より平たい。#41 では土台の左右の角を 3×3 の左右の角にそろえていた（anchorY 0.7975）が、前の列が空いて奥に寄って見えたので、#55 から他の建物と同じく左右の角と前の角のずれを半分ずつにする（`ground_centre_y`、anchorY 0.7481、約 0.2 マス手前へ） |
-| `building_greenhouse.png` | ガラスの温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |
+| `building_greenhouse.png` | 温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |
 | `building_windmill_body.jpg` | 風車の本体（#40）。**JPEG で透過が無く、灰色の市松模様（48px、2 トーン）が背景として描き込まれていた**。マスごとの色で抜いた |
 | `building_windmill_blades.jpg` | 風車の羽根（#40）。同じく白と灰色の市松模様（約 12px）と、白いにじみが描き込まれていた。色で抜いた |
 | `tile_grass_iso.png` | 芝生（#57、受け取ったときは `res/drawable/tile_grass.png`）。白背景のアイソメの芝の板（1024×1024）。`prepare_drawable_art.flat_lawn` が上面を真上から見た正方形（720 px）に戻し、`flat_to_tile` で中央の正方形の半分（`share=0.5`）を 2:1 のひし形へ貼り、ぼかし 1.2px、厚み 55px の側面を足して `tile_grass` に。細かい葉のままだとスマホで約 7 分の 1 に縮んだとき砂嵐のようにちらつくため、葉を大きく柔らかくしている。#53 の `tile_lawn_flat.png` はこれに置き換えて削除 |
@@ -252,7 +252,7 @@ python tools/prepare_fence_art.py --preview <確認用フォルダ>
 - 原画は 1 区画を正面から見た 1 枚だけ。そこから `<id>`（1 本のとき）、`<id>_post`（杭）、`<id>_rail`（杭の間）を作り、`atlas_overrides.json` を書き換える。そのあと `asset_packer.py` を回す。アイコンも作る。
 - 大きさ：杭の高さは 3 種とも 210px（1 マス 720px。今までの杭 167・板 247 の間）。原画は細長いので、木と白は幅を高さより 1.3 倍広く縮める（`stout`）。縁石は高さ 76px（杭の約 36%）。
 - `_rail` は杭の中心から次の杭の中心まで（横に 360px）から杭の幅を引き、両端を杭の下へ 3px ずつもぐらせた幅。引き伸ばさず、中央を繰り返して杭の間に合わせる（#86）。木は 3 回（継ぎ目は原画の 60 列で溶かす）、白と竹は 2 回で、竹は原画の密度のまま。ゲームは `_rail` を立てたまま斜めのマスに沿ってせん断して描く（`drawRunPiece`）ので、絵は 1 枚で両方の斜めに使える。地面の高さは `attachY`（絵の下端より下にあるので 1 を超える）。
-- 色（`Grade`）：描き直さず取り込みで色を動かす。杭と横木を明るめの地面・耕した土・芝生・夜のどれでも見えるよう、コントラストを上げる。木 0.78 倍・コントラスト 1.65・彩度 1.25、白 1.14 倍・1.35、竹 0.86 倍・1.55・1.3。縁取りは付けない。接地の影はコード側（`FENCE_FOOT_SHADOW` `FENCE_SHADOW_GAIN`）。
+- 色（`Grade`）：描き直さず取り込みで色を動かす。杭と横木を明るめの地面・耕した土・芝生・夜のどれでも見えるよう、コントラストを上げる。木 0.60 倍・コントラスト 1.85・彩度 1.30（焦げ茶寄り）、白 1.14 倍・1.35、竹 0.70 倍・1.75・1.55（黄みを残す）。縁取りは付けない。接地の影はコード側（`FENCE_FOOT_SHADOW` `FENCE_SHADOW_GAIN`。木と竹は `EARTHY_FENCE_FOOT_*` で足元を広げ、杭の間に `drawRunFootShadow` の線を敷く）。
 - 切り抜き：白い柵は真っ白（255）だけを背景にする（`cut_plain_white`。塗りは 205 ほどの灰色）。ほかは床の影ごと抜く（`cut_shadowed`）。どちらも縁の色から白の混ざりを戻す。
 - 縁石（#86 で取り下げ、作り方は残してある）：絵のレンガの隙間に沿って斜めに切った 1 歯（幅 224px）を 1 マス 7 本並べる（`brick_row`）。両端が同じ斜めなので、1 マスずらして重ねると継ぎ目が消える。最後の歯は次のレンガの黒い縁が角でとげになるので 30px 落とす。絵のレンガは右に傾いているので、右下がりの辺では反転して描き、四辺を同じ見え方にする（`GardenCanvas` の `mirrored`）。
 
@@ -307,7 +307,7 @@ python tools/prepare_water_art.py --preview <確認用フォルダ>
 ```
 
 - 岸の帯は水に 0.20 マス入る（`BANK_DEPTH - CELL_OVERHANG`）。1 マス幅の川の水面はマスの 6 割。白いふちは `strip_white` が消す。
-- 小川のかけらと池のアイコンもここで作る。
+- 小川と池のアイコンもここで作る。
 - `--pond` は `res/drawable/pond.png` の水の色を合わせ直す。ファイルをその場で書き換えるので、池の絵を差し替えたときだけ使う。
 
 ### 新しいスプライトを入れるとき

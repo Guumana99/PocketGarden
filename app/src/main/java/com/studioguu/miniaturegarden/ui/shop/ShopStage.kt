@@ -51,8 +51,11 @@ enum class ShelfTag {
     OWNED,
 }
 
-/** One thing standing on a shelf, and how many of it the player has in the bag ([held]). */
-data class ShelfItem(val item: GardenItem, val tag: ShelfTag, val held: Int = 0, val free: Boolean = false)
+/**
+ * One thing standing on a shelf, and how many of it the player has in the bag ([held]). [heldOnShelf]
+ * is what its tag on the shelf says: for the one thing that stands for several kinds, all of them.
+ */
+data class ShelfItem(val item: GardenItem, val tag: ShelfTag, val held: Int = 0, val free: Boolean = false, val heldOnShelf: Int = held)
 
 /**
  * What stands on a shop's shelves, and how it is set out: a pure function of the shop, the
@@ -92,7 +95,8 @@ object ShopShelves {
             coins < item.price -> ShelfTag.SHORT_OF_COINS
             else -> ShelfTag.FOR_SALE
         }
-        return ShelfItem(item, tag, held[item] ?: 0)
+        val kinds = GardenItem.kindsUnder(item) ?: listOf(item)
+        return ShelfItem(item, tag, held[item] ?: 0, heldOnShelf = kinds.sumOf { held[it] ?: 0 })
     }
 
     /** What is on show during the first steps: the seed they give away, and nothing else. */
