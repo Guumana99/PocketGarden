@@ -8,10 +8,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import java.time.LocalDate
 
 /** Today as a day number in the device's time zone; the day's reward claims are counted against it. */
 fun todayEpochDay(): Long = LocalDate.now().toEpochDay()
+
+private const val MINUTE_MILLIS = 60_000L
+
+/**
+ * Ticks at once, then at the turn of every minute: for what changes with the time of day or the
+ * day, with the app left open.
+ */
+fun everyMinute(): Flow<Unit> = flow {
+    while (true) {
+        emit(Unit)
+        delay(MINUTE_MILLIS - System.currentTimeMillis() % MINUTE_MILLIS)
+    }
+}
 
 /** The activity behind a context, looking through any wrappers (dialogs wrap theirs). */
 fun Context.findActivity(): Activity? {

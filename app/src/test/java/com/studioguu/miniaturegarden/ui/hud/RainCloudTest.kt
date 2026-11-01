@@ -60,6 +60,18 @@ class RainCloudTest {
     }
 
     @Test
+    fun `while it is introduced it looks a rain cloud, and a tap on it still does what it would`() {
+        for (resting in listOf(RainCloudState.USED_TODAY, RainCloudState.NOTHING_GROWING, RainCloudState.NO_AD)) {
+            assertEquals(RainCloudState.READY, resting.look(introducing = true))
+            assertEquals(resting, resting.look(introducing = false))
+        }
+        assertEquals(RainCloudState.PARCHED, RainCloudState.PARCHED.look(introducing = true))
+        val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+        val screen = File(main, "java/com/studioguu/miniaturegarden/ui/GardenScreen.kt").readText()
+        assertTrue(screen.contains("val rest = rainCloud.restMessage"))
+    }
+
+    @Test
     fun `its words look forward`() {
         val app = RuntimeEnvironment.getApplication()
         assertEquals("また明日、雨を呼べます", app.getString(R.string.msg_rain_used))

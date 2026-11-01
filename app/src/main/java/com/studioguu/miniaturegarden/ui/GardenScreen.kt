@@ -404,7 +404,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 54.dp),
             ) {
                 RainCloud(
-                    state = rainCloud,
+                    state = rainCloud.look(introducing = tutorialStep?.introducing == GardenFeature.BLESSED_RAIN),
                     tint = remember(clockHour, season) { SceneTint.at(clockHour, season) },
                     onClick = {
                         val rest = rainCloud.restMessage
@@ -515,6 +515,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         ),
                     fertilizerCost = if (tutorialStep == TutorialStep.FEED_SEEDLING) 0 else Soil.fertilizerCost(profile?.playerLevel ?: 1),
                     onFertilize = viewModel::fertilizeSelected,
+                    onFertilizeResting = { viewModel.showMessage(R.string.msg_fertilize_pick) },
                     onOpenInventory = { if (viewModel.onBagTapped()) showInventory = true },
                     // Nothing stays picked across the walk: the garden may grow while in the workshop.
                     onOpenShop = {

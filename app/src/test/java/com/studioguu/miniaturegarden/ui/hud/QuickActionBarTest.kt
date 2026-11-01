@@ -51,6 +51,39 @@ class QuickActionBarTest {
     }
 
     @Test
+    fun `with nothing to feed, the fertilizer says so, looking no different`() {
+        var said = 0
+        var fed = 0
+        compose.setContent {
+            GardenTheme {
+                QuickActionBar(
+                    canCare = false, hoeActive = false, onToggleHoe = {}, onFertilize = { fed++ },
+                    onOpenInventory = {}, onOpenShop = {}, onFertilizeResting = { said++ },
+                )
+            }
+        }
+        compose.onNode(hasText(text(R.string.action_fertilize, 15)) and hasClickAction()).assertIsNotEnabled().performClick()
+        assertEquals(1, said)
+        assertEquals(0, fed)
+    }
+
+    @Test
+    fun `held back by edit mode it stays quiet`() {
+        var said = 0
+        compose.setContent {
+            GardenTheme {
+                QuickActionBar(
+                    canCare = false, hoeActive = false, onToggleHoe = {}, onFertilize = {},
+                    onOpenInventory = {}, onOpenShop = {}, onFertilizeResting = { said++ },
+                    allows = { GardenLayout.toolAllowedInEditMode(it) },
+                )
+            }
+        }
+        compose.onNode(hasText(text(R.string.action_fertilize, 15)) and hasClickAction()).performClick()
+        assertEquals(0, said)
+    }
+
+    @Test
     fun `the bar has no watering can - watering is the plant panel's button`() {
         compose.setContent {
             GardenTheme {

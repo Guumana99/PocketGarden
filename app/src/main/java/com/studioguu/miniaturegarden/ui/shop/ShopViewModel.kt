@@ -28,6 +28,7 @@ import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
 import com.studioguu.miniaturegarden.domain.usecase.PurchaseItemUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.ownsSymbolBuilding
+import com.studioguu.miniaturegarden.ui.components.everyMinute
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -159,9 +160,8 @@ class ShopViewModel @Inject constructor(
     private val _feedback = MutableStateFlow<PurchaseFeedback?>(null)
     val feedback: StateFlow<PurchaseFeedback?> = _feedback.asStateFlow()
 
-    /** Coin bonuses still available today. */
-    val bonusRemaining: StateFlow<Int> = rewardLimits.usage
-        .map { it.remaining(RewardType.COIN_BONUS, todayEpochDay()) }
+    /** Coin bonuses still available today. Worked out afresh every minute, for a day that ends with the shop open. */
+    val bonusRemaining: StateFlow<Int> = combine(rewardLimits.usage, everyMinute()) { usage, _ -> usage.remaining(RewardType.COIN_BONUS, todayEpochDay()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val adReady: StateFlow<Boolean> = rewardedAds.isReady

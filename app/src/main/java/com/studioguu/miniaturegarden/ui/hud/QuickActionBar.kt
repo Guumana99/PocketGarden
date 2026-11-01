@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.usecase.CareForPlantUseCase
+import com.studioguu.miniaturegarden.ui.components.AnswersWhenResting
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
@@ -57,6 +58,7 @@ fun QuickActionBar(
     allows: (TutorialTool) -> Boolean = { true },
     bagActive: Boolean = false,
     fertilizerCost: Int = 15,
+    onFertilizeResting: () -> Unit = {},
 ) {
     Surface(
         modifier = modifier,
@@ -71,10 +73,14 @@ fun QuickActionBar(
             ActionButton(
                 "⛏️", stringResource(R.string.action_hoe), onToggleHoe, selected = hoeActive, enabled = allows(TutorialTool.HOE),
             )
-            ActionButton(
-                "🧪", if (fertilizerCost == 0) stringResource(R.string.action_fertilize_free) else stringResource(R.string.action_fertilize, fertilizerCost), onFertilize,
-                enabled = canCare && allows(TutorialTool.FERTILIZE),
-            )
+            // With nothing to feed it says so. Held back by the first steps or edit mode, it stays quiet.
+            val fertilizer = if (fertilizerCost == 0) stringResource(R.string.action_fertilize_free) else stringResource(R.string.action_fertilize, fertilizerCost)
+            AnswersWhenResting(onTap = onFertilizeResting.takeIf { !canCare && allows(TutorialTool.FERTILIZE) }, label = fertilizer) {
+                ActionButton(
+                    "🧪", fertilizer, onFertilize,
+                    enabled = canCare && allows(TutorialTool.FERTILIZE),
+                )
+            }
             ActionButton("🎒", stringResource(R.string.action_inventory), onOpenInventory, enabled = allows(TutorialTool.BAG), selected = bagActive)
             ActionButton("🛒", stringResource(R.string.action_shop), onOpenShop, enabled = allows(TutorialTool.SHOP))
         }
