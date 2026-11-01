@@ -100,9 +100,9 @@ class Fence:
 
 
 FENCES: dict[str, Fence] = {
-    "struct_fence": Fence("struct_fence_wood.png", (223, 333, 121, 955), None, (338, 684), stout=1.3, repeats=3, overlap=60, bars=((226, 320), (601, 692)), grade=Grade(0.78, 1.65, 1.25)),
+    "struct_fence": Fence("struct_fence_wood.png", (223, 333, 121, 955), None, (338, 684), stout=1.3, repeats=3, overlap=60, bars=((226, 320), (601, 692)), grade=Grade(0.60, 1.85, 1.30)),
     "struct_fence_white": Fence("struct_fence_white.png", (226, 318, 169, 858), (205, 340, 224), (319, 701), stout=1.3, repeats=2, grade=Grade(1.14, 1.35, 1.0)),
-    "struct_fence_bamboo": Fence("struct_fence_bamboo.png", (160, 236, 213, 815), None, (288, 781), stout=1.0, repeats=2, grade=Grade(0.86, 1.55, 1.3)),
+    "struct_fence_bamboo": Fence("struct_fence_bamboo.png", (160, 236, 213, 815), None, (288, 781), stout=1.0, repeats=2, grade=Grade(0.70, 1.75, 1.55)),
 }
 
 

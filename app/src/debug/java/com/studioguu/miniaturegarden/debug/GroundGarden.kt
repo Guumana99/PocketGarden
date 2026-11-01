@@ -2,7 +2,10 @@ package com.studioguu.miniaturegarden.debug
 
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.RunKind
+import com.studioguu.miniaturegarden.domain.model.Sprinkler
+import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
 
 /**
  * Gardens to look at how the grounds meet (debug builds only), loaded with `--ez load true --es
@@ -57,6 +60,50 @@ object GroundGarden {
             place(now, "ground_flowers", cells(9..10, 9..10)) +
             ROCKS.flatMapIndexed { i, rock -> place(now, rock, listOf(GridCell(i, 10))) } +
             place(now, ROCKS.first(), listOf(GridCell(7, 10)))
+    }
+
+    /**
+     * The small ornaments on a lawn (`--es garden lawnthings`), and a sprinkler among beds.
+     *
+     *     y\x 0 1 2 3 4 5 6 7 8 9 10
+     *      2  . G G G G G G G G G .      G lawn, under everything on these rows
+     *      3  . G B G L G W G V G .      B bench, L lantern, W well, V weathervane
+     *      4  . G G G G G G G G G .
+     *      5  . G G G G S G G G G .      S sprinkler, running
+     *      6  . . . . m m m . . . .      m mint in its reach, on tilled earth
+     */
+    fun lawnThings(now: Long): List<GridObject> {
+        val beds = cells(4..6, 6..6)
+        return place(now, LAWN, cells(1..9, 2..5)) +
+            place(now, "deco_bench", listOf(GridCell(2, 3))) +
+            place(now, "deco_lantern", listOf(GridCell(4, 3))) +
+            place(now, "struct_well", listOf(GridCell(6, 3))) +
+            place(now, WeatherOutlook.WEATHERVANE_OBJECT_ID, listOf(GridCell(8, 3))) +
+            place(now, Sprinkler.OBJECT_ID, listOf(GridCell(5, 5))) +
+            place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds) +
+            place(now, PlantSpecies.MINT.objectId, beds).map { it.copy(growthProgress = 0.5f) }
+    }
+
+    /**
+     * The greenhouse as it stands (`--es garden greenhouse`): one cell each, full grown crops in
+     * them, the tallest first, and an empty one; and four side by side, where a row of them shows
+     * what joining them up would have to mend.
+     *
+     *     y\x 0 1 2 3 4 5 6 7 8 9 10
+     *      2  . . S . C . T . W . e      S sunflower, C corn, T tomato, W wheat, e empty
+     *      5  . . . . S C . . . . .
+     *      6  . . . . T W . . . . .
+     *      8  . . - - - - - - - . .      - the ground of a row of bare grid cells beside them
+     */
+    fun greenhouse(now: Long): List<GridObject> {
+        val crops = listOf(
+            GridCell(2, 2) to PlantSpecies.SUNFLOWER, GridCell(4, 2) to PlantSpecies.CORN,
+            GridCell(6, 2) to PlantSpecies.TOMATO, GridCell(8, 2) to PlantSpecies.WHEAT,
+            GridCell(4, 5) to PlantSpecies.SUNFLOWER, GridCell(5, 5) to PlantSpecies.CORN,
+            GridCell(4, 6) to PlantSpecies.TOMATO, GridCell(5, 6) to PlantSpecies.WHEAT,
+        )
+        return place(now, GridObject.GREENHOUSE_OBJECT_ID, crops.map { it.first } + GridCell(10, 2)) +
+            crops.flatMap { (cell, species) -> place(now, species.objectId, listOf(cell)).map { it.copy(growthProgress = 1f) } }
     }
 
     fun fencesOnGrounds(now: Long): List<GridObject> {

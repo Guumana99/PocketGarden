@@ -81,6 +81,30 @@ class ShopShelvesTest {
     }
 
     @Test
+    fun `the one fence or rock on the shelf counts every kind of it in the bag, and each kind in the list its own`() {
+        val held = mapOf(GardenItem.STRUCT_FENCE to 2, GardenItem.STRUCT_FENCE_WHITE to 3, GardenItem.STRUCT_FENCE_BAMBOO to 4, GardenItem.DECO_ROCK_MOSSY to 5)
+        val fence = ShopShelves.stock(ShopStage.WORKSHOP, Season.SPRING, veteran, 100, false, held).first { it.item == GardenItem.STRUCT_FENCE }
+        assertEquals(9, fence.heldOnShelf)
+        assertEquals(2, fence.held)
+        val rock = ShopShelves.stock(ShopStage.SUNDRIES, Season.SPRING, veteran, 100, false, held).first { it.item == GardenItem.DECO_ROCK }
+        assertEquals(5, rock.heldOnShelf)
+        assertEquals(0, rock.held)
+        assertEquals(listOf(2, 3, 4), ShopShelves.fenceKinds(veteran, 100, held).map { it.held })
+        assertEquals(listOf(0, 0, 5, 0, 0), ShopShelves.rockKinds(veteran, 100, held).map { it.held })
+    }
+
+    @Test
+    fun `everything else on a shelf says on its tag what it has in the bag`() {
+        val everything = GardenItem.entries.filter { it.inShop }.associateWith { 1 }
+        for (stage in ShopStage.entries) for (season in Season.entries) {
+            for (thing in ShopShelves.stock(stage, season, veteran, 100, false, everything)) {
+                val expected = GardenItem.kindsUnder(thing.item)?.size ?: 1
+                assertEquals(thing.item.name, expected, thing.heldOnShelf)
+            }
+        }
+    }
+
+    @Test
     fun `the things opened by encyclopedia pages are the deck and the lantern, and they are meant to be there`() {
         // Their tags read "図鑑で解放", and their cards how many pages: what opens them, not stray data.
         val byPages = GardenItem.entries.filter { it.unlock is com.studioguu.miniaturegarden.domain.model.UnlockCondition.CollectionPages }
@@ -96,7 +120,7 @@ class ShopShelvesTest {
         fun string(name: String) = Regex("<string name=\"$name\">(.*?)</string>").find(strings)?.groupValues?.get(1)
         assertEquals("季節が変わると入れ替わります", string("shop_season_caption"))
         assertEquals(null, string("shop_card_seasons"))
-        assertEquals("小川のかけら", string("item_tile_river"))
+        assertEquals("小川", string("item_tile_river"))
         assertTrue(string("shop_locked_pages")!!.contains("図鑑"))
         assertTrue(string("shop_held")!!.startsWith("所持数"))
     }

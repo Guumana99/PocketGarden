@@ -285,11 +285,21 @@ private fun KindRow(kind: ShelfItem, onChoose: (GardenItem) -> Unit) {
                 color = GardenColors.InkSoft,
             )
         }
+        Text(
+            text = stringResource(R.string.shop_held, kind.held),
+            style = MaterialTheme.typography.labelMedium,
+            color = GardenColors.InkSoft,
+            maxLines = 1,
+            modifier = Modifier.testTag(kindHeldTag(kind.item)),
+        )
     }
 }
 
 /** Test tag of a kind in the list. */
 fun rockKindTag(item: GardenItem): String = "rock_${item.itemId}"
+
+/** Test tag of how many of a kind are in the bag, in the list. */
+fun kindHeldTag(item: GardenItem): String = "kind_held_${item.itemId}"
 
 /** A line said at the counter: what was bought, or why not. [good] decides its colour. */
 data class ShopMessage(val text: String, val good: Boolean)
@@ -623,15 +633,13 @@ private fun PriceTag(thing: ShelfItem) {
     ) {
         Text(text, style = MaterialTheme.typography.labelSmall, color = GardenColors.InkSoft, modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp))
     }
-    if (!kinds) {
-        Text(
-            text = stringResource(R.string.shop_held, thing.held),
-            style = MaterialTheme.typography.labelSmall,
-            color = GardenColors.InkSoft,
-            maxLines = 1,
-            modifier = Modifier.padding(top = 1.dp).testTag(heldTag(thing.item)),
-        )
-    }
+    Text(
+        text = stringResource(R.string.shop_held, thing.heldOnShelf),
+        style = MaterialTheme.typography.labelSmall,
+        color = GardenColors.InkSoft,
+        maxLines = 1,
+        modifier = Modifier.padding(top = 1.dp).testTag(heldTag(thing.item)),
+    )
 }
 
 @Composable

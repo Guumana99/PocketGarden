@@ -113,6 +113,13 @@ class ShopStageContentTest {
     }
 
     @Test
+    fun `the fence on the shelf says how many of all the fences are in the bag`() {
+        val visit = Visit().apply { stage = ShopStage.WORKSHOP }
+        open(visit, held = mapOf(GardenItem.STRUCT_FENCE to 2, GardenItem.STRUCT_FENCE_WHITE to 3))
+        compose.onNodeWithTag(heldTag(GardenItem.STRUCT_FENCE), useUnmergedTree = true).performScrollTo().assertTextEquals(text(R.string.shop_held, 5))
+    }
+
+    @Test
     fun `the cottage that is already the player's has a card without a buy button`() {
         val visit = Visit().apply { stage = ShopStage.WORKSHOP; inHand = GardenItem.STRUCT_COTTAGE }
         open(visit, ownsSymbol = true)
