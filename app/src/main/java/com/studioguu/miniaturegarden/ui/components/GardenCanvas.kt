@@ -86,6 +86,7 @@ import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.GreenhouseLayout
 import com.studioguu.miniaturegarden.ui.render.GreenhouseLook
+import com.studioguu.miniaturegarden.ui.render.RainGlint
 import com.studioguu.miniaturegarden.ui.render.GreenhouseRoof
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseRoof
@@ -217,6 +218,8 @@ fun GardenCanvas(
     closedCells: Set<GridCell> = emptySet(),
     /** The cells a bridge in hand would take, shown before it goes down. */
     bridgeCells: Set<GridCell> = emptySet(),
+    /** How far on the crops' glint after a shower is, 0 for none; read while drawing. */
+    rainGlint: () -> Float = { 0f },
     fadedObjectIds: Set<String> = emptySet(),
     visitors: List<CreatureVisit> = emptyList(),
     savedView: GardenView? = null,
@@ -526,6 +529,19 @@ fun GardenCanvas(
                 // Its shadow only falls on the garden, not on the air round it.
                 val overGarden = gardenMap.isInside(pose.cell.x, pose.cell.y)
                 drawVisitor(visit.creature, visitorBase(transform, visit, pose), transform.tileWidth, look, atlas.creatures, creatureImage, shadow = overGarden)
+            }
+        }
+        val glint = rainGlint()
+        if (glint > 0f) {
+            for (plant in gridObjects) {
+                if (!plant.isPlant || plant.status == PlantStatus.WITHERED) continue
+                val sprite = atlas[TileSetDefinition.assetIdFor(plant)]
+                val shown = if (grid.isUnderGlass(plant.gridX, plant.gridY)) spriteScale * GreenhouseLook.CROP_SCALE else spriteScale
+                val tall = sprite?.let { it.anchorY * it.drawnHeight(shown) } ?: (transform.tileWidth * 0.3f)
+                val foot = transform.tileCenter(plant.gridX, plant.gridY)
+                pipeline.submit(RenderLayer.TOP_EFFECTS, depth = LayerPipeline.depthOf(plant.gridX, plant.gridY, 0) + 0.5f) {
+                    drawRainGlint(foot, tall, transform.tileWidth, glint, plant.gridX * 31 + plant.gridY * 17)
+                }
             }
         }
         for (cell in hintCells) {
@@ -1249,6 +1265,24 @@ private fun DrawScope.drawHintTwinkle(transform: IsometricTransform, cell: GridC
         val at = centre + Offset(spot.x * unit, spot.y * unit)
         drawSparkle(at, unit * (0.035f + 0.035f * beat), HINT_STAR.copy(alpha = 0.35f + 0.6f * beat))
     }
+}
+
+/**
+ * A crop [tall] pixels high catching the light as the rain ends: a soft glow over it and two small
+ * stars that come and go, not all at the same moment ([seed]). [progress] runs from 0 to 1.
+ */
+private fun DrawScope.drawRainGlint(foot: Offset, tall: Float, unit: Float, progress: Float, seed: Int) {
+    val strength = RainGlint.strengthAt(progress, seed)
+    if (strength <= 0f) return
+    val middle = foot - Offset(0f, tall * 0.6f)
+    drawCircle(
+        brush = Brush.radialGradient(listOf(HINT_GLOW.copy(alpha = 0.28f * strength), HINT_GLOW.copy(alpha = 0f)), center = middle, radius = unit * 0.3f),
+        radius = unit * 0.3f,
+        center = middle,
+    )
+    val side = if (seed % 2 == 0) 1f else -1f
+    drawSparkle(foot + Offset(unit * 0.1f * side, -tall * 0.85f), unit * 0.07f * strength, HINT_STAR.copy(alpha = strength))
+    drawSparkle(foot + Offset(-unit * 0.13f * side, -tall * 0.5f), unit * 0.05f * strength, HINT_STAR.copy(alpha = 0.85f * strength))
 }
 
 private val HINT_GLOW = Color(0xFFFFF3B0)

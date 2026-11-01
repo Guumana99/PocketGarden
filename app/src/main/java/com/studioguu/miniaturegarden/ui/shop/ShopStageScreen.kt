@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -83,6 +84,8 @@ import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
 import com.studioguu.miniaturegarden.ui.components.WoodButton
+import com.studioguu.miniaturegarden.ui.components.GardenToastHost
+import com.studioguu.miniaturegarden.ui.components.GardenToastState
 import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
@@ -91,6 +94,7 @@ import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.ItemIcon
 import com.studioguu.miniaturegarden.ui.seasonEmoji
 import com.studioguu.miniaturegarden.ui.seasonLabel
+import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 /**
@@ -113,9 +117,12 @@ fun ShopStageScreen(
     val coins by viewModel.coins.collectAsStateWithLifecycle()
     val season by viewModel.season.collectAsStateWithLifecycle()
     val feedback by viewModel.feedback.collectAsStateWithLifecycle()
-    val notice by viewModel.notice.collectAsStateWithLifecycle()
+    val realNotice by viewModel.notice.collectAsStateWithLifecycle()
     val bonusRemaining by viewModel.bonusRemaining.collectAsStateWithLifecycle()
-    val adReady by viewModel.adReady.collectAsStateWithLifecycle()
+    val adWaiting by viewModel.adReady.collectAsStateWithLifecycle()
+    val showcase by ShowcaseControls.showcase.collectAsStateWithLifecycle()
+    val adReady = showcase?.adReady ?: adWaiting
+    val notice = showcase?.bonusCoins?.let { ShopNotice(R.string.msg_bonus_done, it, good = true) } ?: realNotice
     val expansion by viewModel.expansion.collectAsStateWithLifecycle()
     val guiding by viewModel.guiding.collectAsStateWithLifecycle()
     val rockKinds by viewModel.rockKinds.collectAsStateWithLifecycle()
@@ -139,6 +146,9 @@ fun ShopStageScreen(
     // Back first puts down what is in hand, then walks out of the shop.
     BackHandler { if (inspecting != null) viewModel.putBack() else leave() }
 
+    val toast = remember { GardenToastState() }
+    val bonusRest = stringResource(if (bonusRemaining <= 0) R.string.msg_bonus_used else R.string.msg_reward_unavailable)
+
     val message = notice?.let { ShopMessage(it.text(), it.good) } ?: feedback?.let { purchase ->
         val failure = actionResultMessage(purchase.result)
         ShopMessage(
@@ -155,7 +165,11 @@ fun ShopStageScreen(
         season = season,
         inHand = inHand,
         message = message,
-        bonusLabel = stringResource(R.string.reward_bonus_button, bonusRemaining, RewardType.COIN_BONUS.dailyLimit),
+        bonusLabel = when {
+            bonusRemaining <= 0 -> stringResource(R.string.reward_bonus_used)
+            !bonusAvailable -> stringResource(R.string.reward_bonus_waiting)
+            else -> stringResource(R.string.reward_bonus_button, bonusRemaining, RewardType.COIN_BONUS.dailyLimit)
+        },
         bonusEnabled = bonusAvailable,
         guiding = guiding,
         expansion = expansion,
@@ -166,9 +180,12 @@ fun ShopStageScreen(
         // The first steps' seed is free, whatever is in the purse.
         onBuy = { item -> if (guiding || coins >= item.price) viewModel.buy(item) else shortFor = item.price },
         onBonus = { confirmBonus = true },
+        onBonusResting = { toast.show(bonusRest) },
         onLeave = leave,
         modifier = modifier,
     )
+    // Over the counter, by the board it answers.
+    GardenToastHost(state = toast, modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.BottomCenter).safeDrawingPadding().padding(bottom = 96.dp, start = 24.dp, end = 24.dp))
 
     choosingKind?.let { shelved ->
         KindsDialog(
@@ -186,7 +203,8 @@ fun ShopStageScreen(
         ParchmentDialog(
             onDismissRequest = { shortFor = null },
             title = stringResource(R.string.msg_not_enough_coins),
-            actions = listOf(
+            // The bonus is only offered while it can be had.
+            actions = listOfNotNull(
                 DialogAction(stringResource(R.string.action_close), { shortFor = null }),
                 DialogAction(
                     stringResource(R.string.reward_bonus_short),
@@ -194,8 +212,7 @@ fun ShopStageScreen(
                         shortFor = null
                         confirmBonus = true
                     },
-                    enabled = bonusAvailable,
-                ),
+                ).takeIf { bonusAvailable },
             ),
         ) {
             Text(stringResource(R.string.shop_short_by, price - coins), color = GardenColors.Ink)
@@ -325,6 +342,7 @@ fun ShopStageContent(
     onPutBack: () -> Unit,
     onBuy: (GardenItem) -> Unit,
     onBonus: () -> Unit,
+    onBonusResting: () -> Unit = {},
     onLeave: () -> Unit,
     modifier: Modifier = Modifier,
     guiding: Boolean = false,
@@ -371,7 +389,7 @@ fun ShopStageContent(
                     }
                 }
             }
-            if (!guiding) Counter(message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, Modifier.padding(bottom = 8.dp))
+            if (!guiding) Counter(message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, onBonusResting, Modifier.padding(bottom = 8.dp))
         }
         // The card of the thing in hand rises onto the counter, over everything below the shelves.
         var lastInHand by remember { mutableStateOf<ShelfItem?>(null) }
@@ -651,10 +669,15 @@ private fun lockedText(item: GardenItem): String = when (item.unlock) {
 
 /** The counter along the bottom: the day's coin bonus, and what was last said at it. */
 @Composable
-private fun Counter(message: ShopMessage?, bonusLabel: String, bonusEnabled: Boolean, onBonus: () -> Unit, modifier: Modifier) {
+private fun Counter(message: ShopMessage?, bonusLabel: String, bonusEnabled: Boolean, onBonus: () -> Unit, onResting: () -> Unit, modifier: Modifier) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         MessageLine(message)
-        WoodButton(text = bonusLabel, onClick = onBonus, enabled = bonusEnabled, modifier = Modifier.fillMaxWidth())
+        // Resting, it is a carved board of the counter's own colours that still answers a tap.
+        if (bonusEnabled) {
+            WoodButton(text = bonusLabel, onClick = onBonus, modifier = Modifier.fillMaxWidth())
+        } else {
+            CarvedButton(text = bonusLabel, onClick = onResting, modifier = Modifier.fillMaxWidth().testTag(BONUS_RESTING_TAG))
+        }
     }
 }
 
@@ -666,19 +689,26 @@ private fun Counter(message: ShopMessage?, bonusLabel: String, bonusEnabled: Boo
 private fun MessageLine(message: ShopMessage?) {
     Box(modifier = Modifier.fillMaxWidth().height(MESSAGE_LINE_HEIGHT).testTag(MESSAGE_LINE_TAG), contentAlignment = Alignment.CenterStart) {
         if (message != null) {
-            Text(
-                text = message.text,
-                color = if (message.good) GardenColors.Leaf else MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // On a paper tag, in dark ink: the line lies on wood at the counter and on parchment on a card.
+            Surface(shape = RoundedCornerShape(6.dp), color = GardenColors.Cream, shadowElevation = 1.dp) {
+                Text(
+                    text = message.text,
+                    color = if (message.good) GardenColors.Ink else MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                )
+            }
         }
     }
 }
 
-/** The height kept for the line of what was said, one line of body text. */
-private val MESSAGE_LINE_HEIGHT = 24.dp
+/** The height kept for the line of what was said, one line of body text on its tag. */
+private val MESSAGE_LINE_HEIGHT = 32.dp
+
+/** Test tag of the bonus's board while it cannot be had. */
+const val BONUS_RESTING_TAG = "shop_bonus_resting"
 
 /** Test tag of the line of what was said. */
 const val MESSAGE_LINE_TAG = "shop_message_line"

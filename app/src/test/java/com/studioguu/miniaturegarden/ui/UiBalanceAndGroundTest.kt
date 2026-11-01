@@ -248,7 +248,7 @@ class UiBalanceAndGroundTest {
         val broken = faceLuminance("soil_revived", GroundSlab.REVIVED)
         assertTrue("tilled $tilled vs ground $wasteland", tilled < wasteland - 20)
         assertTrue("broken $broken vs ground $wasteland", broken < wasteland - 20)
-        assertTrue(source("ui/components/GardenCanvas.kt").contains("face = terrain.tilled"))
+        assertTrue(source("ui/components/GardenCanvas.kt").contains("else terrain.tilled"))
         // Drawn without them, a bed keeps its own colours.
         val body = SoilPalette.mix(SoilPalette.DRY, SoilPalette.DARK, SoilPalette.bodyMix(0f))
         val (r, _, b) = SoilPalette.rgb(body)

@@ -10,6 +10,7 @@ import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.ui.hud.RainCloudState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,6 +29,10 @@ import kotlinx.coroutines.flow.asStateFlow
  * @property view the zoom and pan to show the garden at; null for the usual.
  * @property butterfly a butterfly that comes now for the plant at this cell, whatever the dice say.
  * @property butterflyAt when it sets off; set by [ShowcaseControls.set].
+ * @property adReady whether an ad is taken to be waiting; null for what is so.
+ * @property bonusCoins a coin bonus taken to have just been paid in the shop; null for none.
+ * @property cloud what the rain cloud shows, in place of what is so.
+ * @property rainGlint how far on the crops' glint after a shower stands, 0 to 1; null for none.
  */
 data class Showcase(
     val season: Season? = null,
@@ -39,6 +44,10 @@ data class Showcase(
     val view: GardenView? = null,
     val butterfly: GridCell? = null,
     val butterflyAt: Long = 0L,
+    val adReady: Boolean? = null,
+    val bonusCoins: Int? = null,
+    val cloud: RainCloudState? = null,
+    val rainGlint: Float? = null,
 ) {
     /**
      * The visitors to show: [visits] of the kinds allowed, and the butterfly asked for, if there

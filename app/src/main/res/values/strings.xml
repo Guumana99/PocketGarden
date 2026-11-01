@@ -346,6 +346,9 @@
     <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
     <string name="reward_bonus_button">💰 臨時ボーナスを受け取る（本日あと %1$d/%2$d回）</string>
     <string name="reward_bonus_short">💰 臨時ボーナス</string>
+    <string name="reward_bonus_used">🌙 また明日</string>
+    <string name="reward_bonus_waiting">💰 ただいま準備中</string>
+    <string name="msg_bonus_used">また明日、ボーナスがもらえます</string>
     <string name="reward_bonus_confirm">臨時ボーナスを受け取りますか？\n（コインを獲得します）</string>
     <string name="reward_bonus_confirm_ok">💰 受け取る</string>
     <string name="shop_short_by">あと %1$d コイン足りません。</string>
@@ -354,7 +357,8 @@
     <string name="msg_reward_limit">本日の回数上限に達しました</string>
     <string name="msg_blessed_rain_done">雨が降って、作物がぐんと育ちました</string>
     <string name="msg_bonus_done">💰 臨時ボーナス +%1$d 🪙 を受け取りました</string>
-    <string name="msg_no_growing_plants">育てている途中の作物がありません</string>
+    <string name="msg_no_growing_plants">作物を育てると、雨を呼べます</string>
+    <string name="msg_rain_used">また明日、雨を呼べます</string>
 
     <!-- Settings -->
     <string name="settings_title">設定</string>
@@ -485,7 +489,7 @@
     <string name="reveal_edit_text">芝生や柵、建物などを\n動かしたり持ち物に戻したりできます。\n編集中はお庭に格子線が出ます。</string>
     <string name="msg_not_this_step">🌱 今は案内の手順を進めましょう</string>
     <string name="reveal_rain_name">☔ 雨乞い</string>
-    <string name="reveal_rain_text">雨乞いをすると、お庭にやさしい雨が降ります。\n作物がぐんと育ちます</string>
+    <string name="reveal_rain_text">空の雨雲をタップすると、お庭にやさしい雨が降ります。\n作物がぐんと育ちます</string>
     <string name="reveal_collection_name">📖 図鑑</string>
     <string name="reveal_collection_text">育てた作物や置いたものが、\n図鑑に少しずつ記されていきます。</string>
     <string name="reveal_camera_name">📷 カメラ</string>

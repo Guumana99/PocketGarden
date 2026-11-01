@@ -44,7 +44,7 @@
 | 図鑑 | `CollectionTest` |
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
 | 庭の拡張の導線（お便り・工房の板・広げる） | `ExpansionGuideTest`（＋拡張の規則 `SymbolBuildingTest` `ProgressionTest`、手紙 `PostTest`） |
-| ショップ（3 軒の店・棚・カード・購入・所持数・一言の枠・文言） | `ShopShelvesTest` `ShopStageContentTest`（Robolectric）（＋購入の規則 `ShopAndEffectsTest` `SymbolBuildingTest`） |
+| ショップ（3 軒の店・棚・カード・購入・所持数・一言の札・ボーナスの札・文言） | `ShopShelvesTest` `ShopStageContentTest`（Robolectric）（＋購入の規則 `ShopAndEffectsTest` `SymbolBuildingTest`） |
 | 編集モード・模様替えの規則・パネルのボタン | `GardenLayoutTest` `ObjectStatusPanelTest`（Robolectric）（＋グリッド表示 `CameraModeTest`） |
 | シンボル建物・庭の拡張 | `SymbolBuildingTest`（＋数を見る `ProgressionTest` `CollectionTest` `StoreObjectTest` `ShopAndEffectsTest`） |
 | 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` `TapTargetsTest`（吹き出し・建物のタップ） |
@@ -54,6 +54,7 @@
 | 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |
 | 生き物の季節の条件・自然メモの「あたらしい」・DB v11 | `NatureNotesEngineTest`（＋表の網羅 `CreatureVisitTest`） |
 | リワード・1 日の回数 | `RewardTest` |
+| 雨雲（状態・雨粒・光）、雨のあとのきらめき | `RainCloudTest`（＋画面の組み立て `PolishTest` `CameraModeTest`） |
 | 川の流れ・岸の部品、石・橋・色変え・ベンチの向き | `ArtImportTest`（＋描画 `BundledArtTest` `AssetLedgerTest`） |
 | 柵・縁石の種類と連結 | `FenceKindsTest` `FloorAndFenceTest` `FenceAutotileTest` |
 | 風・影・耕した土 | `AtmosphereTest` `FlowAndSoilTest`（＋つながった畑・芝生の明暗・作物のアンカー `ConnectedGroundTest`） |

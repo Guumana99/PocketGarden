@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.ui
 
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -93,7 +94,6 @@ import com.studioguu.miniaturegarden.ui.components.GardenCanvas
 import com.studioguu.miniaturegarden.ui.components.GardenToastHost
 import com.studioguu.miniaturegarden.ui.components.GardenToastState
 import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
-import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
@@ -113,6 +113,8 @@ import com.studioguu.miniaturegarden.ui.hud.RemoveConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TurnBackConfirmDialog
 import com.studioguu.miniaturegarden.ui.hud.TopStatusBar
 import com.studioguu.miniaturegarden.ui.hud.WeatherDialog
+import com.studioguu.miniaturegarden.ui.hud.RainCloud
+import com.studioguu.miniaturegarden.ui.render.SceneTint
 import com.studioguu.miniaturegarden.ui.inventory.InventoryBottomSheet
 import com.studioguu.miniaturegarden.ui.notifications.NotificationInviteDialog
 import com.studioguu.miniaturegarden.ui.notifications.hasNotificationPermission
@@ -164,8 +166,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
     val terrain by viewModel.terrain.collectAsStateWithLifecycle()
     val effects by viewModel.effects.collectAsStateWithLifecycle()
-    val rainRemaining by viewModel.rainRemaining.collectAsStateWithLifecycle()
-    val adReady by viewModel.adReady.collectAsStateWithLifecycle()
+    val rainCloud by viewModel.rainCloud.collectAsStateWithLifecycle()
+    val rainGlints by viewModel.rainGlints.collectAsStateWithLifecycle()
     val blessedRainFalling by viewModel.blessedRainFalling.collectAsStateWithLifecycle()
     val collectionReady by viewModel.collectionReady.collectAsStateWithLifecycle()
     val hoeActive by viewModel.hoeActive.collectAsStateWithLifecycle()
@@ -266,6 +268,15 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         }
     }
 
+    // The crops glint as the shower ends.
+    val rainGlint = remember { Animatable(0f) }
+    LaunchedEffect(rainGlints) {
+        if (rainGlints == 0) return@LaunchedEffect
+        rainGlint.snapTo(0f)
+        rainGlint.animateTo(1f, tween(RAIN_GLINT_MILLIS))
+        rainGlint.snapTo(0f)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -306,6 +317,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 hintCells = if (cameraMode) emptySet() else hintCells,
                 closedCells = closedCells,
                 bridgeCells = if (placingSlot != null || movingObject != null) bridgeCells else emptySet(),
+                rainGlint = { showcase?.rainGlint ?: rainGlint.value },
                 brokenCells = brokenGround,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
@@ -384,19 +396,20 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 onWeatherTap = { showWeather = true },
             ) }
 
-            // Greyed out when today's rains are used up or none is ready to be shown. Put away
-            // during the first steps, and handed over after them.
+            // A cloud in the sky, whose look says whether a rain can be called. Put away during the
+            // first steps, and handed over after them.
             RevealedFeature(
                 visible = tutorialStep?.reveals(GardenFeature.BLESSED_RAIN),
                 introducing = tutorialStep?.introducing == GardenFeature.BLESSED_RAIN,
-                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 58.dp),
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 54.dp),
             ) {
-                WoodButton(
-                    text = stringResource(R.string.reward_rain_button),
+                RainCloud(
+                    state = rainCloud,
+                    tint = remember(clockHour, season) { SceneTint.at(clockHour, season) },
                     onClick = {
-                        if (viewModel.hasGrowingPlants()) confirmRain = true else viewModel.showMessage(R.string.msg_no_growing_plants)
+                        val rest = rainCloud.restMessage
+                        if (rest == null) confirmRain = true else viewModel.showMessage(rest)
                     },
-                    enabled = rainRemaining > 0 && adReady,
                 )
             }
 
@@ -465,7 +478,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             // in the layout, so nothing shifts when one comes or goes.
             GardenToastHost(
                 state = toast,
-                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 124.dp, start = 24.dp, end = 24.dp),
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 130.dp, start = 24.dp, end = 24.dp),
             )
 
             // The tool bar sits at the bottom and never moves. Whatever belongs to the current mode
@@ -825,6 +838,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
 
 /** How long the shop stays once it has given the first seed: long enough to see it happen. */
 private const val SHOP_THANKS_MILLIS = 1_200L
+
+/** How long the crops glint for after a blessed rain. */
+private const val RAIN_GLINT_MILLIS = 1_200
 
 /** How long the first harvest's coins and experience have the screen to themselves. */
 private const val HARVEST_SHOW_MILLIS = 1_800L

@@ -101,6 +101,7 @@ import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
 import com.studioguu.miniaturegarden.ui.effects.plusEffect
+import com.studioguu.miniaturegarden.ui.hud.RainCloudState
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -326,12 +327,22 @@ class GardenViewModel @Inject constructor(
      */
     val clockOffset: StateFlow<Long> = _clockOffset.asStateFlow()
 
-    /** Blessed rains still available today. */
-    val rainRemaining: StateFlow<Int> = rewardLimits.usage
-        .map { it.remaining(RewardType.BLESSED_RAIN, todayEpochDay()) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    /**
+     * What the cloud at the top shows. Worked out afresh every minute as well, so that a cloud
+     * rests for the day only until the day is over, with the app open or not.
+     */
+    val rainCloud: StateFlow<RainCloudState> = combine(rewardLimits.usage, gridObjects, rewardedAds.isReady, ShowcaseControls.showcase, minutes) { usage, objects, ad, showcase, _ ->
+        showcase?.cloud ?: RainCloudState.of(
+            rainsLeft = usage.remaining(RewardType.BLESSED_RAIN, todayEpochDay()),
+            growing = objects.any(::rainHelps),
+            thirsty = objects.any { it.isPlant && it.status == PlantStatus.THIRSTY },
+            adReady = showcase?.adReady ?: ad,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RainCloudState.NOTHING_GROWING)
 
-    val adReady: StateFlow<Boolean> = rewardedAds.isReady
+    /** Whether a blessed rain would do anything for [plant]. */
+    private fun rainHelps(plant: GridObject): Boolean =
+        plant.isPlant && plant.status != PlantStatus.WITHERED && (plant.growthProgress < 1f || plant.moistureLevel < 1f)
 
     /**
      * What the book's badge counts: pages of the encyclopedia waiting for the player to fill them
@@ -347,10 +358,10 @@ class GardenViewModel @Inject constructor(
     /** True for a few seconds after a blessed rain was granted, while its shower is shown. */
     val blessedRainFalling: StateFlow<Boolean> = _blessedRainFalling.asStateFlow()
 
-    /** Whether there is anything the blessed rain could speed up or water. */
-    fun hasGrowingPlants(): Boolean = gridObjects.value.any {
-        it.isPlant && it.status != PlantStatus.WITHERED && (it.growthProgress < 1f || it.moistureLevel < 1f)
-    }
+    private val _rainGlints = MutableStateFlow(0)
+
+    /** How many showers have ended: each sets the crops glinting. */
+    val rainGlints: StateFlow<Int> = _rainGlints.asStateFlow()
 
     /**
      * Shows the ad and, only if it is watched to the end, lets the blessed rain fall. The plants
@@ -382,6 +393,7 @@ class GardenViewModel @Inject constructor(
                         _blessedRainFalling.value = true
                         delay(BLESSED_RAIN_SHOWER_MILLIS)
                         _blessedRainFalling.value = false
+                        _rainGlints.value++
                     }
                     RewardedAdResult.CANCELLED -> _messages.trySend(R.string.msg_reward_cancelled)
                     RewardedAdResult.UNAVAILABLE -> _messages.trySend(R.string.msg_reward_unavailable)
