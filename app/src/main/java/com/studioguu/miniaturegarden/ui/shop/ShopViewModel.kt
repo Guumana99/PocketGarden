@@ -11,6 +11,7 @@ import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
+import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -54,7 +55,7 @@ data class PurchaseFeedback(val item: GardenItem, val result: ActionResult)
 
 @HiltViewModel
 class ShopViewModel @Inject constructor(
-    gardenRepository: GardenRepository,
+    private val gardenRepository: GardenRepository,
     private val purchaseItem: PurchaseItemUseCase,
     private val followTutorial: FollowTutorialUseCase,
     private val audio: AudioManager,
@@ -219,7 +220,10 @@ class ShopViewModel @Inject constructor(
             val result = expandGarden()
             audio.play(if (result == ActionResult.SUCCESS) SoundEffect.LEVEL_UP else SoundEffect.ERROR)
             _notice.value = when (result) {
-                ActionResult.SUCCESS -> ShopNotice(R.string.msg_garden_expanded, good = true)
+                ActionResult.SUCCESS -> {
+                    val grown = GardenExpansion.nextStage(gardenRepository.getProgress()?.gardenSize ?: 0) == null
+                    ShopNotice(if (grown) R.string.msg_garden_full else R.string.msg_garden_expanded, good = true)
+                }
                 ActionResult.NOT_ENOUGH_COINS -> ShopNotice(R.string.msg_not_enough_coins)
                 ActionResult.GARDEN_AT_MAX_SIZE -> ShopNotice(R.string.msg_garden_at_max_size)
                 else -> ShopNotice(R.string.msg_expansion_locked)

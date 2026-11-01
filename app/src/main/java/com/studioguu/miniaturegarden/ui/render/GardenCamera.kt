@@ -107,7 +107,7 @@ data class GardenCamera(
         }
 
         /** The largest the garden grows (GardenExpansion.MAX_SIZE). */
-        const val LARGEST_GRID = 13
+        const val LARGEST_GRID = 17
 
         /**
          * A view kept from before (saved state, or the player's last visit) put back on this

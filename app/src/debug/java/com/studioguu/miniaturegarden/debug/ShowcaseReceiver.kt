@@ -95,7 +95,13 @@ class ShowcaseReceiver : BroadcastReceiver() {
             val pending = goAsync()
             scope.launch {
                 try {
-                    loadGarden(intent.getStringExtra(EXTRA_GARDEN), intent.getStringExtra("tutorial")?.let(TutorialStep::valueOf) ?: TutorialStep.DONE)
+                    loadGarden(
+                        intent.getStringExtra(EXTRA_GARDEN),
+                        intent.getStringExtra("tutorial")?.let(TutorialStep::valueOf) ?: TutorialStep.DONE,
+                        intent.getIntExtra("expand_size", GroundGarden.EXPAND_SIZE),
+                        intent.getIntExtra("expand_level", GroundGarden.EXPAND_LEVEL),
+                        intent.getIntExtra("expand_coins", GroundGarden.EXPAND_COINS),
+                    )
                     Log.i(TAG, "showcase garden loaded")
                 } finally {
                     pending.finish()
@@ -109,7 +115,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
         Log.i(TAG, "showcase set: $showcase")
     }
 
-    private suspend fun loadGarden(garden: String?, step: TutorialStep) {
+    private suspend fun loadGarden(garden: String?, step: TutorialStep, expandSize: Int, expandLevel: Int, expandCoins: Int) {
         val art = garden == "art"
         val fences = garden == "fences"
         val bridges = garden == "bridges"
@@ -121,7 +127,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val hakusai = garden == "hakusai"
         val nanohana = garden == "nanohana"
         val bridgePlaces = garden == "bridgeplace"
-        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai || nanohana || bridgePlaces
+        val expand = garden == "expand"
+        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -140,6 +147,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     hakusai -> GroundGarden.field(now, PlantSpecies.HAKUSAI)
                     nanohana -> GroundGarden.field(now, PlantSpecies.NANOHANA, young = 0.5f)
                     bridgePlaces -> FenceGarden.bridgePlaces(now)
+                    expand -> FeedbackGarden.objects(now) + GroundGarden.joinedUp(now)
                     feedback -> FeedbackGarden.objects(now)
                     else -> ShowcaseGarden.objects(now)
                 },
@@ -148,7 +156,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 GardenProgress(
                     season = Season.AUTUMN,
                     tutorialStep = step,
-                    gardenSize = if (feedback) FeedbackGarden.SIZE else ShowcaseGarden.SIZE,
+                    gardenSize = if (expand) expandSize else if (feedback) FeedbackGarden.SIZE else ShowcaseGarden.SIZE,
                     seasonStartedAt = now,
                 ),
             )
@@ -158,9 +166,9 @@ class ShowcaseReceiver : BroadcastReceiver() {
             }
             if (bridgePlaces) gardenRepository.upsertInventorySlot(InventorySlot(0, GardenItem.STRUCT_BRIDGE.itemId, 5))
             val profile = gardenRepository.getUserProfile() ?: UserProfile()
-            val level = if (feedback) FeedbackGarden.PLAYER_LEVEL else PLAYER_LEVEL
+            val level = if (expand) expandLevel else if (feedback) FeedbackGarden.PLAYER_LEVEL else PLAYER_LEVEL
             gardenRepository.saveUserProfile(
-                profile.copy(coins = 1_200L, playerLevel = level, currentXp = LevelTable.xpForLevel(level)),
+                profile.copy(coins = if (expand) expandCoins.toLong() else 1_200L, playerLevel = level, currentXp = LevelTable.xpForLevel(level)),
             )
         }
     }

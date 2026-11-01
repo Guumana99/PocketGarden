@@ -109,8 +109,8 @@ object StandardPlayer {
         fun coinsPerDayAt(level: Int): Double = (coinsAtLevel[level] ?: 0L) * VISIT_HOURS.size.toDouble() / (visitsAtLevel[level] ?: 1)
     }
 
-    /** [daysToLevel], with the beds as [plan] has them. */
-    fun play(targetLevel: Int, ads: Boolean, plan: BedPlan): Pace {
+    /** [daysToLevel], with the beds as [plan] has them, and going on [thenDays] days at the level, for what it earns there. */
+    fun play(targetLevel: Int, ads: Boolean, plan: BedPlan, thenDays: Int = 0): Pace {
         class Bed(var crop: PlantSpecies? = null, var growth: Double = 0.0, var moisture: Double = 0.0, var harvested: Int = 0)
 
         val garden = MutableList(plan.start) { Bed() }
@@ -195,7 +195,8 @@ object StandardPlayer {
                 visitsAtLevel.merge(level, 1, Int::plus)
                 bedsAtLevel[level] = garden.size
                 levels.putIfAbsent(profile.playerLevel, now / 24.0)
-                if (profile.playerLevel >= targetLevel) return Pace(now / 24.0, grewTo, levels, coinsAtLevel, visitsAtLevel, bedsAtLevel)
+                val reached = levels[targetLevel]
+                if (reached != null && now / 24.0 >= reached + thenDays) return Pace(reached, grewTo, levels, coinsAtLevel, visitsAtLevel, bedsAtLevel)
             }
         }
         error("Lv.$targetLevel not reached")

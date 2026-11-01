@@ -515,8 +515,9 @@
     <string name="shop_rocks_locked">Lv.%1$d で置けます</string>
     <string name="msg_only_one_symbol">🏡 シンボル建物はお庭に一つだけです</string>
     <string name="msg_expansion_locked">まだお庭を広げられません</string>
-    <string name="msg_garden_at_max_size">お庭はこれ以上広げられません</string>
+    <string name="msg_garden_at_max_size">お庭はめいっぱいに広がっています</string>
     <string name="msg_garden_expanded">お庭が広がりました</string>
+    <string name="msg_garden_full">お庭がめいっぱいに広がりました</string>
 
     <!-- Seasons, the post and the greenhouse -->
     <string name="msg_out_of_season">🌱 今は育てるのに適さない季節です。\n旬が来るまで、持ち物に取っておきましょう</string>
@@ -566,7 +567,7 @@
     <string name="expand_confirm_text">🪙 %1$d\nまわりに新しい土地が加わります。\n広げたお庭は元に戻せません。</string>
     <string name="expand_price">🪙 %1$d</string>
     <string name="expand_confirm_ok">広げる</string>
-    <string name="expand_max">いまはこれ以上広げられません</string>
+    <string name="expand_max">✔ めいっぱい</string>
     <string name="letter_grow_title">🏡 お庭を広げられるようになりました</string>
     <string name="letter_grow_body">お庭を広げられるようになりました。
 大工の工房で「お庭を広げる」を選んでください。広げるかどうかは、お好きなときに決めて大丈夫です。

@@ -146,8 +146,10 @@ class SymbolBuildingTest {
         assertEquals(GridObject.GRID_SIZE, GardenProgress().gardenSize)
         assertEquals(11, GardenExpansion.nextStage(9)?.size)
         assertEquals(13, GardenExpansion.nextStage(11)?.size)
-        assertNull(GardenExpansion.nextStage(13))
-        assertEquals(13, GardenExpansion.MAX_SIZE)
+        assertEquals(15, GardenExpansion.nextStage(13)?.size)
+        assertEquals(17, GardenExpansion.nextStage(15)?.size)
+        assertNull(GardenExpansion.nextStage(17))
+        assertEquals(17, GardenExpansion.MAX_SIZE)
     }
 
     @Test
@@ -156,7 +158,7 @@ class SymbolBuildingTest {
         assertEquals(ExpansionCheck.NEEDS_LEVEL, GardenExpansion.check(11, 7, 99_999))
         assertEquals(ExpansionCheck.NEEDS_COINS, GardenExpansion.check(11, 8, 2_999))
         assertEquals(ExpansionCheck.READY, GardenExpansion.check(11, 8, 3_000))
-        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(13, 99, 99_999))
+        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(17, 99, 99_999))
     }
 
     @Test
@@ -190,7 +192,7 @@ class SymbolBuildingTest {
 
         repo.profile = repo.profile!!.copy(playerLevel = 8, currentXp = LevelTable.xpForLevel(8), coins = 3_000)
         assertEquals(ActionResult.SUCCESS, expand())
-        assertEquals(ActionResult.GARDEN_AT_MAX_SIZE, expand())
+        assertEquals(ActionResult.EXPANSION_LOCKED, expand())
         assertEquals(13, repo.progress?.gardenSize)
         assertEquals(0L, repo.profile?.coins)
         assertEquals(6 to 6, repo.objects["soil_4_4"]!!.let { it.gridX to it.gridY })

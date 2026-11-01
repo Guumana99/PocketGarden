@@ -32,6 +32,21 @@ class ProgressionPaceTest {
     }
 
     @Test
+    fun `the two large gardens are days of coins at the levels they open, not months`() {
+        val lines = mutableListOf<String>()
+        for (ads in listOf(false, true)) {
+            val pace = StandardPlayer.play(20, ads, StandardPlayer.BedPlan.GROWING, thenDays = 14)
+            for ((level, stage) in listOf(14 to 15, 20 to 17)) {
+                val price = GardenExpansion.STAGES.first { it.size == stage }.price
+                val perDay = pace.coinsPerDayAt(level)
+                lines += "ads=%-5s Lv.%d: %.0f coins a day, %d beds, %,d coins is %.1f days of it".format(ads, level, perDay, pace.bedsAtLevel[level], price, price / perDay)
+                assertTrue(price / perDay in 0.5..60.0)
+            }
+        }
+        println(lines.joinToString("\n"))
+    }
+
+    @Test
     fun `a cell of greenhouse is some days' coins at the level it opens`() {
         val price = GardenItem.FLOOR_GREENHOUSE.price
         val lines = mutableListOf<String>()

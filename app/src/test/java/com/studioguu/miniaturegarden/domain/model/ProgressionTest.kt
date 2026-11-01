@@ -362,19 +362,19 @@ class ProgressionTest {
     // --- Growing the garden ---
 
     @Test
-    fun `the garden grows for its level and its price, and the planned sizes are not open yet`() {
+    fun `the garden grows for its level and its price, as far as 17 x 17`() {
         assertEquals(
             listOf(
                 ExpansionStage(11, playerLevel = 1, price = 0),
                 ExpansionStage(13, playerLevel = 8, price = 3_000),
-                ExpansionStage(15, playerLevel = 14, price = 10_000, open = false),
-                ExpansionStage(17, playerLevel = 20, price = 20_000, open = false),
+                ExpansionStage(15, playerLevel = 14, price = 10_000),
+                ExpansionStage(17, playerLevel = 20, price = 20_000),
             ),
             GardenExpansion.STAGES,
         )
-        assertEquals(13, GardenExpansion.MAX_SIZE)
-        assertNull(GardenExpansion.nextStage(13))
-        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(13, 99, 1_000_000))
+        assertEquals(17, GardenExpansion.MAX_SIZE)
+        assertNull(GardenExpansion.nextStage(17))
+        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(17, 99, 1_000_000))
     }
 
     @Test

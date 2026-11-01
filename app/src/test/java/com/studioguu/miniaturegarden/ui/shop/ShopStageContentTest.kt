@@ -139,6 +139,29 @@ class ShopStageContentTest {
     }
 
     @Test
+    fun `grown as far as it goes, the board stays, says so, and answers a tap`() {
+        val visit = Visit().apply { stage = ShopStage.WORKSHOP; offer = ExpansionOffer(ExpansionCheck.AT_MAX_SIZE) }
+        open(visit)
+        assertEquals("✔ めいっぱい", text(R.string.expand_max))
+        compose.onNodeWithTag(EXPANSION_BOARD_TAG).performClick()
+        assertEquals(ExpansionCheck.AT_MAX_SIZE, visit.waitedFor)
+    }
+
+    @Test
+    fun `a card of what cannot be paid for says so by its button, and only then`() {
+        val visit = Visit().apply { stage = ShopStage.WORKSHOP; inHand = GardenItem.STRUCT_WELL }
+        open(visit, coins = 10)
+        compose.onNodeWithText(text(R.string.msg_shelf_short)).assertExists()
+    }
+
+    @Test
+    fun `a card of what can be paid for has no such word`() {
+        val visit = Visit().apply { stage = ShopStage.WORKSHOP; inHand = GardenItem.STRUCT_WELL }
+        open(visit, coins = 5_000)
+        compose.onNodeWithText(text(R.string.msg_shelf_short)).assertDoesNotExist()
+    }
+
+    @Test
     fun `ready, the board's button does its work and nothing lies over it`() {
         val visit = Visit().apply { stage = ShopStage.WORKSHOP; offer = ExpansionOffer(ExpansionCheck.READY, level = 8, price = 300) }
         open(visit)

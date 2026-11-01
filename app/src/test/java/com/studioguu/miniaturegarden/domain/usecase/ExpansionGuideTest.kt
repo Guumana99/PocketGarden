@@ -43,9 +43,9 @@ class ExpansionGuideTest {
         assertNotNull(letter)
         assertEquals(LetterKind.GARDEN_CAN_GROW, letter!!.kind)
         assertEquals(13, letter.growSize)
-        // Not again for the same size, and nothing once it is as large as it gets for now.
+        // Not again for the same size, and nothing once it is as large as it gets.
         assertNull(PostOffice.gardenCanGrow(11, 9, listOf(letter), Season.SPRING, t0 + 1))
-        assertNull(PostOffice.gardenCanGrow(13, 99, listOf(letter), Season.SPRING, t0 + 2))
+        assertNull(PostOffice.gardenCanGrow(17, 99, listOf(letter), Season.SPRING, t0 + 2))
     }
 
     @Test
@@ -91,7 +91,7 @@ class ExpansionGuideTest {
         assertEquals(ExpansionOffer(ExpansionCheck.NEEDS_LEVEL, 8, 3_000), ExpansionOffer.of(11, 7, 1_000_000))
         assertEquals(ExpansionOffer(ExpansionCheck.NEEDS_COINS, 8, 3_000), ExpansionOffer.of(11, 8, 2_999))
         assertEquals(ExpansionOffer(ExpansionCheck.READY, 8, 3_000), ExpansionOffer.of(11, 8, 3_000))
-        assertEquals(ExpansionCheck.AT_MAX_SIZE, ExpansionOffer.of(13, 99, 1_000_000).check)
+        assertEquals(ExpansionCheck.AT_MAX_SIZE, ExpansionOffer.of(17, 99, 1_000_000).check)
         val shop = source("java/com/studioguu/miniaturegarden/ui/shop/ShopStageScreen.kt")
         val board = shop.substringAfter("private fun ExpansionBoard").substringBefore("\n}\n")
         assertTrue(board.contains("R.string.expand_needs_level, offer.level"))
@@ -112,7 +112,8 @@ class ExpansionGuideTest {
         assertEquals(13, repo.progress?.gardenSize)
         assertEquals(500L, repo.profile?.coins)
         assertEquals(3 to 4, repo.objects.getValue("rock").let { it.gridX to it.gridY })
-        // As large as it gets for now: nothing more is taken.
+        // As large as it gets: nothing more is taken.
+        repo.progress = repo.progress!!.copy(gardenSize = GardenExpansion.MAX_SIZE)
         assertEquals(ActionResult.GARDEN_AT_MAX_SIZE, ExpandGardenUseCase(repo)())
         assertEquals(500L, repo.profile?.coins)
         assertTrue(source("java/com/studioguu/miniaturegarden/ui/shop/ShopStageScreen.kt").contains("price = expansion.price,"))
