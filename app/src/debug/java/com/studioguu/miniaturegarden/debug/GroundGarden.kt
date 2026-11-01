@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.debug
 
+import com.studioguu.miniaturegarden.domain.model.GreenhouseSide
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -124,6 +125,21 @@ object GroundGarden {
         return place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds) + grown.flatMap { if (it.y == 3) youngCrop(it) else crop(it) } +
             withered.flatMap(::crop).map { it.copy(status = PlantStatus.WITHERED) } +
             place(now, GridObject.GREENHOUSE_OBJECT_ID, listOf(GridCell(8, 4))) + youngCrop(GridCell(8, 4))
+    }
+
+    /**
+     * The garden of `--es garden expand` starts this large, at this level and this rich, enough to
+     * grow twice at once (`--ei expand_size`, `--ei expand_level`, `--ei expand_coins` to change them).
+     */
+    const val EXPAND_SIZE = 13
+    const val EXPAND_LEVEL = 20
+    const val EXPAND_COINS = 40_000
+
+    /** What must stay joined up as the garden grows: an L of greenhouse with its door turned, and a run of fence. */
+    fun joinedUp(now: Long): List<GridObject> {
+        val glass = cells(11..11, 9..12) + cells(12..12, 12..12)
+        return place(now, GridObject.GREENHOUSE_OBJECT_ID, glass).map { it.copy(doorSide = GreenhouseSide.WEST) } +
+            place(now, RunKind.WHITE_FENCE.objectId, cells(0..7, 12..12))
     }
 
     fun fencesOnGrounds(now: Long): List<GridObject> {

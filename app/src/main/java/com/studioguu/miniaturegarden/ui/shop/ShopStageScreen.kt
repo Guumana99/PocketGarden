@@ -150,7 +150,7 @@ fun ShopStageScreen(
     val bonusRest = stringResource(if (bonusRemaining <= 0) R.string.msg_bonus_used else R.string.msg_reward_unavailable)
     val expandForLevel = stringResource(R.string.msg_expand_level)
     val expandForCoins = stringResource(R.string.msg_expand_coins)
-    val shelfShort = stringResource(R.string.msg_shelf_short)
+    val atMax = stringResource(R.string.msg_garden_at_max_size)
 
     val message = notice?.let { ShopMessage(it.text(), it.good) } ?: feedback?.let { purchase ->
         val failure = actionResultMessage(purchase.result)
@@ -177,15 +177,18 @@ fun ShopStageScreen(
         guiding = guiding,
         expansion = expansion,
         onExpand = { confirmExpand = true },
-        onExpandResting = { check -> toast.show(if (check == ExpansionCheck.NEEDS_LEVEL) expandForLevel else expandForCoins) },
+        onExpandResting = { check ->
+            toast.show(
+                when (check) {
+                    ExpansionCheck.NEEDS_LEVEL -> expandForLevel
+                    ExpansionCheck.AT_MAX_SIZE -> atMax
+                    else -> expandForCoins
+                },
+            )
+        },
         onGoTo = viewModel::goTo,
         onInspect = { item ->
-            if (GardenItem.kindsUnder(item) != null) {
-                choosingKind = item
-            } else {
-                if (shelves.flatten().any { it.item == item && it.tag == ShelfTag.SHORT_OF_COINS }) toast.show(shelfShort)
-                viewModel.inspect(item)
-            }
+            if (GardenItem.kindsUnder(item) != null) choosingKind = item else viewModel.inspect(item)
         },
         onPutBack = viewModel::putBack,
         // The first steps' seed is free, whatever is in the purse.
@@ -534,12 +537,13 @@ private fun ChalkNote(text: String) {
  * The workshop's board for growing the garden. Before the level for it, it says at which level
  * (and nothing of how far off that is); with the level but not the coins, it shows the price on a
  * button that cannot be pressed (and nothing of how many are missing); with both, the button asks
- * first ([ExpandConfirmDialog]). The garden's size is never written on it. Short of the level or
- * the coins, a tap anywhere on it says what it waits for ([onResting]).
+ * first ([ExpandConfirmDialog]). The garden's size is never written on it. Unless it can be
+ * grown now, a tap anywhere on it says why ([onResting]). Grown as far as it goes, the board stays
+ * and says so, like a thing already owned on the shelf.
  */
 @Composable
 private fun ExpansionBoard(offer: ExpansionOffer, onExpand: () -> Unit, onResting: (ExpansionCheck) -> Unit) {
-    val waiting = offer.check == ExpansionCheck.NEEDS_LEVEL || offer.check == ExpansionCheck.NEEDS_COINS
+    val waiting = offer.check != ExpansionCheck.READY
     AnswersWhenResting(
         onTap = if (waiting) ({ onResting(offer.check) }) else null,
         label = stringResource(R.string.expand_button),
@@ -772,7 +776,9 @@ private fun ItemCard(thing: ShelfItem, message: ShopMessage?, onBuy: (GardenItem
                 Text(stringResource(flavorText(entry)), style = MaterialTheme.typography.bodyMedium, color = GardenColors.InkSoft)
             }
             ItemFacts(item)
-            MessageLine(message)
+            // Short of coins, the card says so itself, just over the button it is about.
+            val short = stringResource(R.string.msg_shelf_short)
+            MessageLine(message ?: ShopMessage(short, good = true).takeIf { thing.tag == ShelfTag.SHORT_OF_COINS })
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CarvedButton(text = stringResource(R.string.shop_put_back), onClick = onPutBack)
                 Spacer(Modifier.weight(1f))

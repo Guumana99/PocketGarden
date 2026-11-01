@@ -77,7 +77,7 @@ class DeviceFeedbackTest {
 
     @Test
     fun `growing the garden is asked about first, in the workshop, and goes 9 to 11 to 13`() {
-        assertEquals(listOf(11, 13), GardenExpansion.STAGES.filter { it.open }.map { it.size })
+        assertEquals(listOf(11, 13, 15, 17), GardenExpansion.STAGES.map { it.size })
         assertEquals(13, GardenExpansion.nextStage(GridObject.GRID_SIZE)?.size)
         assertEquals(11, GardenExpansion.nextStage(GridObject.LEGACY_GRID_SIZE)?.size)
         // Not from the garden (and its cottage) any more, but from the workshop's board.
@@ -136,9 +136,9 @@ class DeviceFeedbackTest {
     }
 
     @Test
-    fun `nothing else shares a lawn, and a fence still needs a free cell otherwise`() {
+    fun `a greenhouse does not share a lawn, and a fence still needs a free cell otherwise`() {
         val grid = GardenGrid(GardenMap.allGrass(9), listOf(lawnAt11, fenceAt22))
-        assertEquals(PlacementCheck.OCCUPIED, grid.checkPlacement(Footprint.SINGLE, 1, 1, PlacementKind.OBJECT, "deco_bench"))
+        assertEquals(PlacementCheck.OCCUPIED, grid.checkPlacement(Footprint.SINGLE, 1, 1, PlacementKind.OBJECT, GridObject.GREENHOUSE_OBJECT_ID))
         assertEquals(PlacementCheck.OCCUPIED, grid.checkPlacement(Footprint.SINGLE, 1, 1, PlacementKind.OBJECT))
         assertEquals(PlacementCheck.OCCUPIED, grid.checkPlacement(Footprint.SINGLE, 2, 2, PlacementKind.OBJECT, GridObject.FENCE_OBJECT_ID))
         // Nor can the hoe break up a lawn.

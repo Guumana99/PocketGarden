@@ -28,7 +28,7 @@ class CameraAndLawnPolishTest {
     fun `every size of garden starts at the same zoom on a given screen, centred`() {
         for (screen in listOf(phone, Size(1280f, 800f), Size(2000f, 2000f))) {
             val first = GardenCamera.starting(screen, metrics(9)).scale
-            for (size in listOf(9, 11, 13)) {
+            for (size in listOf(9, 11, 13, 15, 17)) {
                 val start = GardenCamera.starting(screen, metrics(size))
                 assertEquals("$size x $size on $screen", first, start.scale, 0f)
                 assertEquals(Offset.Zero, start.pan)
