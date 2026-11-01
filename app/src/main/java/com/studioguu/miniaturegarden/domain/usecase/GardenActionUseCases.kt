@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GreenhouseDoor
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.PracticeGarden
 import com.studioguu.miniaturegarden.domain.model.Sprinkler
@@ -765,6 +766,29 @@ class SkipTimeUseCase @Inject constructor(
                 ?.let { gardenRepository.saveProgress(it.copy(seasonStartedAt = it.seasonStartedAt - millis)) }
             ActionResult.SUCCESS
         }
+}
+
+/**
+ * Turns the door of the greenhouse at ([gridX], [gridY]) to the next way it can face
+ * ([GreenhouseDoor]). The choice is kept on all its cells, so that it outlasts any one of them.
+ */
+class TurnGreenhouseDoorUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+    private val gardenMap: GardenMapSource,
+) {
+    suspend operator fun invoke(gridX: Int, gridY: Int): ActionResult = gardenRepository.runInTransaction {
+        val objects = gardenRepository.getGridObjects()
+        val glass = objects.filter { it.isGreenhouse }
+        val group = GreenhouseDoor.groups(glass.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) })
+            .firstOrNull { GridCell(gridX, gridY) in it } ?: return@runInTransaction ActionResult.NOT_FOUND
+        val map = gardenMap.current()
+        val door = GreenhouseDoor.doorOf(group, GreenhouseDoor.chosenIn(group, objects), map::isInside)
+        val next = GreenhouseDoor.nextWay(group, door.side, map::isInside) ?: return@runInTransaction ActionResult.NOT_FLIPPABLE
+        for (cell in glass) {
+            if (GridCell(cell.gridX, cell.gridY) in group) gardenRepository.upsertGridObject(cell.copy(doorSide = next))
+        }
+        ActionResult.SUCCESS
+    }
 }
 
 /**

@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.ui.hud
 
 import android.app.Application
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -24,16 +25,29 @@ class ObjectStatusPanelTest {
 
     private fun text(id: Int): String = RuntimeEnvironment.getApplication().getString(id)
 
-    private fun show(objectId: String, editing: Boolean) {
+    private fun show(objectId: String, editing: Boolean, canTurnDoor: Boolean = false) {
         val obj = GridObject(instanceId = "x", gridX = 1, gridY = 1, objectId = objectId, lastUpdatedTimestamp = 0L)
         compose.setContent {
             GardenTheme {
                 ObjectStatusDialog(
                     gridObject = obj, onWater = {}, onHarvest = {}, onRemove = {}, onRevive = {}, onMove = {}, onDismiss = {},
                     editing = editing,
+                    canTurnDoor = canTurnDoor,
                 )
             }
         }
+    }
+
+    @Test
+    fun `a cell of greenhouse in edit mode has the button that turns its door`() {
+        show(GridObject.GREENHOUSE_OBJECT_ID, editing = true, canTurnDoor = true)
+        compose.onNodeWithTag(TURN_DOOR_TAG).assertExists()
+    }
+
+    @Test
+    fun `without it there is no such button`() {
+        show(GridObject.GREENHOUSE_OBJECT_ID, editing = false)
+        compose.onNodeWithTag(TURN_DOOR_TAG).assertDoesNotExist()
     }
 
     @Test

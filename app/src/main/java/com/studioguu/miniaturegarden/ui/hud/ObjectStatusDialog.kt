@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
@@ -70,6 +71,9 @@ fun ObjectStatusDialog(
     onMove: () -> Unit,
     onDismiss: () -> Unit,
     onFlip: () -> Unit = {},
+    /** In edit mode, on a cell of greenhouse: the door can be turned from here, crop or no crop. */
+    canTurnDoor: Boolean = false,
+    onTurnDoor: () -> Unit = {},
     /** Opens the choice of colours, for a building that can be painted. */
     onPaint: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -237,6 +241,9 @@ fun ObjectStatusDialog(
                 if (gridObject.canFlip && !gridObject.isWorking) {
                     FilledTonalButton(onClick = onFlip) { Text(stringResource(R.string.action_flip)) }
                 }
+                if (canTurnDoor) {
+                    FilledTonalButton(onClick = onTurnDoor, modifier = Modifier.testTag(TURN_DOOR_TAG)) { Text(stringResource(R.string.action_flip)) }
+                }
                 Spacer(Modifier.weight(1f))
                 // Anything is cleared away in edit mode only (#49).
                 if (!guiding && GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
@@ -351,3 +358,6 @@ fun removeLabel(gridObject: GridObject): Int = when {
     gridObject.isPlant -> R.string.action_pull
     else -> R.string.action_remove
 }
+
+/** Test tag of the button that turns a greenhouse's door. */
+const val TURN_DOOR_TAG = "turn_greenhouse_door"

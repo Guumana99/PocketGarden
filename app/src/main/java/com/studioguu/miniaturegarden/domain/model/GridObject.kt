@@ -42,6 +42,8 @@ data class GridObject(
     /** Of a painted building ([BuildingPaint]): its roof's and its walls' colours; null for the picture's own. */
     val roofColour: String? = null,
     val wallColour: String? = null,
+    /** Of a cell of greenhouse: the way its door was set to face ([GreenhouseDoor]); null if never. */
+    val doorSide: GreenhouseSide? = null,
 ) {
     /** Whether this is a work site: being built (or built and not yet unveiled), taken apart or packed up. */
     val isWorking: Boolean get() = workKind != WorkKind.NONE

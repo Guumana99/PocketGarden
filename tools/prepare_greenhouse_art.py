@@ -15,7 +15,7 @@ shears it along the edge as it does a fence's rail, with the bottom of the stone
 windows come out empty: the glass is drawn in code, behind the frame.
 
 The icon (res/drawable-nodpi/icon_floor_greenhouse.png) is the greenhouse of the book: two cells
-by two, nothing growing, roofed with thin frames (GreenhouseLayout's roof, by the same numbers).
+by two with no roof, and grown crops in it, taken from the atlas: run this after asset_packer.py.
 
 Usage:
   python tools/prepare_greenhouse_art.py     # writes raw_assets/, the overrides and the icon
@@ -48,9 +48,13 @@ POST = (52, 100)
 #: A post's width in source pixels: the corner of two sheared walls wants it a little stouter.
 POST_WIDTH = 36
 
-#: The roof of the icon: as GreenhouseLayout has it for a span of two cells.
-ROOF_RISE = 0.2
-FRAME = (58, 44, 34, 255)
+#: How large a crop is drawn under glass: GreenhouseLook.CROP_SCALE.
+CROP_SCALE = 0.65
+
+#: What grows in the icon, cell by cell from the back: as in the book's picture.
+CROPS = {(0, 0): "plant_sunflower_stage3", (1, 0): "plant_tomato_stage3", (0, 1): "plant_tulip_stage3", (1, 1): "plant_tomato_stage3"}
+
+ATLAS = Path(__file__).resolve().parent.parent / "app/src/main/assets/atlas"
 
 
 def fitted(cut: np.ndarray, width: int, height: int) -> np.ndarray:
@@ -75,7 +79,7 @@ def icon(prepared: dict[str, tuple[np.ndarray, dict]]) -> np.ndarray:
     """The greenhouse two cells by two, drawn as the garden draws it, at a tile [T] px across."""
     T = 1024
     H = T // 2
-    width, height = 2 * T + 80, T + int((WALL_HEIGHT + ROOF_RISE) * T) + 80
+    width, height = 2 * T + 80, T + int(WALL_HEIGHT * T) + 80
     origin = (width / 2, height - 40 - T)  # the far corner of the cells, on the ground
 
     def at(x: float, y: float, z: float = 0.0) -> tuple[float, float]:
@@ -124,7 +128,7 @@ def icon(prepared: dict[str, tuple[np.ndarray, dict]]) -> np.ndarray:
     for side, cells in (("north", ((1, 0), (0, 0))), ("west", ((0, 0), (0, 1)))):
         for cell in cells:
             left, right = edges(*cell)[side]
-            glass(left, right, 40)
+            glass(left, right, 56)
             panel(wall, left, right)
     soil = Image.open(SOURCE / "tile_soil_flat.png").convert("RGB")
     size = 2 * T
@@ -135,21 +139,22 @@ def icon(prepared: dict[str, tuple[np.ndarray, dict]]) -> np.ndarray:
     canvas.alpha_composite(flat, (int(origin[0] - T), int(origin[1])))
     post(2, 0)
     post(0, 2)
+    manifest = json.loads((ATLAS / "assets_manifest.json").read_text(encoding="utf-8"))
+    sprites = {asset["assetId"]: asset for asset in manifest["assets"]}
+    pages = manifest["pages"]
+    for (x, y), name in sorted(CROPS.items(), key=lambda item: sum(item[0])):
+        asset = sprites[name]
+        page = Image.open(ATLAS / pages[asset["page"]]["file"]).convert("RGBA")
+        cut = page.crop((asset["atlasX"], asset["atlasY"], asset["atlasX"] + asset["width"], asset["atlasY"] + asset["height"]))
+        scale = T / manifest["tileWidth"] * CROP_SCALE
+        drawn = cut.resize((int(cut.width * scale), int(cut.height * scale)), Image.LANCZOS)
+        foot = at(x + 0.5, y + 0.5)
+        canvas.alpha_composite(drawn, (int(foot[0] - asset["anchorX"] * drawn.width), int(foot[1] - asset["anchorY"] * drawn.height)))
     for side, cell, name in (("south", (0, 1), wall), ("south", (1, 1), door), ("east", (1, 0), wall), ("east", (1, 1), wall)):
         left, right = edges(*cell)[side]
-        glass(left, right, 22)
+        glass(left, right, 13)
         panel(name, left, right)
     post(2, 2)
-    # The roof: thin glass and thin frames, its ridge along x.
-    ridge = 1.0
-    top = WALL_HEIGHT + ROOF_RISE
-    for near, far in ((0.0, ridge), (2.0, ridge)):
-        polygon([at(0, near, WALL_HEIGHT), at(2, near, WALL_HEIGHT), at(2, far, top), at(0, far, top)], (205, 228, 238, 22))
-    draw = ImageDraw.Draw(canvas)
-    line = max(6, T // 56)
-    for x in (0, 1, 2):
-        draw.line([at(x, 0, WALL_HEIGHT), at(x, ridge, top), at(x, 2, WALL_HEIGHT)], fill=FRAME, width=line, joint="curve")
-    draw.line([at(0, ridge, top), at(2, ridge, top)], fill=FRAME, width=line + 2)
     return to_icon(np.array(canvas.crop(canvas.getbbox())))
 
 

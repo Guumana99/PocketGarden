@@ -32,7 +32,7 @@ import com.studioguu.miniaturegarden.data.local.entity.WeatherDayEntity
         LetterEntity::class,
         WeatherDayEntity::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -249,6 +249,13 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN turned INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN roofColour TEXT")
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN wallColour TEXT")
+            }
+        }
+
+        /** Adds the way a greenhouse's door faces; none, the first choice, for those there are. */
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN doorSide TEXT")
             }
         }
     }

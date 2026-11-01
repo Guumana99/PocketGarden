@@ -4,13 +4,13 @@
   "pages": [
     {
       "file": "crops_0.png",
-      "width": 2015,
+      "width": 2007,
       "height": 2045
     },
     {
       "file": "crops_1.png",
       "width": 2037,
-      "height": 2045
+      "height": 2028
     },
     {
       "file": "crops_2.png",
@@ -227,7 +227,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 2,
-      "atlasY": 1118
+      "atlasY": 1101
     },
     {
       "assetId": "plant_carrot_withered",
@@ -238,7 +238,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1741,
-      "atlasY": 1756
+      "atlasY": 1739
     },
     {
       "assetId": "plant_corn_stage1",
@@ -259,8 +259,8 @@
       "height": 358,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 475,
-      "atlasY": 388
+      "atlasX": 1734,
+      "atlasY": 2
     },
     {
       "assetId": "plant_corn_stage3",
@@ -302,9 +302,9 @@
       "width": 189,
       "height": 328,
       "isFlippedAllowed": true,
-      "page": 0,
-      "atlasX": 1824,
-      "atlasY": 1384
+      "page": 1,
+      "atlasX": 1502,
+      "atlasY": 743
     },
     {
       "assetId": "plant_cosmos_stage3",
@@ -337,7 +337,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1543,
-      "atlasY": 1756
+      "atlasY": 1739
     },
     {
       "assetId": "plant_daikon_stage2",
@@ -369,8 +369,8 @@
       "height": 356,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 362,
-      "atlasY": 758
+      "atlasX": 1437,
+      "atlasY": 383
     },
     {
       "assetId": "plant_eggplant_stage1",
@@ -392,7 +392,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1448,
-      "atlasY": 1437
+      "atlasY": 1420
     },
     {
       "assetId": "plant_eggplant_stage3",
@@ -402,7 +402,7 @@
       "height": 400,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1017,
+      "atlasX": 760,
       "atlasY": 1384
     },
     {
@@ -413,8 +413,8 @@
       "height": 358,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 727,
-      "atlasY": 388
+      "atlasX": 2,
+      "atlasY": 383
     },
     {
       "assetId": "plant_hakusai_stage1",
@@ -440,25 +440,25 @@
     },
     {
       "assetId": "plant_hakusai_stage3",
-      "anchorX": 0.5137,
-      "anchorY": 1.0,
-      "width": 255,
-      "height": 410,
+      "anchorX": 0.527,
+      "anchorY": 0.668,
+      "width": 389,
+      "height": 356,
       "isFlippedAllowed": true,
-      "page": 0,
-      "atlasX": 760,
-      "atlasY": 1384
+      "page": 1,
+      "atlasX": 2,
+      "atlasY": 743
     },
     {
       "assetId": "plant_hakusai_withered",
-      "anchorX": 0.4323,
-      "anchorY": 1.0,
-      "width": 229,
-      "height": 358,
+      "anchorX": 0.527,
+      "anchorY": 0.668,
+      "width": 389,
+      "height": 355,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 998,
-      "atlasY": 388
+      "atlasX": 770,
+      "atlasY": 743
     },
     {
       "assetId": "plant_lavender_stage1",
@@ -491,7 +491,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 2,
-      "atlasY": 1756
+      "atlasY": 1739
     },
     {
       "assetId": "plant_lavender_withered",
@@ -502,7 +502,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 291,
-      "atlasY": 1756
+      "atlasY": 1739
     },
     {
       "assetId": "plant_mint_stage1",
@@ -535,7 +535,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 391,
-      "atlasY": 1118
+      "atlasY": 1101
     },
     {
       "assetId": "plant_mint_withered",
@@ -546,7 +546,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 626,
-      "atlasY": 1118
+      "atlasY": 1101
     },
     {
       "assetId": "plant_nanohana_stage1",
@@ -568,7 +568,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 496,
-      "atlasY": 1756
+      "atlasY": 1739
     },
     {
       "assetId": "plant_nanohana_stage3",
@@ -589,7 +589,7 @@
       "height": 400,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1454,
+      "atlasX": 1197,
       "atlasY": 1384
     },
     {
@@ -600,8 +600,8 @@
       "height": 343,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 1296,
-      "atlasY": 758
+      "atlasX": 1161,
+      "atlasY": 743
     },
     {
       "assetId": "plant_paprika_stage2",
@@ -656,7 +656,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 780,
-      "atlasY": 1756
+      "atlasY": 1739
     },
     {
       "assetId": "plant_poinsettia_stage3",
@@ -666,8 +666,8 @@
       "height": 358,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 1229,
-      "atlasY": 388
+      "atlasX": 273,
+      "atlasY": 383
     },
     {
       "assetId": "plant_poinsettia_withered",
@@ -677,8 +677,8 @@
       "height": 358,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 1665,
-      "atlasY": 388
+      "atlasX": 709,
+      "atlasY": 383
     },
     {
       "assetId": "plant_rose_stage1",
@@ -688,8 +688,8 @@
       "height": 324,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 1637,
-      "atlasY": 758
+      "atlasX": 1693,
+      "atlasY": 743
     },
     {
       "assetId": "plant_rose_stage2",
@@ -710,8 +710,8 @@
       "height": 356,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 919,
-      "atlasY": 758
+      "atlasX": 393,
+      "atlasY": 743
     },
     {
       "assetId": "plant_rose_stage4",
@@ -810,7 +810,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 873,
-      "atlasY": 1118
+      "atlasY": 1101
     },
     {
       "assetId": "plant_snowdrop_withered",
@@ -821,7 +821,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1151,
-      "atlasY": 1118
+      "atlasY": 1101
     },
     {
       "assetId": "plant_strawberry_stage1",
@@ -854,7 +854,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1800,
-      "atlasY": 1437
+      "atlasY": 1420
     },
     {
       "assetId": "plant_strawberry_withered",
@@ -886,8 +886,8 @@
       "height": 358,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 2,
-      "atlasY": 758
+      "atlasX": 1077,
+      "atlasY": 383
     },
     {
       "assetId": "plant_sunflower_stage3",
@@ -908,7 +908,7 @@
       "height": 368,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 1273,
+      "atlasX": 857,
       "atlasY": 2
     },
     {
@@ -930,7 +930,7 @@
       "height": 379,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 418,
+      "atlasX": 2,
       "atlasY": 2
     },
     {
@@ -951,9 +951,9 @@
       "width": 414,
       "height": 384,
       "isFlippedAllowed": true,
-      "page": 1,
-      "atlasX": 2,
-      "atlasY": 2
+      "page": 0,
+      "atlasX": 1567,
+      "atlasY": 1384
     },
     {
       "assetId": "plant_tulip_stage1",
@@ -986,7 +986,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1475,
-      "atlasY": 1118
+      "atlasY": 1101
     },
     {
       "assetId": "plant_tulip_stage3_blue",
@@ -997,7 +997,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1727,
-      "atlasY": 1118
+      "atlasY": 1101
     },
     {
       "assetId": "plant_tulip_stage3_pink",
@@ -1008,7 +1008,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 2,
-      "atlasY": 1437
+      "atlasY": 1420
     },
     {
       "assetId": "plant_tulip_stage3_purple",
@@ -1019,7 +1019,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 254,
-      "atlasY": 1437
+      "atlasY": 1420
     },
     {
       "assetId": "plant_tulip_stage3_white",
@@ -1030,7 +1030,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 506,
-      "atlasY": 1437
+      "atlasY": 1420
     },
     {
       "assetId": "plant_tulip_stage3_yellow",
@@ -1041,7 +1041,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 758,
-      "atlasY": 1437
+      "atlasY": 1420
     },
     {
       "assetId": "plant_watermelon_stage1",
@@ -1063,7 +1063,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1183,
-      "atlasY": 1756
+      "atlasY": 1739
     },
     {
       "assetId": "plant_watermelon_stage3",
@@ -1074,7 +1074,7 @@
       "isFlippedAllowed": true,
       "page": 1,
       "atlasX": 1011,
-      "atlasY": 1437
+      "atlasY": 1420
     },
     {
       "assetId": "plant_watermelon_withered",
@@ -1095,7 +1095,7 @@
       "height": 373,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 800,
+      "atlasX": 384,
       "atlasY": 2
     },
     {
@@ -1117,8 +1117,8 @@
       "height": 368,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 2,
-      "atlasY": 388
+      "atlasX": 1261,
+      "atlasY": 2
     },
     {
       "assetId": "plant_wheat_withered",

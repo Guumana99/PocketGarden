@@ -6,13 +6,18 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 
-/** The glass of the walls: all but clear, faintly blue, and fainter still in front of the crops. */
+/** The glass of the walls: a faint white-blue at the back, all but clear in front of the crops. */
 private val WALL_GLASS = Color(0xFFBFDCEA)
-private const val BACK_GLASS_ALPHA = 0.1f
+private const val BACK_GLASS_ALPHA = 0.22f
 private const val FRONT_GLASS_ALPHA = 0.05f
 private val GLASS_GLINT = Color(0xFFFFFFFF)
 private const val BACK_GLINT_ALPHA = 0.16f
-private const val FRONT_GLINT_ALPHA = 0.1f
+private const val FRONT_GLINT_ALPHA = 0.42f
+
+/** The bright edge of the glass, just under the top beam. */
+private const val EDGE_HEIGHT = 0.885f
+private const val BACK_EDGE_ALPHA = 0.3f
+private const val FRONT_EDGE_ALPHA = 0.5f
 
 /** The roof: the wood of the walls, in thin lines, over the faintest of glass. */
 private val ROOF_FRAME = Color(0xFF3A2C22)
@@ -52,9 +57,15 @@ fun DrawScope.drawGreenhouseGlass(transform: IsometricTransform, wall: Greenhous
             GLASS_GLINT.copy(alpha = glint * strength),
             transform.onWall(wall, start.first, start.second),
             transform.onWall(wall, end.first, end.second),
-            strokeWidth = transform.tileWidth * 0.008f,
+            strokeWidth = transform.tileWidth * if (front) 0.01f else 0.008f,
         )
     }
+    drawLine(
+        GLASS_GLINT.copy(alpha = if (front) FRONT_EDGE_ALPHA else BACK_EDGE_ALPHA),
+        transform.onWall(wall, 0f, EDGE_HEIGHT),
+        transform.onWall(wall, 1f, EDGE_HEIGHT),
+        strokeWidth = transform.tileWidth * 0.007f,
+    )
 }
 
 /** A stretch of the roof: its panes, then its frames. */

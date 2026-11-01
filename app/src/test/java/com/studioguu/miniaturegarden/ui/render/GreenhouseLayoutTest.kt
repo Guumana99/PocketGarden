@@ -6,6 +6,7 @@ import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
+import com.studioguu.miniaturegarden.domain.model.GreenhouseSide
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -97,8 +98,9 @@ class GreenhouseLayoutTest {
     }
 
     @Test
-    fun `the roof is frames over faint glass by default, with no crop over it`() {
-        assertEquals(GreenhouseRoof.FRAMES, GreenhouseLook.ROOF)
+    fun `the greenhouse has no roof, and the frames are still there to be switched on`() {
+        assertEquals(GreenhouseRoof.NONE, GreenhouseLook.ROOF)
+        assertTrue(GreenhouseLayout.of(row).roof.isNotEmpty())
     }
 
     @Test
@@ -126,6 +128,15 @@ class GreenhouseLayoutTest {
 
     private val main: File = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
     private val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText().replace("\r\n", "\n")
+
+    @Test
+    fun `the book shows a crop on the ground it grows on, and keeps shadows on the patch`() {
+        val scene = canvas.substringAfter("private class PreviewScene(").substringBefore("/** Room over the far corner")
+        assertTrue(scene.contains("PlantGround.BED -> GridObject.TILLED_SOIL_OBJECT_ID"))
+        assertTrue(scene.contains("PlantGround.FLOWER_BED -> GridObject.LOOSE_SOIL_OBJECT_ID"))
+        assertTrue(scene.contains("PlantGround.LOG -> null"))
+        assertTrue(canvas.contains("pipeline.render(this, GardenClip(ground = top,"))
+    }
 
     @Test
     fun `nothing is laid see-through over the crops, and the old picture is not drawn`() {

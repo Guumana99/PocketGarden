@@ -1,7 +1,11 @@
 package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
+import com.studioguu.miniaturegarden.domain.model.GreenhouseDoor
+import com.studioguu.miniaturegarden.domain.model.GreenhouseEdge
+import com.studioguu.miniaturegarden.domain.model.GreenhouseSide
 import com.studioguu.miniaturegarden.domain.model.GridCell
+import com.studioguu.miniaturegarden.domain.model.GridObject
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -16,7 +20,7 @@ enum class GreenhouseRoof {
 
 /** The numbers of the greenhouse's look. Change [ROOF] to change the roof. */
 object GreenhouseLook {
-    val ROOF = GreenhouseRoof.FRAMES
+    val ROOF = GreenhouseRoof.NONE
 
     /** How tall the walls stand, in tile widths. */
     const val WALL_HEIGHT = 0.6f
@@ -35,14 +39,6 @@ object GreenhouseLook {
     const val FRONT_WALL_DEPTH = 0.4f
     const val FRONT_POST_DEPTH = 0.5f
     const val ROOF_DEPTH = 0.7f
-}
-
-/** A side of a cell. [isFront] sides face the viewer: they are drawn over what grows in the cell. */
-enum class GreenhouseSide(val dx: Int, val dy: Int, val isFront: Boolean) {
-    NORTH(0, -1, false),
-    EAST(1, 0, true),
-    SOUTH(0, 1, true),
-    WEST(-1, 0, false),
 }
 
 /**
@@ -95,8 +91,8 @@ data class RoofPiece(val cell: GridCell, val panes: List<List<RoofPoint>>, val f
  * adding a cell or taking one away changes the walls round it at once.
  *
  * Cells that share a side are one greenhouse, whatever its shape. Walls stand on the sides of its
- * outline, posts where the outline turns, and it has one door, in the middle of its sides that
- * face the viewer. The roof is cut into rectangles, each a gable with its ridge along its longer side.
+ * outline, posts where the outline turns, and it has one door ([GreenhouseDoor]). The roof, where
+ * it has one, is cut into rectangles, each a gable with its ridge along its longer side.
  */
 class GreenhouseLayout private constructor(
     val walls: List<GreenhouseWall>,
@@ -116,60 +112,38 @@ class GreenhouseLayout private constructor(
     companion object {
         val EMPTY = GreenhouseLayout(emptyList(), emptyList(), emptyList())
 
-        fun of(cells: Set<GridCell>): GreenhouseLayout {
+        /**
+         * The greenhouses among [objects]. [isInside] says what is inside the garden, for where a
+         * door can go ([GreenhouseDoor]).
+         */
+        fun of(objects: List<GridObject>, isInside: (Int, Int) -> Boolean): GreenhouseLayout {
+            val cells = objects.filter { it.isGreenhouse }.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) }
+            return of(cells, isInside) { group -> GreenhouseDoor.chosenIn(group, objects) }
+        }
+
+        fun of(
+            cells: Set<GridCell>,
+            isInside: (Int, Int) -> Boolean = { _, _ -> true },
+            chosen: (Set<GridCell>) -> GreenhouseSide? = { null },
+        ): GreenhouseLayout {
             val walls = ArrayList<GreenhouseWall>()
             val posts = ArrayList<GreenhousePost>()
             val roof = ArrayList<RoofPiece>()
-            for (group in groups(cells)) {
-                walls += wallsOf(group)
+            for (group in GreenhouseDoor.groups(cells)) {
+                walls += wallsOf(group, GreenhouseDoor.doorOf(group, chosen(group), isInside))
                 posts += postsOf(group)
                 roof += rectangles(group).map(::roofOver)
             }
             return GreenhouseLayout(walls, posts, roof)
         }
 
-        /** [cells] divided into greenhouses: those that reach one another side by side. */
-        private fun groups(cells: Set<GridCell>): List<Set<GridCell>> {
-            val left = cells.toMutableSet()
-            val found = ArrayList<Set<GridCell>>()
-            while (left.isNotEmpty()) {
-                val first = left.minWith(compareBy({ it.y }, { it.x }))
-                left -= first
-                val group = linkedSetOf(first)
-                val open = ArrayDeque(listOf(first))
-                while (open.isNotEmpty()) {
-                    val cell = open.removeFirst()
-                    for (side in GreenhouseSide.entries) {
-                        val next = GridCell(cell.x + side.dx, cell.y + side.dy)
-                        if (left.remove(next)) {
-                            group += next
-                            open += next
-                        }
-                    }
-                }
-                found += group
-            }
-            return found
-        }
-
-        /** Across the screen, from the left. */
-        private fun acrossScreen(wall: GreenhouseWall): Float = (wall.from.x + wall.to.x - wall.from.y - wall.to.y) / 2f
-
-        private fun wallsOf(group: Set<GridCell>): List<GreenhouseWall> {
-            val outline = group.flatMap { cell ->
-                GreenhouseSide.entries
-                    .filter { GridCell(cell.x + it.dx, cell.y + it.dy) !in group }
-                    .map { GreenhouseWall(cell, it) }
-            }
-            val fronts = outline.filter { it.side.isFront }
-                .sortedWith(compareBy(::acrossScreen).thenByDescending { it.cell.x + it.cell.y })
-            val door = fronts[(fronts.size - 1) / 2]
-            return outline.map { if (it == door) it.copy(door = true) else it }
-        }
+        /** The walls of [group], with the door in [door]. */
+        private fun wallsOf(group: Set<GridCell>, door: GreenhouseEdge): List<GreenhouseWall> =
+            GreenhouseDoor.outline(group).map { GreenhouseWall(it.cell, it.side, door = it == door) }
 
         private fun postsOf(group: Set<GridCell>): List<GreenhousePost> {
             val ends = HashMap<Pair<Int, Int>, MutableList<GreenhouseWall>>()
-            for (wall in wallsOf(group)) {
+            for (wall in GreenhouseDoor.outline(group).map { GreenhouseWall(it.cell, it.side) }) {
                 for (end in listOf(wall.from, wall.to)) ends.getOrPut(end.x.toInt() to end.y.toInt()) { ArrayList() } += wall
             }
             return ends.filter { (_, walls) -> !straightThrough(walls) }.map { (corner, _) ->
