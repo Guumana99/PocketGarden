@@ -104,6 +104,11 @@ PAINT_STILLS = [
 
 BRIDGE_STILLS = [Shot("bridge_ways", "太鼓橋（両方の向き）", DAY, View(0.5), (1080, 1100))]
 
+NANOHANA_STILLS = [
+    Shot("nanohana_field", "菜の花の畑", DAY, View(1.23, cell=(4.5, 4.5), lift=120), (1080, 1100)),
+    Shot("nanohana_glass", "温室の菜の花", DAY, View(1.8, cell=(8.5, 4.5), lift=120), (1080, 900)),
+]
+
 HAKUSAI_STILLS = [
     Shot("hakusai_field", "白菜の畑", DAY, View(1.23, cell=(4.5, 4.5), lift=120), (1080, 1100)),
     Shot("hakusai_glass", "温室の白菜", DAY, View(1.8, cell=(8.5, 4.5), lift=120), (1080, 900)),
@@ -241,7 +246,7 @@ def main() -> int:
     parser.add_argument("--only", nargs="*")
     parser.add_argument("--serial", default="emulator-5554")
     parser.add_argument("--apk", type=Path, help="install this APK instead of the project's debug build")
-    parser.add_argument("--garden", choices=("fb", "ground", "fencelook", "lawnthings", "greenhouse", "hakusai", "bridges", "bridgeplace"), default="fb")
+    parser.add_argument("--garden", choices=("fb", "ground", "fencelook", "lawnthings", "greenhouse", "hakusai", "nanohana", "bridges", "bridgeplace"), default="fb")
     parser.add_argument("--sheet", nargs=3, type=Path, metavar=("BEFORE", "AFTER", "TARGET"))
     args = parser.parse_args()
     if args.sheet:
@@ -252,7 +257,7 @@ def main() -> int:
     if args.apk:
         device.adb("install", "-r", str(args.apk))
     open_feedback_garden(device, install=not args.no_install and not args.apk, garden=args.garden)
-    stills = {"fb": STILLS, "ground": GROUND_STILLS, "fencelook": FENCE_LOOK_STILLS, "lawnthings": LAWN_THINGS_STILLS, "greenhouse": GREENHOUSE_STILLS, "hakusai": HAKUSAI_STILLS, "bridges": BRIDGE_STILLS, "bridgeplace": PAINT_STILLS}[args.garden]
+    stills = {"fb": STILLS, "ground": GROUND_STILLS, "fencelook": FENCE_LOOK_STILLS, "lawnthings": LAWN_THINGS_STILLS, "greenhouse": GREENHOUSE_STILLS, "hakusai": HAKUSAI_STILLS, "nanohana": NANOHANA_STILLS, "bridges": BRIDGE_STILLS, "bridgeplace": PAINT_STILLS}[args.garden]
     try:
         for shot in stills:
             if args.only and shot.name not in args.only:

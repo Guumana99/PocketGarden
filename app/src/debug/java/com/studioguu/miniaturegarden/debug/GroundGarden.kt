@@ -111,12 +111,12 @@ object GroundGarden {
             planted.flatMapIndexed { i, cell -> place(now, crops[i % crops.size].objectId, listOf(cell)).map { it.copy(growthProgress = 1f) } }
     }
 
-    /** A field of grown hakusai, a row gone over, and one under glass (`--es garden hakusai`). */
-    fun hakusai(now: Long): List<GridObject> {
+    /** A field of grown [species], a row gone over, and one under glass (`--es garden hakusai`, or nanohana). */
+    fun field(now: Long, species: PlantSpecies): List<GridObject> {
         val grown = cells(2..6, 3..4)
         val withered = cells(2..6, 5..5)
         val beds = grown + withered
-        fun crop(cell: GridCell) = place(now, PlantSpecies.HAKUSAI.objectId, listOf(cell)).map { it.copy(growthProgress = 1f) }
+        fun crop(cell: GridCell) = place(now, species.objectId, listOf(cell)).map { it.copy(growthProgress = 1f) }
         return place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds) + grown.flatMap(::crop) +
             withered.flatMap(::crop).map { it.copy(status = PlantStatus.WITHERED) } +
             place(now, GridObject.GREENHOUSE_OBJECT_ID, listOf(GridCell(8, 4))) + crop(GridCell(8, 4))

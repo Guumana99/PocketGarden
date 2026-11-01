@@ -38,7 +38,9 @@ This script:
         stands on the foot of its leaves (hakusai_stages); stage 3 and withered are a head in a wide
         spread of outer leaves, sized by their width and stood on the foot of the head, the leaves
         lying out in front of it;
-      - nanohana (#87): the same; a wide flowering clump, sized by its width from stage 2 on;
+      - nanohana (#87): the same; a wide flowering clump, sized by its width from stage 2 on. Stage 3
+        and withered (#93) are stems tipped with spires of small flowers, about as tall as wide;
+        the withered one is pale, and is cut more firmly and deepened ([WITHERED_CUT], [firmed]);
       - cosmos stage 1 (#87): a young plant so pale and fine that it vanished on the soil; it is
         brought to the colour of stage 2's leaves and its strands are firmed up (deepened);
       - withered pictures (#58) came for every crop here but the tulip, which does not wither;
@@ -102,7 +104,7 @@ STAGES: dict[str, list] = {
     "shiitake": [("log", 0.5), ("log", 0.5), ("log", 0.5)],
     "poinsettia": [0.3, 0.55, 0.7],
     "hakusai": [0.3, 0.46, ("w", 0.76)],
-    "nanohana": [0.3, ("w", 0.55), ("w", 0.72)],
+    "nanohana": [0.3, ("w", 0.55), ("w", 0.8)],
 }
 
 #: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
@@ -119,6 +121,12 @@ CUT: dict[str, dict] = {
     "hakusai": {"white_parts": 1.0},
     "nanohana": {"throughout": True, "solid": 100.0},
 }
+
+#: The same for a withered picture, where it differs from the plant's own (#93): the nanohana's is
+#: so pale that the plant's cut turned its leaves see-through. FIRMED: how its colours are then
+#: deepened (gain, contrast, the power its alpha is raised to), for its edges to hold on pale ground.
+WITHERED_CUT: dict[str, dict] = {"nanohana": {"throughout": True, "solid": 45.0}}
+FIRMED: dict[str, tuple[float, float, float]] = {"nanohana": (0.8, 1.2, 0.55)}
 
 #: The same for an icon, where it is cut out differently from its plant: the lavender's bunch is
 #: tied with pale twine, which the white was taken out of (#67). The daikon's root is white, and
@@ -203,7 +211,7 @@ WITHERED: dict[str, object] = {
     "shiitake": ("log", 0.5),
     "poinsettia": 0.7,
     "hakusai": ("w", 0.76),
-    "nanohana": ("w", 0.72),
+    "nanohana": ("w", 0.8),
 }
 
 
@@ -424,6 +432,15 @@ def deepened(rgba: np.ndarray, like: np.ndarray) -> np.ndarray:
     return out
 
 
+def firmed(rgba: np.ndarray, gain: float, contrast: float, power: float) -> np.ndarray:
+    """[rgba] darker and with more contrast, and its half see-through parts firmed up."""
+    out = rgba.astype(float)
+    middle = out[:, :, :3][out[:, :, 3] > 128].mean(axis=0)
+    out[:, :, :3] = np.clip((middle + (out[:, :, :3] - middle) * contrast) * gain, 0, 255)
+    out[:, :, 3] = 255.0 * (out[:, :, 3] / 255.0) ** power
+    return out.astype(np.uint8)
+
+
 def cosmos_stages() -> list[np.ndarray]:
     stages = simple_stages("cosmos", "_stage")
     return [deepened(stages[0], stages[1])] + stages[1:]
@@ -525,7 +542,8 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
                 picture = brighter_leaves(picture, LEAF_GAIN[asset_id])
             out[asset_id] = (picture, override)
         if crop_name in WITHERED:
-            dead = to_size(crop(load_cut(f"crop_{crop_name}_withered.png", **CUT.get(crop_name, {}))), WITHERED[crop_name])
+            cut = crop(load_cut(f"crop_{crop_name}_withered.png", **WITHERED_CUT.get(crop_name, CUT.get(crop_name, {}))))
+            dead = to_size(firmed(cut, *FIRMED[crop_name]) if crop_name in FIRMED else cut, WITHERED[crop_name])
             out[f"plant_{crop_name}_withered"] = (dead, anchor_for(crop_name, dead, f"plant_{crop_name}_withered"))
     for colour in TULIP_COLOURS:
         bloom = to_size(crop(load_cut(f"crop_tulip_{colour}_stage3.png")), STAGES["tulip"][2])
@@ -596,7 +614,6 @@ ITEM_ICONS: dict[str, str] = {
 #: put together from its body and its sails ([windmill_icon]).
 CUT_ICONS: dict[str, Path] = {
     "struct_cottage": RAW / "struct_cottage.png",
-    "floor_greenhouse": RAW / "floor_greenhouse.png",
     # The panel of fence the garden draws for one standing alone (item_fence_wood.png is a sheet of parts).
     "struct_fence": RAW / "struct_fence.png",
     "deco_weathervane": RAW / "deco_weathervane.png",
