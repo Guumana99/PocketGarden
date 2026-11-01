@@ -76,6 +76,7 @@ import com.studioguu.miniaturegarden.domain.usecase.NoteResult
 import com.studioguu.miniaturegarden.domain.usecase.RecordNatureNoteUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ScheduleGardenNotificationsUseCase
 import com.studioguu.miniaturegarden.domain.usecase.FlipObjectUseCase
+import com.studioguu.miniaturegarden.domain.usecase.TurnGreenhouseDoorUseCase
 import com.studioguu.miniaturegarden.domain.usecase.PaintBuildingUseCase
 import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
 import com.studioguu.miniaturegarden.domain.usecase.GrantRewardUseCase
@@ -141,6 +142,7 @@ class GardenViewModel @Inject constructor(
     private val completeWork: CompleteWorkUseCase,
     private val moveObject: MoveObjectUseCase,
     private val flipObject: FlipObjectUseCase,
+    private val turnDoor: TurnGreenhouseDoorUseCase,
     private val paintBuilding: PaintBuildingUseCase,
     private val unveilBuilding: UnveilBuildingUseCase,
     private val skipTime: SkipTimeUseCase,
@@ -1229,6 +1231,11 @@ class GardenViewModel @Inject constructor(
 
     fun flipSelected() = withSelectedObject { obj ->
         act(onSuccess = { audio.play(SoundEffect.PLANT) }) { _, _ -> flipObject(obj.instanceId) }
+    }
+
+    /** Turns the door of the greenhouse the selected thing stands in. */
+    fun turnGreenhouseDoor() = withSelectedObject { obj ->
+        act(onSuccess = { audio.play(SoundEffect.PLANT) }) { _, _ -> turnDoor(obj.gridX, obj.gridY) }
     }
 
     /** Paints [part] of the selected building [colour]. */

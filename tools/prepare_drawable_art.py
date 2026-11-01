@@ -35,7 +35,9 @@ This script:
         them, and stood on the foot of the log (log_anchor);
       - poinsettia (#69): three stages and a withered one, as they came; a round bush;
       - hakusai (#87): the same; stage 2 came with its roots showing, which are cut off, so that it
-        stands on the foot of its leaves (hakusai_stages), and stage 3 is tall, sized by its height;
+        stands on the foot of its leaves (hakusai_stages); stage 3 and withered are a head in a wide
+        spread of outer leaves, sized by their width and stood on the foot of the head, the leaves
+        lying out in front of it;
       - nanohana (#87): the same; a wide flowering clump, sized by its width from stage 2 on;
       - cosmos stage 1 (#87): a young plant so pale and fine that it vanished on the soil; it is
         brought to the colour of stage 2's leaves and its strands are firmed up (deepened);
@@ -99,7 +101,7 @@ STAGES: dict[str, list] = {
     "lavender": [0.26, 0.42, 0.56],
     "shiitake": [("log", 0.5), ("log", 0.5), ("log", 0.5)],
     "poinsettia": [0.3, 0.55, 0.7],
-    "hakusai": [0.3, 0.46, 0.8],
+    "hakusai": [0.3, 0.46, ("w", 0.76)],
     "nanohana": [0.3, ("w", 0.55), ("w", 0.72)],
 }
 
@@ -166,6 +168,8 @@ ANCHORS = {
     "plant_eggplant_stage2": {"anchorX": 0.5, "anchorY": 0.85, "isFlippedAllowed": True},
     "plant_eggplant_stage3": {"anchorX": 0.48, "anchorY": 0.78, "isFlippedAllowed": True},
     "plant_eggplant_withered": {"anchorX": 0.5, "anchorY": 0.83, "isFlippedAllowed": True},
+    "plant_hakusai_stage3": {"anchorX": 0.527, "anchorY": 0.668, "isFlippedAllowed": True},
+    "plant_hakusai_withered": {"anchorX": 0.527, "anchorY": 0.668, "isFlippedAllowed": True},
 }
 
 #: How much of the carrot's root shows above its bed at stage 3 (#60), as a share of the root,
@@ -198,7 +202,7 @@ WITHERED: dict[str, object] = {
     "lavender": 0.56,
     "shiitake": ("log", 0.5),
     "poinsettia": 0.7,
-    "hakusai": 0.7,
+    "hakusai": ("w", 0.76),
     "nanohana": ("w", 0.72),
 }
 

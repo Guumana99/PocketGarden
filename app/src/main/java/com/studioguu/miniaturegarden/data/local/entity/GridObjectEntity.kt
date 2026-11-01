@@ -56,4 +56,6 @@ data class GridObjectEntity(
     /** Of a painted building: its colours; null for the picture's own. Added in schema version 19. */
     val roofColour: String? = null,
     val wallColour: String? = null,
+    /** Of a cell of greenhouse: the way the door was set to face. Added in schema version 20. */
+    val doorSide: String? = null,
 )

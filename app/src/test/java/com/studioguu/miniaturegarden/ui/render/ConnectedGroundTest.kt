@@ -121,7 +121,11 @@ class ConnectedGroundTest {
         val (fields, rest) = crops.partition { it.assetId.startsWith("plant_wheat_") }
         // The eggplant (#60) is a bush with no stem to be seen and its fruit hanging below: it stands
         // where the bush meets the bed, well up its picture.
-        val (bushes, plants) = rest.partition { it.assetId in EGGPLANT_BUSHES }
+        val (bushes, others) = rest.partition { it.assetId in EGGPLANT_BUSHES }
+        // The hakusai's grown head (#91) stands in a spread of outer leaves that lie out in front of it.
+        val (spreads, plants) = others.partition { it.assetId == "plant_hakusai_stage3" || it.assetId == "plant_hakusai_withered" }
+        assertEquals(2, spreads.size)
+        for (spread in spreads) assertTrue(spread.assetId, spread.anchorY in 0.6f..0.75f)
         assertEquals(EGGPLANT_BUSHES, bushes.map { it.assetId }.toSet())
         for (bush in bushes) assertTrue(bush.assetId, bush.anchorY in 0.75f..0.9f)
         assertEquals(4, fields.size)
@@ -142,13 +146,13 @@ class ConnectedGroundTest {
         val tools = listOf(File("../tools"), File("tools")).first { it.isDirectory }
         val overrides = File(tools, "atlas_overrides.json").readText()
         // Only the wheat's fields, the tomato whose foot is a hanging leaf (#57), the sunflower's
-        // three seedlings (#58), the eggplant's bushes (#60) and the shiitake's logs, stood on the
+        // three seedlings (#58), the eggplant's bushes (#60), the hakusai's spreads (#91) and the shiitake's logs, stood on the
         // foot of the log (#68), are stood by hand.
         val byHand = Regex("\"(plant_[a-z_0-9]+)\"").findAll(overrides).map { it.groupValues[1] }.toSet()
         assertEquals(
             setOf("plant_wheat_stage1", "plant_wheat_stage2", "plant_wheat_stage3", "plant_wheat_withered", "plant_tomato_stage3",
                 "plant_sunflower_stage1", "plant_shiitake_stage1", "plant_shiitake_stage2", "plant_shiitake_stage3",
-                "plant_shiitake_withered") + EGGPLANT_BUSHES,
+                "plant_shiitake_withered", "plant_hakusai_stage3", "plant_hakusai_withered") + EGGPLANT_BUSHES,
             byHand,
         )
     }

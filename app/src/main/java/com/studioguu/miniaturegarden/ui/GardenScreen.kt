@@ -564,6 +564,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 onMove = viewModel::startMovingSelected,
                                 onDismiss = viewModel::clearSelection,
                                 onFlip = viewModel::flipSelected,
+                                canTurnDoor = editMode && gridObjects.any { glass -> glass.isGreenhouse && glass.gridX == it.gridX && glass.gridY == it.gridY },
+                                onTurnDoor = viewModel::turnGreenhouseDoor,
                                 onPaint = { paintingBuilding = true },
                                 modifier = Modifier.fillMaxWidth(),
                                 surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },

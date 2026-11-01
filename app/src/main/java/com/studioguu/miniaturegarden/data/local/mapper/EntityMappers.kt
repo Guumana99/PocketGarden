@@ -9,6 +9,7 @@ import com.studioguu.miniaturegarden.data.local.entity.NatureNoteEntity
 import com.studioguu.miniaturegarden.data.local.entity.UserProfileEntity
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
+import com.studioguu.miniaturegarden.domain.model.GreenhouseSide
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.Letter
@@ -67,6 +68,7 @@ fun GridObjectEntity.toDomain() = GridObject(
     turned = turned,
     roofColour = roofColour,
     wallColour = wallColour,
+    doorSide = doorSide?.let { name -> GreenhouseSide.entries.firstOrNull { it.name == name } },
 )
 
 fun GridObject.toEntity() = GridObjectEntity(
@@ -96,6 +98,7 @@ fun GridObject.toEntity() = GridObjectEntity(
     turned = turned,
     roofColour = roofColour,
     wallColour = wallColour,
+    doorSide = doorSide?.name,
 )
 
 fun InventorySlotEntity.toDomain() = InventorySlot(

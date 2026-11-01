@@ -47,5 +47,7 @@
   "deco_weathervane": {"anchorX": 0.5, "anchorY": 0.9377},
   "struct_greenhouse_wall": {"anchorX": 0.5, "anchorY": 1.0, "attachX": 0.5, "attachY": 1.0},
   "struct_greenhouse_door": {"anchorX": 0.5, "anchorY": 1.0, "attachX": 0.5, "attachY": 1.0},
-  "struct_greenhouse_post": {"anchorX": 0.5, "anchorY": 1.0}
+  "struct_greenhouse_post": {"anchorX": 0.5, "anchorY": 1.0},
+  "plant_hakusai_stage3": {"anchorX": 0.527, "anchorY": 0.668, "isFlippedAllowed": true},
+  "plant_hakusai_withered": {"anchorX": 0.527, "anchorY": 0.668, "isFlippedAllowed": true}
 }

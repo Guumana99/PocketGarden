@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.debug
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RunKind
 import com.studioguu.miniaturegarden.domain.model.Sprinkler
 import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
@@ -99,13 +100,26 @@ object GroundGarden {
      *      8  . . . . . . . . . . .
      *      9  . E E . . . . . . . .      E two by two, empty
      *     10  . E E . . . . . . . .
+     *
+     * and F, two by two at (9, 4), its east side against the garden's frame.
      */
     fun greenhouse(now: Long): List<GridObject> {
         val planted = listOf(GridCell(1, 1)) + cells(3..5, 1..1) + cells(7..8, 1..2) + cells(1..3, 4..6) +
             cells(5..5, 5..7) + cells(6..7, 7..7)
         val crops = listOf(PlantSpecies.SUNFLOWER, PlantSpecies.CORN, PlantSpecies.TOMATO, PlantSpecies.WHEAT)
-        return place(now, GridObject.GREENHOUSE_OBJECT_ID, planted + cells(1..2, 9..10)) +
+        return place(now, GridObject.GREENHOUSE_OBJECT_ID, planted + cells(1..2, 9..10) + cells(9..10, 4..5)) +
             planted.flatMapIndexed { i, cell -> place(now, crops[i % crops.size].objectId, listOf(cell)).map { it.copy(growthProgress = 1f) } }
+    }
+
+    /** A field of grown hakusai, a row gone over, and one under glass (`--es garden hakusai`). */
+    fun hakusai(now: Long): List<GridObject> {
+        val grown = cells(2..6, 3..4)
+        val withered = cells(2..6, 5..5)
+        val beds = grown + withered
+        fun crop(cell: GridCell) = place(now, PlantSpecies.HAKUSAI.objectId, listOf(cell)).map { it.copy(growthProgress = 1f) }
+        return place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds) + grown.flatMap(::crop) +
+            withered.flatMap(::crop).map { it.copy(status = PlantStatus.WITHERED) } +
+            place(now, GridObject.GREENHOUSE_OBJECT_ID, listOf(GridCell(8, 4))) + crop(GridCell(8, 4))
     }
 
     fun fencesOnGrounds(now: Long): List<GridObject> {

@@ -2,7 +2,6 @@ package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
-import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.StructureData
@@ -73,7 +72,7 @@ object TapTargets {
         val ground = TilePicker.pick(screen, transform, grid.map.size)
         if (editing) return ground
         bubbleAt(screen, transform, objects, minReach, plantTop)?.let { return TileCoord(it.gridX, it.gridY) }
-        val walls = GreenhouseLayout.of(objects.filter { it.isGreenhouse }.map { GridCell(it.gridX, it.gridY) }.toSet()).walls
+        val walls = GreenhouseLayout.of(objects, grid.map::isInside).walls
         greenhouseWallAt(screen, transform, walls.filter { it.side.isFront })?.let { wall ->
             val inside = ground?.takeIf { grid.isUnderGlass(it.x, it.y) && onCellMiddle(screen, transform, it) }
             return inside ?: TileCoord(wall.cell.x, wall.cell.y)

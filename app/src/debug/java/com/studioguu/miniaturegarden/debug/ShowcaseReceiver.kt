@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
  *         --ez load true                      # replaces the saved garden with [ShowcaseGarden]
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
- *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse), with load
+ *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai), with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
  *         --ef clock_hour 22                  # what the device's clock is taken to say
@@ -94,7 +94,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val fenceLook = garden == "fencelook"
         val lawnThings = garden == "lawnthings"
         val greenhouse = garden == "greenhouse"
-        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse
+        val hakusai = garden == "hakusai"
+        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -110,6 +111,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)
                     greenhouse -> GroundGarden.greenhouse(now)
+                    hakusai -> GroundGarden.hakusai(now)
                     feedback -> FeedbackGarden.objects(now)
                     else -> ShowcaseGarden.objects(now)
                 },

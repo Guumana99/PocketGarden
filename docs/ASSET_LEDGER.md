@@ -54,7 +54,7 @@
 | ラベンダー（`plant_lavender`） | Lv5 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#67。C2PA を grep で確認）。#67 で 4 段階から 3 段階に。細かい葉の白いもやを絵全体で戻して切り抜いた。アイコンの麻ひもは消えないよう白だけを抜いた |
 | しいたけ（`plant_shiitake`） | Lv14 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#68。C2PA を grep で確認）。#68 でカボチャと入れ替えた作物。丸太の長さが全段階で同じになるよう大きさを決めた。枯れの白っぽい樹皮は白だけを抜いて切り抜いた |
 | ポインセチア（`plant_poinsettia`） | Lv15 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#69。C2PA を grep で確認）。#69 で 4 段階から 3 段階に。段階 2 の苞はピンク、段階 3 は赤（届いた絵のまま） |
-| 白菜（`plant_hakusai`） | Lv10 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87）。段階 2 のひげ根を切り落とす。葉が白っぽいので真っ白だけを抜く（`white_parts`）。段階 3 は縦長で高さ 0.8 マス |
+| 白菜（`plant_hakusai`） | Lv10 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87、#91 で段階 3 と枯れを外葉の広がった株に差し替え。横幅 0.76 マス、結球の足元に立つ）。段階 2 のひげ根を切り落とす。葉が白っぽいので真っ白だけを抜く（`white_parts`）。段階 3 は縦長で高さ 0.8 マス |
 | 菜の花（`plant_nanohana`） | Lv12 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87）。切り抜きはコスモスと同じ（`throughout`）。段階 2 から幅で大きさを決める（0.55・0.72 マス） |
 
 - 仮（⬜）の作物に絵を入れるときは、**その作物の段階と枯れを全部そろえて**入れる（一部だけだと `CodeArtTest` が落ちる）。段階の数を 3 に変えるなら `PlantSpecies.growthStages` も直す。
@@ -119,7 +119,7 @@
 | 小屋・井戸（`struct_hut` `struct_well`） | ✅ | `icon_struct_hut.png` `icon_struct_well.png`（#74、建物の原画から） |
 | 岩・ベンチ・石灯籠・スプリンクラー（`deco_rock` `deco_bench` `deco_lantern` `deco_sprinkler`） | ✅ | `icon_deco_*.png`（#74、飾りの原画から） |
 | 小石・野の花・ウッドデッキ・石畳（`ground_pebble` `ground_flowers` `floor_wood` `floor_cobblestone`） | ✅ | `icon_ground_*.png` `icon_floor_*.png`（#74。斜め上から見た板の形のまま） |
-| コテージ・温室（`struct_cottage` `floor_greenhouse`） | ✅ | `icon_struct_cottage.png` `icon_floor_greenhouse.png`（温室は #90 から連結式の 2×2 の姿、`tools/prepare_greenhouse_art.py`。#77、庭で使っている切り抜き済みの絵 `raw_assets/` から） |
+| コテージ・温室（`struct_cottage` `floor_greenhouse`） | ✅ | `icon_struct_cottage.png` `icon_floor_greenhouse.png`（温室は #90 から連結式の 2×2 に作物を入れた姿、`tools/prepare_greenhouse_art.py`、作物入りの絵はアトラスから取るので `asset_packer.py` の後に流す。#77、庭で使っている切り抜き済みの絵 `raw_assets/` から） |
 | 柵 3 種・縁石（`struct_fence` `struct_fence_white` `struct_fence_bamboo` `struct_edging_brick`） | ✅ | `icon_struct_fence.png` ほか 3 枚（#85、1 本で立つときの絵から。`tools/prepare_fence_art.py`）。縁石は取り下げ中で店には出ない |
 | 風車（`struct_windmill`） | ✅ | `icon_struct_windmill.png`（#77、本体と羽根の切り抜きを、庭と同じ取り付け点で重ねた） |
 | 池・芝生（`deco_pond` `ground_grass`） | ✅ | `icon_deco_pond.png`（#77、`pond.png`）・`icon_ground_grass.png`（#77、`tile_grass_iso.png` を板の形のまま） |

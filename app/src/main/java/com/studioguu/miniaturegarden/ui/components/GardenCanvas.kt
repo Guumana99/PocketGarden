@@ -68,6 +68,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
+import com.studioguu.miniaturegarden.domain.model.PlantGround
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -616,8 +617,10 @@ private fun submitObjects(
     river: RiverScene? = null,
     /** The feathered lawn, for a lawn sown on the bare earth ([LawnGrowth]). */
     lawn: FeatheredLawn? = null,
+    /** Beds fill their cells: a preview's patch is all bed, with no rim on it. */
+    wholeBeds: Boolean = false,
 ) {
-    val greenhouses = GreenhouseLayout.of(gridObjects.filter { it.isGreenhouse }.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) })
+    val greenhouses = GreenhouseLayout.of(gridObjects, grid.map::isInside)
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
     // Everything is queued through here, so that objects on their way out can be drawn fading.
     fun submit(obj: GridObject, layer: RenderLayer, depth: Float, plainDraw: DrawScope.() -> Unit) {
@@ -690,11 +693,11 @@ private fun submitObjects(
                 if (obj.isHoedSoil) {
                     // Beds side by side are one field: each knows which of its sides carry on (#47).
                     // It runs right up to whatever else is laid on the ground beside it as well.
-                    val joins = SoilJoins.at(obj.gridX, obj.gridY, grid::meetsBed)
+                    val joins = if (wholeBeds) WHOLE_CELL else SoilJoins.at(obj.gridX, obj.gridY, grid::meetsBed)
                     drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = if (obj.isLooseSoil) terrain.broken else terrain.tilled, cellsPerCopy = if (obj.isLooseSoil) FlatGround.LOOSE_CELLS else 1f)
                 } else if (obj.isGreenhouse) {
                     // One floor of earth from wall to wall: every side reaches the edge of its cell.
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, joins = GREENHOUSE_FLOOR, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.broken, cellsPerCopy = FlatGround.LOOSE_CELLS)
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, joins = WHOLE_CELL, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.broken, cellsPerCopy = FlatGround.LOOSE_CELLS)
                 } else {
                     // Decking and paving: pictures seen from straight above, one to a cell, made to
                     // run on into the next (#74).
@@ -992,7 +995,8 @@ private fun soilTint(quality: Int): Color? = when (SoilGrade.of(quality)) {
 }
 
 /** How opaque a greenhouse's picture is while a crop grows inside, so that the crop shows through. */
-private val GREENHOUSE_FLOOR = SoilJoins(north = true, east = true, south = true, west = true)
+/** Earth from edge to edge of its cell: the floor of a greenhouse, and the bed of a preview. */
+private val WHOLE_CELL = SoilJoins(north = true, east = true, south = true, west = true)
 
 /** How long the unveiling of a finished building lasts. */
 private const val BURST_MILLIS = 1100
@@ -1482,7 +1486,7 @@ private fun DrawScope.drawVanishing(pivot: Offset, progress: Float, tileHeight: 
  * @property headroom space to leave above the far corner of the patch, in tile widths, for
  *   whatever stands taller than that.
  */
-private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: List<GridObject>) {
+private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: List<GridObject>, val bareEarth: Boolean = false) {
     companion object {
         /** @param bloomColour for a crop of several colours, the one to show; its plain one when null. */
         fun of(objectId: String, bloomColour: String? = null): PreviewScene {
@@ -1498,10 +1502,23 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
             return when {
                 objectId == GridObject.RIVER_OBJECT_ID -> PreviewScene(3, 0.1f, listOf(at(0, 1), at(1, 1), at(2, 1)))
                 // Joined up, as it is meant to be seen: nothing growing in it.
-                objectId == GridObject.GREENHOUSE_OBJECT_ID -> PreviewScene(2, GREENHOUSE_HEADROOM, listOf(at(0, 0), at(1, 0), at(0, 1), at(1, 1)))
+                objectId == GridObject.GREENHOUSE_OBJECT_ID -> {
+                    val crops = listOf(PlantSpecies.SUNFLOWER, PlantSpecies.TOMATO, PlantSpecies.TULIP, PlantSpecies.TOMATO)
+                    val cells = listOf(0 to 0, 1 to 0, 0 to 1, 1 to 1)
+                    PreviewScene(2, GREENHOUSE_HEADROOM, cells.map { (x, y) -> at(x, y) } + cells.zip(crops) { (x, y), crop -> at(x, y).copy(instanceId = "preview_crop_${x}_$y", objectId = crop.objectId) })
+                }
                 objectId.startsWith(GridObject.FLOOR_ID_PREFIX) ->
                     PreviewScene(2, 0.1f, listOf(at(0, 0), at(1, 0), at(0, 1), at(1, 1)))
-                objectId.startsWith(GridObject.PLANT_ID_PREFIX) -> PreviewScene(1, 1.05f, listOf(at(0, 0)))
+                // On the ground it grows on: its bed, or for the log the open earth.
+                objectId.startsWith(GridObject.PLANT_ID_PREFIX) -> {
+                    val bed = when (PlantSpecies.forObjectId(objectId).ground) {
+                        PlantGround.BED -> GridObject.TILLED_SOIL_OBJECT_ID
+                        PlantGround.FLOWER_BED -> GridObject.LOOSE_SOIL_OBJECT_ID
+                        PlantGround.LOG -> null
+                    }
+                    val soil = bed?.let { at(0, 0).copy(instanceId = "preview_bed", objectId = it) }
+                    PreviewScene(1, 1.05f, listOfNotNull(soil, at(0, 0)), bareEarth = bed == null)
+                }
                 // A run with a corner in it, to show how fences join.
                 RunKind.of(objectId) != null ->
                     PreviewScene(3, 0.25f, listOf(at(0, 1), at(1, 1), at(2, 1), at(2, 0)))
@@ -1517,7 +1534,7 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
 }
 
 /** Room over the far corner of a greenhouse's preview, in tile widths: its walls and its roof. */
-private const val GREENHOUSE_HEADROOM = GreenhouseLook.WALL_HEIGHT + GreenhouseLook.ROOF_MAX_RISE
+private const val GREENHOUSE_HEADROOM = GreenhouseLook.WALL_HEIGHT + 0.1f
 
 /** The lawn of a preview sits on a slab of soil this thick, in tile heights (see drawTerrain). */
 private const val PREVIEW_SOIL = 0.6f
@@ -1660,9 +1677,19 @@ fun ObjectPreview(
                 if (sprite != null && atlasImage != null) drawSprite(atlasImage, sprite, center, spriteScale * groundOverlap(tile), flipped = flip)
                 sprite != null
             }
+            val earth = terrain.wasteland
+            if (scene.bareEarth && earth != null) drawFlatGround(earth, transform, transform.tilePath(0, 0))
         }
-        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, Ambience.CALM, lawn = lawn, river = river)
-        pipeline.render(this)
+        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, Ambience.CALM, lawn = lawn, wholeBeds = true, river = river)
+        // A shadow stays on the top of the patch, off its sides and the page behind them.
+        val top = Path().apply {
+            val n = scene.gridSize.toFloat()
+            val corners = listOf(0f to 0f, n to 0f, n to n, 0f to n).map { (x, y) -> transform.worldToScreen(x, y) }
+            moveTo(corners[0].x, corners[0].y)
+            for (corner in corners.drop(1)) lineTo(corner.x, corner.y)
+            close()
+        }
+        pipeline.render(this, GardenClip(ground = top, standing = Path().apply { addRect(Rect(Offset.Zero, size)) }))
     }
 }
 
