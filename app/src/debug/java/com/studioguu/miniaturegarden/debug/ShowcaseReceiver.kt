@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GardenView
@@ -97,8 +98,9 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val lawnThings = garden == "lawnthings"
         val greenhouse = garden == "greenhouse"
         val hakusai = garden == "hakusai"
+        val nanohana = garden == "nanohana"
         val bridgePlaces = garden == "bridgeplace"
-        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai || bridgePlaces
+        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai || nanohana || bridgePlaces
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -114,7 +116,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)
                     greenhouse -> GroundGarden.greenhouse(now)
-                    hakusai -> GroundGarden.hakusai(now)
+                    hakusai -> GroundGarden.field(now, PlantSpecies.HAKUSAI)
+                    nanohana -> GroundGarden.field(now, PlantSpecies.NANOHANA)
                     bridgePlaces -> FenceGarden.bridgePlaces(now)
                     feedback -> FeedbackGarden.objects(now)
                     else -> ShowcaseGarden.objects(now)
