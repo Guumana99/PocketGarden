@@ -185,9 +185,12 @@ class MoveObjectUseCase @Inject constructor(
             // Checked against the garden as it would be with the thing lifted off it.
             val others = GardenGrid(gardenMap.current(), objects.filter { it.instanceId != instanceId })
             if (target.isBridge) {
-                when (val fit = others.bridgeAcross(gridX, gridY, target.isFlipped)) {
+                val choice = others.bridgeFor(gridX, gridY, target.isFlipped)
+                when (val fit = choice.fit) {
                     is BridgeFit.Refused -> return@runInTransaction bridgeRefusal(fit.why)
-                    is BridgeFit.Across -> gardenRepository.upsertGridObject(target.copy(gridX = fit.origin.x, gridY = fit.origin.y, turned = fit.longer))
+                    is BridgeFit.Across -> gardenRepository.upsertGridObject(
+                        target.copy(gridX = fit.origin.x, gridY = fit.origin.y, isFlipped = choice.flipped, turned = fit.longer),
+                    )
                 }
                 return@runInTransaction ActionResult.SUCCESS
             }

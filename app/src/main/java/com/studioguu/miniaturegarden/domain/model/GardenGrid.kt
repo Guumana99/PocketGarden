@@ -22,18 +22,28 @@ sealed interface BridgeFit {
     data class Refused(val why: BridgeProblem) : BridgeFit
 }
 
+/** In order: of the two ways across, the first of these is the one the player is told about. */
 enum class BridgeProblem {
-    /** There is no river where it would go. */
-    NO_RIVER,
-
-    /** The river is wider than a bridge reaches. */
-    TOO_WIDE,
+    /** Something stands where one of its ends would rest, or another bridge is in the way. */
+    ENDS_TAKEN,
 
     /** One of its ends would be outside the garden. */
     OUTSIDE,
 
-    /** Something stands where one of its ends would rest, or another bridge is in the way. */
-    ENDS_TAKEN,
+    /** The river is wider than a bridge reaches. */
+    TOO_WIDE,
+
+    /** There is no river where it would go. */
+    NO_RIVER,
+}
+
+/** A way to bridge the river at a tap ([GardenGrid.bridgeFor]): [flipped], it runs along gridX. */
+data class BridgeChoice(val flipped: Boolean, val fit: BridgeFit) {
+    /** The cells it would take, ends included; none if it does not fit. */
+    val cells: List<GridCell>
+        get() = (fit as? BridgeFit.Across)?.let {
+            Footprint.forObjectId(StructureData.BRIDGE.objectId, flipped, it.longer).cells(it.origin.x, it.origin.y)
+        }.orEmpty()
 }
 
 /** Which layer of a cell something goes into. */
@@ -168,6 +178,25 @@ class GardenGrid(
         if (cells.any { !map.isInside(it.x, it.y) }) return BridgeFit.Refused(BridgeProblem.OUTSIDE)
         if (cells.any { it in bridges } || !restsOn(cells.first()) || !restsOn(cells.last())) return BridgeFit.Refused(BridgeProblem.ENDS_TAKEN)
         return BridgeFit.Across(cells.first(), longer = width == MAX_BRIDGED_RIVER)
+    }
+
+    /**
+     * The bridge for a tap on (x, y), which finds its own way across: the way there is, or with
+     * two, the shorter, which is the one across the stream's flow, or if they are as long,
+     * [preferFlipped]'s. With neither, the first of the reasons that says most.
+     */
+    fun bridgeFor(x: Int, y: Int, preferFlipped: Boolean = false): BridgeChoice {
+        val preferred = BridgeChoice(preferFlipped, bridgeAcross(x, y, preferFlipped))
+        val other = BridgeChoice(!preferFlipped, bridgeAcross(x, y, !preferFlipped))
+        val first = preferred.fit
+        val second = other.fit
+        return when {
+            first is BridgeFit.Across && second is BridgeFit.Across -> if (first.longer && !second.longer) other else preferred
+            first is BridgeFit.Across -> preferred
+            second is BridgeFit.Across -> other
+            (first as BridgeFit.Refused).why <= (second as BridgeFit.Refused).why -> preferred
+            else -> other
+        }
     }
 
     private fun restsOn(cell: GridCell): Boolean =

@@ -47,7 +47,10 @@ fun PaintDialog(building: GridObject, onPaint: (PaintPart, PaintColour) -> Unit,
         actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
     ) {
         PaintRow(stringResource(R.string.paint_roof), building, PaintPart.ROOF, onPaint)
-        PaintRow(stringResource(R.string.paint_wall), building, PaintPart.WALL, onPaint)
+        // The well has a roof and no walls to speak of.
+        if (PaintPart.WALL in BuildingPaint.parts(building.objectId)) {
+            PaintRow(stringResource(R.string.paint_wall), building, PaintPart.WALL, onPaint)
+        }
     }
 }
 

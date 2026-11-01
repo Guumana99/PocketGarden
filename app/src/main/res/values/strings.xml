@@ -156,7 +156,10 @@
     <string name="msg_bridge_above">橋がかかっています。\n先に橋を片づけてください</string>
     <string name="msg_not_paintable">これは色を変えられません</string>
     <string name="msg_needs_river_across">太鼓橋は、川をまたぐように置けます</string>
-    <string name="msg_river_too_wide">川の幅が 2 マスまでの所に置けます</string>
+    <string name="msg_river_too_wide">川の幅は 2 マスまでです</string>
+    <string name="msg_bridge_off_the_edge">岸から岸まで届きません</string>
+    <string name="msg_bridge_ends_taken">橋のたもとを空けると置けます</string>
+    <string name="msg_bridge_tap_again">色の付いたマスをもう一度タップすると置けます</string>
     <string name="placing_flip">↔ 向き</string>
     <string name="placing_flip_description">置く向きを左右で切り替える（現在：%1$s）</string>
     <string name="facing_normal">通常</string>
@@ -222,6 +225,7 @@
     <string name="inventory_filter_furniture">家具</string>
     <string name="inventory_filter_other">その他</string>
     <string name="placing_banner">配置中: %1$s ×%2$d　空いているマスをタップ</string>
+    <string name="placing_banner_bridge">配置中: %1$s ×%2$d　川をタップ</string>
     <string name="placing_cancel">やめる</string>
 
     <!-- Shop -->

@@ -96,6 +96,14 @@ GREENHOUSE_STILLS = [
     Shot("gh_night", "夜の温室", NIGHT, View(0.74, cell=(3.5, 6.0), lift=120), (1080, 1100)),
     Shot("gh_night_near", "夜の温室 ×1.23", NIGHT, View(1.23, cell=(8.0, 2.0), lift=160), (1080, 900)),
 ]
+PAINT_STILLS = [
+    Shot("paint_cottage", "青い屋根のコテージ", DAY, View(1.0, cell=(1.5, 1.5), lift=120), (1080, 1000)),
+    Shot("paint_well", "井戸の屋根", DAY, View(1.3, cell=(9.5, 9.0), lift=120), (1080, 1000)),
+    Shot("paint_hut", "小屋", DAY, View(1.0, cell=(10.0, 6.0), lift=120), (1080, 900)),
+]
+
+BRIDGE_STILLS = [Shot("bridge_ways", "太鼓橋（両方の向き）", DAY, View(0.5), (1080, 1100))]
+
 HAKUSAI_STILLS = [
     Shot("hakusai_field", "白菜の畑", DAY, View(1.23, cell=(4.5, 4.5), lift=120), (1080, 1100)),
     Shot("hakusai_glass", "温室の白菜", DAY, View(1.8, cell=(8.5, 4.5), lift=120), (1080, 900)),
@@ -233,7 +241,7 @@ def main() -> int:
     parser.add_argument("--only", nargs="*")
     parser.add_argument("--serial", default="emulator-5554")
     parser.add_argument("--apk", type=Path, help="install this APK instead of the project's debug build")
-    parser.add_argument("--garden", choices=("fb", "ground", "fencelook", "lawnthings", "greenhouse", "hakusai"), default="fb")
+    parser.add_argument("--garden", choices=("fb", "ground", "fencelook", "lawnthings", "greenhouse", "hakusai", "bridges", "bridgeplace"), default="fb")
     parser.add_argument("--sheet", nargs=3, type=Path, metavar=("BEFORE", "AFTER", "TARGET"))
     args = parser.parse_args()
     if args.sheet:
@@ -244,7 +252,7 @@ def main() -> int:
     if args.apk:
         device.adb("install", "-r", str(args.apk))
     open_feedback_garden(device, install=not args.no_install and not args.apk, garden=args.garden)
-    stills = {"fb": STILLS, "ground": GROUND_STILLS, "fencelook": FENCE_LOOK_STILLS, "lawnthings": LAWN_THINGS_STILLS, "greenhouse": GREENHOUSE_STILLS, "hakusai": HAKUSAI_STILLS}[args.garden]
+    stills = {"fb": STILLS, "ground": GROUND_STILLS, "fencelook": FENCE_LOOK_STILLS, "lawnthings": LAWN_THINGS_STILLS, "greenhouse": GREENHOUSE_STILLS, "hakusai": HAKUSAI_STILLS, "bridges": BRIDGE_STILLS, "bridgeplace": PAINT_STILLS}[args.garden]
     try:
         for shot in stills:
             if args.only and shot.name not in args.only:

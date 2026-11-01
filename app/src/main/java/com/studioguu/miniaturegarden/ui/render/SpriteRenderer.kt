@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Matrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -189,6 +190,26 @@ fun DrawScope.drawRunPieceShadow(pages: AtlasPages, asset: AssetManifest, from: 
         scale(scaleX = if (mirrored) -1f else 1f, scaleY = 1f, pivot = middle)
     }) {
         drawSprite(pages[asset], asset, railAnchor(asset, middle, scale), scale, alpha = light.alpha, colorFilter = ColorFilter.tint(Color.Black, BlendMode.SrcIn))
+    }
+}
+
+/**
+ * [drawRunPieceShadow] of a wall of glass: the bottom [solidShare] of it, of stone, casts its full
+ * shadow, and the frame over it only [lightShare] of one, with the light coming through round it.
+ */
+fun DrawScope.drawGlassWallShadow(pages: AtlasPages, asset: AssetManifest, from: Offset, to: Offset, scale: Float, light: SunLight, solidShare: Float, lightShare: Float) {
+    if (light.alpha <= 0f) return
+    val middle = (from + to) / 2f
+    val line = middle.y - asset.drawnHeight(scale) * solidShare
+    val black = ColorFilter.tint(Color.Black, BlendMode.SrcIn)
+    val far = 100_000f
+    withTransform({ transform(alongRun(middle, (to.y - from.y) / (to.x - from.x), light.dx, light.dy)) }) {
+        clipRect(left = -far, top = -far, right = far, bottom = line) {
+            drawSprite(pages[asset], asset, railAnchor(asset, middle, scale), scale, alpha = light.alpha * lightShare, colorFilter = black)
+        }
+        clipRect(left = -far, top = line, right = far, bottom = far) {
+            drawSprite(pages[asset], asset, railAnchor(asset, middle, scale), scale, alpha = light.alpha, colorFilter = black)
+        }
     }
 }
 

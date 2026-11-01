@@ -6,6 +6,8 @@ import android.content.Intent
 import android.util.Log
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
+import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
 import com.studioguu.miniaturegarden.domain.model.GardenView
@@ -95,7 +97,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val lawnThings = garden == "lawnthings"
         val greenhouse = garden == "greenhouse"
         val hakusai = garden == "hakusai"
-        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai
+        val bridgePlaces = garden == "bridgeplace"
+        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai || bridgePlaces
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -112,6 +115,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     lawnThings -> GroundGarden.lawnThings(now)
                     greenhouse -> GroundGarden.greenhouse(now)
                     hakusai -> GroundGarden.hakusai(now)
+                    bridgePlaces -> FenceGarden.bridgePlaces(now)
                     feedback -> FeedbackGarden.objects(now)
                     else -> ShowcaseGarden.objects(now)
                 },
@@ -128,6 +132,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
             if (feedback) {
                 CollectionEntry.entries.forEach { gardenRepository.upsertCollectionRecord(CollectionRecord(it.objectId, 1, now, revealed = true)) }
             }
+            if (bridgePlaces) gardenRepository.upsertInventorySlot(InventorySlot(0, GardenItem.STRUCT_BRIDGE.itemId, 5))
             val profile = gardenRepository.getUserProfile() ?: UserProfile()
             val level = if (feedback) FeedbackGarden.PLAYER_LEVEL else PLAYER_LEVEL
             gardenRepository.saveUserProfile(

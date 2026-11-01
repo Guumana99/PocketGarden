@@ -28,6 +28,12 @@ object GreenhouseLook {
     /** How large a crop is drawn under glass: the tallest (corn, 0.9 of a tile) stays under the walls' top. */
     const val CROP_SCALE = 0.65f
 
+    /** The share of a wall's height that is its stones, whose shadow is a solid thing's. */
+    const val STONE_SHARE = 0.1f
+
+    /** How dark the shadow of a wall's frame is, for the light that comes through the glass. */
+    const val GLASS_SHADOW = 0.4f
+
     /** How far a roof over one cell rises above the walls, and how much more each further cell of its span adds, up to [ROOF_MAX_RISE]. */
     const val ROOF_RISE = 0.14f
     const val ROOF_RISE_PER_CELL = 0.06f

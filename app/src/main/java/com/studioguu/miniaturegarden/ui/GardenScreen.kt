@@ -176,6 +176,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val visitors by viewModel.visitors.collectAsStateWithLifecycle()
     val movingObject by viewModel.movingObject.collectAsStateWithLifecycle()
     val closedCells by viewModel.closedCells.collectAsStateWithLifecycle()
+    val bridgeCells by viewModel.bridgeCells.collectAsStateWithLifecycle()
     val tutorialStep by viewModel.tutorialStep.collectAsStateWithLifecycle()
     val hintCells by viewModel.hintCells.collectAsStateWithLifecycle()
     val openingGift by viewModel.openingGift.collectAsStateWithLifecycle()
@@ -304,6 +305,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 auraCells = if (cameraMode) emptySet() else aura,
                 hintCells = if (cameraMode) emptySet() else hintCells,
                 closedCells = closedCells,
+                bridgeCells = if (placingSlot != null || movingObject != null) bridgeCells else emptySet(),
                 brokenCells = brokenGround,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
@@ -906,12 +908,13 @@ private fun SideButton(emoji: String, label: String, selected: Boolean = false, 
 private fun PlacingBanner(slot: InventorySlot, flipped: Boolean, onFlip: () -> Unit) {
     val item = GardenItem.fromItemId(slot.itemId)
     val name = item?.let { itemDisplayName(it) } ?: slot.itemId
-    // A building that can face either way is turned here, before it goes down.
-    val canFlip = item != null && GridObject.canFaceEitherWay(item.objectId)
+    // A building that can face either way is turned here, before it goes down. A bridge finds its own way.
+    val canFlip = item != null && item != GardenItem.STRUCT_BRIDGE && GridObject.canFaceEitherWay(item.objectId)
     val facing = stringResource(if (flipped) R.string.facing_flipped else R.string.facing_normal)
     val flipDescription = stringResource(R.string.placing_flip_description, facing)
     // No "stop" here: the bag's button puts the thing in hand down again (#50).
-    ToolBanner(stringResource(R.string.placing_banner, name, slot.amount)) {
+    val banner = if (item == GardenItem.STRUCT_BRIDGE) R.string.placing_banner_bridge else R.string.placing_banner
+    ToolBanner(stringResource(banner, name, slot.amount)) {
         if (canFlip) {
             TextButton(onClick = onFlip, modifier = Modifier.semantics { contentDescription = flipDescription }) {
                 Text(stringResource(R.string.placing_flip), fontWeight = if (flipped) FontWeight.Bold else FontWeight.Normal)

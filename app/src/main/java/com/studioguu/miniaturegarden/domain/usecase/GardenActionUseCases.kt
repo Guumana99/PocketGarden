@@ -120,6 +120,12 @@ enum class ActionResult {
     /** A bridge was to go over a river wider than it reaches ([GardenGrid.bridgeAcross]). */
     RIVER_TOO_WIDE,
 
+    /** One end of a bridge would lie beyond the garden. */
+    BRIDGE_OFF_THE_EDGE,
+
+    /** Something is in the way of one end of a bridge. */
+    BRIDGE_ENDS_TAKEN,
+
     /** Only a building with a mask can be painted ([BuildingPaint]), and only in its own colours. */
     NOT_PAINTABLE,
 }
@@ -274,8 +280,8 @@ internal fun GardenGrid.fits(objectId: String, x: Int, y: Int, flipped: Boolean 
 internal fun bridgeRefusal(problem: BridgeProblem): ActionResult = when (problem) {
     BridgeProblem.NO_RIVER -> ActionResult.NEEDS_RIVER_ACROSS
     BridgeProblem.TOO_WIDE -> ActionResult.RIVER_TOO_WIDE
-    BridgeProblem.OUTSIDE -> ActionResult.OUT_OF_BOUNDS
-    BridgeProblem.ENDS_TAKEN -> ActionResult.TILE_OCCUPIED
+    BridgeProblem.OUTSIDE -> ActionResult.BRIDGE_OFF_THE_EDGE
+    BridgeProblem.ENDS_TAKEN -> ActionResult.BRIDGE_ENDS_TAKEN
 }
 
 /** What to tell the player who put a crop that grows on [ground] somewhere else. */
@@ -315,9 +321,10 @@ class PlaceItemUseCase @Inject constructor(
             // The symbol building is one of a kind: a second one never goes up.
             if (item.isSymbol && grid.hasSymbol) return@runInTransaction ActionResult.ONLY_ONE_SYMBOL
             val facing = flipped && GridObject.canFaceEitherWay(item.objectId)
-            // A bridge finds its own place and length from the river at the tap.
-            val across = if (item.objectId == StructureData.BRIDGE.objectId) {
-                when (val fit = grid.bridgeAcross(gridX, gridY, facing)) {
+            // A bridge finds its own way, place and length from the river at the tap.
+            val choice = if (item.objectId == StructureData.BRIDGE.objectId) grid.bridgeFor(gridX, gridY) else null
+            val across = if (choice != null) {
+                when (val fit = choice.fit) {
                     is BridgeFit.Across -> fit
                     is BridgeFit.Refused -> return@runInTransaction bridgeRefusal(fit.why)
                 }
@@ -341,7 +348,7 @@ class PlaceItemUseCase @Inject constructor(
                     instanceId = UUID.randomUUID().toString(),
                     gridX = across?.origin?.x ?: gridX,
                     gridY = across?.origin?.y ?: gridY,
-                    isFlipped = facing,
+                    isFlipped = choice?.flipped ?: facing,
                     turned = across?.longer == true,
                     objectId = item.objectId,
                     nutritionLevel = food,
