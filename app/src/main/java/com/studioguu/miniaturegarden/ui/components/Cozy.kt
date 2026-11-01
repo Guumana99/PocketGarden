@@ -37,6 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -218,6 +220,27 @@ fun CarvedButton(
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+/**
+ * [content], which cannot be used just now, looking just as it does, with a tap on it answered
+ * by [onTap]: its reason, say. With no [onTap] it is left as it is. What lies under the tap is
+ * covered for a screen reader, so that the tap carries its name, [label].
+ */
+@Composable
+fun AnswersWhenResting(onTap: (() -> Unit)?, label: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val press = remember { MutableInteractionSource() }
+    Box(modifier) {
+        content()
+        if (onTap != null) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .clickable(interactionSource = press, indication = null, role = Role.Button, onClick = withTick(onTap))
+                    .semantics { contentDescription = label },
+            )
+        }
     }
 }
 

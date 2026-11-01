@@ -52,6 +52,9 @@ enum class RainCloudState(val calling: Boolean, val rain: Float, @param:StringRe
     NOTHING_GROWING(false, 0f, R.string.msg_no_growing_plants),
     NO_AD(false, 0f, R.string.msg_reward_unavailable);
 
+    /** How it looks: while it is being [introducing]d it is the rain cloud the words speak of, whatever it can do. */
+    fun look(introducing: Boolean): RainCloudState = if (introducing && !calling) READY else this
+
     companion object {
         fun of(rainsLeft: Int, growing: Boolean, thirsty: Boolean, adReady: Boolean): RainCloudState = when {
             rainsLeft <= 0 -> USED_TODAY

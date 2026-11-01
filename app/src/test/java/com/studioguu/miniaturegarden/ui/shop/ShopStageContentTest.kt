@@ -9,11 +9,13 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.LevelTable
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
@@ -47,6 +49,8 @@ class ShopStageContentTest {
         val bought = mutableListOf<GardenItem>()
         var left = false
         var rested = false
+        var waitedFor: ExpansionCheck? = null
+        var offer: ExpansionOffer? = null
     }
 
     private fun open(visit: Visit, coins: Long = 500, ownsSymbol: Boolean = false, held: Map<GardenItem, Int> = emptyMap()) {
@@ -68,6 +72,8 @@ class ShopStageContentTest {
                     onBuy = { visit.bought += it },
                     onBonus = {},
                     onBonusResting = { visit.rested = true },
+                    expansion = visit.offer,
+                    onExpandResting = { visit.waitedFor = it },
                     onLeave = { visit.left = true },
                 )
             }
@@ -112,6 +118,37 @@ class ShopStageContentTest {
         compose.onNodeWithTag(shelfTag(GardenItem.SEED_TULIP)).assertDoesNotExist()
         compose.onNodeWithText(text(R.string.shop_stage_sundries)).performClick()
         assertEquals(ShopStage.SUNDRIES, visit.stage)
+    }
+
+    @Test
+    fun `short of the level, the board for growing the garden says so when tapped`() {
+        val visit = Visit().apply { stage = ShopStage.WORKSHOP; offer = ExpansionOffer(ExpansionCheck.NEEDS_LEVEL, level = 8, price = 3000) }
+        open(visit)
+        compose.onNodeWithTag(EXPANSION_BOARD_TAG).performClick()
+        assertEquals(ExpansionCheck.NEEDS_LEVEL, visit.waitedFor)
+        // What lies under the tap is hidden from a screen reader: the tap says its name.
+        compose.onNodeWithContentDescription(text(R.string.expand_button)).assertExists()
+    }
+
+    @Test
+    fun `short of the coins, it says that, and tapped on its pale button too`() {
+        val visit = Visit().apply { stage = ShopStage.WORKSHOP; offer = ExpansionOffer(ExpansionCheck.NEEDS_COINS, level = 8, price = 3000) }
+        open(visit)
+        compose.onNodeWithText(text(R.string.expand_price, 3000)).performClick()
+        assertEquals(ExpansionCheck.NEEDS_COINS, visit.waitedFor)
+    }
+
+    @Test
+    fun `ready, the board's button does its work and nothing lies over it`() {
+        val visit = Visit().apply { stage = ShopStage.WORKSHOP; offer = ExpansionOffer(ExpansionCheck.READY, level = 8, price = 300) }
+        open(visit)
+        compose.onNodeWithTag(EXPANSION_BOARD_TAG).performClick()
+        assertEquals(null, visit.waitedFor)
+    }
+
+    @Test
+    fun `the bonus's words count nothing`() {
+        assertEquals("💰 臨時ボーナスを受け取る", text(R.string.reward_bonus_button))
     }
 
     @Test

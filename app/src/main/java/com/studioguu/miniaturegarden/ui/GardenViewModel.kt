@@ -97,6 +97,7 @@ import com.studioguu.miniaturegarden.domain.usecase.StartRemovalUseCase
 import com.studioguu.miniaturegarden.domain.usecase.StoreObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.SyncGardenUseCase
 import com.studioguu.miniaturegarden.domain.usecase.UnveilBuildingUseCase
+import com.studioguu.miniaturegarden.ui.components.everyMinute
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
@@ -204,12 +205,7 @@ class GardenViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Season.SPRING)
 
     /** Ticks at the turn of every minute: for what changes with the time of day, or the day. */
-    private val minutes: Flow<Unit> = flow {
-        while (true) {
-            emit(Unit)
-            delay(MINUTE_MILLIS - System.currentTimeMillis() % MINUTE_MILLIS)
-        }
-    }
+    private val minutes: Flow<Unit> = everyMinute()
 
     /** Which third of its season the garden is in ([SeasonPhase]), on the game's clock. */
     val seasonPhase: StateFlow<SeasonPhase> = combine(progress, minutes) { saved, _ ->
@@ -1476,8 +1472,6 @@ class GardenViewModel @Inject constructor(
         const val PULLED_MEMORY_MILLIS = 3_000L
 
         const val BLESSED_RAIN_SHOWER_MILLIS = 4_000L
-
-        const val MINUTE_MILLIS = 60_000L
 
         /** The device's local time as hours since midnight, minutes included as a fraction. */
         fun localHour(): Float = LocalTime.now().let { it.hour + it.minute / 60f }
