@@ -45,6 +45,14 @@ enum class GroundCover(val objectId: String) {
  * nothing else. Whatever has no sprite yet is drawn in code instead. Plants themselves are
  * [PlantSpecies].
  */
+object GreenhouseArt {
+    const val WALL = "struct_greenhouse_wall"
+    const val DOOR = "struct_greenhouse_door"
+    const val POST = "struct_greenhouse_post"
+
+    val ALL = listOf(WALL, DOOR, POST)
+}
+
 object TileSetDefinition {
 
     /** Every object id that can be stored in a grid cell. */
@@ -171,7 +179,8 @@ object TileSetDefinition {
             ((objectIds + RunKind.entries.flatMap { it.spriteIds }).distinct() - PlantSpecies.entries.map { it.objectId }.toSet() - DRAWABLE_OBJECT_IDS) +
             WINDMILL_SAILS +
             (0 until SPRINKLER_SPRAY_FRAMES).map(::sprinklerSprayId) +
-            "deco_bench_back" + "struct_bridge_taiko_long" + BuildingPaint.PAINTABLE_OBJECT_IDS.map { "mask_$it" }
+            "deco_bench_back" + "struct_bridge_taiko_long" + BuildingPaint.PAINTABLE_OBJECT_IDS.map { "mask_$it" } +
+            GreenhouseArt.ALL
 
     /** 1-based stage; the last stage is reserved for a fully grown plant (progress 1.0). */
     fun growthStage(growthProgress: Float, stages: Int): Int {

@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import com.studioguu.miniaturegarden.domain.model.CreatureRoute
 import com.studioguu.miniaturegarden.data.asset.FlatGround
+import com.studioguu.miniaturegarden.data.asset.GreenhouseArt
 import com.studioguu.miniaturegarden.ui.render.LawnPatches
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
@@ -82,7 +83,11 @@ import com.studioguu.miniaturegarden.ui.render.SceneTint
 import com.studioguu.miniaturegarden.ui.render.drawSpriteSnow
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
+import com.studioguu.miniaturegarden.ui.render.GreenhouseLayout
+import com.studioguu.miniaturegarden.ui.render.GreenhouseLook
+import com.studioguu.miniaturegarden.ui.render.GreenhouseRoof
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
+import com.studioguu.miniaturegarden.ui.render.drawGreenhouseRoof
 import com.studioguu.miniaturegarden.ui.render.drawTurningSprite
 import com.studioguu.miniaturegarden.ui.render.WindmillSails
 import com.studioguu.miniaturegarden.ui.render.GustAxis
@@ -407,7 +412,10 @@ fun GardenCanvas(
                     val scale = transform.tileWidth / sprites.manifest.tileWidth
                     val tile = TapTargets.resolve(
                         position, transform, currentGrid, currentObjects, currentEditing, minReach = BUBBLE_MIN_REACH.toPx(),
-                        plantTop = { obj -> sprites[TileSetDefinition.assetIdFor(obj)]?.let { it.anchorY * it.drawnHeight(scale) } },
+                        plantTop = { obj ->
+                            val shown = if (currentGrid.isUnderGlass(obj.gridX, obj.gridY)) scale * GreenhouseLook.CROP_SCALE else scale
+                            sprites[TileSetDefinition.assetIdFor(obj)]?.let { it.anchorY * it.drawnHeight(shown) }
+                        },
                     )
                     currentOnTileTapped(tile)
                 }
@@ -609,6 +617,7 @@ private fun submitObjects(
     /** The feathered lawn, for a lawn sown on the bare earth ([LawnGrowth]). */
     lawn: FeatheredLawn? = null,
 ) {
+    val greenhouses = GreenhouseLayout.of(gridObjects.filter { it.isGreenhouse }.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) })
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
     // Everything is queued through here, so that objects on their way out can be drawn fading.
     fun submit(obj: GridObject, layer: RenderLayer, depth: Float, plainDraw: DrawScope.() -> Unit) {
@@ -675,7 +684,6 @@ private fun submitObjects(
             // Paving and tilled soil: also ground. Whatever stands on the cell is a separate
             // object and is drawn later, in the object layer, so it always appears on top.
             val paving = terrain.cobblestone
-            val soil = atlas[GridObject.TILLED_SOIL_OBJECT_ID]
             // Back to front within the ground: a bed of soil stands a little proud of the lawn,
             // and its front edge has to come over the bed behind it.
             submit(obj, RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(obj.gridX, obj.gridY)) {
@@ -684,12 +692,9 @@ private fun submitObjects(
                     // It runs right up to whatever else is laid on the ground beside it as well.
                     val joins = SoilJoins.at(obj.gridX, obj.gridY, grid::meetsBed)
                     drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, joins = joins, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = if (obj.isLooseSoil) terrain.broken else terrain.tilled, cellsPerCopy = if (obj.isLooseSoil) FlatGround.LOOSE_CELLS else 1f)
-                } else if (obj.isGreenhouse && soil != null && atlasImage != null) {
-                    // Better soil is deeper in colour.
-                    val center = transform.tileCenter(obj.gridX, obj.gridY)
-                    drawSprite(atlasImage, soil, center, spriteScale, tint = soilTint(obj.soilQuality))
                 } else if (obj.isGreenhouse) {
-                    drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.tilled)
+                    // One floor of earth from wall to wall: every side reaches the edge of its cell.
+                    drawTilledSoil(transform, obj.gridX, obj.gridY, quality = obj.soilQuality, joins = GREENHOUSE_FLOOR, onBareEarth = ambience.bareGround == BareGround.WASTELAND, earth = terrain.wasteland, face = terrain.broken, cellsPerCopy = FlatGround.LOOSE_CELLS)
                 } else {
                     // Decking and paving: pictures seen from straight above, one to a cell, made to
                     // run on into the next (#74).
@@ -703,16 +708,37 @@ private fun submitObjects(
                 }
             }
             // The glass house of a greenhouse bed goes over whatever grows in it.
-            if (obj.isGreenhouse) {
-                val house = atlas[GridObject.GREENHOUSE_OBJECT_ID]
-                // With a crop inside, the house is drawn see-through, so that the crop shows.
-                val growing = grid.occupantAt(obj.gridX, obj.gridY)?.isPlant == true
-                submit(obj, RenderLayer.GRID_OBJECTS, LayerPipeline.depthOf(obj.gridX, obj.gridY, 0) + 0.5f) {
-                    if (house != null && atlasImage != null) {
-                        val center = transform.tileCenter(obj.gridX, obj.gridY)
-                        drawSprite(atlasImage, house, center, spriteScale, flipped = obj.isFlipped, alpha = if (growing) GREENHOUSE_OVER_CROP_ALPHA else 1f)
-                    } else {
-                        drawGreenhouseGlass(transform, obj.gridX, obj.gridY)
+            if (obj.isGreenhouse && atlasImage != null) {
+                // Far walls, then what grows in the cell, then the near walls and the roof (see GreenhouseLook).
+                val cell = GridCell(obj.gridX, obj.gridY)
+                val depth = LayerPipeline.depthOf(obj.gridX, obj.gridY, 0)
+                val wallArt = atlas[GreenhouseArt.WALL]
+                val doorArt = atlas[GreenhouseArt.DOOR]
+                val postArt = atlas[GreenhouseArt.POST]
+                for (wall in greenhouses.wallsOf(cell)) {
+                    val art = (if (wall.door) doorArt else wallArt) ?: continue
+                    val from = transform.worldToScreen(wall.from.x, wall.from.y)
+                    val to = transform.worldToScreen(wall.to.x, wall.to.y)
+                    submit(obj, RenderLayer.SHADOWS, depth) {
+                        drawRunFootShadow(from, to, transform.tileWidth)
+                        drawRunPieceShadow(atlasImage, art, from, to, spriteScale, ambience.light)
+                    }
+                    val place = if (wall.side.isFront) GreenhouseLook.FRONT_WALL_DEPTH else GreenhouseLook.BACK_WALL_DEPTH
+                    submit(obj, RenderLayer.GRID_OBJECTS, depth + place) {
+                        drawGreenhouseGlass(transform, wall)
+                        drawRunPiece(atlasImage, art, from, to, spriteScale)
+                    }
+                }
+                if (postArt != null) {
+                    for (post in greenhouses.postsOf(cell)) {
+                        val foot = transform.worldToScreen(post.x.toFloat(), post.y.toFloat())
+                        val place = if (post.back) GreenhouseLook.BACK_POST_DEPTH else GreenhouseLook.FRONT_POST_DEPTH
+                        submit(obj, RenderLayer.GRID_OBJECTS, depth + place) { drawSprite(atlasImage, postArt, foot, spriteScale) }
+                    }
+                }
+                if (GreenhouseLook.ROOF == GreenhouseRoof.FRAMES) {
+                    for (piece in greenhouses.roofOf(cell)) {
+                        submit(obj, RenderLayer.GRID_OBJECTS, depth + GreenhouseLook.ROOF_DEPTH) { drawGreenhouseRoof(transform, piece) }
                     }
                 }
             }
@@ -736,6 +762,9 @@ private fun submitObjects(
         val isGroundCover = obj.objectId.startsWith(GROUND_OBJECT_ID_PREFIX)
         // Null while the atlas has no sprite for this object; the placeholder is drawn instead.
         val sprite = atlas[TileSetDefinition.assetIdFor(obj)]
+        // A crop under glass is drawn smaller, to stay under the walls' top.
+        val underGlass = obj.isPlant && grid.isUnderGlass(obj.gridX, obj.gridY)
+        val thingScale = if (underGlass) spriteScale * GreenhouseLook.CROP_SCALE else spriteScale
 
         val light = ambience.light
         val sway = ambience.sway(obj.gridX + 0.5f, obj.gridY + 0.5f)
@@ -853,8 +882,8 @@ private fun submitObjects(
         if (!isGroundCover) {
             submit(obj, RenderLayer.SHADOWS, depth) {
                 if (sprite != null && atlasImage != null) {
-                    drawContactShadow(base, min(sprite.drawnWidth(spriteScale) * 0.62f, unit * 0.7f))
-                    drawSpriteShadow(atlasImage, sprite, base, spriteScale, light, flipped = obj.isFlipped)
+                    drawContactShadow(base, min(sprite.drawnWidth(thingScale) * 0.62f, unit * 0.7f))
+                    drawSpriteShadow(atlasImage, sprite, base, thingScale, light, flipped = obj.isFlipped)
                 } else if (structure != null) {
                     drawStructureShadow(transform, obj, structure, light)
                 } else {
@@ -879,13 +908,13 @@ private fun submitObjects(
                     drawSprite(painting, sprite.copy(atlasX = 0, atlasY = 0), base, spriteScale, flipped = obj.isFlipped)
                 } else if (obj.status == PlantStatus.UNNOURISHED) {
                     scale(WEAK_PLANT_SCALE, WEAK_PLANT_SCALE, pivot = base) {
-                        drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped, colorFilter = WEAK_PLANT_FILTER)
+                        drawSwayingSprite(atlasImage, sprite, base, thingScale, lean, flipped = obj.isFlipped, colorFilter = WEAK_PLANT_FILTER)
                     }
                 } else {
-                    drawSwayingSprite(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
+                    drawSwayingSprite(atlasImage, sprite, base, thingScale, lean, flipped = obj.isFlipped)
                 }
-                // On a snowy day the snow lies on the top of every plant.
-                if (obj.isPlant && ambience.weather == WeatherType.SNOWY) {
+                // On a snowy day the snow lies on the top of every plant out in the open.
+                if (obj.isPlant && !underGlass && ambience.weather == WeatherType.SNOWY) {
                     drawSpriteSnow(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
                 }
                 if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {
@@ -928,7 +957,7 @@ private fun submitObjects(
         }
         if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
             // Just over the top of the plant's picture, which is as tall as this crop at this stage.
-            val plantTop = sprite?.let { base.y - it.drawTop(base.y, spriteScale) }
+            val plantTop = sprite?.let { base.y - it.drawTop(base.y, thingScale) }
             submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit, plantTop) }
         }
         // A running sprinkler throws its water over the beds round it, on the garden's clock.
@@ -963,7 +992,7 @@ private fun soilTint(quality: Int): Color? = when (SoilGrade.of(quality)) {
 }
 
 /** How opaque a greenhouse's picture is while a crop grows inside, so that the crop shows through. */
-private const val GREENHOUSE_OVER_CROP_ALPHA = 0.55f
+private val GREENHOUSE_FLOOR = SoilJoins(north = true, east = true, south = true, west = true)
 
 /** How long the unveiling of a finished building lasts. */
 private const val BURST_MILLIS = 1100
@@ -1468,6 +1497,8 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
             )
             return when {
                 objectId == GridObject.RIVER_OBJECT_ID -> PreviewScene(3, 0.1f, listOf(at(0, 1), at(1, 1), at(2, 1)))
+                // Joined up, as it is meant to be seen: nothing growing in it.
+                objectId == GridObject.GREENHOUSE_OBJECT_ID -> PreviewScene(2, GREENHOUSE_HEADROOM, listOf(at(0, 0), at(1, 0), at(0, 1), at(1, 1)))
                 objectId.startsWith(GridObject.FLOOR_ID_PREFIX) ->
                     PreviewScene(2, 0.1f, listOf(at(0, 0), at(1, 0), at(0, 1), at(1, 1)))
                 objectId.startsWith(GridObject.PLANT_ID_PREFIX) -> PreviewScene(1, 1.05f, listOf(at(0, 0)))
@@ -1484,6 +1515,9 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
         }
     }
 }
+
+/** Room over the far corner of a greenhouse's preview, in tile widths: its walls and its roof. */
+private const val GREENHOUSE_HEADROOM = GreenhouseLook.WALL_HEIGHT + GreenhouseLook.ROOF_MAX_RISE
 
 /** The lawn of a preview sits on a slab of soil this thick, in tile heights (see drawTerrain). */
 private const val PREVIEW_SOIL = 0.6f
@@ -2990,6 +3024,7 @@ private fun DrawScope.drawSnowCover(transform: IsometricTransform, gardenMap: Ga
             if (!gardenMap.isInside(x, y)) continue
             val occupant = grid.occupantAt(x, y)
             if (occupant != null && (occupant.isTerrain || occupant.isPond)) continue
+            if (grid.isUnderGlass(x, y)) continue
             drawPath(transform.tilePath(x, y), SNOW_COVER)
         }
     }

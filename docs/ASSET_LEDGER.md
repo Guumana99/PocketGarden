@@ -79,7 +79,7 @@
 | 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた） |
 | 小屋（`struct_hut`） | ✅ | Recraft | `struct_hut`（原画 `building_hut.png`を差し替え：片流れのトタン屋根・板壁・観音開きの戸）。色変えのマスクは `mask_struct_hut`。土台の石が明るいクリーム色なので、真っ白だけを抜いて切り抜いた |
 | コテージ（`struct_cottage`） | ✅ | Recraft | `struct_cottage`（原画 `building_cottage.png`）。土台の下の帯をマスの角まで伸ばしている。色変えのマスクは `mask_struct_cottage` |
-| 温室（`floor_greenhouse`） | ✅ | Recraft | `floor_greenhouse`（原画 `building_greenhouse.png`）。中の床は `floor_tilled` |
+| 温室（`floor_greenhouse`） | ✅ | Recraft | 連結式（#90）：`struct_greenhouse_wall` `struct_greenhouse_door` `struct_greenhouse_post`（原画 `struct_greenhouse_wall.png` `struct_greenhouse_door.png`、`tools/prepare_greenhouse_art.py`）。ガラス・屋根の枠はコード描画（`GreenhousePainter`）、床は耕した土のコード描画。1 枚絵の `floor_greenhouse` は使わなくなったがアトラスに残してある |
 | 工事現場（シート・足場） | ⬜ | — | 演出としてコードで描く（建てる途中の進み具合で足場とシートが変わる）。建物ごとの絵は無い |
 
 ## 地面・装飾
@@ -119,7 +119,7 @@
 | 小屋・井戸（`struct_hut` `struct_well`） | ✅ | `icon_struct_hut.png` `icon_struct_well.png`（#74、建物の原画から） |
 | 岩・ベンチ・石灯籠・スプリンクラー（`deco_rock` `deco_bench` `deco_lantern` `deco_sprinkler`） | ✅ | `icon_deco_*.png`（#74、飾りの原画から） |
 | 小石・野の花・ウッドデッキ・石畳（`ground_pebble` `ground_flowers` `floor_wood` `floor_cobblestone`） | ✅ | `icon_ground_*.png` `icon_floor_*.png`（#74。斜め上から見た板の形のまま） |
-| コテージ・温室（`struct_cottage` `floor_greenhouse`） | ✅ | `icon_struct_cottage.png` `icon_floor_greenhouse.png`（#77、庭で使っている切り抜き済みの絵 `raw_assets/` から） |
+| コテージ・温室（`struct_cottage` `floor_greenhouse`） | ✅ | `icon_struct_cottage.png` `icon_floor_greenhouse.png`（温室は #90 から連結式の 2×2 の姿、`tools/prepare_greenhouse_art.py`。#77、庭で使っている切り抜き済みの絵 `raw_assets/` から） |
 | 柵 3 種・縁石（`struct_fence` `struct_fence_white` `struct_fence_bamboo` `struct_edging_brick`） | ✅ | `icon_struct_fence.png` ほか 3 枚（#85、1 本で立つときの絵から。`tools/prepare_fence_art.py`）。縁石は取り下げ中で店には出ない |
 | 風車（`struct_windmill`） | ✅ | `icon_struct_windmill.png`（#77、本体と羽根の切り抜きを、庭と同じ取り付け点で重ねた） |
 | 池・芝生（`deco_pond` `ground_grass`） | ✅ | `icon_deco_pond.png`（#77、`pond.png`）・`icon_ground_grass.png`（#77、`tile_grass_iso.png` を板の形のまま） |

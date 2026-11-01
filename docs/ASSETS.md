@@ -30,8 +30,8 @@
 - ひまわり（#58、4 枚）：`plant_sunflower_stage{1..3}.png` と `_withered.png`。1 段階目は 3 本の双葉で、アンカーは 3 本の真ん中（`atlas_overrides.json`）。
 - #58 で消した旧版：`plant_tulip_stage4`・`plant_tulip_withered`・`plant_sunflower_stage4`（4 段階の手描き風）。旧 1〜3 段階は同じ名前で上書き。
 - 地面と建物（#40、`tools/prepare_building_art.py` で加工）：
-  - `tile_grass`・`tile_grass_dark`（芝生。#57 から `tile_grass_iso.png` の上面から作る。#47 から明るさの傾きを取り除き、1 色で並べる。`tile_grass_dark` は残っているが使っていない）、`floor_tilled`（耕した土。#47 から畑はコード描画になり、温室の床でだけ使う）
-  - `struct_cottage`（コテージ）、`floor_greenhouse`（温室）、`struct_windmill`（風車の本体）、`struct_windmill_blades`（風車の羽根）
+  - `tile_grass`・`tile_grass_dark`（芝生。#57 から `tile_grass_iso.png` の上面から作る。#47 から明るさの傾きを取り除き、1 色で並べる。`tile_grass_dark` は残っているが使っていない）、`floor_tilled`（耕した土。#47 から畑はコード描画。#90 からはどこでも使っていない）
+  - `struct_cottage`（コテージ）、`floor_greenhouse`（#90 まで使っていた 1 枚絵の温室。未使用）、`struct_greenhouse_wall` `_door` `_post`（連結式の温室）、`struct_windmill`（風車の本体）、`struct_windmill_blades`（風車の羽根）
   - スプリンクラー（`deco_sprinkler`、水しぶき `deco_sprinkler_spray_0`〜`_7`）は**アトラスに入っていない**（#61 で確認）。本体も水しぶきもコード描画。絵を入れればその名前で差し替わる
 - 作物 4 種 × 4 枚（#57）：`plant_{corn,eggplant,carrot,wheat}_stage{1..3}.png` と `_withered.png`（3 段階）。トマト・イチゴの `_stage{1..3}` も #57 の絵に差し替え、`_withered` は #58 で届いた絵に差し替え。
   - 受け取ったのは `res/drawable/crop_*.png`（1024×1024、白背景・透過なし）。原画は `tools/source_art/` に移し、`tools/prepare_drawable_art.py` で切り抜いて `raw_assets/` に書く（下の「#57 の絵を入れるとき」）。
@@ -124,7 +124,7 @@
 | 建物 | 小屋（`struct_hut`） | 2000 | Lv11 | 確定アセット | `struct_hut`（#74）、アイコン画像あり |
 | 建物 | コテージ（`struct_cottage`） | 800 | Lv3 | 確定アセット | `struct_cottage` |
 | 建物 | 太鼓橋（`struct_bridge_taiko`） | 3500 | Lv17 | 確定アセット | `struct_bridge_taiko`（原画 `bridge_taiko.png`）、アイコン画像あり |
-| 建物 | 温室（`floor_greenhouse`） | 3000 | Lv18 | 確定アセット | `floor_greenhouse`、床は `floor_tilled` |
+| 建物 | 温室（`floor_greenhouse`） | 1500 | Lv18 | 確定アセット | 1 マスの値段。連結式（#90）：`struct_greenhouse_wall` `_door` `_post`、ガラスと屋根はコード、床は耕した土 |
 | 飾り | 芝生（`ground_grass`） | 10 | 最初から | 確定アセット＋コード | 育ちきると `tile_grass`。育つ途中の苗床と葉の切り抜きはコード（#61） |
 | 飾り | 小石（`ground_pebble`） | 10 | 最初から | 確定アセット | `ground_pebble.png`（#74）、アイコン画像あり |
 | 飾り | 石畳（`floor_cobblestone`） | 10 | 最初から | 確定アセット | `floor_cobblestone.png`（#74 で差し替え）、アイコン画像あり |
@@ -198,13 +198,14 @@
 | `creature_{squirrel,squirrel_run,bird,bird_fly,frog,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures_0.png` に |
 | `tile_path_cobblestone.png` | **#74 から未使用（保管）**。イラスト調の石畳（#40）。#73 まで `build_terrain_assets.py`（#85 で削除）が 4 分の 1 を切り出して石畳の床にしていた。#74 で `tile_cobblestone_iso.png` から作った `floor_cobblestone.png` に差し替え |
 | `building_cottage.png` | コテージ（#40）。透過はきれいだった。切り抜いて 3 マス分の幅で描く（描画倍率 約 2.5）。土台が 2:1 より平たい。#41 では土台の左右の角を 3×3 の左右の角にそろえていた（anchorY 0.7975）が、前の列が空いて奥に寄って見えたので、#55 から他の建物と同じく左右の角と前の角のずれを半分ずつにする（`ground_centre_y`、anchorY 0.7481、約 0.2 マス手前へ） |
-| `building_greenhouse.png` | 温室（#40）。ガラスは半透明。土台が 1 マスになるよう縮小 |
+| `building_greenhouse.png` | 温室（#40）。**#90 からゲームでは未使用（保管）**。アトラスの `floor_greenhouse` はこれから作る |
+| `struct_greenhouse_wall.png` `struct_greenhouse_door.png` | 連結式の温室の壁と扉付きの壁（#90、白背景 1024×1024）。1 区画を正面から見た絵で、窓は空。`tools/prepare_greenhouse_art.py` で切り出す |
 | `building_windmill_body.jpg` | 風車の本体（#40）。**JPEG で透過が無く、灰色の市松模様（48px、2 トーン）が背景として描き込まれていた**。マスごとの色で抜いた |
 | `building_windmill_blades.jpg` | 風車の羽根（#40）。同じく白と灰色の市松模様（約 12px）と、白いにじみが描き込まれていた。色で抜いた |
 | `tile_grass_iso.png` | 芝生（#57、受け取ったときは `res/drawable/tile_grass.png`）。白背景のアイソメの芝の板（1024×1024）。`prepare_drawable_art.flat_lawn` が上面を真上から見た正方形（720 px）に戻し、`flat_to_tile` で中央の正方形の半分（`share=0.5`）を 2:1 のひし形へ貼り、ぼかし 1.2px、厚み 55px の側面を足して `tile_grass` に。細かい葉のままだとスマホで約 7 分の 1 に縮んだとき砂嵐のようにちらつくため、葉を大きく柔らかくしている。#53 の `tile_lawn_flat.png` はこれに置き換えて削除 |
 | `crop_*.png`（63 枚） | 作物の原画（#57・#58・#62〜#69）。トウモロコシ・ナス・小麦・ひまわり・ミント・コスモス・スノードロップ・スイカ・ラベンダー・しいたけ・ポインセチアは `_stage1`〜`3` と `_withered`、トマト・イチゴは `_1`〜`3` と `_withered`、ニンジンは `_stage1`〜`3` と `_withered`（#74 で `_1`・`_3` を改名、`_stage2` は #74 で届いた）、チューリップは `_stage1`・`_stage2` と 6 色の `_<色>_stage3` | `prepare_drawable_art.py` が切り抜いて `raw_assets/plant_*` に |
 | `icon_*.png`（18 枚） | アイコンの原画（#57、ミントは #62、コスモスは #63、スイカは #65、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72）。バラ・パプリカ・大根は株の絵をこのスクリプトで作っていないので、アイコンだけ作る（`ICON_ONLY`）。大根は白い根が欠けたため、ラベンダーと同じく `ICON_CUT` で真っ白だけを背景として抜く。`icon_snowdrop.png` は #64 では枯れた絵の複製だったが、#66 で正しい絵に置き直して使っている | `prepare_drawable_art.py` が切り抜いて `res/drawable-nodpi/` に |
-| `tile_soil_flat.png` | 耕した土（#53）。同じく真上からの写真（受け取ったときは `floor_tilled.png`）。正方形全体をひし形へ、厚み 33px で `floor_tilled` に（温室の床でだけ使う） |
+| `tile_soil_flat.png` | 耕した土（#53）。同じく真上からの写真（受け取ったときは `floor_tilled.png`）。正方形全体をひし形へ、厚み 33px で `floor_tilled` に（#90 からは未使用） |
 | `pond.png` | 池（#53）。透過ありのアイソメの絵（丸太の枠と石）。#54 から `res/drawable/pond.png` にコピーして池（`deco_pond`）に使用。`raw_assets/` に置くと詰められて `CodeArtTest` が落ちるので、原画はここに置いてある |
 | `tile_grass_default.png` | **#53 から未使用**。芝生のタイル（#40）。縁に白いにじみ。1 マス幅に縮め、上面が 2:1 のひし形になるよう縦に伸ばした（元は約 2.35:1） |
 | `tile_dirt_plowed.png` | **#53 から未使用**。耕した土のタイル（#40）。縁に白いにじみと、右上に青い点（ゴミ）。同様に加工（元の上面は約 2.7:1） |
@@ -242,6 +243,17 @@ python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-w
 - `--preview` は作物ごとに段階を並べた絵（実際の大きさの比）と、アイコンの一覧、真上から見た芝生を出す。
 - 地面の板 4 枚（荒れ地・耕した土・崩しかけた地面・水面）の上面の位置を表示する。`GroundSlab` の値はこれ。絵を差し替えたらこの値も直し、荒れ地は `FlatGround.FIELD_VERSION` を上げる（作った地面のキャッシュを捨てるため）。
 - 1 回 1 分ほど。
+
+### 温室の絵を入れるとき（#90）
+
+```bash
+python tools/prepare_greenhouse_art.py
+```
+
+- 壁は端の柱の中央から中央まで（列 76〜947、行 148〜875）を切り、横 360px（1 マスの辺の画面の幅）・縦 432px（0.6 マス）にする。並べると柱の半分どうしが合わさって 1 本になる。柵の `_rail` と同じく、ゲームが斜めのマスに沿ってせん断して描く（`drawRunPiece`）ので、1 枚で両方向に使える。
+- 角の柱は壁の絵の端の柱（列 52〜100）から、石ごと切り出して幅 36px にする。
+- 窓は白を抜いて空のまま。ガラスはコードで枠の後ろに描く（`drawGreenhouseGlass`）。
+- アイコン `icon_floor_greenhouse.png` もこのスクリプトが 2×2・作物なしの姿で描く。そのあと `asset_packer.py` を回す。
 
 ### 柵と縁石の絵を入れるとき（#85）
 

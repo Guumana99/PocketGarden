@@ -49,7 +49,7 @@ enum class ItemCategory {
  *                  well         Lv.5           400   30 XP; soil round it dries half as fast; 30 min to build
  *                  windmill     Lv.9         1,200   45 XP; 2x2, its sails turn; soil within two cells dries a little slower; 45 min
  *                  hut          Lv.11        2,000   60 XP; plants round it grow 10 % faster; 1 h
- *                  greenhouse   Lv.18        3,000   40 XP; one cell of soil under glass, sown in any season
+ *                  greenhouse   Lv.18        1,500   40 XP; a cell of soil under glass, sown in any season; cells join up
  *     decorations  grass        from start      10   ground cover
  *                  pebble       from start      10   ground cover
  *                  cobblestone  from start      10   paving; things can stand on it
@@ -305,11 +305,12 @@ enum class GardenItem(
     ),
 
     /**
-     * A one-cell glass greenhouse over a bed of soil. Seeds go into it as into tilled soil, and
-     * whatever the season. Paving-like: it lies in the cell's floor layer.
+     * One cell of a glass greenhouse over a bed of soil; cells side by side are one greenhouse
+     * (GreenhouseLayout). Seeds go into it as into tilled soil, and whatever the season.
+     * Paving-like: it lies in the cell's floor layer.
      */
     FLOOR_GREENHOUSE(
-        "floor_greenhouse", price = 3000, objectId = GridObject.GREENHOUSE_OBJECT_ID, category = ItemCategory.STRUCTURE,
+        "floor_greenhouse", price = 1500, objectId = GridObject.GREENHOUSE_OBJECT_ID, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(18), placeXp = 40,
     ),
 
