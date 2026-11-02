@@ -141,6 +141,14 @@ class RewardTest {
     }
 
     @Test
+    fun `a rain in the first steps goes against nothing`() = runBlocking {
+        repo.objects["a"] = plant("a", 0, 0.5f)
+        assertEquals(RewardResult.GRANTED, grant.blessedRain(t0, sunny, today, counted = false))
+        assertEquals(0, limits.usedToday(RewardType.BLESSED_RAIN))
+        assertEquals(RewardResult.GRANTED, grant.blessedRain(t0, sunny, today))
+    }
+
+    @Test
     fun `the second rain of the day is refused and changes nothing`() = runBlocking {
         repo.put(plant("a", 0, growth = 0f))
 
@@ -247,6 +255,10 @@ class RewardTest {
         assertTrue(store.tryConsume(RewardType.BLESSED_RAIN, today))
         assertFalse(store.tryConsume(RewardType.BLESSED_RAIN, today))
         assertFalse(store.tryConsume(RewardType.BLESSED_RAIN, today))
+        store.giveBack(RewardType.BLESSED_RAIN, today - 1)
+        assertFalse(store.tryConsume(RewardType.BLESSED_RAIN, today))
+        store.giveBack(RewardType.BLESSED_RAIN, today)
+        assertTrue(store.tryConsume(RewardType.BLESSED_RAIN, today))
 
         val usage = store.usage.first()
         assertEquals(0, usage.remaining(RewardType.BLESSED_RAIN, today))
@@ -274,7 +286,7 @@ class RewardTest {
 }
 
 /** In-memory stand-in with the same rules as the stored counter. */
-private class FakeRewardLimits : RewardLimitRepository {
+internal class FakeRewardLimits : RewardLimitRepository {
     private val state = MutableStateFlow(RewardUsage())
     override val usage: Flow<RewardUsage> = state
 
@@ -287,5 +299,10 @@ private class FakeRewardLimits : RewardLimitRepository {
         val base = if (current.epochDay == today) current.used else emptyMap()
         state.value = RewardUsage(today, base + (type to used + 1))
         return true
+    }
+
+    override suspend fun giveBack(type: RewardType, today: Long) {
+        val current = state.value
+        if (current.epochDay == today) state.value = current.copy(used = current.used - type)
     }
 }

@@ -98,7 +98,7 @@ object CreatureVisits {
     }
 
     /** Where [rule]'s creature settles: a cell, and what it sits on there (if anything). */
-    private fun spotFor(
+    internal fun spotFor(
         rule: VisitRule,
         garden: GardenSnapshot,
         grid: GardenGrid,
@@ -183,8 +183,12 @@ class NatureNotes(notes: List<NatureNote>) {
     val unopened: Int get() = Creature.entries.count(::isNew)
 
     companion object {
-        fun creatureKey(creature: Creature) = "creature:${creature.id}"
+        /** Notes with every creature and combination met on [today], none of them new: only ever looked at, never kept. */
+        fun allMet(today: Long): NatureNotes = NatureNotes(
+            (Creature.entries.map(::creatureKey) + VisitRule.entries.map(::ruleKey)).map { NatureNote(it, today, count = 1) },
+        )
 
+        fun creatureKey(creature: Creature) = "creature:${creature.id}"
         fun ruleKey(rule: VisitRule) = "combination:${rule.name.lowercase()}"
     }
 }

@@ -354,6 +354,9 @@
     <string name="shop_short_by">あと %1$d コイン足りません。</string>
     <string name="msg_reward_cancelled">途中で終了したため、特典は付与されませんでした</string>
     <string name="msg_reward_unavailable">ただいま準備中です。\n少し待ってからお試しください</string>
+    <string name="msg_reward_loading">もう少しだけお待ちください</string>
+    <string name="collection_zoom_in">絵を拡大する</string>
+    <string name="collection_zoom_out">絵を元の大きさに戻す</string>
     <string name="msg_reward_limit">本日の回数上限に達しました</string>
     <string name="msg_blessed_rain_done">雨が降って、作物がぐんと育ちました</string>
     <string name="msg_bonus_done">💰 臨時ボーナス +%1$d 🪙 を受け取りました</string>
@@ -413,6 +416,10 @@
     <string name="debug_time_clock">端末の時計</string>
     <string name="debug_forecast">天気予報：今日 %1$s　明日 %2$s</string>
     <string name="debug_zoom">マップ倍率 %1$s（標準 %2$s）</string>
+    <string name="debug_book_all">図鑑をすべて登録</string>
+    <string name="debug_book_all_hint">表示だけの切り替えです。保存された記録は変わりません</string>
+    <string name="debug_call_title">生き物を呼ぶ</string>
+    <string name="debug_call_hint">2 種まで選べます。ON の間は、条件を無視して来ます。必要な物が無ければ庭に置きます</string>
 
     <!-- Title screen -->
     <string name="title_subtitle">Pocket Garden</string>
@@ -483,7 +490,7 @@
     <string name="tip_visitor">お客さんが来ているよ！\nタップすると、自然メモに書き留められるよ</string>
     <!-- The closing board. Lines are broken by hand so that no phrase is split. -->
     <string name="tutorial_done_title">🎉 いよいよ本番！</string>
-    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\nお庭に「はじめてのおくりもの」を置いておいたよ。\n開けてみてね。</string>
+    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\nお庭に「はじめてのおくりもの」\nをおいたよ。開けてみてね。</string>
     <string name="tutorial_done_ok">お庭づくりを始める</string>
     <!-- Features handed over one by one after the first steps. -->
     <string name="reveal_title">新しい機能が使えるようになりました</string>
@@ -493,7 +500,7 @@
     <string name="reveal_edit_text">芝生や柵、建物などを\n動かしたり持ち物に戻したりできます。\n編集中はお庭に格子線が出ます。</string>
     <string name="msg_not_this_step">🌱 今は案内の手順を進めましょう</string>
     <string name="reveal_rain_name">☔ 雨乞い</string>
-    <string name="reveal_rain_text">空の雨雲をタップすると、お庭にやさしい雨が降ります。\n作物がぐんと育ちます</string>
+    <string name="reveal_rain_text">右の雲のアイコンをタップすると、お庭にやさしい雨が降ります。\n作物がぐんと育ちます</string>
     <string name="reveal_collection_name">📖 図鑑</string>
     <string name="reveal_collection_text">育てた作物や置いたものが、\n図鑑に少しずつ記されていきます。</string>
     <string name="reveal_camera_name">📷 カメラ</string>
@@ -533,7 +540,7 @@
     <string name="post_button">ポスト</string>
     <string name="letter_ending_crops">%1$sは旬が過ぎたので、次の収穫でおしまいです。</string>
     <string name="letter_arrived_title">%1$s %2$sがやってきました</string>
-    <string name="letter_arrived_body">%1$sは、%2$sが育てられる季節です。ショップで種を手に入れて、さっそく育ててみませんか。</string>
+    <string name="letter_arrived_body">%1$sは、%2$sが育てられる季節です。\nショップで種を手に入れて育ててみませんか。</string>
     <string name="letter_arrived_body_none">%1$sになりました。お庭でのんびり過ごしてみませんか。</string>
     <string name="letter_coming_title">%1$s もうすぐ%2$s</string>
     <string name="letter_coming_body">もうすぐ%1$sがやってきます。今の季節の種は、季節が変わるとショップから姿を消します。育てたい種があれば、今のうちに買っておくと安心です。季節外れの種も、温室なら育てられます。</string>

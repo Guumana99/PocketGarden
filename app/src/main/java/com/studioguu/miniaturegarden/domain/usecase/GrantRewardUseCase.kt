@@ -36,9 +36,11 @@ class GrantRewardUseCase @Inject constructor(
      *
      * Before, it only shortened the growing time, and the plants' water stayed where it was: a
      * thirsty crop was still thirsty under the rain.
+     *
+     * @param counted whether it goes against the day's limit: a rain in the first steps does not.
      */
-    suspend fun blessedRain(now: Long, weather: WeatherForecast, today: Long): RewardResult {
-        if (!rewardLimits.tryConsume(RewardType.BLESSED_RAIN, today)) return RewardResult.LIMIT_REACHED
+    suspend fun blessedRain(now: Long, weather: WeatherForecast, today: Long, counted: Boolean = true): RewardResult {
+        if (counted && !rewardLimits.tryConsume(RewardType.BLESSED_RAIN, today)) return RewardResult.LIMIT_REACHED
         gardenRepository.runInTransaction {
             val garden = gardenRepository.getGridObjects()
             val updated = garden

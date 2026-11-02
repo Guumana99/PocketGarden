@@ -18,13 +18,25 @@ class SeasonLetterTest {
         assertEquals("", cropList(emptyList()))
         assertEquals("トマト", cropList(listOf("トマト")))
         assertEquals("トマトやスイカ", cropList(listOf("トマト", "スイカ")))
-        assertEquals("トマトやスイカ、ひまわりなど", cropList(listOf("トマト", "スイカ", "ひまわり")))
+        assertEquals("トマトやスイカ、ひまわり等", cropList(listOf("トマト", "スイカ", "ひまわり")))
+    }
+
+    @Test
+    fun `a long list goes on to a new line after the third`() {
+        assertEquals("チューリップやバラ、イチゴ、\nニンジン、菜の花等", cropList(listOf("チューリップ", "バラ", "イチゴ", "ニンジン", "菜の花")))
+    }
+
+    @Test
+    fun `no season's letter says など any more`() {
+        val dialog = File(main, "java/com/studioguu/miniaturegarden/ui/post/PostDialog.kt").readText()
+        assertFalse(dialog.contains("\"など\""))
+        assertFalse(string("letter_ending_crops")!!.contains("など"))
     }
 
     @Test
     fun `the letter names the crops, not their seedlings`() {
         val body = string("letter_arrived_body")!!
-        assertEquals("%1\$sは、%2\$sが育てられる季節です。ショップで種を手に入れて、さっそく育ててみませんか。", body)
+        assertEquals("%1\$sは、%2\$sが育てられる季節です。\\nショップで種を手に入れて育ててみませんか。", body)
         assertFalse(body.contains("苗"))
         assertEquals(null, string("letter_in_season"))
         // The names are the crops' own ("トマト"), not the shop's ("トマトの苗").

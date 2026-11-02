@@ -153,4 +153,15 @@ data class CollectionProgress(private val records: List<CollectionRecord>) {
 
     fun readyIn(category: CollectionCategory): Int =
         CollectionEntry.inCategory(category).count { stateOf(it) == PageState.READY }
+
+    companion object {
+        /** A book with every page filled in on [today], every colour too: only ever looked at, never kept. */
+        fun allRegistered(today: Long): CollectionProgress = CollectionProgress(
+            CollectionEntry.entries.flatMap { entry ->
+                val colours = PlantSpecies.fromObjectId(entry.objectId)?.bloomColours.orEmpty()
+                (listOf(entry.objectId) + colours.map { CollectionEntry.colourRecordId(entry.objectId, it) })
+                    .map { CollectionRecord(it, count = 1, firstObtainedAt = today, revealed = true) }
+            },
+        )
+    }
 }

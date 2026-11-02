@@ -65,6 +65,25 @@ object GroundGarden {
     }
 
     /**
+     * Beds against the water (`--es garden banks`): the stream and the pond must not lie over them.
+     *
+     *     y\x 0 1 2 3 4 5 6 7 8 9 10
+     *      2  . . R R R T T T . . .      R ridges, T tilled earth, ~ stream, O pond, G lawn
+     *      3  ~ ~ ~ ~ ~ ~ ~ ~ ~ . .
+     *      4  . . T T T R R R ~ . .
+     *      5  . . . . . . G G ~ . .
+     *      6  . . R R R . . . ~ . .
+     *      7  . . R O R . . . . . .
+     *      8  . . R R R . . . . . .
+     */
+    fun banks(now: Long): List<GridObject> =
+        place(now, GridObject.RIVER_OBJECT_ID, cells(0..8, 3..3) + cells(8..8, 4..6)) +
+            place(now, GridObject.TILLED_SOIL_OBJECT_ID, cells(2..4, 2..2) + cells(5..7, 4..4) + cells(2..4, 6..8).filter { it != GridCell(3, 7) }) +
+            place(now, GridObject.LOOSE_SOIL_OBJECT_ID, cells(5..7, 2..2) + cells(2..4, 4..4)) +
+            place(now, LAWN, cells(6..7, 5..5)) +
+            place(now, GridObject.POND_OBJECT_ID, listOf(GridCell(3, 7)))
+
+    /**
      * The small ornaments on a lawn (`--es garden lawnthings`), and a sprinkler among beds.
      *
      *     y\x 0 1 2 3 4 5 6 7 8 9 10

@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
  *         --ez load true                      # replaces the saved garden with [ShowcaseGarden]
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
- *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai), with load
+ *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks), with load
  *         --es tutorial REVEAL_RAIN           # ... at this step of the first steps, with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
@@ -128,7 +128,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val nanohana = garden == "nanohana"
         val bridgePlaces = garden == "bridgeplace"
         val expand = garden == "expand"
-        val feedback = garden == "fb" || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val banks = garden == "banks"
+        val feedback = garden == "fb" || banks || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -141,6 +142,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     bridges -> FenceGarden.bridges(now)
                     crops -> CropGarden.objects(now)
                     ground -> GroundGarden.ground(now)
+                    banks -> GroundGarden.banks(now)
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)
                     greenhouse -> GroundGarden.greenhouse(now)

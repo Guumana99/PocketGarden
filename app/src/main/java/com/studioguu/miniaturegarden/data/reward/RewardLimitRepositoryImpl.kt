@@ -45,6 +45,10 @@ class RewardLimitRepositoryImpl @Inject constructor(
         return consumed
     }
 
+    override suspend fun giveBack(type: RewardType, today: Long) {
+        dataStore.edit { prefs -> if (read(prefs).epochDay == today) prefs.remove(countKey(type)) }
+    }
+
     private fun read(prefs: Preferences): RewardUsage = RewardUsage(
         epochDay = prefs[EPOCH_DAY] ?: 0L,
         used = RewardType.entries.associateWith { prefs[countKey(it)] ?: 0 },

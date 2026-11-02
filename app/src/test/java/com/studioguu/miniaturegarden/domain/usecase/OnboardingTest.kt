@@ -19,6 +19,7 @@ import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TutorialGuide
@@ -49,6 +50,7 @@ private class FakePractice : PracticeMode {
 class OnboardingTest {
 
     private val t0 = 1_700_000_000_000L
+    private val TODAY = 20_000L
     private val sunny = WeatherType.SUNNY
 
     private val repo = FakeGardenRepository().apply {
@@ -157,11 +159,22 @@ class OnboardingTest {
     }
 
     @Test
+    fun `coming out of the first steps there is a rain to call today, whatever was called before them`() = runBlocking {
+        val limits = FakeRewardLimits()
+        assertTrue(limits.tryConsume(RewardType.BLESSED_RAIN, TODAY))
+        assertTrue(limits.tryConsume(RewardType.COIN_BONUS, TODAY))
+        LeavePracticeUseCase(repo, FakePractice(), PlaceGiftUseCase(repo, GardenMap.DEFAULT), limits)(t0, TODAY)
+        assertTrue(limits.tryConsume(RewardType.BLESSED_RAIN, TODAY))
+        // Only the rain: the coins are the day's as ever.
+        assertEquals(1, limits.usedToday(RewardType.COIN_BONUS))
+    }
+
+    @Test
     fun `leaving the practice garden the first time brings the closing board and the first gift`() = runBlocking {
         val practice = FakePractice()
-        val leave = LeavePracticeUseCase(repo, practice, PlaceGiftUseCase(repo, GardenMap.DEFAULT))
+        val leave = LeavePracticeUseCase(repo, practice, PlaceGiftUseCase(repo, GardenMap.DEFAULT), FakeRewardLimits())
         val coins = repo.profile!!.coins
-        assertEquals(TutorialStep.FINISHED, leave(t0))
+        assertEquals(TutorialStep.FINISHED, leave(t0, TODAY))
         assertFalse(practice.practising.value)
         assertEquals(TutorialStep.FINISHED, step)
         val box = repo.objects.values.single()
@@ -170,7 +183,7 @@ class OnboardingTest {
         assertEquals(coins, repo.profile!!.coins)
         // Played again from the settings: nothing changes in the saved garden, and no second gift.
         repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.DONE)
-        assertEquals(TutorialStep.DONE, leave(t0))
+        assertEquals(TutorialStep.DONE, leave(t0, TODAY))
         assertEquals(1, repo.objects.size)
         assertEquals(TutorialStep.DONE, step)
     }

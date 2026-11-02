@@ -97,6 +97,7 @@ import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
 import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
+import com.studioguu.miniaturegarden.ui.debug.BookPreview
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.debug.DebugZoomReadout
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
@@ -396,35 +397,24 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 onWeatherTap = { showWeather = true },
             ) }
 
-            // A cloud in the sky, whose look says whether a rain can be called. Put away during the
-            // first steps, and handed over after them.
-            RevealedFeature(
-                visible = tutorialStep?.reveals(GardenFeature.BLESSED_RAIN),
-                introducing = tutorialStep?.introducing == GardenFeature.BLESSED_RAIN,
-                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 54.dp),
-            ) {
-                RainCloud(
-                    state = rainCloud.look(introducing = tutorialStep?.introducing == GardenFeature.BLESSED_RAIN),
-                    tint = remember(clockHour, season) { SceneTint.at(clockHour, season) },
-                    onClick = {
-                        val rest = rainCloud.restMessage
-                        if (rest == null) confirmRain = true else viewModel.showMessage(rest)
-                    },
-                )
-            }
-
             Column(
                 modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(top = 112.dp, end = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
-                // Edit mode: the grid, and arranging the garden's layout. Lit while it is on. Put
-                // away during the first steps, and handed over first after them.
+                // A cloud whose look says whether a rain can be called. Put away during the first
+                // steps, and handed over after them.
                 RevealedFeature(
-                    visible = tutorialStep?.reveals(GardenFeature.EDIT_MODE),
-                    introducing = tutorialStep?.introducing == GardenFeature.EDIT_MODE,
+                    visible = tutorialStep?.reveals(GardenFeature.BLESSED_RAIN),
+                    introducing = tutorialStep?.introducing == GardenFeature.BLESSED_RAIN,
                 ) {
-                    SideButton("✏️", stringResource(R.string.edit_mode_button), selected = editMode, onClick = viewModel::toggleEditMode)
+                    RainCloud(
+                        state = rainCloud.look(introducing = tutorialStep?.introducing == GardenFeature.BLESSED_RAIN),
+                        tint = remember(clockHour, season) { SceneTint.at(clockHour, season) },
+                        onClick = {
+                            val rest = rainCloud.restMessage ?: viewModel.adStillComing()
+                            if (rest == null) confirmRain = true else viewModel.showMessage(rest)
+                        },
+                    )
                 }
                 RevealedFeature(
                     visible = tutorialStep?.reveals(GardenFeature.COLLECTION),
@@ -437,6 +427,14 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                             CountBadge(collectionReady, Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 4.dp))
                         }
                     }
+                }
+                // Edit mode: the grid, and arranging the garden's layout. Lit while it is on. Put
+                // away during the first steps, and handed over first after them.
+                RevealedFeature(
+                    visible = tutorialStep?.reveals(GardenFeature.EDIT_MODE),
+                    introducing = tutorialStep?.introducing == GardenFeature.EDIT_MODE,
+                ) {
+                    SideButton("✏️", stringResource(R.string.edit_mode_button), selected = editMode, onClick = viewModel::toggleEditMode)
                 }
                 RevealedFeature(
                     visible = tutorialStep?.reveals(GardenFeature.CAMERA),
@@ -461,6 +459,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                         }
                     }
                 }
+                SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
                 if (BuildConfig.DEBUG) {
                     SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
                     if (debugZoom > 0f) DebugZoomReadout(debugZoom)
@@ -631,14 +630,15 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             }
 
             // A feature that has just been handed over: what it is and where it lives, beside the
-            // button that lights up for it. Laid last, over the panels above the tool bar. Gone at the player's tap, and the next one follows.
+            // button that lights up for it, clear of the buttons down the edge. Laid last, over the
+            // panels above the tool bar. Gone at the player's tap, and the next one follows.
             val introducing = tutorialStep?.introducing?.takeIf { !inviteNow }
             if (introducing != null) {
                 key(introducing) {
                     FeatureRevealCard(
                         feature = introducing,
                         onClose = { viewModel.acknowledgeTutorial(introducing.revealedAt) },
-                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 32.dp),
+                        modifier = Modifier.align(Alignment.Center).padding(start = 12.dp, end = 84.dp),
                     )
                 }
             }
@@ -801,6 +801,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     }
     if (showDebugMenu) {
         val debugTimeOfDay by viewModel.debugTimeOfDay.collectAsStateWithLifecycle()
+        val creatureCall by viewModel.creatureCall.collectAsStateWithLifecycle()
+        val bookAllRegistered by BookPreview.allRegistered.collectAsStateWithLifecycle()
         val outlook by viewModel.outlook.collectAsStateWithLifecycle()
         DebugMenuDialog(
             onSkipTime = viewModel::debugSkipTime,
@@ -811,6 +813,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             timeOfDayShown = debugTimeOfDay,
             outlook = outlook,
             zoomScale = debugZoom.takeIf { it > 0f },
+            creatureCall = creatureCall,
+            onCreatureCall = viewModel::debugCallCreatures,
+            bookAllRegistered = bookAllRegistered,
+            onBookAllRegistered = BookPreview::set,
             onDismiss = { showDebugMenu = false },
         )
     }
