@@ -121,6 +121,15 @@ object TileSetDefinition {
     /** The squirrel running, `creature_squirrel_run`: drawn while it goes from cell to cell. Its anchor is the middle of its underside. */
     const val SQUIRREL_RUNNING = "creature_squirrel_run"
 
+    /** The squirrel gathered up between two bounds, `creature_squirrel_run2`, anchored on its feet. */
+    const val SQUIRREL_GATHERED = "creature_squirrel_run2"
+
+    /** The bird with its beak at the ground, `creature_bird_peck`, anchored on its feet. */
+    const val BIRD_PECKING = "creature_bird_peck"
+
+    /** The frog in mid-leap, `creature_frog_jump`, anchored so that its head lies where the sitting frog's does. */
+    const val FROG_LEAPING = "creature_frog_jump"
+
     /**
      * A flier's picture in parts ([wingIds]), the body first: the butterfly's and the dragonfly's
      * `creature_<id>_body`, and the bird's flying one, `creature_bird_fly_body` (anchored on the
@@ -143,9 +152,10 @@ object TileSetDefinition {
         return listOf("${stem}_wing_left", "${stem}_wing_right")
     }
 
-    /** Every sprite id the creatures' atlas has: each visitor's picture, the running squirrel, and the fliers in parts. */
+    /** Every sprite id the creatures' atlas has: each visitor's picture, its other poses, and the fliers in parts. */
     val expectedCreatureSpriteIds: List<String> =
-        Creature.entries.flatMap { listOf(assetIdFor(it)) + listOfNotNull(wingedBodyId(it)) + wingIds(it) } + SQUIRREL_RUNNING
+        Creature.entries.flatMap { listOf(assetIdFor(it)) + listOfNotNull(wingedBodyId(it)) + wingIds(it) } +
+            listOf(SQUIRREL_RUNNING, SQUIRREL_GATHERED, BIRD_PECKING, FROG_LEAPING)
 
     /**
      * Things drawn from a picture of their own in `res/drawable` (through [TerrainTextures]),

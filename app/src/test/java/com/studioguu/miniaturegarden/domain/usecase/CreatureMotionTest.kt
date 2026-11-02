@@ -168,6 +168,32 @@ class CreatureMotionTest {
     }
 
     @Test
+    fun `each new picture shows only in its own moment, and is never cut by the water`() {
+        fun pose(action: CreatureAction, elapsed: Long, duration: Long, inPond: Boolean = false) =
+            CreaturePose(5f, 5f, 0f, Facing.LEFT, action, elapsed, duration, GridCell(5, 5), inPond = inPond, setsOff = true, stops = true)
+        // The frog: in its leaping picture in the air, sitting on the ground, in the water and out of it.
+        for (inPond in listOf(false, true)) {
+            assertFalse(VisitorLook.of(Creature.FROG, pose(CreatureAction.STEP, 0L, 600L, inPond), 0L).pose)
+            assertFalse(VisitorLook.of(Creature.FROG, pose(CreatureAction.STEP, 600L, 600L, inPond), 0L).pose)
+            assertFalse(VisitorLook.of(Creature.FROG, pose(CreatureAction.STAND, 100L, 600L, inPond), 0L).pose)
+            for (elapsed in 0L..600L step 10L) {
+                val look = VisitorLook.of(Creature.FROG, pose(CreatureAction.STEP, elapsed, 600L, inPond), 0L)
+                assertFalse(look.pose && look.submerged)
+            }
+            assertTrue(VisitorLook.of(Creature.FROG, pose(CreatureAction.STEP, 300L, 600L, inPond), 0L).pose)
+        }
+        // The squirrel: stretched out at the top of a bound, gathered up at its foot.
+        val run = (0L until 760L step 10L).map { VisitorLook.of(Creature.SQUIRREL, pose(CreatureAction.STEP, it, 760L), 0L) }
+        assertTrue(run.any { it.pose } && run.any { !it.pose })
+        assertTrue(run.zipWithNext().count { (a, b) -> a.pose != b.pose } >= 4)
+        for (look in run) assertEquals(look.lift < 0.06f * 0.45f, look.pose)
+        // The bird: its pecking picture in a peck, and not between.
+        val stop = (0L until 4000L step 10L).map { VisitorLook.of(Creature.BIRD, pose(CreatureAction.STAND, it, 4000L), 0L) }
+        assertTrue(stop.any { it.pose } && stop.any { !it.pose })
+        for (creature in listOf(Creature.BIRD, Creature.SQUIRREL, Creature.FROG)) assertFalse(VisitorLook.still(creature).pose)
+    }
+
+    @Test
     fun `a frog goes into a stream as well, half under the water`() {
         var inStream = false
         for (arrival in 0 until 30L) {
