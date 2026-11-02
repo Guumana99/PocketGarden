@@ -10,6 +10,7 @@ import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.data.ads.AdAvailability
 import com.studioguu.miniaturegarden.ui.hud.RainCloudState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,6 +68,28 @@ data class Showcase(
          * left it: some 6.5 seconds each way in an 11 x 11 garden, and a little time at the flower.
          */
         const val BUTTERFLY_STAY_MILLIS = 20_000L
+    }
+}
+
+/** Where the ads stand on a showcase's picture: as it says, or else as they really do. */
+fun Showcase?.adsOr(real: AdAvailability): AdAvailability = when (this?.adReady) {
+    true -> AdAvailability.READY
+    false -> AdAvailability.UNAVAILABLE
+    null -> real
+}
+
+/**
+ * Debug menu: the book's pages shown as if all were registered. Only what the pages show changes:
+ * nothing is written, and what counts (the badges, the number collected, the level) goes on
+ * reading the saved records, so switching it off leaves the book as it was.
+ */
+object BookPreview {
+    private val _allRegistered = MutableStateFlow(false)
+    val allRegistered: StateFlow<Boolean> = _allRegistered.asStateFlow()
+
+    /** Does nothing in a release build. */
+    fun set(on: Boolean) {
+        if (BuildConfig.DEBUG) _allRegistered.value = on
     }
 }
 

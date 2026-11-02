@@ -1,5 +1,7 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.Creature
+import com.studioguu.miniaturegarden.domain.model.CreatureCalls
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
@@ -11,12 +13,14 @@ import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PracticeGarden
+import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.TutorialGuide
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
 import com.studioguu.miniaturegarden.domain.model.nextAcquisition
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.PracticeMode
+import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import javax.inject.Inject
 
 /**
@@ -94,18 +98,43 @@ class OpenGiftUseCase @Inject constructor(
 }
 
 /**
+ * Debug menu: what the garden lacks for [creatures] to be called to it ([CreatureCalls]) is set
+ * down on free cells, and is from then on like anything else in the garden.
+ */
+class SetDownForCalledCreaturesUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+    private val gardenMap: GardenMapSource,
+) {
+    suspend operator fun invoke(creatures: List<Creature>, now: Long) = gardenRepository.runInTransaction {
+        val map = gardenMap.current()
+        for (creature in creatures) {
+            val objects = gardenRepository.getGridObjects()
+            if (CreatureCalls.visitsAt(now, listOf(creature), objects, map).isNotEmpty()) continue
+            val cell = CreatureCalls.freeCell(objects, map) ?: continue
+            gardenRepository.upsertGridObjects(CreatureCalls.thingsFor(creature, cell, now))
+        }
+    }
+}
+
+/**
  * Leaves the practice garden, by coming to the end of it or by skipping. The saved garden is
  * there again as it was. If it had not been through the first steps yet, it has now: the closing
  * board comes up, and the first gift is waiting in the garden.
+ *
+ * Whoever comes out of the first steps can call a rain today: the day's count outlives a garden
+ * thrown away at the title, and a player starting over on a day they have used theirs was told
+ * "tomorrow" by a cloud they had only just been handed.
  */
 class LeavePracticeUseCase @Inject constructor(
     private val gardenRepository: GardenRepository,
     private val practice: PracticeMode,
     private val placeGift: PlaceGiftUseCase,
+    private val rewardLimits: RewardLimitRepository,
 ) {
     /** @return the step the saved garden is on. */
-    suspend operator fun invoke(now: Long): TutorialStep {
+    suspend operator fun invoke(now: Long, today: Long): TutorialStep {
         practice.leave()
+        rewardLimits.giveBack(RewardType.BLESSED_RAIN, today)
         val saved = gardenRepository.getProgress() ?: return TutorialStep.DONE
         if (!saved.tutorialStep.isGuiding) return saved.tutorialStep
         placeGift(Gift.FIRST, now)

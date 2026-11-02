@@ -12,23 +12,28 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.data.ads.AdAvailability
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.effects.drawCloud
@@ -36,7 +41,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 /**
- * What the cloud at the top of the screen shows. It says by its look whether a rain can be called:
+ * What the cloud among the buttons shows. It says by its look whether a rain can be called:
  * no words and no numbers, nothing to hurry the player.
  *
  * @property calling a rain can be called: a tap asks whether to, the rest answer with [restMessage].
@@ -56,10 +61,10 @@ enum class RainCloudState(val calling: Boolean, val rain: Float, @param:StringRe
     fun look(introducing: Boolean): RainCloudState = if (introducing && !calling) READY else this
 
     companion object {
-        fun of(rainsLeft: Int, growing: Boolean, thirsty: Boolean, adReady: Boolean): RainCloudState = when {
+        fun of(rainsLeft: Int, growing: Boolean, thirsty: Boolean, ads: AdAvailability): RainCloudState = when {
             rainsLeft <= 0 -> USED_TODAY
             !growing -> NOTHING_GROWING
-            !adReady -> NO_AD
+            ads == AdAvailability.UNAVAILABLE -> NO_AD
             thirsty -> PARCHED
             else -> READY
         }
@@ -69,7 +74,7 @@ enum class RainCloudState(val calling: Boolean, val rain: Float, @param:StringRe
 /** How the cloud moves and rains. Pure, so that it can be looked at without a screen. */
 object RainCloudLook {
     /** How far it drifts up and down, in dp, and how long that takes. */
-    const val BOB_DP = 2.5f
+    const val BOB_DP = 1f
     const val BOB_MILLIS = 5_600L
 
     /** How long each drop's round is, and the share of it it spends falling: the rest it is not there. */
@@ -108,25 +113,35 @@ object RainCloudLook {
     fun colourOf(rain: Float, tint: Color): Color =
         lit(lerp(WHITE, GREY_BLUE, rain), tint, WHITE_LIGHT + (1f - WHITE_LIGHT) * rain.coerceAtMost(1f))
 
+    /**
+     * What sets it off from whatever lies behind it, being no bigger than a button now: a faint
+     * shadow round a white cloud, and a pale edge round a dark one, which gets lost in the night.
+     */
+    fun rimColour(rain: Float): Color = lerp(Color.Black.copy(alpha = 0.16f), Color.White.copy(alpha = 0.5f), rain.coerceAtMost(1f))
+
     /** The rain's colour, under the same light. */
     fun rainColour(tint: Color): Color = lit(STREAK, tint)
 
     /** How much of the scene's light a white cloud takes: not all, or at night it is lost in the sky. A rain cloud takes all of it, and stands out dark. */
     private const val WHITE_LIGHT = 0.7f
 
-    /** The screen's buttons are not under the scene's light: the cloud, being in the sky, takes it itself. */
+    /** The screen's buttons are not under the scene's light: the cloud, being a cloud, takes it itself. */
     private fun lit(colour: Color, tint: Color, share: Float = WHITE_LIGHT): Color = lerp(colour, tint.copy(alpha = 1f), tint.alpha * share)
 }
 
-private val CLOUD_WIDTH = 96.dp
-private val CLOUD_HEIGHT = 72.dp
+/** The size of the picture, in sp like the emoji of the buttons round it, which it keeps up with. */
+private val CLOUD_SIZE = 30.sp
+
+/** What a button of the column takes up round its emoji: a Material text button's sizes. */
+private val BUTTON_MIN_WIDTH = 58.dp
+private val BUTTON_MIN_HEIGHT = 48.dp
 
 /** Test tag of the rain cloud. */
 const val RAIN_CLOUD_TAG = "rain_cloud"
 
 /**
- * The cloud that calls the rain, fixed to the screen at the top of the sky. It changes colour
- * slowly, as a cloud would, and its whole box takes the tap, a finger's width and more.
+ * The cloud that calls the rain, at the head of the buttons down the right-hand edge and of a
+ * size with them. It changes colour slowly, as a cloud would, and rains and drifts a little.
  *
  * @param tint the light of the time of day over the scene.
  */
@@ -143,18 +158,20 @@ fun RainCloud(state: RainCloudState, tint: Color, onClick: () -> Unit, modifier:
     val name = stringResource(R.string.reward_rain_button)
     Box(
         modifier
-            .size(CLOUD_WIDTH, CLOUD_HEIGHT)
+            .defaultMinSize(BUTTON_MIN_WIDTH, BUTTON_MIN_HEIGHT)
             .pressScale(press)
             .clickable(interactionSource = press, indication = null, role = Role.Button, onClick = withTick(onClick))
             .semantics { contentDescription = name }
-            .testTag(RAIN_CLOUD_TAG),
+            .testTag(RAIN_CLOUD_TAG)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.size(with(LocalDensity.current) { CLOUD_SIZE.toDp() })) {
             val millis = time.toLong()
             val centre = Offset(size.width / 2f, size.height * 0.42f + RainCloudLook.bobAt(millis) * RainCloudLook.BOB_DP.dp.toPx())
             val rainColour = RainCloudLook.rainColour(tint)
             val foot = centre.y + size.height * 0.2f
-            val thin = 1.2.dp.toPx()
+            val thin = 1.dp.toPx()
             for ((across, length) in RainCloudLook.STREAKS) {
                 val x = size.width * across
                 drawLine(rainColour.copy(alpha = 0.6f * rain), Offset(x, foot), Offset(x - 2f, foot + size.height * length), thin, StrokeCap.Round)
@@ -162,9 +179,11 @@ fun RainCloud(state: RainCloudState, tint: Color, onClick: () -> Unit, modifier:
             for (drop in RainCloudLook.dropsAt(millis, rain)) {
                 val y = foot + size.height * (0.1f + 0.3f * drop.fall)
                 val x = size.width * drop.across
-                drawLine(rainColour.copy(alpha = drop.alpha), Offset(x, y), Offset(x - 1f, y + 4.dp.toPx()), thin * 1.3f, StrokeCap.Round)
+                drawLine(rainColour.copy(alpha = drop.alpha), Offset(x, y), Offset(x - 1f, y + 2.5.dp.toPx()), thin * 1.3f, StrokeCap.Round)
             }
-            drawCloud(centre, size.width * 0.235f, RainCloudLook.colourOf(rain, tint).copy(alpha = 0.96f))
+            val radius = size.width * 0.29f
+            drawCloud(centre, radius * 1.13f, RainCloudLook.rimColour(rain))
+            drawCloud(centre, radius, RainCloudLook.colourOf(rain, tint).copy(alpha = 0.96f))
         }
     }
 }

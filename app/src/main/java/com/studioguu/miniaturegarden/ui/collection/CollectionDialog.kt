@@ -75,11 +75,13 @@ import com.studioguu.miniaturegarden.domain.model.BloomRarity
 import com.studioguu.miniaturegarden.domain.model.CollectionCategory
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
+import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.PageState
 import com.studioguu.miniaturegarden.ui.components.ObjectPreview
+import com.studioguu.miniaturegarden.ui.debug.BookPreview
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.objectDisplayName
@@ -118,6 +120,9 @@ fun CollectionDialog(
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
     val terrain by viewModel.terrain.collectAsStateWithLifecycle()
     val natureNotes by viewModel.natureNotes.collectAsStateWithLifecycle()
+    // Debug menu: the pages shown as if all were registered. The cover and the marks stay the saved ones.
+    val allRegistered by BookPreview.allRegistered.collectAsStateWithLifecycle()
+    val today = remember { System.currentTimeMillis() }
 
     // Opening the book is what earns the day's bonus.
     LaunchedEffect(Unit) { viewModel.onOpened() }
@@ -156,7 +161,8 @@ fun CollectionDialog(
                     },
                     onSelectNature = { natureOpen = true },
                 )
-                val notes = natureNotes
+                val notes = if (allRegistered) remember(today) { NatureNotes.allMet(today) } else natureNotes
+                val pages = if (allRegistered) remember(today) { CollectionProgress.allRegistered(today) } else loaded
                 if (natureOpen && notes != null) {
                     NatureNotesChapter(notes, atlas, onOpenNote = viewModel::openNote, onDismiss = onDismiss)
                 } else if (natureOpen) {
@@ -164,7 +170,7 @@ fun CollectionDialog(
                 } else key(category) {
                     Chapter(
                         entries = remember(category) { CollectionEntry.inCategory(category) },
-                        progress = loaded,
+                        progress = pages,
                         atlas = atlas,
                         terrain = terrain,
                         onReveal = viewModel::reveal,
@@ -325,8 +331,12 @@ private fun Chapter(
     // Page 0 is the contents; entry i is on page i + 1.
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { entries.size + 1 })
     val scope = rememberCoroutineScope()
+    // The page whose picture is being looked at closely: it keeps the drags for itself, and
+    // turning away from it puts the picture back.
+    var zoomedPage by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(pagerState.currentPage) { zoomedPage = null }
 
-    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().height(SPREAD_HEIGHT)) { page ->
+    HorizontalPager(state = pagerState, userScrollEnabled = zoomedPage == null, modifier = Modifier.fillMaxWidth().height(SPREAD_HEIGHT)) { page ->
         if (page == 0) {
             ContentsPage(entries.size) { index ->
                 val entry = entries[index]
@@ -344,6 +354,8 @@ private fun Chapter(
                 atlas = atlas,
                 terrain = terrain,
                 onReveal = { onReveal(entry) },
+                zoomed = zoomedPage == page,
+                onZoom = { zoomedPage = page.takeIf { it != zoomedPage } },
             )
         }
     }
@@ -395,6 +407,8 @@ private fun Spread(
     atlas: SpriteAtlas,
     terrain: TerrainTextures,
     onReveal: () -> Unit,
+    zoomed: Boolean = false,
+    onZoom: () -> Unit = {},
 ) {
     // 0 while the page shows its question mark, 1 once the picture is in. A page that is already
     // filled in when it comes on screen starts at 1; one that is filled in while on screen runs
@@ -425,11 +439,15 @@ private fun Spread(
                     .background(PaperShade.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
                     .border(2.dp, if (ready) GoldLeaf else InkFaded, RoundedCornerShape(4.dp))
                     .clip(RoundedCornerShape(4.dp))
-                    .then(if (ready) Modifier.clickable(onClick = onReveal) else Modifier)
-                    .padding(8.dp),
+                    .then(if (ready) Modifier.clickable(onClick = onReveal) else Modifier),
                 contentAlignment = Alignment.Center,
             ) {
-                Illustration(entry, state, reveal.value, colours.firstOrNull(), atlas, terrain)
+                ZoomablePicture(zoomed, onUnzoom = onZoom, Modifier.fillMaxSize()) {
+                    Box(Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
+                        Illustration(entry, state, reveal.value, colours.firstOrNull(), atlas, terrain)
+                    }
+                }
+                if (state == PageState.REVEALED) Magnifier(zoomed, onZoom, Modifier.align(Alignment.BottomEnd))
             }
         }
         // The gutter.

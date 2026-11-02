@@ -46,11 +46,12 @@ class RewardedAdManager @Inject constructor(
     private var started = false
     private var loading = false
     private var retryDelayMillis = FIRST_RETRY_MILLIS
+    private var failuresInARow = 0
 
-    private val _isReady = MutableStateFlow(false)
+    private val _availability = MutableStateFlow(AdAvailability.LOADING)
 
-    /** True while an ad is loaded and waiting; buttons that need one follow this. */
-    val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
+    /** Whether there is an ad to show; buttons that need one follow this. */
+    val availability: StateFlow<AdAvailability> = _availability.asStateFlow()
 
     /**
      * Initializes the ads SDK and loads the first ad. Safe to call more than once.
@@ -82,7 +83,7 @@ class RewardedAdManager @Inject constructor(
             return
         }
         ad = null
-        _isReady.value = false
+        publish()
 
         var earned = false
         current.fullScreenContentCallback = object : FullScreenContentCallback() {
@@ -115,11 +116,14 @@ class RewardedAdManager @Inject constructor(
                     loading = false
                     ad = loaded
                     retryDelayMillis = FIRST_RETRY_MILLIS
-                    _isReady.value = true
+                    failuresInARow = 0
+                    publish()
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     loading = false
+                    failuresInARow++
+                    publish()
                     Log.w(TAG, "Rewarded ad failed to load (${error.code}): ${error.message}")
                     // Offline or no fill: try again later, backing off so as not to hammer the network.
                     handler.postDelayed(::load, retryDelayMillis)
@@ -127,6 +131,10 @@ class RewardedAdManager @Inject constructor(
                 }
             },
         )
+    }
+
+    private fun publish() {
+        _availability.value = AdAvailability.of(ad != null, failuresInARow)
     }
 
     private companion object {

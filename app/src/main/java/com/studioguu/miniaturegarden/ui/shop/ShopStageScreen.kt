@@ -82,6 +82,7 @@ import com.studioguu.miniaturegarden.ui.components.AnswersWhenResting
 import com.studioguu.miniaturegarden.ui.components.CarvedButton
 import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
+import com.studioguu.miniaturegarden.data.ads.AdAvailability
 import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
 import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.GardenToastHost
@@ -95,6 +96,7 @@ import com.studioguu.miniaturegarden.ui.ItemIcon
 import com.studioguu.miniaturegarden.ui.seasonEmoji
 import com.studioguu.miniaturegarden.ui.seasonLabel
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
+import com.studioguu.miniaturegarden.ui.debug.adsOr
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 /**
@@ -119,9 +121,9 @@ fun ShopStageScreen(
     val feedback by viewModel.feedback.collectAsStateWithLifecycle()
     val realNotice by viewModel.notice.collectAsStateWithLifecycle()
     val bonusRemaining by viewModel.bonusRemaining.collectAsStateWithLifecycle()
-    val adWaiting by viewModel.adReady.collectAsStateWithLifecycle()
+    val realAds by viewModel.ads.collectAsStateWithLifecycle()
     val showcase by ShowcaseControls.showcase.collectAsStateWithLifecycle()
-    val adReady = showcase?.adReady ?: adWaiting
+    val ads = showcase.adsOr(realAds)
     val notice = showcase?.bonusCoins?.let { ShopNotice(R.string.msg_bonus_done, it, good = true) } ?: realNotice
     val expansion by viewModel.expansion.collectAsStateWithLifecycle()
     val guiding by viewModel.guiding.collectAsStateWithLifecycle()
@@ -138,7 +140,8 @@ fun ShopStageScreen(
     /** Price of the item the player could not afford, while that dialog is open. */
     var shortFor by rememberSaveable { mutableStateOf<Int?>(null) }
     val activity = LocalContext.current.findActivity()
-    val bonusAvailable = bonusRemaining > 0 && adReady && activity != null
+    // Only an ad that has stopped coming changes the board: not the moment the next one takes.
+    val bonusAvailable = bonusRemaining > 0 && ads != AdAvailability.UNAVAILABLE && activity != null
     val leave = {
         viewModel.leave()
         onLeave()
@@ -148,6 +151,8 @@ fun ShopStageScreen(
 
     val toast = remember { GardenToastState() }
     val bonusRest = stringResource(if (bonusRemaining <= 0) R.string.msg_bonus_used else R.string.msg_reward_unavailable)
+    val adComing = stringResource(R.string.msg_reward_loading)
+    val offerBonus = { if (ads == AdAvailability.READY) confirmBonus = true else toast.show(adComing) }
     val expandForLevel = stringResource(R.string.msg_expand_level)
     val expandForCoins = stringResource(R.string.msg_expand_coins)
     val atMax = stringResource(R.string.msg_garden_at_max_size)
@@ -193,7 +198,7 @@ fun ShopStageScreen(
         onPutBack = viewModel::putBack,
         // The first steps' seed is free, whatever is in the purse.
         onBuy = { item -> if (guiding || coins >= item.price) viewModel.buy(item) else shortFor = item.price },
-        onBonus = { confirmBonus = true },
+        onBonus = offerBonus,
         onBonusResting = { toast.show(bonusRest) },
         onLeave = leave,
         modifier = modifier,
@@ -224,7 +229,7 @@ fun ShopStageScreen(
                     stringResource(R.string.reward_bonus_short),
                     {
                         shortFor = null
-                        confirmBonus = true
+                        offerBonus()
                     },
                 ).takeIf { bonusAvailable },
             ),
@@ -711,22 +716,29 @@ private fun Counter(message: ShopMessage?, bonusLabel: String, bonusEnabled: Boo
  */
 @Composable
 private fun MessageLine(message: ShopMessage?) {
+    // It fades away rather than vanishes, so it keeps showing the last thing said while it leaves.
+    var last by remember { mutableStateOf(message) }
+    if (message != null) last = message
     Box(modifier = Modifier.fillMaxWidth().height(MESSAGE_LINE_HEIGHT).testTag(MESSAGE_LINE_TAG), contentAlignment = Alignment.CenterStart) {
-        if (message != null) {
-            // On a paper tag, in dark ink: the line lies on wood at the counter and on parchment on a card.
-            Surface(shape = RoundedCornerShape(6.dp), color = GardenColors.Cream, shadowElevation = 1.dp) {
-                Text(
-                    text = message.text,
-                    color = if (message.good) GardenColors.Ink else MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                )
+        AnimatedVisibility(visible = message != null, enter = fadeIn(), exit = fadeOut(tween(MESSAGE_FADE_MILLIS))) {
+            last?.let { said ->
+                // On a paper tag, in dark ink: the line lies on wood at the counter and on parchment on a card.
+                Surface(shape = RoundedCornerShape(6.dp), color = GardenColors.Cream, shadowElevation = 1.dp) {
+                    Text(
+                        text = said.text,
+                        color = if (said.good) GardenColors.Ink else MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    )
+                }
             }
         }
     }
 }
+
+private const val MESSAGE_FADE_MILLIS = 600
 
 /** The height kept for the line of what was said, one line of body text on its tag. */
 private val MESSAGE_LINE_HEIGHT = 32.dp

@@ -7,6 +7,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.data.ads.AdAvailability
 import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.audio.AudioManager
@@ -35,6 +36,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -43,6 +45,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** How long the outcome of a bonus stays at the counter before it fades. */
+const val BONUS_NOTICE_MILLIS = 4_000L
 
 /** A line of text shown inside the shop; [good] decides its colour. */
 data class ShopNotice(@param:StringRes val message: Int, val argument: Int? = null, val good: Boolean = false) {
@@ -165,7 +170,7 @@ class ShopViewModel @Inject constructor(
     val bonusRemaining: StateFlow<Int> = combine(rewardLimits.usage, everyMinute()) { usage, _ -> usage.remaining(RewardType.COIN_BONUS, todayEpochDay()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    val adReady: StateFlow<Boolean> = rewardedAds.isReady
+    val ads: StateFlow<AdAvailability> = rewardedAds.availability
 
     private val _notice = MutableStateFlow<ShopNotice?>(null)
 
@@ -189,17 +194,22 @@ class ShopViewModel @Inject constructor(
                         val bonus = grant?.await()
                         val granted = bonus?.result == RewardResult.GRANTED
                         if (granted) audio.play(SoundEffect.COIN)
-                        _notice.value = if (granted) {
-                            ShopNotice(R.string.msg_bonus_done, bonus?.coins, good = true)
-                        } else {
-                            ShopNotice(R.string.msg_reward_limit)
-                        }
+                        sayForAWhile(if (granted) ShopNotice(R.string.msg_bonus_done, bonus?.coins, good = true) else ShopNotice(R.string.msg_reward_limit))
                     }
-                    RewardedAdResult.CANCELLED -> _notice.value = ShopNotice(R.string.msg_reward_cancelled)
-                    RewardedAdResult.UNAVAILABLE -> _notice.value = ShopNotice(R.string.msg_reward_unavailable)
+                    RewardedAdResult.CANCELLED -> sayForAWhile(ShopNotice(R.string.msg_reward_cancelled))
+                    RewardedAdResult.UNAVAILABLE -> sayForAWhile(ShopNotice(R.string.msg_reward_unavailable))
                 }
             },
         )
+    }
+
+    /** Says how a claim went, long enough to be read; anything said after it stands. */
+    private fun sayForAWhile(notice: ShopNotice) {
+        _notice.value = notice
+        viewModelScope.launch {
+            delay(BONUS_NOTICE_MILLIS)
+            _notice.compareAndSet(notice, null)
+        }
     }
 
     fun buy(item: GardenItem) {

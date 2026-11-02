@@ -10,6 +10,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.data.ads.AdAvailability
 import com.studioguu.miniaturegarden.ui.render.RainGlint
 import com.studioguu.miniaturegarden.ui.render.SceneTint
 import com.studioguu.miniaturegarden.domain.model.TimeOfDay
@@ -34,8 +35,8 @@ class RainCloudTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun state(left: Int = 1, growing: Boolean = true, thirsty: Boolean = false, ad: Boolean = true) =
-        RainCloudState.of(left, growing, thirsty, ad)
+    private fun state(left: Int = 1, growing: Boolean = true, thirsty: Boolean = false, ads: AdAvailability = AdAvailability.READY) =
+        RainCloudState.of(left, growing, thirsty, ads)
 
     @Test
     fun `it calls the rain while there is one to call and something for it to do`() {
@@ -46,10 +47,17 @@ class RainCloudTest {
     }
 
     @Test
+    fun `the next ad on its way does not change its look`() {
+        assertEquals(RainCloudState.READY, state(ads = AdAvailability.LOADING))
+        assertEquals(RainCloudState.PARCHED, state(ads = AdAvailability.LOADING, thirsty = true))
+        assertEquals(RainCloudState.USED_TODAY, state(left = 0, ads = AdAvailability.LOADING))
+    }
+
+    @Test
     fun `otherwise it is a white cloud, which says why when tapped`() {
         assertEquals(RainCloudState.USED_TODAY, state(left = 0, thirsty = true))
         assertEquals(RainCloudState.NOTHING_GROWING, state(growing = false))
-        assertEquals(RainCloudState.NO_AD, state(ad = false, thirsty = true))
+        assertEquals(RainCloudState.NO_AD, state(ads = AdAvailability.UNAVAILABLE, thirsty = true))
         assertEquals(R.string.msg_rain_used, RainCloudState.USED_TODAY.restMessage)
         assertEquals(R.string.msg_no_growing_plants, RainCloudState.NOTHING_GROWING.restMessage)
         assertEquals(R.string.msg_reward_unavailable, RainCloudState.NO_AD.restMessage)
@@ -76,7 +84,7 @@ class RainCloudTest {
         val app = RuntimeEnvironment.getApplication()
         assertEquals("また明日、雨を呼べます", app.getString(R.string.msg_rain_used))
         assertEquals("作物を育てると、雨を呼べます", app.getString(R.string.msg_no_growing_plants))
-        assertTrue(app.getString(R.string.reveal_rain_text).startsWith("空の雨雲をタップすると"))
+        assertTrue(app.getString(R.string.reveal_rain_text).startsWith("右の雲のアイコンをタップすると"))
     }
 
     @Test
@@ -92,6 +100,12 @@ class RainCloudTest {
                 assertTrue(drop.fall in 0f..1f && drop.alpha in 0f..1f)
             }
         }
+    }
+
+    @Test
+    fun `being small, it has an edge to stand out by, pale round a rain cloud and dark round a white one`() {
+        assertTrue(RainCloudLook.rimColour(1f).red > 0.9f)
+        assertTrue(RainCloudLook.rimColour(0f).red < 0.1f)
     }
 
     @Test

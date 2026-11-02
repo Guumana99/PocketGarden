@@ -54,7 +54,10 @@
 | 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |
 | 生き物の季節の条件・自然メモの「あたらしい」・DB v11 | `NatureNotesEngineTest`（＋表の網羅 `CreatureVisitTest`） |
 | リワード・1 日の回数 | `RewardTest` |
-| 雨雲（状態・雨粒・光）、雨のあとのきらめき | `RainCloudTest`（＋画面の組み立て `PolishTest` `CameraModeTest`） |
+| 雨雲（状態・雨粒・光）、雨のあとのきらめき | `RainCloudTest`（＋画面の組み立て `PolishTest` `CameraModeTest`、アイコンの並びと広告の状態 `FieldFeedbackTest`） |
+| 図鑑の絵の拡大 | `PictureZoomTest` |
+| デバッグの「生き物を呼ぶ」 | `CreatureCallTest` |
+| デバッグの「図鑑をすべて登録」 | `FieldFeedbackTest` |
 | 川の流れ・岸の部品、石・橋・色変え・ベンチの向き | `ArtImportTest`（＋描画 `BundledArtTest` `AssetLedgerTest`） |
 | 柵・縁石の種類と連結 | `FenceKindsTest` `FloorAndFenceTest` `FenceAutotileTest` |
 | 風・影・耕した土 | `AtmosphereTest` `FlowAndSoilTest`（＋つながった畑・芝生の明暗・作物のアンカー `ConnectedGroundTest`） |

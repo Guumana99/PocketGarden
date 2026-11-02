@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -31,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -197,7 +200,11 @@ private fun LetterPage(letter: Letter) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(letterTitle(letter), color = GardenColors.Ink, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-            Text(letterBody(letter), color = GardenColors.Ink, style = MaterialTheme.typography.bodyMedium, lineHeight = 22.sp)
+            if (letter.kind == LetterKind.SEASON_ARRIVED) {
+                LinesAsWritten(letterBody(letter))
+            } else {
+                Text(letterBody(letter), color = GardenColors.Ink, style = MaterialTheme.typography.bodyMedium, lineHeight = 22.sp)
+            }
             Text(
                 text = sentDate(letter),
                 color = GardenColors.InkSoft,
@@ -206,6 +213,30 @@ private fun LetterPage(letter: Letter) {
             )
         }
     }
+}
+
+/**
+ * Words whose lines are broken where they are written: a little smaller when the longest would
+ * not fit otherwise ([LetterFit]). When even that is not enough (a large font setting), the line
+ * goes on to the next one between phrases, as all the text does.
+ */
+@Composable
+private fun LinesAsWritten(text: String) {
+    val style = MaterialTheme.typography.bodyMedium
+    val measurer = rememberTextMeasurer()
+    BoxWithConstraints {
+        val widths = remember(text, style, measurer) { text.lines().map { measurer.measure(it, style, softWrap = false).size.width.toFloat() } }
+        val fit = LetterFit.of(widths.max(), constraints.maxWidth.toFloat())
+        Text(text, color = GardenColors.Ink, style = style.copy(fontSize = style.fontSize * fit), lineHeight = 22.sp)
+    }
+}
+
+/** How much smaller a letter's words may go for its lines to stay as written. */
+object LetterFit {
+    const val SMALLEST = 0.8f
+
+    /** The share of the usual size that fits a line [longest] wide into [room]. */
+    fun of(longest: Float, room: Float): Float = (room / longest).coerceIn(SMALLEST, 1f)
 }
 
 private val DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("M月d日")
@@ -245,7 +276,7 @@ private fun letterBody(letter: Letter): String {
 
 /**
  * What can be grown now, said plainly with the crops' own names ("夏は、トマトやスイカ、ひまわり
- * などが育てられる季節です。"), not the seed packets' ("トマトの苗").
+ * 等が育てられる季節です。"), not the seed packets' ("トマトの苗").
  */
 @Composable
 private fun inSeasonLine(season: Season, seasonName: String): String {
@@ -254,20 +285,24 @@ private fun inSeasonLine(season: Season, seasonName: String): String {
     return stringResource(R.string.letter_arrived_body, seasonName, cropList(crops.map { objectDisplayName(it.objectId) }))
 }
 
-/** What the crops past their season have left in them: "トマトなどは旬が過ぎたので、…". */
+/** What the crops past their season have left in them: "トマト等は旬が過ぎたので、…". */
 @Composable
 private fun endingLine(letter: Letter): String? {
     val crops = letter.endingCrops.takeIf { it.isNotEmpty() } ?: return null
     val first = objectDisplayName(crops.first())
-    return stringResource(R.string.letter_ending_crops, if (crops.size > 1) first + "など" else first)
+    return stringResource(R.string.letter_ending_crops, if (crops.size > 1) first + "等" else first)
 }
 
-/** Names run together the way a letter would: "A", "AやB", "AやB、Cなど". */
+/**
+ * Names run together the way a letter would: "A", "AやB", "AやB、C等". A list of more than three
+ * goes on to a new line after the third, or its line would not fit.
+ */
 internal fun cropList(names: List<String>): String = when (names.size) {
     0 -> ""
     1 -> names[0]
     2 -> names[0] + "や" + names[1]
-    else -> names[0] + "や" + names.drop(1).joinToString("、") + "など"
+    3 -> names[0] + "や" + names[1] + "、" + names[2] + "等"
+    else -> names[0] + "や" + names[1] + "、" + names[2] + "、\n" + names.drop(3).joinToString("、") + "等"
 }
 
 /** What came into the shop, one per line, with each crop's season. */

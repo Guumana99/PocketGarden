@@ -139,6 +139,8 @@ class RiverScene(private val art: WaterArt, cells: Set<GridCell>) {
     private val water = Path()
     private val bySide = HashMap<FlowDirection, Path>()
     private val banks = Picture()
+    private var kept: Set<GridCell> = emptySet()
+    private val keptOut = Path()
 
     init {
         val flows = RiverFlow.of(cells)
@@ -297,9 +299,20 @@ class RiverScene(private val art: WaterArt, cells: Set<GridCell>) {
         }
     }
 
-    /** The banks, which do not move. */
-    fun drawBanks(scope: DrawScope, transform: IsometricTransform) = with(scope) {
-        onGround(transform) { it.drawPicture(banks) }
+    /**
+     * The banks, which do not move. They reach a little onto the land ([OVERHANG]), over the lawns,
+     * but not onto [floors]: the edge of a bed or of paving beside the water stays in sight.
+     */
+    fun drawBanks(scope: DrawScope, transform: IsometricTransform, floors: Set<GridCell> = emptySet()) = with(scope) {
+        if (floors != kept) {
+            kept = floors
+            keptOut.rewind()
+            for (cell in floors) keptOut.addRect(cell.x * UNITS, cell.y * UNITS, (cell.x + 1) * UNITS, (cell.y + 1) * UNITS, Path.Direction.CW)
+        }
+        onGround(transform) {
+            it.clipOutPath(keptOut)
+            it.drawPicture(banks)
+        }
     }
 
     companion object {

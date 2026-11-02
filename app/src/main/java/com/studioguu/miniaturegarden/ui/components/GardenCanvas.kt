@@ -700,9 +700,11 @@ private fun submitObjects(
         }
     }
     if (river != null && vanish == null) {
-        // The water with the ground; the banks over the lawns round it, which they lie on.
+        // The water with the ground; the banks over the lawns round it, which they lie on, and
+        // kept off the beds and the paving, whose edges are drawn with the ground.
+        val floors = gridObjects.filter { it.isFloor }.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) }
         pipeline.submit(RenderLayer.BASE_TERRAIN, 1f, inGarden = true) { river.drawWater(this, transform, ambience.windMillis ?: 0L) }
-        pipeline.submit(RenderLayer.BOTTOM_OBJECTS, Float.MAX_VALUE, inGarden = true) { river.drawBanks(this, transform) }
+        pipeline.submit(RenderLayer.BOTTOM_OBJECTS, Float.MAX_VALUE, inGarden = true) { river.drawBanks(this, transform, floors) }
     }
     for (obj in gridObjects) {
         if (obj.isTerrain) {

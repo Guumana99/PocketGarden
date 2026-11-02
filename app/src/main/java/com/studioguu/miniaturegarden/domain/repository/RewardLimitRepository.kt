@@ -14,4 +14,7 @@ interface RewardLimitRepository {
      * nothing when the day's limit has been reached. A new day starts from zero.
      */
     suspend fun tryConsume(type: RewardType, today: Long): Boolean
+
+    /** Gives back all of [today]'s claims of [type]: the day's limit is there in full again. */
+    suspend fun giveBack(type: RewardType, today: Long)
 }

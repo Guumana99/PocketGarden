@@ -3,7 +3,9 @@ package com.studioguu.miniaturegarden.ui
 import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.data.ads.AdAvailability
 import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
@@ -18,6 +20,8 @@ import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
+import com.studioguu.miniaturegarden.domain.model.CreatureCall
+import com.studioguu.miniaturegarden.domain.model.CreatureCalls
 import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.BridgeFit
@@ -88,6 +92,7 @@ import com.studioguu.miniaturegarden.domain.usecase.RetiredCropsUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ToggleSprinklerUseCase
 import com.studioguu.miniaturegarden.domain.usecase.MoveObjectUseCase
 import com.studioguu.miniaturegarden.domain.usecase.LeavePracticeUseCase
+import com.studioguu.miniaturegarden.domain.usecase.SetDownForCalledCreaturesUseCase
 import com.studioguu.miniaturegarden.domain.usecase.OpenGiftUseCase
 import com.studioguu.miniaturegarden.domain.usecase.RewardResult
 import com.studioguu.miniaturegarden.domain.usecase.PlaceItemUseCase
@@ -102,12 +107,14 @@ import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import com.studioguu.miniaturegarden.ui.effects.GardenEffect
 import com.studioguu.miniaturegarden.ui.effects.plusEffect
+import com.studioguu.miniaturegarden.ui.debug.adsOr
 import com.studioguu.miniaturegarden.ui.hud.RainCloudState
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -123,6 +130,7 @@ import kotlinx.coroutines.flow.combine
 import java.time.LocalTime
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -156,6 +164,7 @@ class GardenViewModel @Inject constructor(
     private val openGiftBox: OpenGiftUseCase,
     private val followTutorial: FollowTutorialUseCase,
     private val leaveTutorial: LeavePracticeUseCase,
+    private val setDownForCalledCreatures: SetDownForCalledCreaturesUseCase,
     private val practice: PracticeMode,
     private val storeReview: StoreReviewManager,
     private val audio: AudioManager,
@@ -327,14 +336,18 @@ class GardenViewModel @Inject constructor(
      * What the cloud at the top shows. Worked out afresh every minute as well, so that a cloud
      * rests for the day only until the day is over, with the app open or not.
      */
-    val rainCloud: StateFlow<RainCloudState> = combine(rewardLimits.usage, gridObjects, rewardedAds.isReady, ShowcaseControls.showcase, minutes) { usage, objects, ad, showcase, _ ->
+    val rainCloud: StateFlow<RainCloudState> = combine(rewardLimits.usage, gridObjects, rewardedAds.availability, ShowcaseControls.showcase, minutes) { usage, objects, ads, showcase, _ ->
         showcase?.cloud ?: RainCloudState.of(
             rainsLeft = usage.remaining(RewardType.BLESSED_RAIN, todayEpochDay()),
             growing = objects.any(::rainHelps),
             thirsty = objects.any { it.isPlant && it.status == PlantStatus.THIRSTY },
-            adReady = showcase?.adReady ?: ad,
+            ads = showcase.adsOr(ads),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RainCloudState.NOTHING_GROWING)
+
+    /** What to say instead of offering a rain while the next ad is still on its way; null if it is here. */
+    fun adStillComing(): Int? =
+        R.string.msg_reward_loading.takeIf { ShowcaseControls.showcase.value.adsOr(rewardedAds.availability.value) == AdAvailability.LOADING }
 
     /** Whether a blessed rain would do anything for [plant]. */
     private fun rainHelps(plant: GridObject): Boolean =
@@ -373,7 +386,9 @@ class GardenViewModel @Inject constructor(
                     initJob.join()
                     actionMutex.withLock {
                         val now = clock.now()
-                        grantReward.blessedRain(now, currentWeather(now), todayEpochDay())
+                        // Not against the day's limit until the first steps are over.
+                        val freePlay = (gardenRepository.getProgress()?.tutorialStep ?: TutorialStep.DONE) == TutorialStep.DONE
+                        grantReward.blessedRain(now, currentWeather(now), todayEpochDay(), counted = freePlay)
                     }
                 }
             },
@@ -610,6 +625,22 @@ class GardenViewModel @Inject constructor(
     /** A level-up waiting on its board until the player taps OK; null when there is none. */
     val levelUp: StateFlow<LevelUpNotice?> = _levelUp.asStateFlow()
 
+    private val _creatureCall = MutableStateFlow(CreatureCall())
+
+    /** The debug menu's creatures, called to the garden whatever the table says. */
+    val creatureCall: StateFlow<CreatureCall> = _creatureCall.asStateFlow()
+
+    /** Debug menu: calls these creatures, setting down what the garden lacks for them. */
+    fun debugCallCreatures(call: CreatureCall) {
+        if (!BuildConfig.DEBUG) return
+        _creatureCall.value = call
+        if (!call.calling) return
+        viewModelScope.launch {
+            initJob.join()
+            actionMutex.withLock { setDownForCalledCreatures(call.creatures, clock.now()) }
+        }
+    }
+
     private val _visitors = MutableStateFlow<List<CreatureVisit>>(emptyList())
 
     /** Creatures staying in the garden this period, see [CreatureVisits]. */
@@ -628,6 +659,7 @@ class GardenViewModel @Inject constructor(
      * or the weather changes, and says so when a creature not met yet comes into view. It goes
      * into the nature notes when the player taps it ([onVisitorTapped]).
      */
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun watchVisitors() {
         val periods = flow {
             while (true) {
@@ -639,22 +671,39 @@ class GardenViewModel @Inject constructor(
         }
         viewModelScope.launch {
             initJob.join()
-            combine(gridObjects, _weather, gardenMap, combine(season, timeOfDay, seasonPhase, ::Triple), combine(periods, ShowcaseControls.showcase, ::Pair)) {
-                    objects, weather, map, (season, time, phase), (period, showcase) ->
-                Visiting(objects, weather, map, season, time, phase, period) to showcase
+            // Called creatures come round by the round, and only while they are called.
+            val calls = _creatureCall.flatMapLatest { call ->
+                flow {
+                    while (call.calling) {
+                        val now = System.currentTimeMillis()
+                        val round = CreatureCalls.roundOf(now)
+                        emit(call to round)
+                        delay(CreatureCalls.roundStart(round + 1) - now + 1)
+                    }
+                    emit(call to 0L)
+                }
             }
-                .collectLatest { (visiting, showcase) ->
+            combine(gridObjects, _weather, gardenMap, combine(season, timeOfDay, seasonPhase, ::Triple), combine(periods, ShowcaseControls.showcase, calls, ::Triple)) {
+                    objects, weather, map, (season, time, phase), (period, showcase, call) ->
+                Triple(Visiting(objects, weather, map, season, time, phase, period), showcase, call.first)
+            }
+                .collectLatest { (visiting, showcase, call) ->
                     val now = System.currentTimeMillis()
                     val leftAt = settingsRepository.settings.first().visitorsLeftAt
-                    val visits = CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay, visiting.phase, leftAt)
+                    val visits = if (call.calling) {
+                        CreatureCalls.visitsAt(now, call.creatures, visiting.objects, visiting.map)
+                    } else {
+                        CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay, visiting.phase, leftAt)
+                    }
                         .filter { it.leavesAt > now }
-                        .let { showcase?.visitors(it, visiting.objects) ?: it }
+                        .let { if (call.calling) it else showcase?.visitors(it, visiting.objects) ?: it }
                     _visitors.value = visits
                     coroutineScope {
                         for (visit in visits) {
                             launch {
                                 delay((visit.arrivesAt - now).coerceAtLeast(0L))
-                                settingsRepository.update { it.copy(visitorsLeftAt = it.visitorsLeftAt + (visit.creature to visit.leavesAt)) }
+                                // A called creature leaves the natural ones' comings and goings as they were.
+                                if (!call.calling) settingsRepository.update { it.copy(visitorsLeftAt = it.visitorsLeftAt + (visit.creature to visit.leavesAt)) }
                                 announceVisit(visit)
                             }
                         }
@@ -842,7 +891,7 @@ class GardenViewModel @Inject constructor(
         dropEverythingInHand()
         viewModelScope.launch {
             initJob.join()
-            actionMutex.withLock { leaveTutorial(clock.now()) }
+            actionMutex.withLock { leaveTutorial(clock.now(), todayEpochDay()) }
         }
     }
 

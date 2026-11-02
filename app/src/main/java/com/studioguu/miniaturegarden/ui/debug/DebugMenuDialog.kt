@@ -1,27 +1,37 @@
 package com.studioguu.miniaturegarden.ui.debug
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.domain.model.Creature
+import com.studioguu.miniaturegarden.domain.model.CreatureCall
 import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
+import com.studioguu.miniaturegarden.ui.creatureName
 import com.studioguu.miniaturegarden.ui.timeOfDayLabel
 import com.studioguu.miniaturegarden.ui.weatherEmoji
 import com.studioguu.miniaturegarden.ui.weatherLabel
@@ -45,6 +55,8 @@ private const val DAY_MILLIS = 24 * HOUR_MILLIS
  * @param timeOfDayShown the time of day shown in place of the clock's; null for the clock's own.
  * @param outlook today's and tomorrow's weather, until the weathervane shows them in the garden.
  * @param zoomScale the garden's zoom as it is now, shown at the top.
+ * @param creatureCall the creatures called to the garden, to look at how they move.
+ * @param bookAllRegistered whether the book shows every page as registered ([BookPreview]).
  */
 @Composable
 fun DebugMenuDialog(
@@ -57,6 +69,10 @@ fun DebugMenuDialog(
     timeOfDayShown: TimeOfDay? = null,
     outlook: WeatherOutlook? = null,
     zoomScale: Float? = null,
+    creatureCall: CreatureCall = CreatureCall(),
+    onCreatureCall: (CreatureCall) -> Unit = {},
+    bookAllRegistered: Boolean = false,
+    onBookAllRegistered: (Boolean) -> Unit = {},
 ) {
     ParchmentDialog(
         onDismissRequest = onDismiss,
@@ -97,10 +113,47 @@ fun DebugMenuDialog(
                 FilledTonalButton(onClick = onNextSeason) {
                     Text(stringResource(R.string.debug_next_season))
                 }
+                CreatureCallSection(creatureCall, onCreatureCall)
+                SwitchRow(R.string.debug_book_all, bookAllRegistered, onBookAllRegistered, BOOK_ALL_SWITCH_TAG)
+                Text(stringResource(R.string.debug_book_all_hint), fontSize = 12.sp)
             }
         }
     }
 }
+
+/** The creatures to call, one or two, and the switch that calls them. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CreatureCallSection(call: CreatureCall, onChange: (CreatureCall) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        SwitchRow(R.string.debug_call_title, call.on, { onChange(call.copy(on = it)) }, CREATURE_CALL_SWITCH_TAG)
+        Text(stringResource(R.string.debug_call_hint), fontSize = 12.sp)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (creature in Creature.entries) {
+                FilterChip(
+                    selected = creature in call.creatures,
+                    onClick = { onChange(call.toggled(creature)) },
+                    label = { Text(stringResource(creatureName(creature))) },
+                    modifier = Modifier.testTag(creatureCallTag(creature)),
+                )
+            }
+        }
+    }
+}
+
+/** A heading with its switch. */
+@Composable
+private fun SwitchRow(@StringRes title: Int, on: Boolean, onChange: (Boolean) -> Unit, tag: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(stringResource(title), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Switch(checked = on, onCheckedChange = onChange, modifier = Modifier.testTag(tag))
+    }
+}
+
+/** Test tags of the switches and of each creature's chip. */
+const val CREATURE_CALL_SWITCH_TAG = "debug_call_switch"
+const val BOOK_ALL_SWITCH_TAG = "debug_book_all_switch"
+fun creatureCallTag(creature: Creature): String = "debug_call_${creature.id}"
 
 /** Test tag of the zoom read-out laid over the garden. */
 const val DEBUG_ZOOM_TAG = "debug_zoom"
