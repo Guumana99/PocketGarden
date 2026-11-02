@@ -50,7 +50,8 @@ enum class CreatureAction {
  * @property elapsed how long it has been at [action], in millis, out of [duration].
  * @property cell the cell it is drawn in, in depth order: the one it is over, or the front cell of
  *   what it sits on.
- * @property inPond a frog in a pond: half under the water.
+ * @property inPond a frog in a pond or a stream: half under the water.
+ * @property heading which way a flier's nose points on the screen, degrees clockwise from straight up.
  * @property setsOff a [CreatureAction.STEP] that starts a move of a few steps (the squirrel breaks
  *   into a run), and [stops] one that ends it (it sits up again).
  */
@@ -64,6 +65,7 @@ data class CreaturePose(
     val duration: Long,
     val cell: GridCell,
     val inPond: Boolean = false,
+    val heading: Float = 0f,
     val setsOff: Boolean = false,
     val stops: Boolean = false,
 ) {
@@ -119,7 +121,11 @@ class CreatureRoute internal constructor(
     private fun pose(leg: Leg, into: Long): CreaturePose {
         val elapsed = into.coerceIn(0L, leg.duration)
         val f = if (leg.duration <= 0L) 1f else elapsed.toFloat() / leg.duration
-        val k = if (leg.action == CreatureAction.FLY) f * f * (3f - 2f * f) else f
+        val k = when {
+            leg.darts -> ((elapsed - CreatureRoutes.TURN_MILLIS).toFloat() / (leg.duration - CreatureRoutes.TURN_MILLIS).coerceAtLeast(1L)).coerceIn(0f, 1f).let { 1f - (1f - it) * (1f - it) }
+            leg.action == CreatureAction.FLY -> f * f * (3f - 2f * f)
+            else -> f
+        }
         val x = leg.fromX + (leg.toX - leg.fromX) * k
         val y = leg.fromY + (leg.toY - leg.fromY) * k
         val facing = if (elapsed in leg.lookFrom until leg.lookUntil) leg.facing.turned() else leg.facing
@@ -134,6 +140,7 @@ class CreatureRoute internal constructor(
             duration = leg.duration,
             cell = cell,
             inPond = cell in ponds,
+            heading = leg.headingAt(elapsed),
             setsOff = leg.setsOff,
             stops = leg.stops,
         )
@@ -145,6 +152,9 @@ class CreatureRoute internal constructor(
  * starting [start] millis into the part of the route it belongs to.
  *
  * @property lookFrom while standing, the stretch (millis into the leg) it looks the other way.
+ * @property heading where a flier's nose points on this leg ([CreaturePose.heading]), turned to from
+ *   [turnedFrom] over the first [CreatureRoutes.TURN_MILLIS].
+ * @property darts a dragonfly's dart: it turns on the spot, shoots off, and brakes to a stop.
  */
 internal class Leg(
     val start: Long,
@@ -162,8 +172,16 @@ internal class Leg(
     /** The first step of a move on foot, and the last: see [CreaturePose.setsOff]. */
     val setsOff: Boolean = false,
     val stops: Boolean = false,
+    val heading: Float = 0f,
+    val turnedFrom: Float = heading,
+    val darts: Boolean = false,
 ) {
     val end: Long get() = start + duration
+
+    fun headingAt(elapsed: Long): Float {
+        val f = (elapsed.toFloat() / CreatureRoutes.TURN_MILLIS).coerceIn(0f, 1f)
+        return turnedFrom + CreatureRoutes.shortestTurn(turnedFrom, heading) * f * f * (3f - 2f * f)
+    }
 }
 
 /**
@@ -189,6 +207,9 @@ object CreatureRoutes {
         else -> 0f
     }
 
+    /** How long a flier takes to turn to a new heading. */
+    const val TURN_MILLIS = 170L
+
     /** How high a butterfly sits on a flower, in tile widths. */
     const val PERCH_ALTITUDE = 0.2f
 
@@ -204,15 +225,15 @@ object CreatureRoutes {
     /**
      * Whether [creature] may go onto (x, y) on foot: inside the garden, and not water, a building,
      * a fence, a rock, a bench, a shiitake log, a work site or a greenhouse. Crops and ground
-     * cover (lawn, pebbles, wild flowers) can be walked through. A frog may go into a pond.
+     * cover (lawn, pebbles, wild flowers) can be walked through. A frog may go into a pond or a stream.
      */
     fun canWalk(creature: Creature, grid: GardenGrid, x: Int, y: Int): Boolean {
         if (!grid.map.isInside(x, y) || !grid.map.isBuildable(x, y)) return false
         if (grid.floorAt(x, y)?.isGreenhouse == true) return false
         val thing = grid.occupantAt(x, y) ?: return true
         return when {
-            thing.isPond -> creature == Creature.FROG
-            thing.isTerrain || thing.isWorking -> false
+            thing.isWorking -> false
+            thing.isPond || thing.isTerrain -> creature == Creature.FROG
             thing.isPlant -> thing.objectId != PlantSpecies.SHIITAKE.objectId
             thing.isGroundCover -> true
             else -> false
@@ -237,7 +258,7 @@ object CreatureRoutes {
         val manner = Manner.of(visit.creature)
         val home = visit.cell
         val region = regionAround(visit.creature, grid, home, manner.roam)
-        val ponds = region.filterTo(HashSet()) { grid.occupantAt(it.x, it.y)?.isPond == true }
+        val ponds = region.filterTo(HashSet()) { cell -> grid.occupantAt(cell.x, cell.y)?.let { it.isPond || it.isTerrain } == true }
         val landing = landingOf(visit.creature, home.x + 0.5f, home.y + 0.5f, grid.map.size, random)
         val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
         val plan = planner(random, manner, span, cyclic, home.x + 0.5f, home.y + 0.5f, landing)
@@ -413,7 +434,7 @@ object CreatureRoutes {
         val inMillis = opening.duration
         val outMillis = inMillis
         val (span, cyclic) = spanOf(length - inMillis - outMillis)
-        val plan = Planner(random, manner, span, cyclic, homeX, homeY, cruise, opening.facing)
+        val plan = Planner(random, manner, span, cyclic, homeX, homeY, cruise, opening.facing, heading = opening.heading)
         val flowers = flowersAround(visit, grid)
         val inside = { v: Float -> v.coerceIn(EDGE, size - EDGE) }
         val reserve = if (cyclic) 2 * (manner.reach * 2 / manner.flySpeed * 1000).toLong() + manner.rest.first else 0L
@@ -440,7 +461,7 @@ object CreatureRoutes {
                 ty = inside(aroundY + (random.nextFloat() * 2f - 1f) * manner.reach)
                 alt = cruise + (random.nextFloat() - 0.5f) * 0.1f
             }
-            val flight = maxOf(manner.stepMillis, plan.pace(hypot(tx - plan.x, ty - plan.y) / manner.flySpeed * 1000))
+            val flight = maxOf(manner.stepMillis, plan.pace(hypot(tx - plan.x, ty - plan.y) / manner.flySpeed * 1000)) + if (manner.darts) TURN_MILLIS else 0L
             val pause = if (perching) plan.between(manner.perch) else plan.between(manner.rest)
             if (plan.t + flight + pause + reserve > span) break
             plan.flyTo(tx, ty, alt, flight)
@@ -452,7 +473,7 @@ object CreatureRoutes {
                 flightsToPerch--
             }
         }
-        if (cyclic) plan.flyTo(homeX, homeY, cruise, maxOf(manner.stepMillis, (hypot(homeX - plan.x, homeY - plan.y) / manner.flySpeed * 1000).toLong()))
+        if (cyclic) plan.flyTo(homeX, homeY, cruise, maxOf(manner.stepMillis, (hypot(homeX - plan.x, homeY - plan.y) / manner.flySpeed * 1000).toLong()) + if (manner.darts) TURN_MILLIS else 0L)
         plan.holdUntil(span)
 
         val cameFrom = atan2((opening.fromY - opening.toY).toDouble(), (opening.fromX - opening.toX).toDouble())
@@ -475,6 +496,7 @@ object CreatureRoutes {
         return Leg(
             0L, (away / speed * 1000).toLong(), CreatureAction.FLY, startX, startY, SKY_ALTITUDE, homeX, homeY, toAlt,
             facing = facingOf(homeX - startX, homeY - startY, Facing.LEFT),
+            heading = headingOf(homeX - startX, homeY - startY, 0f),
         )
     }
 
@@ -487,7 +509,10 @@ object CreatureRoutes {
         val out = outwards(from.x, from.y, size, otherwise = cameFrom) + turn
         val endX = from.x + cos(out).toFloat() * away
         val endY = from.y + sin(out).toFloat() * away
-        Leg(0L, millis, CreatureAction.FLY, from.x, from.y, from.altitude, endX, endY, SKY_ALTITUDE, facing = facingOf(endX - from.x, endY - from.y, from.facing))
+        Leg(
+            0L, millis, CreatureAction.FLY, from.x, from.y, from.altitude, endX, endY, SKY_ALTITUDE, facing = facingOf(endX - from.x, endY - from.y, from.facing),
+            heading = headingOf(endX - from.x, endY - from.y, from.heading), turnedFrom = from.heading,
+        )
     }
 
     /**
@@ -539,6 +564,17 @@ object CreatureRoutes {
         }
     }
 
+    /** Which way something moving by (dx, dy) on the ground points on screen ([CreaturePose.heading]); [otherwise] when it stays put. */
+    internal fun headingOf(dx: Float, dy: Float, otherwise: Float): Float {
+        val across = dx - dy
+        val down = (dx + dy) / 2f
+        if (abs(across) + abs(down) < 0.001f) return otherwise
+        return Math.toDegrees(atan2(across.toDouble(), -down.toDouble())).toFloat()
+    }
+
+    /** The way round from [from] to [to], degrees: never the long way. */
+    internal fun shortestTurn(from: Float, to: Float): Float = (to - from + 540f).mod(360f) - 180f
+
     private fun distance(a: GridCell, b: GridCell) = abs(a.x - b.x) + abs(a.y - b.y)
 
     private fun neighbours(cell: GridCell) = listOf(
@@ -578,6 +614,7 @@ object CreatureRoutes {
  * @property flySpeed a flier's speed, in cells a second.
  * @property reach how far a flier flits from what it came for, in cells.
  * @property perch how long a butterfly rests on a flower.
+ * @property darts a flier that darts from one stop to the next ([Leg.darts]), turning first.
  */
 internal class Manner(
     val stepMillis: Long,
@@ -592,6 +629,7 @@ internal class Manner(
     val flySpeed: Float = 1f,
     val reach: Float = 1f,
     val perch: LongRange = 0L..0L,
+    val darts: Boolean = false,
 ) {
     companion object {
         const val LINGER_CHANCE = 0.2f
@@ -602,13 +640,13 @@ internal class Manner(
             stepMillis = 700L, rest = 1200L..4000L, stride = 0.3f..0.8f, lookChance = 0.5f, turnChance = 0.4f,
             hostStepMillis = 520L, hostReach = 0.22f, flySpeed = 3f,
         )
-        private val FROG = Manner(stepMillis = 800L, rest = 2200L..7000L, stride = 0.4f..0.9f, lookChance = 0.2f, turnChance = 0.35f)
+        private val FROG = Manner(stepMillis = 800L, rest = 1400L..4200L, stride = 0.4f..0.9f, lookChance = 0.2f, turnChance = 0.35f)
         private val LADYBUG = Manner(
             stepMillis = 2600L, rest = 1000L..3600L, stride = 0.2f..0.6f, turnChance = 0.5f,
             hostStepMillis = 1600L, hostReach = 0.13f,
         )
         private val BUTTERFLY = Manner(stepMillis = 900L, rest = 0L..500L, flySpeed = 1.6f, reach = 0.8f, perch = 2500L..7000L)
-        private val DRAGONFLY = Manner(stepMillis = 220L, rest = 900L..2600L, flySpeed = 4f, reach = 1.4f)
+        private val DRAGONFLY = Manner(stepMillis = 220L, rest = 900L..2600L, flySpeed = 4f, reach = 1.4f, darts = true)
 
         fun of(creature: Creature): Manner = when (creature) {
             Creature.SQUIRREL -> SQUIRREL
@@ -635,6 +673,7 @@ private class Planner(
     var y: Float,
     var alt: Float = 0f,
     var facing: Facing = if (random.nextBoolean()) Facing.LEFT else Facing.RIGHT,
+    var heading: Float = 0f,
 ) {
     val firstFacing: Facing = facing
     val legs = ArrayList<Leg>()
@@ -658,7 +697,9 @@ private class Planner(
 
     fun flyTo(toX: Float, toY: Float, toAlt: Float, millis: Long) {
         facing = CreatureRoutes.facingOf(toX - x, toY - y, facing)
-        legs += Leg(t, millis, CreatureAction.FLY, x, y, alt, toX, toY, toAlt, facing = facing)
+        val from = heading
+        heading = CreatureRoutes.headingOf(toX - x, toY - y, heading)
+        legs += Leg(t, millis, CreatureAction.FLY, x, y, alt, toX, toY, toAlt, facing = facing, heading = heading, turnedFrom = from, darts = manner.darts)
         x = toX
         y = toY
         alt = toAlt
@@ -683,7 +724,7 @@ private class Planner(
 
     fun hold(action: CreatureAction, millis: Long) {
         if (millis <= 0L) return
-        legs += Leg(t, millis, action, x, y, alt, facing = facing)
+        legs += Leg(t, millis, action, x, y, alt, facing = facing, heading = heading)
         t += millis
     }
 

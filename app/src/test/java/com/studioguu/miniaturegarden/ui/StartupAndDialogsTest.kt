@@ -65,11 +65,11 @@ class StartupAndDialogsTest {
         val harvests = listOf<GardenEffect>(GardenEffect.Harvest(1, coins = 10))
             .plusEffect(GardenEffect.Harvest(2, coins = 15))
             .plusEffect(GardenEffect.Harvest(3, coins = 5))
-        assertEquals(listOf<GardenEffect>(GardenEffect.Harvest(3, coins = 30)), harvests)
+        assertEquals(listOf<GardenEffect>(GardenEffect.Harvest(3, coins = 5)), harvests)
         // Different kinds keep their own places, one above the other.
         val built = GardenEffect.WorkDone(6, "struct_hut", WorkKind.BUILDING)
         val mixed = harvests.plusEffect(built).plusEffect(GardenEffect.Harvest(7, coins = 1))
-        assertEquals(listOf(built, GardenEffect.Harvest(7, coins = 31)), mixed)
+        assertEquals(listOf(built, GardenEffect.Harvest(7, coins = 1)), mixed)
     }
 
     @Test

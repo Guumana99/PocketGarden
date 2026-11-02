@@ -90,7 +90,7 @@ ICON_SIZE = 256
 STAGES: dict[str, list] = {
     "corn": [0.36, 0.7, 0.9],
     "eggplant": [0.3, 0.58, 0.78],
-    "carrot": [0.38, 0.48, 0.62],
+    "carrot": [0.38, 0.48, 0.72],
     "wheat": [("w", 0.92), ("w", 0.92), ("w", 0.92)],
     "tomato": [0.34, 0.74, 0.86],
     "strawberry": [0.3, 0.48, 0.58],
@@ -181,8 +181,9 @@ ANCHORS = {
 }
 
 #: How much of the carrot's root shows above its bed at stage 3 (#60), as a share of the root,
-#: at the front of the root (where the soil line is lowest).
-CARROT_SHOULDER = 0.22
+#: at the front of the root (where the soil line is lowest). 0.22 left it all but buried beside the
+#: daikon, which shows the whole of its root (device feedback, 2026-11-02).
+CARROT_SHOULDER = 0.6
 
 #: Where the root goes into the bed (device feedback, after #75): not a level cut but the near half
 #: of the ring where round root meets flat earth, so the line dips at the front by this share of the
@@ -455,6 +456,18 @@ def simple_stages(name: str, suffix: str) -> list[np.ndarray]:
     return [crop(load_cut(f"crop_{name}{suffix}{n}.png", **CUT.get(name, {}))) for n in (1, 2, 3)]
 
 
+def without_cast_shadow(rgba: np.ndarray, share: float = 0.5) -> np.ndarray:
+    """[rgba] without the bluish shadow its stems cast on the white ground (the sunflower's, left as
+    pale spikes at their feet), below the top [share] of the picture: nothing that grows is bluer
+    than it is green."""
+    out = rgba.copy()
+    r, g, b = (rgba[:, :, c].astype(int) for c in range(3))
+    shadow = (b >= g) & (b > r) & (rgba[:, :, 3] > 0)
+    shadow[:int(shadow.shape[0] * share)] = False
+    out[dilate(shadow, 1), 3] = 0
+    return crop(out)
+
+
 def brighter_leaves(rgba: np.ndarray, gain: float) -> np.ndarray:
     """[rgba] with all but its yellow flowers [gain] times as bright, each channel alike."""
     rgb = rgba[:, :, :3].astype(float)
@@ -521,7 +534,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "tomato": simple_stages("tomato", "_"),
         "strawberry": simple_stages("strawberry", "_"),
         "tulip": [crop(load_cut(f"crop_tulip_stage{n}.png")) for n in (1, 2)] + [crop(load_cut("crop_tulip_red_stage3.png"))],
-        "sunflower": simple_stages("sunflower", "_stage"),
+        "sunflower": [without_cast_shadow(p) for p in simple_stages("sunflower", "_stage")],
         "mint": simple_stages("mint", "_stage"),
         "cosmos": cosmos_stages(),
         "snowdrop": snowdrop_stages(),

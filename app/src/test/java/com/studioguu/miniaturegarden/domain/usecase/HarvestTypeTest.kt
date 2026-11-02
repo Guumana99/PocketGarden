@@ -14,6 +14,8 @@ import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.UnlockCondition
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.ui.effects.GardenEffect
+import com.studioguu.miniaturegarden.ui.effects.plusEffect
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -138,6 +140,27 @@ class HarvestTypeTest {
         assertEquals(ActionResult.SUCCESS, harvest("p1", t0 + 4 * hour, WeatherType.RAINY))
         assertEquals(2, repo.objects.getValue("p1").harvestCount)
         assertEquals((PlantSpecies.TOMATO.harvestCoins + PlantSpecies.TOMATO.regrowCoins).toLong(), repo.profile?.coins)
+    }
+
+    @Test
+    fun `three harvests in a run of any crop each pay and show what that one paid`() = runBlocking {
+        for (species in PlantSpecies.entries) {
+            repo.objects.clear()
+            repo.profile = UserProfile(coins = 0)
+            var shown = emptyList<GardenEffect>()
+            for (n in 0 until 3) {
+                repo.put(plant(species, id = "p$n").copy(gridX = n))
+                val before = repo.profile!!.coins
+                var paid = 0
+                assertEquals(ActionResult.SUCCESS, harvest("p$n", t0, sunny, onPaid = { reward, _ -> paid = reward.coins }))
+                assertEquals(species.name, species.harvestCoins, paid)
+                assertEquals(species.name, paid.toLong(), repo.profile!!.coins - before)
+                // What floats up is that harvest's, while the last one is still on screen too.
+                shown = shown.plusEffect(GardenEffect.Harvest(n.toLong(), paid))
+                assertEquals(species.name, listOf<GardenEffect>(GardenEffect.Harvest(n.toLong(), paid)), shown)
+            }
+            assertEquals(species.name, species.harvestCoins * 3L, repo.profile!!.coins)
+        }
     }
 
     @Test

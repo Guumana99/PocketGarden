@@ -306,6 +306,11 @@
     <string name="flavor_mint">季節を選ばない、丈夫な葉。\n触れると、すっと涼やかな香りが立つ。</string>
     <string name="flavor_greenhouse">ガラスの中は、いつもぽかぽか。\n季節外れの花も、ここなら育つ。</string>
     <string name="flavor_tulip">春のお庭の定番。\n育てやすく、初めての人にもやさしい。</string>
+    <string name="flavor_tulip_pink">ほんのり頬を染めたような色。\n見ていると、気持ちまでやわらぐ。</string>
+    <string name="flavor_tulip_yellow">お日さまを集めたような明るい色。\n曇りの日も、花壇がぱっと華やぐ。</string>
+    <string name="flavor_tulip_white">よい土で、まれに咲く白。\n朝露をまとうと、いっそう清らか。</string>
+    <string name="flavor_tulip_purple">よい土で、まれに咲く紫。\n夕暮れどきに、深い色が映える。</string>
+    <string name="flavor_tulip_blue">ふかふかの土に、ごくまれに咲く青。\n出会えたら、きっと自慢したくなる。</string>
     <string name="flavor_sunflower">太陽を追いかけて、背を伸ばす。\n喉が渇きやすいので、水やりはこまめに。</string>
     <string name="flavor_rose">花の女王。\n手間はかかるが、咲いたときの喜びはひとしお。</string>
     <string name="flavor_grass">ふかふかの、緑の絨毯。\n寝ころぶと、心地よい。</string>
@@ -342,7 +347,7 @@
     <!-- Rewards. By request, none of these texts uses the word 動画. -->
     <string name="action_cancel">キャンセル</string>
     <string name="reward_rain_button">雨乞い</string>
-    <string name="reward_rain_confirm">雨乞いをすると、お庭にやさしい雨が降ります。\n作物がぐんと育ちます</string>
+    <string name="reward_rain_confirm">雨乞いをすると、お庭にやさしい雨が降ります。作物がぐんと育ちます</string>
     <string name="reward_rain_confirm_ok">☔ 雨を降らせる</string>
     <string name="reward_bonus_button">💰 臨時ボーナスを受け取る</string>
     <string name="reward_bonus_short">💰 臨時ボーナス</string>
@@ -621,6 +626,8 @@
     <string name="collection_bloom_colours">咲かせた色：%1$s（%2$d／%3$d色）</string>
     <string name="collection_bloom_colours_separator">・</string>
     <string name="bloom_unknown">？？？</string>
+    <string name="collection_title_colour">%1$s（%2$s）</string>
+    <string name="bloom_colour_unknown">？</string>
     <string name="bloom_hint_common">どこでも咲くらしい</string>
     <string name="bloom_hint_rare">よい土で、まれに咲くらしい</string>
     <string name="bloom_hint_very_rare">春のふかふかの土で、ごくまれに咲くらしい</string>

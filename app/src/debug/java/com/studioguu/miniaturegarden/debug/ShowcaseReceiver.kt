@@ -123,13 +123,14 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val ground = garden == "ground"
         val fenceLook = garden == "fencelook"
         val lawnThings = garden == "lawnthings"
+        val heights = garden == "heights"
         val greenhouse = garden == "greenhouse"
         val hakusai = garden == "hakusai"
         val nanohana = garden == "nanohana"
         val bridgePlaces = garden == "bridgeplace"
         val expand = garden == "expand"
         val banks = garden == "banks"
-        val feedback = garden == "fb" || banks || art || fences || bridges || crops || ground || fenceLook || lawnThings || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val feedback = garden == "fb" || banks || art || fences || bridges || crops || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -145,6 +146,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     banks -> GroundGarden.banks(now)
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)
+                    heights -> GroundGarden.heights(now)
                     greenhouse -> GroundGarden.greenhouse(now)
                     hakusai -> GroundGarden.field(now, PlantSpecies.HAKUSAI)
                     nanohana -> GroundGarden.field(now, PlantSpecies.NANOHANA, young = 0.5f)
@@ -165,6 +167,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
             // The feedback garden's book has every page filled in, so that its pictures can be looked at.
             if (feedback) {
                 CollectionEntry.entries.forEach { gardenRepository.upsertCollectionRecord(CollectionRecord(it.objectId, 1, now, revealed = true)) }
+                // Some colours of the tulip grown and some not, for its page to show both.
+                listOf("red", "pink", "yellow").forEach { gardenRepository.upsertCollectionRecord(CollectionRecord(CollectionEntry.colourRecordId(CollectionEntry.TULIP.objectId, it), 1, now, revealed = true)) }
             }
             if (bridgePlaces) gardenRepository.upsertInventorySlot(InventorySlot(0, GardenItem.STRUCT_BRIDGE.itemId, 5))
             val profile = gardenRepository.getUserProfile() ?: UserProfile()

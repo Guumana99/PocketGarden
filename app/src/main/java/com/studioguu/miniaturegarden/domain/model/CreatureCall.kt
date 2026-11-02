@@ -6,8 +6,10 @@ package com.studioguu.miniaturegarden.domain.model
  * @property creatures those chosen, at most [MOST] of them, oldest first.
  * @property on while on, they come whatever [VisitRule] says of the weather, the season, the time
  *   of day and the dice, and come back when they have gone.
+ * @property since when they were called (epoch millis): the rounds run from then, so that one
+ *   called comes at once and stays a whole round, not what is left of one already under way.
  */
-data class CreatureCall(val creatures: List<Creature> = emptyList(), val on: Boolean = false) {
+data class CreatureCall(val creatures: List<Creature> = emptyList(), val on: Boolean = false, val since: Long = 0L) {
     /** Whether anyone is being called at all. */
     val calling: Boolean get() = on && creatures.isNotEmpty()
 
@@ -32,14 +34,14 @@ object CreatureCalls {
     const val ARRIVES_AFTER_MILLIS = 1_000L
     const val AWAY_MILLIS = 5_000L
 
-    fun roundOf(now: Long): Long = Math.floorDiv(now, ROUND_MILLIS)
+    fun roundOf(now: Long, since: Long = 0L): Long = Math.floorDiv(now - since, ROUND_MILLIS)
 
-    fun roundStart(round: Long): Long = round * ROUND_MILLIS
+    fun roundStart(round: Long, since: Long = 0L): Long = since + round * ROUND_MILLIS
 
     /** The visits of the round [now] falls in, of those of [creatures] the garden has a place for. */
-    fun visitsAt(now: Long, creatures: List<Creature>, objects: List<GridObject>, map: GardenMap): List<CreatureVisit> {
-        val round = roundOf(now)
-        val start = roundStart(round)
+    fun visitsAt(now: Long, creatures: List<Creature>, objects: List<GridObject>, map: GardenMap, since: Long = 0L): List<CreatureVisit> {
+        val round = roundOf(now, since)
+        val start = roundStart(round, since)
         val garden = GardenSnapshot(objects, WeatherType.SUNNY)
         val grid = GardenGrid(map, objects)
         val taken = HashSet<GridCell>()
@@ -75,14 +77,20 @@ object CreatureCalls {
 
     /**
      * Where to set something down: a free cell near the middle, with a free cell beside it for
-     * those that settle beside what they come to.
+     * those that settle beside what they come to. A lawn or other ground cover leaves a cell free:
+     * a garden laid all over with lawn has room, and the thing takes the cover's place
+     * ([coverAt]).
      */
     fun freeCell(objects: List<GridObject>, map: GardenMap): GridCell? {
         val grid = GardenGrid(map, objects)
-        fun free(x: Int, y: Int) = map.isInside(x, y) && map.isBuildable(x, y) && grid.occupantAt(x, y) == null && grid.floorAt(x, y) == null
+        fun free(x: Int, y: Int) = map.isInside(x, y) && map.isBuildable(x, y) && grid.occupantAt(x, y)?.isGroundCover != false && grid.floorAt(x, y) == null
         val middle = (map.size - 1) / 2f
         return (0 until map.size).flatMap { y -> (0 until map.size).map { x -> GridCell(x, y) } }
             .filter { (x, y) -> free(x, y) && (free(x + 1, y) || free(x, y + 1) || free(x - 1, y) || free(x, y - 1)) }
             .minWithOrNull(compareBy({ (it.x - middle) * (it.x - middle) + (it.y - middle) * (it.y - middle) }, { it.y }, { it.x }))
     }
+
+    /** The ground cover on [cell], to be taken up for what is set down there. */
+    fun coverAt(cell: GridCell, objects: List<GridObject>): List<GridObject> =
+        objects.filter { it.isGroundCover && it.gridX == cell.x && it.gridY == cell.y }
 }

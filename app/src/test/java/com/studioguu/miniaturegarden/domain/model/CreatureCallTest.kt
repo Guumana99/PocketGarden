@@ -68,6 +68,28 @@ class CreatureCallTest {
     }
 
     @Test
+    fun `one called comes at once and stays a whole round, however late in the clock's round`() {
+        val objects = withThingsFor(Creature.FROG)
+        val since = t0 + CreatureCalls.ROUND_MILLIS - 2_000L
+        val visit = CreatureCalls.visitsAt(since, listOf(Creature.FROG), objects, map, since).single()
+        assertEquals(since + CreatureCalls.ARRIVES_AFTER_MILLIS, visit.arrivesAt)
+        assertEquals(since + CreatureCalls.ROUND_MILLIS - CreatureCalls.AWAY_MILLIS, visit.leavesAt)
+        assertEquals(1L, CreatureCalls.roundOf(since + CreatureCalls.ROUND_MILLIS, since))
+    }
+
+    @Test
+    fun `a garden laid with lawn has room, and a frog comes to water with lawn round it`() {
+        val lawn = (0 until map.size).flatMap { y -> (0 until map.size).map { x -> at(x, y, "ground_grass", growth = 1f) } }
+        val cell = CreatureCalls.freeCell(lawn, map)
+        assertEquals(GridCell(5, 5), cell)
+        val taken = CreatureCalls.coverAt(cell!!, lawn)
+        assertEquals(1, taken.size)
+        val objects = lawn - taken.toSet() + CreatureCalls.thingsFor(Creature.FROG, cell, t0)
+        val visit = CreatureCalls.visitsAt(t0, listOf(Creature.FROG), objects, map).single()
+        assertTrue(visit.cell != cell)
+    }
+
+    @Test
     fun `things are set down on a free cell near the middle, with room beside it`() {
         assertEquals(GridCell(5, 5), CreatureCalls.freeCell(emptyList(), map))
         val taken = CreatureCalls.freeCell(listOf(at(5, 5, "deco_bench")), map)

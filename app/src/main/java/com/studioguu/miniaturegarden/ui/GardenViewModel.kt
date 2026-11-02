@@ -633,7 +633,7 @@ class GardenViewModel @Inject constructor(
     /** Debug menu: calls these creatures, setting down what the garden lacks for them. */
     fun debugCallCreatures(call: CreatureCall) {
         if (!BuildConfig.DEBUG) return
-        _creatureCall.value = call
+        _creatureCall.value = call.copy(since = System.currentTimeMillis())
         if (!call.calling) return
         viewModelScope.launch {
             initJob.join()
@@ -676,9 +676,9 @@ class GardenViewModel @Inject constructor(
                 flow {
                     while (call.calling) {
                         val now = System.currentTimeMillis()
-                        val round = CreatureCalls.roundOf(now)
+                        val round = CreatureCalls.roundOf(now, call.since)
                         emit(call to round)
-                        delay(CreatureCalls.roundStart(round + 1) - now + 1)
+                        delay(CreatureCalls.roundStart(round + 1, call.since) - now + 1)
                     }
                     emit(call to 0L)
                 }
@@ -691,7 +691,7 @@ class GardenViewModel @Inject constructor(
                     val now = System.currentTimeMillis()
                     val leftAt = settingsRepository.settings.first().visitorsLeftAt
                     val visits = if (call.calling) {
-                        CreatureCalls.visitsAt(now, call.creatures, visiting.objects, visiting.map)
+                        CreatureCalls.visitsAt(now, call.creatures, visiting.objects, visiting.map, call.since)
                     } else {
                         CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay, visiting.phase, leftAt)
                     }
