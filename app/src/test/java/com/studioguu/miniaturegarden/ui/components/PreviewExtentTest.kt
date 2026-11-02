@@ -34,11 +34,33 @@ class PreviewExtentTest {
 
     @Test
     fun `without a building the lawn and the headroom are all there is, as before`() {
-        val extent = PreviewExtent.of(1, 1.05f, listOf(at("plant_tulip")), sprites, manifest.tileWidth.toFloat(), step)
+        val extent = PreviewExtent.of(1, 0.3f, listOf(at("ground_pebble")), sprites, manifest.tileWidth.toFloat(), step)
         assertEquals(-0.5f, extent.left, 1e-4f)
         assertEquals(0.5f, extent.right, 1e-4f)
-        assertEquals(-1.05f, extent.top, 1e-4f)
-        assertEquals((1 + 0.6f) / 2f, extent.bottom, 1e-4f)
+        assertEquals(-0.3f, extent.top, 1e-4f)
+        assertEquals((1 + PREVIEW_SOIL) / 2f, extent.bottom, 1e-4f)
+    }
+
+    @Test
+    fun `the slab under a patch is as thick for its size whatever the patch's size`() {
+        for (n in 1..3) {
+            val extent = PreviewExtent.of(n, 0.1f, emptyList(), sprites, manifest.tileWidth.toFloat(), step)
+            assertEquals(n * (1 + PREVIEW_SOIL) / 2f, extent.bottom, 1e-4f)
+        }
+    }
+
+    @Test
+    fun `a crop is fitted round the plant, so that it stands in the middle of the frame`() {
+        val scale = 1f / manifest.tileWidth
+        for (id in listOf("plant_strawberry", "plant_paprika", "plant_sunflower")) {
+            val sprite = sprites("${id}_stage3")!!
+            val extent = PreviewExtent.of(1, 1.05f, listOf(at(id)), sprites, manifest.tileWidth.toFloat(), step)
+            val plantTop = sprite.drawTop(0.25f, scale)
+            assertTrue(id, extent.top <= plantTop)
+            assertTrue(id, extent.top >= plantTop - 0.1f)
+            assertTrue(id, extent.left <= sprite.drawLeft(0f, scale))
+            assertTrue(id, extent.right >= sprite.drawLeft(0f, scale) + sprite.drawnWidth(scale))
+        }
     }
 
     @Test

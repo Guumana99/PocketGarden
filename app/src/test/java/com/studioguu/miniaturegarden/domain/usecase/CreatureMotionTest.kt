@@ -71,6 +71,7 @@ class CreatureMotionTest {
         for (x in 0 until 11) add(GridCell(x, 0))
         for (obj in objects) if (obj.objectId != "plant_sunflower" && obj.objectId != "ground_grass" && obj.objectId != "plant_tulip") addAll(obj.occupiedCells())
     }
+    private val stream = setOf(GridCell(1, 1), GridCell(2, 1), GridCell(3, 1))
     private val ponds = setOf(GridCell(6, 8), GridCell(4, 8))
 
     private fun visit(rule: VisitRule, cell: GridCell, host: GridObject? = null, arrivesAt: Long = 1_000_000L, stay: Long = 200_000L) =
@@ -137,7 +138,7 @@ class CreatureMotionTest {
                     assertTrue("$rule at $now in ${pose.cell}", isInside(pose))
                     val cell = GridCell(floor(pose.x).toInt(), floor(pose.y).toInt())
                     assertEquals(cell, pose.cell)
-                    val allowed = cell !in blocked || (rule.creature == Creature.FROG && cell in ponds)
+                    val allowed = cell !in blocked || (rule.creature == Creature.FROG && (cell in ponds || cell in stream))
                     assertTrue("$rule at $now walked onto $cell", allowed)
                     assertTrue(CreatureRoutes.canWalk(rule.creature, grid, cell.x, cell.y))
                 }
@@ -167,6 +168,38 @@ class CreatureMotionTest {
     }
 
     @Test
+    fun `a frog goes into a stream as well, half under the water`() {
+        var inStream = false
+        for (arrival in 0 until 30L) {
+            val frog = CreatureRoutes.plan(visit(VisitRule.FROG_RAIN, GridCell(2, 2), arrivesAt = 3_000_000L + arrival * 299_993L), grid)
+            for ((_, pose) in posesOf(frog, 250L)) {
+                assertEquals(pose.cell in stream, pose.inPond)
+                if (pose.inPond) inStream = true
+            }
+        }
+        assertTrue("the frog never went into the stream", inStream)
+        for (creature in Creature.entries - Creature.FROG) assertFalse(CreatureRoutes.canWalk(creature, grid, 2, 1))
+    }
+
+    @Test
+    fun `a dragonfly turns on the spot, shoots off, and holds its heading while it hovers`() {
+        val river = objects.first { it.objectId == GridObject.RIVER_OBJECT_ID }
+        val route = CreatureRoutes.plan(visit(VisitRule.DRAGONFLY_AUTUMN, GridCell(1, 1), river), grid)
+        val poses = posesOf(route, 10L).map { it.second }
+        val darts = poses.filter { it.action == CreatureAction.FLY && it.altitude < 0.5f }
+        assertTrue(darts.size > 20)
+        for ((a, b) in poses.zipWithNext()) {
+            if (a.action == CreatureAction.HOVER && b.action == CreatureAction.HOVER && a.elapsed < b.elapsed) assertEquals(a.heading, b.heading, 1e-3f)
+            // In the air its turns are short and quick: never a sudden flip from one frame to the next.
+            if (a.action == b.action && a.elapsed < b.elapsed) assertTrue(abs(CreatureRoutes.shortestTurn(a.heading, b.heading)) < 40f)
+            // It does not set off until it has turned.
+            if (b.action == CreatureAction.FLY && b.duration < 2_000L && b.elapsed < CreatureRoutes.TURN_MILLIS && a.action == CreatureAction.FLY && a.elapsed < b.elapsed) {
+                assertEquals(a.x, b.x, 1e-4f)
+            }
+        }
+    }
+
+    @Test
     fun `a crop, a lawn and paving can be walked through`() {
         for (creature in listOf(Creature.SQUIRREL, Creature.BIRD, Creature.FROG)) {
             assertTrue(CreatureRoutes.canWalk(creature, grid, 6, 6))
@@ -174,7 +207,6 @@ class CreatureMotionTest {
             assertTrue(CreatureRoutes.canWalk(creature, grid, 2, 3))
             assertFalse(CreatureRoutes.canWalk(creature, grid, 4, 6))
             assertFalse(CreatureRoutes.canWalk(creature, grid, 2, 0))
-            assertFalse(CreatureRoutes.canWalk(creature, grid, 2, 1))
             assertFalse(CreatureRoutes.canWalk(creature, grid, -1, 5))
         }
     }

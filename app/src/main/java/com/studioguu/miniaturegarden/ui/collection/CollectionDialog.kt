@@ -422,6 +422,12 @@ private fun Spread(
         }
     }
     val ready = state == PageState.READY
+    // A crop of several colours: the one the page is showing, the first grown to begin with (#59).
+    val allColours = PlantSpecies.fromObjectId(entry.objectId)?.bloomColours.orEmpty()
+    // A page written before colours were noted counts as its plain one.
+    val grownColours = colours.ifEmpty { allColours.take(1) }
+    var shownColour by rememberSaveable(entry) { mutableStateOf(grownColours.firstOrNull()) }
+    val notGrown = state == PageState.REVEALED && shownColour != null && shownColour !in grownColours
 
     Row(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(6.dp))) {
         // Left page: the picture, in a frame.
@@ -444,7 +450,7 @@ private fun Spread(
             ) {
                 ZoomablePicture(zoomed, onUnzoom = onZoom, Modifier.fillMaxSize()) {
                     Box(Modifier.padding(8.dp), contentAlignment = Alignment.Center) {
-                        Illustration(entry, state, reveal.value, colours.firstOrNull(), atlas, terrain)
+                        Illustration(entry, state, reveal.value, shownColour, atlas, terrain, silhouette = notGrown)
                     }
                 }
                 if (state == PageState.REVEALED) Magnifier(zoomed, onZoom, Modifier.align(Alignment.BottomEnd))
@@ -464,12 +470,23 @@ private fun Spread(
         ) {
             PageHeader(entry.ordinal + 1, enteredAt.takeIf { state == PageState.REVEALED })
             Text(
-                text = if (state == PageState.REVEALED) objectDisplayName(entry.objectId) else stringResource(R.string.collection_unknown),
+                text = when {
+                    state != PageState.REVEALED -> stringResource(R.string.collection_unknown)
+                    allColours.isEmpty() -> objectDisplayName(entry.objectId)
+                    else -> stringResource(
+                        R.string.collection_title_colour,
+                        objectDisplayName(entry.objectId),
+                        stringResource(if (notGrown) R.string.bloom_colour_unknown else bloomColourLabel(shownColour ?: allColours.first())),
+                    )
+                },
                 color = Ink,
                 fontFamily = BookFont,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleMedium,
             )
+            if (state == PageState.REVEALED && allColours.size > 1) {
+                BloomColourPicker(allColours, grownColours, shownColour) { shownColour = it }
+            }
             Box(Modifier.fillMaxWidth().height(1.dp).background(InkFaded))
             when (state) {
                 PageState.REVEALED -> Column(
@@ -478,18 +495,17 @@ private fun Spread(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = stringResource(flavorText(entry)),
-                        color = Ink,
+                        // A colour not grown yet has no words of its own: only where it is said to bloom.
+                        text = stringResource(
+                            when {
+                                notGrown -> bloomHint(BloomColours.rarityOf(PlantSpecies.forObjectId(entry.objectId), shownColour!!))
+                                else -> flavorText(entry, shownColour)
+                            },
+                        ),
+                        color = if (notGrown) InkFaded else Ink,
                         fontFamily = BookFont,
                         style = MaterialTheme.typography.bodyMedium,
                     )
-                    // A crop of several colours lists the ones the player has grown (#59).
-                    val all = PlantSpecies.fromObjectId(entry.objectId)?.bloomColours.orEmpty()
-                    if (all.size > 1) {
-                        for (colour in all) {
-                            BloomColourSlot(entry, colour, grown = colour in colours, atlas, terrain)
-                        }
-                    }
                 }
                 PageState.READY -> {
                     Text(
@@ -532,43 +548,49 @@ private fun Spread(
 }
 
 /**
- * One colour's place on a crop's page: the flower and its name once it has been harvested in that
- * colour; until then a shadow, and a line on where it is said to bloom.
+ * The colours of a crop, under its name: a dot for each, filled in once it has been harvested in
+ * that colour and a ring until then. A tap turns the page to that colour.
  */
 @Composable
-private fun BloomColourSlot(entry: CollectionEntry, colour: String, grown: Boolean, atlas: SpriteAtlas, terrain: TerrainTextures) {
-    val species = PlantSpecies.forObjectId(entry.objectId)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        val shadow = if (grown) {
-            Modifier
-        } else {
-            Modifier
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .drawWithContent {
-                    drawContent()
-                    drawRect(InkFaded, blendMode = BlendMode.SrcIn)
-                }
+private fun BloomColourPicker(all: List<String>, grown: List<String>, shown: String?, onPick: (String) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        for (colour in all) {
+            val has = colour in grown
+            Box(
+                modifier = Modifier
+                    .size(BLOOM_DOT_TOUCH)
+                    .clickable(onClick = withTick { onPick(colour) })
+                    .testTag(bloomSlotTag(colour, has)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(BLOOM_DOT_SIZE)
+                        .then(if (colour == shown) Modifier.border(2.dp, Ink, CircleShape) else Modifier)
+                        .padding(3.dp)
+                        .background(if (has) bloomDotColour(colour) else Color.Transparent, CircleShape)
+                        .border(1.dp, InkFaded, CircleShape),
+                )
+            }
         }
-        ObjectPreview(
-            objectId = entry.objectId,
-            atlas = atlas,
-            terrain = terrain,
-            bloomColour = colour,
-            modifier = Modifier.size(BLOOM_SLOT_SIZE).then(shadow).testTag(bloomSlotTag(colour, grown)),
-        )
-        Text(
-            text = stringResource(if (grown) bloomColourLabel(colour) else bloomHint(BloomColours.rarityOf(species, colour))),
-            color = if (grown) Ink else InkFaded,
-            fontFamily = BookFont,
-            style = MaterialTheme.typography.bodySmall,
-        )
     }
 }
 
 /** Test tag of one colour's place on the page. */
 fun bloomSlotTag(colour: String, grown: Boolean): String = "bloom_${colour}_${if (grown) "grown" else "shadow"}"
 
-private val BLOOM_SLOT_SIZE = 40.dp
+private val BLOOM_DOT_SIZE = 22.dp
+private val BLOOM_DOT_TOUCH = 28.dp
+
+private fun bloomDotColour(colour: String): Color = when (colour) {
+    "red" -> Color(0xFFD8442F)
+    "pink" -> Color(0xFFEE9DB4)
+    "yellow" -> Color(0xFFF2C94C)
+    "white" -> Color(0xFFFFFBF0)
+    "purple" -> Color(0xFF8E5BB5)
+    "blue" -> Color(0xFF5B8DD9)
+    else -> InkFaded
+}
 
 /** Where a colour not grown yet is said to bloom. No numbers: only a hint. */
 @StringRes
@@ -593,6 +615,7 @@ private fun Illustration(
     colour: String?,
     atlas: SpriteAtlas,
     terrain: TerrainTextures,
+    silhouette: Boolean = false,
 ) {
     // Kept as a State and read only in the question mark's layer, so that its beat redraws that
     // one layer rather than recomposing the whole page on every frame.
@@ -633,7 +656,7 @@ private fun Illustration(
                     scaleX = pop
                     scaleY = pop
                     alpha = (reveal / 0.4f).coerceAtMost(1f)
-                },
+                }.then(if (silhouette) Modifier.shadowOfItself() else Modifier),
             )
         }
         if (reveal < 0.5f) {
@@ -677,6 +700,18 @@ internal fun bloomColourLabel(colour: String): Int = when (colour) {
     "purple" -> R.string.bloom_colour_purple
     "blue" -> R.string.bloom_colour_blue
     else -> R.string.bloom_colour_other
+}
+
+/** The words of [entry]; a crop of several colours has them for each ([colour]). */
+@StringRes
+internal fun flavorText(entry: CollectionEntry, colour: String?): Int = when {
+    entry != CollectionEntry.TULIP -> flavorText(entry)
+    colour == "pink" -> R.string.flavor_tulip_pink
+    colour == "yellow" -> R.string.flavor_tulip_yellow
+    colour == "white" -> R.string.flavor_tulip_white
+    colour == "purple" -> R.string.flavor_tulip_purple
+    colour == "blue" -> R.string.flavor_tulip_blue
+    else -> R.string.flavor_tulip
 }
 
 @StringRes
@@ -727,6 +762,14 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.WINDMILL -> R.string.flavor_windmill
     CollectionEntry.COTTAGE -> R.string.flavor_cottage
 }
+
+/** What is drawn here, filled in with the ink: a colour not grown yet. */
+private fun Modifier.shadowOfItself(): Modifier = this
+    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        drawRect(InkFaded, blendMode = BlendMode.SrcIn)
+    }
 
 /** The question mark's size when its page is not waiting to be filled in. */
 private val STILL_BEAT: State<Float> = mutableFloatStateOf(1f)

@@ -638,7 +638,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     FeatureRevealCard(
                         feature = introducing,
                         onClose = { viewModel.acknowledgeTutorial(introducing.revealedAt) },
-                        modifier = Modifier.align(Alignment.Center).padding(start = 12.dp, end = 84.dp),
+                        modifier = Modifier.align(Alignment.Center).padding(horizontal = 24.dp),
                     )
                 }
             }

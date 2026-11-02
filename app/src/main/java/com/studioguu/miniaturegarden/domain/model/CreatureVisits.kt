@@ -118,7 +118,7 @@ object CreatureVisits {
             VisitPlacement.BESIDE_ANCHOR -> {
                 val cells = anchors.flatMap { anchor -> anchor.occupiedCells().flatMap(::neighbours) }
                     .distinct()
-                    .filter { map.isBuildable(it.x, it.y) && grid.occupantAt(it.x, it.y) == null && it !in taken }
+                    .filter { map.isBuildable(it.x, it.y) && grid.occupantAt(it.x, it.y)?.isGroundCover != false && it !in taken }
                     .sortedWith(compareBy({ it.y }, { it.x }))
                 if (cells.isEmpty()) return null
                 cells[pick(period, rule, cells.size)] to null

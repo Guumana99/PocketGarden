@@ -225,8 +225,8 @@ fun TutorialDoneDialog(onClose: () -> Unit) {
 
 /**
  * Tells the player that [feature] has just been put in their hands and where to find it. Laid
- * over the garden rather than shown as a dialog, so that the button it is about, which lights up
- * at the same time, can be seen beside it.
+ * over the garden rather than shown as a dialog, so that the garden stays bright round it; in the
+ * middle of the screen, and the button it is about, lit up at the same time, may lie under it.
  */
 @Composable
 fun FeatureRevealCard(feature: GardenFeature, onClose: () -> Unit, modifier: Modifier = Modifier) {

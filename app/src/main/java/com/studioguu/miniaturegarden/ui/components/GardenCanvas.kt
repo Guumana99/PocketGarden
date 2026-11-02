@@ -719,8 +719,8 @@ private fun submitObjects(
             // Paving and tilled soil: also ground. Whatever stands on the cell is a separate
             // object and is drawn later, in the object layer, so it always appears on top.
             val paving = terrain.cobblestone
-            // Back to front within the ground: a bed of soil stands a little proud of the lawn,
-            // and its front edge has to come over the bed behind it.
+            // Back to front within the ground: a bed's rim and spilled earth have to come over the
+            // bed behind it.
             submit(obj, RenderLayer.BASE_TERRAIN, 1f + LayerPipeline.depthOf(obj.gridX, obj.gridY)) {
                 if (obj.isHoedSoil) {
                     // Beds side by side are one field: each knows which of its sides carry on (#47).
@@ -1586,8 +1586,12 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
 /** Room over the far corner of a greenhouse's preview, in tile widths: its walls and its roof. */
 private const val GREENHOUSE_HEADROOM = GreenhouseLook.WALL_HEIGHT + 0.1f
 
-/** The lawn of a preview sits on a slab of soil this thick, in tile heights (see drawTerrain). */
-private const val PREVIEW_SOIL = 0.6f
+/**
+ * The lawn of a preview sits on a slab of soil this thick, in tile heights for each cell of the
+ * patch (see drawTerrain): by the patch's size, not the cell's, so that one cell of pebbles and three
+ * of a stream stand on the same slab in the frame (device feedback: the stream's was a third of it).
+ */
+internal const val PREVIEW_SOIL = 0.3f
 
 /**
  * How much of a building's shadow the preview is fitted to (measured on the book's hut, cottage
@@ -1640,7 +1644,7 @@ internal data class PreviewExtent(val left: Float, val top: Float, val right: Fl
             var left = -n / 2f
             var right = n / 2f
             var top = -headroom
-            var bottom = (n + PREVIEW_SOIL) / 2f
+            var bottom = n * (1f + PREVIEW_SOIL) / 2f
             val transform = IsometricTransform(tileWidth = 1f, tileHeight = 0.5f, heightStep = heightStep)
             val scale = 1f / atlasTileWidth
             fun reach(l: Float, t: Float, r: Float) {
@@ -1648,9 +1652,19 @@ internal data class PreviewExtent(val left: Float, val top: Float, val right: Fl
                 right = max(right, r + PREVIEW_MARGIN)
                 top = min(top, t - PREVIEW_MARGIN)
             }
+            // A crop on its one cell: fitted to the plant, so that it stands in the middle of the
+            // frame whatever its height and however its picture sits on its foot (device feedback:
+            // the low strawberry and the wide paprika stood low and to one side).
+            val crop = objects.singleOrNull { it.isPlant }?.takeIf { gridSize == 1 }?.let { sprites(TileSetDefinition.assetIdFor(it)) }
+            if (crop != null) {
+                val foot = transform.worldToScreen(0.5f, 0.5f)
+                val cropLeft = crop.drawLeft(foot.x, scale)
+                top = 0f
+                reach(cropLeft, crop.drawTop(foot.y, scale), cropLeft + crop.drawnWidth(scale))
+            }
             for (obj in objects) {
                 val structure = StructureData.fromObjectId(obj.objectId) ?: continue
-                bottom = max(bottom, (n + PREVIEW_SOIL) / 2f + PREVIEW_BALANCE)
+                bottom = max(bottom, n * (1f + PREVIEW_SOIL) / 2f + PREVIEW_BALANCE)
                 val footprint = structure.footprint
                 val base = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f)
                 val sprite = sprites(TileSetDefinition.assetIdFor(obj))
@@ -1794,7 +1808,7 @@ private fun DrawScope.drawTerrain(
         val left = transform.worldToScreen(0f, max)
         val bottom = transform.worldToScreen(max, max)
         val right = transform.worldToScreen(max, 0f)
-        val thickness = Offset(0f, transform.tileHeight * 0.6f)
+        val thickness = Offset(0f, transform.tileHeight * PREVIEW_SOIL * gridSize)
         // The two visible side faces of the soil slab the patch sits on.
         drawPath(quad(left, bottom, bottom + thickness, left + thickness), SOIL_LEFT)
         drawPath(quad(bottom, right, right + thickness, bottom + thickness), SOIL_RIGHT)
@@ -2207,16 +2221,16 @@ private const val PICTURED_BED_EDGE = 0.45f
  * A bed of tilled soil on cell ([x], [y]). Its sides that [joins] carry on into the next bed run
  * straight along the cell's edge, with no rim, no spilled earth and no gap in the furrows, so that
  * beds side by side are drawn as one field (#47). Its open sides keep a ragged, dark rim with earth
- * spilled over onto the grass, and along the front (east and south) a low face of earth, the bed
- * standing a little proud of the lawn.
+ * spilled over onto the grass. It lies level with everything else laid on the ground (device
+ * feedback: its low face of earth along the front was the one step between grounds).
  *
  * The damp patches are placed over the ground as a whole ([SoilTexture.patches]); a bed draws
  * those of the cells round it too, clipped to itself, so a patch carries across the joins.
  *
  * With a [face] (#57: the picture of a tilled or a composted bed, seen from above,
  * [TerrainTextures.bedFace]) the bed's earth, furrows and grains are that picture, [cellsPerCopy]
- * cells to a copy, so that beds side by side run on; the rim, the spilled earth and the low front
- * face are drawn round it as before.
+ * cells to a copy, so that beds side by side run on; the rim and the spilled earth are drawn round
+ * it as before.
  */
 private fun DrawScope.drawTilledSoil(
     transform: IsometricTransform,
@@ -2261,19 +2275,6 @@ private fun DrawScope.drawTilledSoil(
     }
     val pointsPerSide = ring.size / 4
     fun sidePoints(side: Int): List<Offset> = (0..pointsPerSide).map { ring[(side * pointsPerSide + it) % ring.size] }
-
-    // The low face of earth along the open front sides (east and south): the bed stands proud.
-    val lip = Offset(0f, unit * 0.03f)
-    for (side in listOf(1, 2)) {
-        if (joins.joined(side)) continue
-        val edge = sidePoints(side)
-        val front = Path().apply {
-            edge.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
-            edge.asReversed().forEach { p -> lineTo(p.x + lip.x, p.y + lip.y) }
-            close()
-        }
-        drawPath(front, if (side == 1) DIRT_DEEP else DIRT_EDGE)
-    }
 
     if (face != null) {
         fillWithTexture(face, transform, bed, cellsPerCopy)

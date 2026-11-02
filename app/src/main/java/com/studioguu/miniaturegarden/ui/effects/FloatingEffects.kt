@@ -50,14 +50,14 @@ sealed interface GardenEffect {
 
 /**
  * [effect] added to the effects on screen. Effects of one kind float up from the same spot, so a
- * second harvest while the first is still up is merged into it rather than laid over it (#59: a
- * row of crops harvested in a run stacked into an unreadable pile). The merged effect takes the
- * new id, so it starts afresh, and its sums add up.
+ * second harvest while the first is still up takes its place rather than being laid over it (#59:
+ * a row of crops harvested in a run stacked into an unreadable pile). It shows what that harvest
+ * paid and no more: a running total read as each harvest paying more than the last (+22, +44,
+ * +66). The top bar's coins are the total. It has its own id, so it starts afresh.
  */
 fun List<GardenEffect>.plusEffect(effect: GardenEffect): List<GardenEffect> =
     if (effect is GardenEffect.Harvest && any { it is GardenEffect.Harvest }) {
-        filterNot { it is GardenEffect.Harvest } +
-            effect.copy(coins = effect.coins + filterIsInstance<GardenEffect.Harvest>().sumOf { it.coins })
+        filterNot { it is GardenEffect.Harvest } + effect
     } else {
         this + effect
     }

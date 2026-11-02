@@ -84,6 +84,34 @@ object GroundGarden {
             place(now, GridObject.POND_OBJECT_ID, listOf(GridCell(3, 7)))
 
     /**
+     * Every ground beside every other (`--es garden heights`), to look for steps and gaps where
+     * they meet: strips across the garden, each next to the ones either side and, between the
+     * rows, next to a different one. The last rows stand a bench, a well and a hut on each ground.
+     *
+     *     y\\x 0 1 2 3 4 5 6 7 8 9 10
+     *      1  G P C D F ~ G O R T G      G lawn, P pebbles, C cobblestones, D decking, F flowers,
+     *      2  G P C D F ~ G O R T G      ~ stream, O pond, R ridges, T tilled earth
+     *      3  P ~ D O C R F T G C ~
+     *      4  P ~ D O C R F T G C ~
+     *      6  G C D P . # # . . . .      # a building, on bare ground
+     *      7  b l w b . # # . . . .      b bench, l lantern, w well, on the ground above them
+     */
+    fun heights(now: Long): List<GridObject> {
+        val ids = mapOf(
+            'G' to LAWN, 'P' to "ground_pebble", 'F' to "ground_flowers", 'C' to GridObject.COBBLESTONE_OBJECT_ID, 'D' to GridObject.WOOD_DECK_OBJECT_ID,
+            '~' to GridObject.RIVER_OBJECT_ID, 'O' to GridObject.POND_OBJECT_ID, 'R' to GridObject.TILLED_SOIL_OBJECT_ID, 'T' to GridObject.LOOSE_SOIL_OBJECT_ID,
+        )
+        val strips = mapOf(1 to "GPCDF~GORTG", 2 to "GPCDF~GORTG", 3 to "P~DOCRFTGC~", 4 to "P~DOCRFTGC~", 6 to "GCDP", 7 to "GCDP")
+        val ground = strips.flatMap { (y, row) -> row.mapIndexed { x, kind -> place(now, ids.getValue(kind), listOf(GridCell(x, y))) }.flatten() }
+        return ground +
+            place(now, "deco_bench", listOf(GridCell(0, 7))) +
+            place(now, "deco_lantern", listOf(GridCell(1, 7))) +
+            place(now, "struct_well", listOf(GridCell(2, 7))) +
+            place(now, "deco_rock", listOf(GridCell(3, 7))) +
+            place(now, "struct_hut", listOf(GridCell(5, 6)))
+    }
+
+    /**
      * The small ornaments on a lawn (`--es garden lawnthings`), and a sprinkler among beds.
      *
      *     y\x 0 1 2 3 4 5 6 7 8 9 10

@@ -27,9 +27,10 @@ import kotlin.math.sin
 // atlas ([SpriteAtlas.creatures]). Whoever draws a visitor calls [drawVisitor].
 //
 // Every movement is made by moving still pictures: turned to face the other way, stretched,
-// tilted, lifted; the fliers' wings folded or beaten on their own about their roots; and the
-// squirrel and the bird each have a second picture (running, flying) they change into, easing
-// from one to the other. Nothing is drawn differently from moment to moment (see ASSETS.md).
+// tilted, lifted; the fliers' wings folded or beaten on their own about their roots; the
+// dragonfly, seen from above, turned to the way it is going; and the squirrel and the bird each
+// have a second picture (running, flying) they change into, easing from one to the other.
+// Nothing is drawn differently from moment to moment (see ASSETS.md).
 
 /** How high a visitor that flies keeps above its spot, in tile widths; 0 for those on the ground. */
 val Creature.hoverHeight: Float get() = CreatureRoutes.cruiseAltitude(this)
@@ -93,10 +94,22 @@ data class VisitorLook(
         }
 
         private fun squirrel(base: VisitorLook, pose: CreaturePose, p: Float, now: Long): VisitorLook = when (pose.action) {
-            // Runs from cell to cell in bounds, changing into its running picture as it sets off
-            // and back as it stops.
-            CreatureAction.STEP -> arc(p).let { a ->
-                base.copy(lift = a * 0.04f, scaleY = 1f + 0.04f * a, tilt = -4f * a, moving = easing(pose), shadow = 1f - 0.3f * a)
+            // Runs in bounds, changing into its running picture as it sets off and back as it
+            // stops: long and low in the air, gathered up on the ground, nose up to leap and down
+            // to land. One picture slid along looked like skating, so every move has several bounds.
+            CreatureAction.STEP -> {
+                val bounds = (pose.duration / SQUIRREL_BOUND_MILLIS).toInt().coerceAtLeast(2)
+                val bound = (p * bounds) % 1f
+                val a = arc(bound)
+                val gathered = 1f - a
+                base.copy(
+                    lift = a * 0.06f,
+                    scaleX = 1f + 0.14f * a - 0.08f * gathered,
+                    scaleY = 1f - 0.08f * a + 0.08f * gathered,
+                    tilt = -10f * sin(bound * 2f * PI).toFloat(),
+                    moving = easing(pose),
+                    shadow = 1f - 0.35f * a,
+                )
             }
             // Sits up, breathing.
             else -> base.copy(scaleY = 1f + 0.012f * wave(now, 1800.0))
@@ -110,13 +123,31 @@ data class VisitorLook(
                 moving = (pose.altitude / LANDING_ALTITUDE).coerceIn(0f, 1f),
                 shadow = (1f - pose.altitude / CreatureRoutes.SKY_ALTITUDE).coerceIn(0f, 1f),
             )
-            // Two little hops to a cell.
-            CreatureAction.STEP -> arc((p * 2f) % 1f).let { a -> base.copy(lift = a * 0.035f, scaleY = 1f + 0.05f * a, shadow = 1f - 0.3f * a) }
-            // Now and then it bends forward to peck.
+            // Two hops: it crouches, springs up tall and lands squashed. On a longer way it
+            // flutters, its flying picture showing over the top of each hop, wings beating.
+            CreatureAction.STEP -> {
+                val hop = (p * 2f) % 1f
+                val a = arc(hop)
+                val spring = when {
+                    hop < 0.14f -> -(hop / 0.14f)
+                    hop > 0.86f -> -((1f - hop) / 0.14f)
+                    else -> a
+                }
+                val flutters = pose.duration >= BIRD_FLUTTER_MILLIS
+                base.copy(
+                    lift = a * if (flutters) 0.085f else 0.05f,
+                    scaleX = 1f - 0.07f * spring,
+                    scaleY = 1f + 0.1f * spring,
+                    tilt = -5f * a,
+                    moving = if (flutters) ((a - 0.4f) / 0.3f).coerceIn(0f, 1f) else 0f,
+                    wingOpen = wave(now, 170.0),
+                    shadow = 1f - 0.35f * a,
+                )
+            }
+            // A quick peck or two at the ground, dipping at the knees, then a look round.
             CreatureAction.STAND -> {
-                val beat = pose.elapsed % PECK_EVERY
-                val peck = if (beat in PECK_FROM until PECK_FROM + PECK_MILLIS) sin((beat - PECK_FROM).toFloat() / PECK_MILLIS * PI).toFloat() else 0f
-                base.copy(tilt = -24f * peck)
+                val peck = peckAt(pose.elapsed, pose.duration)
+                base.copy(tilt = -30f * peck, scaleY = 1f - 0.1f * peck + 0.012f * wave(now, 1500.0))
             }
             else -> base
         }
@@ -154,12 +185,18 @@ data class VisitorLook(
         }
 
         private fun dragonfly(base: VisitorLook, pose: CreaturePose, now: Long): VisitorLook {
-            val shimmer = 0.7f + 0.3f * abs(sin(now / 45.0).toFloat())
+            // Seen from above and lying flat in the air: turned to where it is going, not mirrored.
+            val level = base.copy(facing = Facing.LEFT, scaleY = DRAGONFLY_LEVEL, shadow = airShadow(Creature.DRAGONFLY, pose.altitude))
             return when (pose.action) {
-                // A dart: leans into it.
-                CreatureAction.FLY -> base.copy(wingOpen = shimmer, tilt = -10f * arc(pose.progress), shadow = airShadow(Creature.DRAGONFLY, pose.altitude))
-                // Holding still in the air, all but a slight rise and fall.
-                else -> base.copy(wingOpen = shimmer, lift = sin(now / 900.0).toFloat() * 0.012f, shadow = airShadow(Creature.DRAGONFLY, pose.altitude))
+                // A dart: the wings a blur, wide open.
+                CreatureAction.FLY -> level.copy(wingOpen = 0.8f + 0.2f * abs(sin(now / 30.0).toFloat()), tilt = pose.heading)
+                // Holding still in the air: the wings trembling, with a slight rise and fall and a
+                // little swing of the body.
+                else -> level.copy(
+                    wingOpen = 0.62f + 0.38f * abs(sin(now / 40.0).toFloat()),
+                    lift = sin(now / 900.0).toFloat() * 0.012f,
+                    tilt = pose.heading + sin(now / 1300.0).toFloat() * 4f,
+                )
             }
         }
 
@@ -201,9 +238,27 @@ data class VisitorLook(
             return 1f + (c1 + 1f) * q * q * q + c1 * q * q
         }
 
-        private const val PECK_EVERY = 1500L
+        /** How far down the bird is in a peck, 0 to 1, [elapsed] into a stop [length] long: in twos, a stop's own rhythm. */
+        private fun peckAt(elapsed: Long, length: Long): Float {
+            val beat = (elapsed + length) % (PECK_EVERY + (length % 3) * 400L)
+            for (start in listOf(PECK_FROM, PECK_FROM + PECK_MILLIS + 90L)) {
+                if (beat in start until start + PECK_MILLIS) return sin((beat - start).toFloat() / PECK_MILLIS * PI).toFloat()
+            }
+            return 0f
+        }
+
+        private const val PECK_EVERY = 1900L
         private const val PECK_FROM = 500L
-        private const val PECK_MILLIS = 380L
+        private const val PECK_MILLIS = 210L
+
+        /** A hop of the bird's this long or longer is a flutter. */
+        private const val BIRD_FLUTTER_MILLIS = 380L
+
+        /** How long a bound of the squirrel's takes. */
+        private const val SQUIRREL_BOUND_MILLIS = 190L
+
+        /** How much the dragonfly's top view is flattened, lying level in the garden's slant. */
+        private const val DRAGONFLY_LEVEL = 0.74f
 
         /** How long the squirrel takes to change into its running picture and back. */
         const val CHANGE_MILLIS = 140L

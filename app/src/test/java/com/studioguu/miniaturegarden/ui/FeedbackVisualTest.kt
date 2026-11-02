@@ -127,8 +127,8 @@ class FeedbackVisualTest {
         assertEquals(100f, centre.x, 0f)
         // Without the picture, the guess from before.
         assertEquals(base.y - 128f * (0.55f * 0.675f + 0.3f), TapTargets.statusBubbleCentre(base, plant, 128f).y, 1e-3f)
-        assertTrue(canvas.contains("plantTop = { obj -> sprites[TileSetDefinition.assetIdFor(obj)]?.let { it.anchorY * it.drawnHeight(scale) } }"))
-        assertTrue(canvas.contains("val plantTop = sprite?.let { base.y - it.drawTop(base.y, spriteScale) }"))
+        assertTrue(canvas.contains("plantTop = { obj ->"))
+        assertTrue(canvas.contains("val plantTop = sprite?.let { base.y - it.drawTop(base.y, thingScale) }"))
     }
 
     // --- 7. The book's pictures ---
