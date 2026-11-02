@@ -4,8 +4,8 @@
   "pages": [
     {
       "file": "creatures_0.png",
-      "width": 1009,
-      "height": 459
+      "width": 1017,
+      "height": 726
     }
   ],
   "assets": [
@@ -17,8 +17,8 @@
       "height": 175,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 568,
-      "atlasY": 2
+      "atlasX": 392,
+      "atlasY": 275
     },
     {
       "assetId": "creature_bird_fly_body",
@@ -29,7 +29,7 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 741,
-      "atlasY": 196
+      "atlasY": 463
     },
     {
       "assetId": "creature_bird_fly_wing_left",
@@ -40,7 +40,7 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 160,
-      "atlasY": 348,
+      "atlasY": 615,
       "attachX": 1.0682,
       "attachY": 0.2367
     },
@@ -53,9 +53,20 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 2,
-      "atlasY": 348,
+      "atlasY": 615,
       "attachX": -0.0271,
       "attachY": 1.0462
+    },
+    {
+      "assetId": "creature_bird_peck",
+      "anchorX": 0.3889,
+      "anchorY": 0.9819,
+      "width": 182,
+      "height": 170,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 586,
+      "atlasY": 275
     },
     {
       "assetId": "creature_butterfly",
@@ -65,8 +76,8 @@
       "height": 186,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 178,
-      "atlasY": 2
+      "atlasX": 2,
+      "atlasY": 275
     },
     {
       "assetId": "creature_butterfly_body",
@@ -77,7 +88,7 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 147,
-      "atlasY": 348
+      "atlasY": 615
     },
     {
       "assetId": "creature_butterfly_wing_left",
@@ -87,8 +98,8 @@
       "height": 186,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 372,
-      "atlasY": 2,
+      "atlasX": 196,
+      "atlasY": 275,
       "attachX": 0.998,
       "attachY": 0.4648
     },
@@ -100,8 +111,8 @@
       "height": 186,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 470,
-      "atlasY": 2,
+      "atlasX": 294,
+      "atlasY": 275,
       "attachX": 0.0,
       "attachY": 0.4648
     },
@@ -113,8 +124,8 @@
       "height": 156,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 762,
-      "atlasY": 2
+      "atlasX": 770,
+      "atlasY": 275
     },
     {
       "assetId": "creature_dragonfly_body",
@@ -124,8 +135,8 @@
       "height": 156,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 956,
-      "atlasY": 2
+      "atlasX": 964,
+      "atlasY": 275
     },
     {
       "assetId": "creature_dragonfly_wing_left",
@@ -136,7 +147,7 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 2,
-      "atlasY": 196,
+      "atlasY": 463,
       "attachX": 0.9988,
       "attachY": 0.2011
     },
@@ -149,7 +160,7 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 100,
-      "atlasY": 196,
+      "atlasY": 463,
       "attachX": 0.0,
       "attachY": 0.2027
     },
@@ -162,7 +173,18 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 198,
-      "atlasY": 196
+      "atlasY": 463
+    },
+    {
+      "assetId": "creature_frog_jump",
+      "anchorX": 0.2744,
+      "anchorY": 0.8603,
+      "width": 435,
+      "height": 271,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 2,
+      "atlasY": 2
     },
     {
       "assetId": "creature_ladybug",
@@ -173,7 +195,7 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 349,
-      "atlasY": 348
+      "atlasY": 615
     },
     {
       "assetId": "creature_squirrel",
@@ -183,7 +205,7 @@
       "height": 192,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 2,
+      "atlasX": 696,
       "atlasY": 2
     },
     {
@@ -195,7 +217,18 @@
       "isFlippedAllowed": true,
       "page": 0,
       "atlasX": 392,
-      "atlasY": 196
+      "atlasY": 463
+    },
+    {
+      "assetId": "creature_squirrel_run2",
+      "anchorX": 0.4188,
+      "anchorY": 0.9986,
+      "width": 255,
+      "height": 240,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 439,
+      "atlasY": 2
     }
   ]
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prepare the visitors' pictures (#71): cut out, split into parts, sized, and packed into an atlas of their own.
 
-The originals are the eight Recraft pictures in tools/source_art/ (creature_*.png, opaque, 1024 x
+The originals are the eleven Recraft pictures in tools/source_art/ (creature_*.png, opaque, 1024 x
 1024, on white), kept as they came. This script:
 
   * cuts each out of its white (cut_out from prepare_drawable_art.py), with what each needs:
@@ -23,8 +23,9 @@ The originals are the eight Recraft pictures in tools/source_art/ (creature_*.pn
     the game hangs the wing on the body by the two (CreatureSprites.kt);
   * brings each to its size in the game (SIZES, in tiles) at TILE atlas pixels to the tile: as big
     as it is drawn at the closest zoom (GardenCamera.MAX_SCALE), so that it is not blurred there.
-    The running squirrel and the flying bird are brought to the same scale as the sitting one and
-    the standing one by the size of their heads (SAME_SCALE), so that switching does not jump;
+    The running squirrel, the flying and the pecking bird and the leaping frog are brought to the
+    same scale as the sitting or standing one by the size of their heads and eyes (SAME_SCALE), so
+    that switching does not jump;
   * anchors: the feet of those on the ground; the middle of the underside of the running squirrel;
     the middle of the body of the flying bird; the middle of the thorax of the butterfly and the
     dragonfly (the point they fly about by);
@@ -76,7 +77,25 @@ SIZES: dict[str, tuple[str, float]] = {
 SAME_SCALE: dict[str, tuple[str, float]] = {
     "squirrel_run": ("squirrel", 190 / 123),
     "bird_fly": ("bird", 228 / 135),
+    # Three frames more (2026-11-02), by their eyes and heads. The pecking bird's eye is as large
+    # as the standing one's (47 px high), its head and body a little larger: 0.92 between the two.
+    # The gathered squirrel is seen more from the side than the sitting one, so by the width of its
+    # head on the two laid side by side, not its eye: 1.03. The
+    # leaping frog is drawn much smaller than the sitting one: its eye is 60 px to 112, its head
+    # 150 to 267.
+    "bird_peck": ("bird", 0.92),
+    "squirrel_run2": ("squirrel", 1.03),
+    "frog_jump": ("frog", 1.8),
 }
+
+#: Where the pecking bird's feet are on the original: its beak reaches as low as they do, so
+#: feet() would take it for one of them.
+BIRD_PECK_FEET = (430.0, 888.0)
+
+#: The eye of the sitting frog and of the leaping one, on the originals. The leaping one is hung by
+#: its head where the sitting one's head is (leaping_anchor): its legs fly out behind.
+FROG_EYE = (370.0, 367.0)
+FROG_JUMP_EYE = (287.0, 453.0)
 
 #: The outline of the flying bird's body on the original (head, breast, belly, tail), in pixels.
 BIRD_BODY = [
@@ -262,6 +281,11 @@ def run_belly(rgba: np.ndarray) -> tuple[float, float]:
     return float(xs.mean()), float(np.median(bottoms))
 
 
+def leaping_anchor(sitting_feet: tuple[float, float], ratio: float) -> tuple[float, float]:
+    """The point of the leaping frog that lies where the sitting one's feet do, its eye over its eye."""
+    return (FROG_JUMP_EYE[0] + (sitting_feet[0] - FROG_EYE[0]) / ratio, FROG_JUMP_EYE[1] + (sitting_feet[1] - FROG_EYE[1]) / ratio)
+
+
 def to_atlas(rgba: np.ndarray, scale: float) -> tuple[np.ndarray, tuple[float, float]]:
     """[rgba] cropped, resampled by [scale] and cropped again as asset_packer.py will (to any alpha);
     and where the original's (0, 0) lands on it, in its pixels."""
@@ -280,7 +304,7 @@ def fraction(point, zero, scale, picture) -> dict:
 
 def prepare() -> tuple[dict[str, np.ndarray], dict[str, dict]]:
     cuts = {name: cut(name) for name in
-            ["squirrel", "squirrel_run", "bird", "bird_fly", "frog", "ladybug", "butterfly", "dragonfly"]}
+            ["squirrel", "squirrel_run", "squirrel_run2", "bird", "bird_fly", "bird_peck", "frog", "frog_jump", "ladybug", "butterfly", "dragonfly"]}
     scales: dict[str, float] = {}
     for name, (side, share) in SIZES.items():
         x0, y0, x1, y1 = bounds(cuts[name])
@@ -309,6 +333,10 @@ def prepare() -> tuple[dict[str, np.ndarray], dict[str, dict]]:
     ys, xs = np.where(cuts["ladybug"][:, :, 3] > 128)
     add("creature_ladybug", cuts["ladybug"], scales["ladybug"], (float(xs.mean()), float(ys.max() + 1)))
     add("creature_squirrel_run", cuts["squirrel_run"], scales["squirrel_run"], run_belly(cuts["squirrel_run"]))
+    # The gathered squirrel touches the ground: it stands on its feet.
+    add("creature_squirrel_run2", cuts["squirrel_run2"], scales["squirrel_run2"], feet(cuts["squirrel_run2"]))
+    add("creature_bird_peck", cuts["bird_peck"], scales["bird_peck"], BIRD_PECK_FEET)
+    add("creature_frog_jump", cuts["frog_jump"], scales["frog_jump"], leaping_anchor(feet(cuts["frog"]), SAME_SCALE["frog_jump"][1]))
 
     # The flying bird: anchored on the middle of its body; each wing hung on its root.
     fly = bird_parts(cuts["bird_fly"])

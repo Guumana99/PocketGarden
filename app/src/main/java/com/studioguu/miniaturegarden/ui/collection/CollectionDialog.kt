@@ -469,21 +469,23 @@ private fun Spread(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             PageHeader(entry.ordinal + 1, enteredAt.takeIf { state == PageState.REVEALED })
-            Text(
-                text = when {
-                    state != PageState.REVEALED -> stringResource(R.string.collection_unknown)
-                    allColours.isEmpty() -> objectDisplayName(entry.objectId)
-                    else -> stringResource(
+            if (state == PageState.REVEALED && allColours.isNotEmpty()) {
+                OneLineTitle(
+                    stringResource(
                         R.string.collection_title_colour,
                         objectDisplayName(entry.objectId),
                         stringResource(if (notGrown) R.string.bloom_colour_unknown else bloomColourLabel(shownColour ?: allColours.first())),
-                    )
-                },
-                color = Ink,
-                fontFamily = BookFont,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-            )
+                    ),
+                )
+            } else {
+                Text(
+                    text = if (state == PageState.REVEALED) objectDisplayName(entry.objectId) else stringResource(R.string.collection_unknown),
+                    color = Ink,
+                    fontFamily = BookFont,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
             if (state == PageState.REVEALED && allColours.size > 1) {
                 BloomColourPicker(allColours, grownColours, shownColour) { shownColour = it }
             }
@@ -545,6 +547,40 @@ private fun Spread(
             }
         }
     }
+}
+
+/** The smallest a page's title may shrink to. */
+private val MinTitleSize = 11.sp
+
+/**
+ * A page's title with its colour in it, on one line: at the size of every other title when it fits
+ * ("チューリップ（赤）"), just small enough when it does not, and drawn only once it does.
+ */
+@Composable
+private fun OneLineTitle(text: String) {
+    val style = MaterialTheme.typography.titleMedium
+    var fontSize by remember(text, style) { mutableStateOf(style.fontSize) }
+    var fits by remember(text, style) { mutableStateOf(false) }
+    Text(
+        text = text,
+        color = Ink,
+        fontFamily = BookFont,
+        fontWeight = FontWeight.Bold,
+        style = style.copy(fontSize = fontSize),
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { layout ->
+            if (layout.hasVisualOverflow && fontSize > MinTitleSize) {
+                // As much smaller as it is too wide, in one go: a step at a time left the title
+                // blank for as many frames.
+                val short = layout.size.width / layout.multiParagraph.width
+                fontSize = maxOf(fontSize.value * minOf(short, 0.97f), MinTitleSize.value).sp
+            } else {
+                fits = true
+            }
+        },
+        modifier = Modifier.drawWithContent { if (fits) drawContent() },
+    )
 }
 
 /**

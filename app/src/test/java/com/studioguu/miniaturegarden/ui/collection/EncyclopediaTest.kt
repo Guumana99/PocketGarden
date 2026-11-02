@@ -86,6 +86,17 @@ class EncyclopediaTest {
     }
 
     @Test
+    fun `a page's words are broken by hand at their phrases, never left to wrap on the page`() {
+        // A page holds about twelve characters to the line (the widest spread, at the usual font size).
+        val strings = java.io.File("src/main/res/values/strings.xml").readText()
+        val flavours = Regex("<string name=\"((?:creature_)?flavor_[a-z_]+)\">(.*?)</string>").findAll(strings).toList()
+        assertTrue(flavours.size >= 50)
+        for (flavour in flavours) {
+            for (line in flavour.groupValues[2].split("\\n")) assertTrue("${flavour.groupValues[1]}: $line", line.length <= 12)
+        }
+    }
+
+    @Test
     fun `a tulip's page is drawn in the colour first grown, with a place for every colour`() {
         val book = source("ui/collection/CollectionDialog.kt")
         // #59: the picture is the colour harvested, not one picked by the preview's own id.

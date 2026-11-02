@@ -29,7 +29,9 @@ import kotlin.math.sin
 // Every movement is made by moving still pictures: turned to face the other way, stretched,
 // tilted, lifted; the fliers' wings folded or beaten on their own about their roots; the
 // dragonfly, seen from above, turned to the way it is going; and the squirrel and the bird each
-// have a second picture (running, flying) they change into, easing from one to the other.
+// have a second picture (running, flying) they change into, easing from one to the other. A few
+// poses are pictures of their own, changed to at once: the bird pecking, the squirrel gathered up
+// between bounds, the frog in mid-leap ([VisitorLook.pose]).
 // Nothing is drawn differently from moment to moment (see ASSETS.md).
 
 /** How high a visitor that flies keeps above its spot, in tile widths; 0 for those on the ground. */
@@ -48,6 +50,8 @@ fun Creature.flies(): Boolean = hoverHeight > 0f
  * @property tilt degrees it leans, about its feet, as the picture faces: less than 0 leans forward.
  * @property wingOpen how far a flier's wings are open, 0 (folded, or beaten down) to 1 (spread as drawn).
  * @property moving how much of its second picture shows, 0 to 1: the squirrel running, the bird flying.
+ * @property pose its picture for the moment instead: the bird pecking, the frog in mid-leap, and the
+ *   squirrel gathered up (in place of its running picture, as far as that shows).
  * @property submerged a frog in a pond: the lower half of it is under the water.
  * @property shadow how dark its shadow is, 0 to 1.
  * @property whole drawn from its whole picture, not from its parts: the nature notes.
@@ -61,6 +65,7 @@ data class VisitorLook(
     val tilt: Float = 0f,
     val wingOpen: Float = 1f,
     val moving: Float = 0f,
+    val pose: Boolean = false,
     val submerged: Boolean = false,
     val shadow: Float = 1f,
     val whole: Boolean = false,
@@ -96,7 +101,8 @@ data class VisitorLook(
         private fun squirrel(base: VisitorLook, pose: CreaturePose, p: Float, now: Long): VisitorLook = when (pose.action) {
             // Runs in bounds, changing into its running picture as it sets off and back as it
             // stops: long and low in the air, gathered up on the ground, nose up to leap and down
-            // to land. One picture slid along looked like skating, so every move has several bounds.
+            // to land, its stretched-out picture in the air and its gathered one on the ground.
+            // One picture slid along looked like skating, so every move has several bounds.
             CreatureAction.STEP -> {
                 val bounds = (pose.duration / SQUIRREL_BOUND_MILLIS).toInt().coerceAtLeast(2)
                 val bound = (p * bounds) % 1f
@@ -108,6 +114,7 @@ data class VisitorLook(
                     scaleY = 1f - 0.08f * a + 0.08f * gathered,
                     tilt = -10f * sin(bound * 2f * PI).toFloat(),
                     moving = easing(pose),
+                    pose = a < SQUIRREL_GATHERED_BELOW,
                     shadow = 1f - 0.35f * a,
                 )
             }
@@ -144,24 +151,33 @@ data class VisitorLook(
                     shadow = 1f - 0.35f * a,
                 )
             }
-            // A quick peck or two at the ground, dipping at the knees, then a look round.
+            // A quick peck or two at the ground, in its pecking picture, then a look round.
             CreatureAction.STAND -> {
                 val peck = peckAt(pose.elapsed, pose.duration)
-                base.copy(tilt = -30f * peck, scaleY = 1f - 0.1f * peck + 0.012f * wave(now, 1500.0))
+                base.copy(pose = peck > PECK_SHOWN_FROM, scaleY = 1f - 0.04f * peck + 0.012f * wave(now, 1500.0))
             }
             else -> base
         }
 
         private fun frog(base: VisitorLook, pose: CreaturePose, p: Float, now: Long): VisitorLook = when (pose.action) {
-            // Crouches, springs long and thin, lands squashed.
+            // Crouches, leaps in its leaping picture, lands squashed and sits again. Clear of the
+            // water while it is in the air: only the sitting picture is ever cut by the waterline.
             CreatureAction.STEP -> {
                 val a = arc(p)
                 val squash = when {
                     p < 0.15f -> -(p / 0.15f)
                     p > 0.85f -> -((1f - p) / 0.15f)
-                    else -> a
+                    else -> 0f
                 }
-                base.copy(lift = a * 0.08f, scaleX = 1f - 0.1f * squash, scaleY = 1f + 0.16f * squash, submerged = pose.inPond && a < 0.3f, shadow = 1f - 0.5f * a)
+                val leaping = a >= FROG_LEAP_FROM
+                base.copy(
+                    lift = a * 0.1f,
+                    scaleX = 1f - 0.1f * squash,
+                    scaleY = 1f + 0.16f * squash,
+                    pose = leaping,
+                    submerged = pose.inPond && !leaping,
+                    shadow = 1f - 0.5f * a,
+                )
             }
             // Its throat swells as it breathes.
             else -> base.copy(scaleX = 1f + 0.02f * wave(now, 1400.0), scaleY = 1f - 0.015f * wave(now, 1400.0), submerged = pose.inPond)
@@ -251,6 +267,15 @@ data class VisitorLook(
         private const val PECK_FROM = 500L
         private const val PECK_MILLIS = 210L
 
+        /** How far down a peck the pecking picture shows. */
+        private const val PECK_SHOWN_FROM = 0.15f
+
+        /** How high in a bound (0 to 1) the squirrel is still gathered up. */
+        private const val SQUIRREL_GATHERED_BELOW = 0.45f
+
+        /** How high in a leap (0 to 1) the frog is in its leaping picture; below it, it sits. */
+        const val FROG_LEAP_FROM = 0.3f
+
         /** A hop of the bird's this long or longer is a flutter. */
         private const val BIRD_FLUTTER_MILLIS = 380L
 
@@ -319,12 +344,14 @@ private fun DrawScope.drawPictures(creature: Creature, look: VisitorLook, atlas:
     when (creature) {
         Creature.SQUIRREL -> {
             val running = atlas[TileSetDefinition.SQUIRREL_RUNNING]
-            val moving = if (running == null) 0f else look.moving
+            val stride = atlas[TileSetDefinition.SQUIRREL_GATHERED].takeIf { look.pose } ?: running
+            val moving = if (stride == null) 0f else look.moving
             if (own != null && moving < 1f) drawSprite(image, own, Offset.Zero, scale, alpha = 1f - moving)
-            if (running != null && moving > 0f) drawSprite(image, running, Offset.Zero, scale, alpha = moving)
+            if (stride != null && moving > 0f) drawSprite(image, stride, Offset.Zero, scale, alpha = moving)
         }
         Creature.BIRD -> {
-            if (own != null && look.moving < 1f) drawSprite(image, own, Offset.Zero, scale, alpha = 1f - look.moving)
+            val standing = atlas[TileSetDefinition.BIRD_PECKING].takeIf { look.pose } ?: own
+            if (standing != null && look.moving < 1f) drawSprite(image, standing, Offset.Zero, scale, alpha = 1f - look.moving)
             // The flying picture is anchored on the middle of its body: held where the standing
             // one's body is, so that it lands where it stands.
             if (look.moving > 0f) translate(0f, -BIRD_BODY_HEIGHT * unit) { drawWinged(creature, look, atlas, image, scale, look.moving) }
@@ -332,7 +359,8 @@ private fun DrawScope.drawPictures(creature: Creature, look: VisitorLook, atlas:
         Creature.BUTTERFLY, Creature.DRAGONFLY -> {
             if (look.whole && own != null) drawSprite(image, own, Offset.Zero, scale) else drawWinged(creature, look, atlas, image, scale, 1f)
         }
-        Creature.FROG, Creature.LADYBUG -> if (own != null) drawSprite(image, own, Offset.Zero, scale)
+        Creature.FROG -> (atlas[TileSetDefinition.FROG_LEAPING].takeIf { look.pose } ?: own)?.let { drawSprite(image, it, Offset.Zero, scale) }
+        Creature.LADYBUG -> if (own != null) drawSprite(image, own, Offset.Zero, scale)
     }
 }
 
