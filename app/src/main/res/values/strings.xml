@@ -320,8 +320,8 @@
     <string name="flavor_pond">丸太と石で囲んだ、\n小さな池。\n睡蓮の葉に、光がゆれる。</string>
     <string name="flavor_bench">ひと休みにちょうどいい。\n腰かけて、\nお庭を眺めよう。</string>
     <string name="flavor_lantern">苔むした、石の灯り。\n夕暮れに、ぽっと灯る。</string>
-    <string name="flavor_sprinkler">くるくる回って、\nまわりの畑に水をまく。\n止めておけば、\nただの飾り。</string>
-    <string name="flavor_weathervane">風を読む、鉄のおんどり。\nこれがあると、\nあしたの天気が分かる。</string>
+    <string name="flavor_sprinkler">くるくる回って、\nまわりの畑に\n水をまく。\n止めておけば、\nお庭の飾りにもなる。</string>
+    <string name="flavor_weathervane">風向きで、空を読む。\n置いておけば、\n天気アイコンを\nタップすると\n明日の天気が見られる。</string>
     <string name="flavor_rock">どっしりと構えた、\n大きな岩。\nまるでお庭の主のような\n顔をしている。</string>
     <string name="flavor_rock_flat">上が平らな、低い石。\n腰かけると、\n日なたのぬくもりが\n伝わる。</string>
     <string name="flavor_rock_mossy">緑の衣をまとった岩。\n雨の翌日は、\n苔がいちだんと色づく。</string>
@@ -585,7 +585,7 @@
 大工の工房で「お庭を広げる」を選んでください。広げるかどうかは、お好きなときに決めて大丈夫です。
 広がったまわりは、芝生になります。</string>
     <string name="shop_held">所持数: %1$d個</string>
-    <string name="shop_card_pages">📖 図鑑に%1$dページ登録すると、買えるようになります</string>
+    <string name="shop_card_pages">📖 図鑑に%1$d種類登録すると、買えるようになります</string>
 
     <!-- Notifications -->
     <string name="notification_channel_name">お庭のようす</string>

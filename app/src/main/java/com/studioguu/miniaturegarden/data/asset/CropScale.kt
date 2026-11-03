@@ -15,6 +15,8 @@ import kotlin.math.min
  * - every stage is at most as tall as the next one: a plant only ever grows;
  * - a crop that spreads low and wide (the daikon's leaves) is held to its own, narrower width
  *   ([WIDTH_CAPS]), so that it stays on its own bed (#60);
+ * - a crop painted large for what it is (the rose's one bloom as big as a sunflower's head) starts
+ *   from a share of its painted size ([SIZE_SHARES]) before the caps are applied;
  * - a log ([LOGS], the shiitake's) keeps the size it was made at, so it is as long at every stage;
  * - a field crop ([FIELDS], the wheat) is laid out over the whole cell, rows and all, at every
  *   stage: it keeps the size it was made at (one cell wide) and is not held under the next
@@ -69,6 +71,15 @@ object CropScale {
      */
     val WIDTH_CAPS = mapOf("plant_daikon" to 0.76f)
 
+    /**
+     * Shares of the painted size that crops start from, every stage and the withered one alike
+     * (device feedback 11/03: the grown rose stood as tall as the sunflower, its one bloom as big as
+     * the sunflower's head, and the stage before as tall as the sunflower's leafy middle stage).
+     * At 0.8 the grown rose stands about 0.69 of a tile, near the wheat, and the stage before about
+     * 0.56, between the lavender's and the sunflower's middle stages.
+     */
+    val SIZE_SHARES = mapOf("plant_rose" to 0.8f)
+
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")
     private val WITHERED = Regex("""^plant_[a-z_]+_withered$""")
 
@@ -93,7 +104,7 @@ object CropScale {
                 for ((stage, asset) in stages.sortedByDescending { it.first }) {
                     val heightCap = minOf(if (stage == 1) SEEDLING_HEIGHT * tile else MAX_HEIGHT * tile, nextHeight)
                     val widthCap = if (stage == 1 && plant !in CLUMPS) min(SEEDLING_WIDTH * tile, maxWidth) else maxWidth
-                    val scale = capped(asset, heightCap, widthCap)
+                    val scale = capped(asset, heightCap, widthCap, SIZE_SHARES[plant] ?: 1f)
                     scales[asset.assetId] = scale
                     nextHeight = asset.height * scale
                 }
@@ -103,7 +114,7 @@ object CropScale {
             scales[asset.assetId] = if (plant in FIELDS || plant in LOGS) {
                 capped(asset, Float.MAX_VALUE, MAX_WIDTH * tile)
             } else {
-                capped(asset, MAX_HEIGHT * tile, (WIDTH_CAPS[plant] ?: MAX_WIDTH) * tile)
+                capped(asset, MAX_HEIGHT * tile, (WIDTH_CAPS[plant] ?: MAX_WIDTH) * tile, SIZE_SHARES[plant] ?: 1f)
             }
         }
         manifest.assets.forEach { asset ->
@@ -114,7 +125,7 @@ object CropScale {
         return manifest.copy(assets = manifest.assets.map { asset -> scales[asset.assetId]?.let { asset.copy(drawScale = it) } ?: asset })
     }
 
-    /** The asset's own draw scale, brought down until it fits under [maxHeight] and [maxWidth]. */
-    private fun capped(asset: AssetManifest, maxHeight: Float, maxWidth: Float): Float =
-        minOf(asset.drawScale, maxHeight / asset.height, maxWidth / asset.width)
+    /** The asset's own draw scale, times [share], brought down until it fits under [maxHeight] and [maxWidth]. */
+    private fun capped(asset: AssetManifest, maxHeight: Float, maxWidth: Float, share: Float = 1f): Float =
+        minOf(asset.drawScale * share, maxHeight / asset.height, maxWidth / asset.width)
 }

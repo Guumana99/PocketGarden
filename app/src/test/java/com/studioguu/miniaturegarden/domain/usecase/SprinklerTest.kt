@@ -90,7 +90,7 @@ class SprinklerTest {
         val panel = File(main, "java/com/studioguu/miniaturegarden/ui/hud/ObjectStatusDialog.kt").readText()
         assertTrue(panel.contains("onClick = onToggleSprinkler"))
         val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
-        assertTrue(canvas.contains("if (obj.isSprinkler && obj.isOn && !obj.isWorking)"))
+        assertTrue(canvas.contains("if (obj.isSprinkler && obj.isOn && !obj.isWorking && !portrait)"))
         assertTrue(canvas.contains("SprinklerSpray.frameAt("))
     }
 }

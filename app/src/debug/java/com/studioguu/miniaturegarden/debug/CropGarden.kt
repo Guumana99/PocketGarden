@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.debug
 
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.PlantGround
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
@@ -31,5 +32,34 @@ object CropGarden {
         val logs = (1..4).map { at(it, 9, PlantSpecies.SHIITAKE.objectId).copy(growthProgress = 1f) }
         val beds = (stages + logs).map { at(it.gridX, it.gridY, GridObject.TILLED_SOIL_OBJECT_ID) }
         return beds + stages + logs + at(7, 3, WeatherOutlook.WEATHERVANE_OBJECT_ID)
+    }
+}
+
+/**
+ * The rose beside the crops of about its size (device feedback 11/03: the rose stood larger than
+ * the rest), loaded with `--es garden roses`: grown in the front row, the stage before in the back.
+ *
+ *     y\x 0 1 2 3 4 5 6 7
+ *      3  . R S W L T C .      the stage before the last
+ *      5  . R S W L T C .      grown: rose, sunflower, wheat, lavender, tulip, cosmos
+ */
+object RoseGarden {
+    fun objects(now: Long): List<GridObject> {
+        val species = listOf(PlantSpecies.ROSE, PlantSpecies.SUNFLOWER, PlantSpecies.WHEAT, PlantSpecies.LAVENDER, PlantSpecies.TULIP, PlantSpecies.COSMOS)
+        val plants = species.flatMapIndexed { i, plant ->
+            // The stage before the last: 0.8 is the rose's third of four, 0.5 the second of three.
+            val before = if (plant.growthStages == 4) 0.8f else 0.5f
+            listOf(3 to before, 5 to 1f).map { (y, progress) ->
+                GridObject(
+                    instanceId = "rg_${plant.objectId}_$y", gridX = 1 + i, gridY = y, objectId = plant.objectId,
+                    growthProgress = progress, lastUpdatedTimestamp = now,
+                )
+            }
+        }
+        val beds = plants.map {
+            val bed = if (PlantSpecies.forObjectId(it.objectId).ground == PlantGround.FLOWER_BED) GridObject.LOOSE_SOIL_OBJECT_ID else GridObject.TILLED_SOIL_OBJECT_ID
+            it.copy(instanceId = "rg_bed_${it.gridX}_${it.gridY}", objectId = bed)
+        }
+        return beds + plants
     }
 }

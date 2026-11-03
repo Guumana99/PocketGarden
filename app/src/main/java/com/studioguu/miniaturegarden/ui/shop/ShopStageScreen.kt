@@ -77,6 +77,7 @@ import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.UnlockCondition
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
 import com.studioguu.miniaturegarden.ui.actionResultMessage
+import com.studioguu.miniaturegarden.ui.collection.asProse
 import com.studioguu.miniaturegarden.ui.collection.flavorText
 import com.studioguu.miniaturegarden.ui.components.AnswersWhenResting
 import com.studioguu.miniaturegarden.ui.components.CarvedButton
@@ -785,7 +786,7 @@ private fun ItemCard(thing: ShelfItem, message: ShopMessage?, onBuy: (GardenItem
                 }
             }
             CollectionEntry.fromObjectId(item.objectId)?.let { entry ->
-                Text(stringResource(flavorText(entry)), style = MaterialTheme.typography.bodyMedium, color = GardenColors.InkSoft)
+                Text(asProse(stringResource(flavorText(entry))), style = MaterialTheme.typography.bodyMedium, color = GardenColors.InkSoft)
             }
             ItemFacts(item)
             // Short of coins, the card says so itself, just over the button it is about.
