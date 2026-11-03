@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -375,58 +377,64 @@ fun ShopStageContent(
     onExpand: () -> Unit = {},
     onExpandResting: (ExpansionCheck) -> Unit = {},
 ) {
-    Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {
-        // The room: each shop has its own walls. The new room fades in quickly over the old one,
-        // which stays as it is until it is covered, so nothing behind the shop shows through.
-        AnimatedContent(targetState = stage, transitionSpec = { ShopFades.room() }, label = "room") { shown ->
-            ShopRoom(shown, Modifier.fillMaxSize())
-        }
-        Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CarvedButton(text = stringResource(R.string.shop_leave), onClick = onLeave)
-                Spacer(Modifier.weight(1f))
-                CoinPill(coins)
+    // The shop's own type size, one step up and with a ceiling (ShopText); the dialogs it opens
+    // are windows of their own and keep the device's.
+    val device = LocalDensity.current
+    val shopDensity = remember(device) { Density(device.density, ShopText.fontScale(device.fontScale)) }
+    CompositionLocalProvider(LocalDensity provides shopDensity) {
+        Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {
+            // The room: each shop has its own walls. The new room fades in quickly over the old one,
+            // which stays as it is until it is covered, so nothing behind the shop shows through.
+            AnimatedContent(targetState = stage, transitionSpec = { ShopFades.room() }, label = "room") { shown ->
+                ShopRoom(shown, Modifier.fillMaxSize())
             }
-            // During the first steps there is one shop, and nothing to walk to.
-            if (!guiding) Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
-            AnimatedContent(
-                targetState = stage,
-                // The old shelves go first, quickly, then the new ones come: never both at half.
-                transitionSpec = { ShopFades.shelves() },
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                label = "shelves",
-            ) { shown ->
-                Column(
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
+            Column(modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (shown == ShopStage.SEEDS) {
-                        ChalkNote(stringResource(if (guiding) R.string.tutorial_shop_note else R.string.shop_season_caption))
-                    }
-                    if (shown == ShopStage.WORKSHOP && expansion != null) {
-                        ExpansionBoard(expansion, onExpand, onExpandResting)
-                    }
-                    // Shelves belong to the shop on show; while one fades out, the other's are not drawn twice.
-                    if (shown == stage) {
-                        for (shelf in shelves) Shelf(shelf, inHand?.item, onInspect)
+                    CarvedButton(text = stringResource(R.string.shop_leave), onClick = onLeave)
+                    Spacer(Modifier.weight(1f))
+                    CoinPill(coins)
+                }
+                // During the first steps there is one shop, and nothing to walk to.
+                if (!guiding) Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
+                AnimatedContent(
+                    targetState = stage,
+                    // The old shelves go first, quickly, then the new ones come: never both at half.
+                    transitionSpec = { ShopFades.shelves() },
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    label = "shelves",
+                ) { shown ->
+                    Column(
+                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(18.dp),
+                    ) {
+                        if (shown == ShopStage.SEEDS) {
+                            ChalkNote(stringResource(if (guiding) R.string.tutorial_shop_note else R.string.shop_season_caption))
+                        }
+                        if (shown == ShopStage.WORKSHOP && expansion != null) {
+                            ExpansionBoard(expansion, onExpand, onExpandResting)
+                        }
+                        // Shelves belong to the shop on show; while one fades out, the other's are not drawn twice.
+                        if (shown == stage) {
+                            for (shelf in shelves) Shelf(shelf, inHand?.item, onInspect)
+                        }
                     }
                 }
+                if (!guiding) Counter(message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, onBonusResting, Modifier.padding(bottom = 8.dp))
             }
-            if (!guiding) Counter(message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, onBonusResting, Modifier.padding(bottom = 8.dp))
-        }
-        // The card of the thing in hand rises onto the counter, over everything below the shelves.
-        var lastInHand by remember { mutableStateOf<ShelfItem?>(null) }
-        if (inHand != null) lastInHand = inHand
-        AnimatedVisibility(
-            visible = inHand != null,
-            enter = fadeIn() + slideInVertically { it / 3 },
-            exit = fadeOut() + slideOutVertically { it / 3 },
-            modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(12.dp),
-        ) {
-            lastInHand?.let { ItemCard(it, message, onBuy, onPutBack) }
+            // The card of the thing in hand rises onto the counter, over everything below the shelves.
+            var lastInHand by remember { mutableStateOf<ShelfItem?>(null) }
+            if (inHand != null) lastInHand = inHand
+            AnimatedVisibility(
+                visible = inHand != null,
+                enter = fadeIn() + slideInVertically { it / 3 },
+                exit = fadeOut() + slideOutVertically { it / 3 },
+                modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(12.dp),
+            ) {
+                lastInHand?.let { ItemCard(it, message, onBuy, onPutBack) }
+            }
         }
     }
 }

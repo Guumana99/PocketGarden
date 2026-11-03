@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.ItemCategory
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
 import com.studioguu.miniaturegarden.domain.model.PracticeGarden
 import com.studioguu.miniaturegarden.domain.model.Season
+import kotlin.math.min
 
 /**
  * The shops down the lane from the garden. Each sells one shelf of the item master
@@ -61,6 +62,22 @@ data class ShelfItem(val item: GardenItem, val tag: ShelfTag, val held: Int = 0,
  * What stands on a shop's shelves, and how it is set out: a pure function of the shop, the
  * season, the player and their coins, so the stage can be drawn from it and tested without it.
  */
+/**
+ * How large the shop's words are, against the rest of the game's (device feedback 11/03): a size
+ * up from the theme's at the device's usual type setting, and held to [MAX_SCALE] however large
+ * the device's setting, which made the whole shop crowd its screen at 360dp wide and 1.3 times.
+ */
+object ShopText {
+    /** The shop's words at the device's usual setting, against the theme's. */
+    const val SCALE = 1.1f
+
+    /** The most the device's setting makes them, against the theme's at its usual setting. */
+    const val MAX_SCALE = 1.15f
+
+    /** The type scale the shop is drawn at for the device's own [deviceFontScale]. */
+    fun fontScale(deviceFontScale: Float): Float = min(deviceFontScale * SCALE, MAX_SCALE)
+}
+
 object ShopShelves {
 
     /** Things side by side on one shelf: few enough that each is a good finger's width. */
