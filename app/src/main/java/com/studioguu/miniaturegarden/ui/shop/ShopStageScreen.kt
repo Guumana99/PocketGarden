@@ -377,10 +377,10 @@ fun ShopStageContent(
     onExpand: () -> Unit = {},
     onExpandResting: (ExpansionCheck) -> Unit = {},
 ) {
-    // The shop's own type size, one step up and with a ceiling (ShopText); the dialogs it opens
-    // are windows of their own and keep the device's.
+    // The shop's own type size, one step up (ShopText); the dialogs it opens are windows of their
+    // own, drawn at the game's.
     val device = LocalDensity.current
-    val shopDensity = remember(device) { Density(device.density, ShopText.fontScale(device.fontScale)) }
+    val shopDensity = remember(device) { Density(device.density, ShopText.SCALE) }
     CompositionLocalProvider(LocalDensity provides shopDensity) {
         Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {
             // The room: each shop has its own walls. The new room fades in quickly over the old one,

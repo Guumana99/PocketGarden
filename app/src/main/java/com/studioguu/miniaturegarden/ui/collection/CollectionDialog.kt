@@ -74,16 +74,16 @@ import com.studioguu.miniaturegarden.domain.model.BloomColours
 import com.studioguu.miniaturegarden.domain.model.BloomRarity
 import com.studioguu.miniaturegarden.domain.model.CollectionCategory
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
-import com.studioguu.miniaturegarden.domain.model.LawnGrowth
-import com.studioguu.miniaturegarden.domain.model.NatureNotes
-import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
+import com.studioguu.miniaturegarden.domain.model.LawnGrowth
+import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.PageState
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.ui.components.ObjectPreview
-import com.studioguu.miniaturegarden.ui.debug.BookPreview
 import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.components.withTick
+import com.studioguu.miniaturegarden.ui.debug.BookPreview
 import com.studioguu.miniaturegarden.ui.objectDisplayName
 import kotlinx.coroutines.launch
 
@@ -714,10 +714,15 @@ private fun Illustration(
 
 @Composable
 internal fun PageButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    TextButton(onClick = onClick, enabled = enabled) {
+    // Narrower than a text button's least width, so that at 360dp wide the buttons beside them
+    // ("もくじ", "閉じる") keep their words on one line (device feedback 11/03).
+    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.width(PAGE_BUTTON_WIDTH)) {
         Text(label, color = if (enabled) GoldLeaf else GoldLeaf.copy(alpha = 0.3f), fontSize = 18.sp)
     }
 }
+
+/** How wide the ◀ and ▶ under the pages are. */
+private val PAGE_BUTTON_WIDTH = 44.dp
 
 @StringRes
 private fun categoryLabel(category: CollectionCategory): Int = when (category) {

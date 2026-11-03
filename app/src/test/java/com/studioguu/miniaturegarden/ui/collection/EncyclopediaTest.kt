@@ -163,4 +163,16 @@ class EncyclopediaTest {
         assertEquals(1, Regex("""atlas\.forPortraits\(\)""").findAll(canvas).count())
         assertTrue(canvas.substringAfter("fun ObjectPreview(").substringBefore("Canvas(modifier)").contains("val atlas = remember(atlas) { atlas.forPortraits() }"))
     }
+
+    @Test
+    fun `at 360dp wide the book's buttons and the day it was entered stay on one line`() {
+        // Device feedback 11/03: "閉じる" folded into a column, "登録日" broke over two lines.
+        val parts = source("ui/collection/BookParts.kt")
+        val header = parts.substringAfter("internal fun PageHeader(").substringBefore("\n}\n")
+        assertTrue(header.contains("FlowRow("))
+        assertTrue(header.contains("maxLines = 1,\n                softWrap = false,"))
+        val book = source("ui/collection/CollectionDialog.kt")
+        assertTrue(book.contains("TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.width(PAGE_BUTTON_WIDTH))"))
+        assertTrue(book.contains("private val PAGE_BUTTON_WIDTH = 44.dp"))
+    }
 }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,8 +37,8 @@ import com.studioguu.miniaturegarden.ui.components.withTick
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 /*
  * The parts every chapter of the book is made of, so that each one reads the same way: a contents
@@ -127,24 +129,33 @@ internal fun ReadyDot() {
 
 /**
  * The top of an entry's page: its number, and on the same line, apart from the words below, the
- * day it was entered in the book ([enteredAt], none while the page is still blank).
+ * day it was entered in the book ([enteredAt], none while the page is still blank). Where the
+ * page is too narrow for both (360dp wide), the day goes whole onto the line below, never broken
+ * in two (device feedback 11/03).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PageHeader(number: Int, enteredAt: Long?) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         Text(
             text = stringResource(R.string.collection_number, number),
             color = InkFaded,
             fontFamily = FontFamily.Monospace,
             style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.align(Alignment.CenterVertically),
         )
-        Spacer(Modifier.weight(1f))
         if (enteredAt != null) {
             Text(
                 text = stringResource(R.string.book_entered_on, bookDate(enteredAt)),
                 color = InkFaded,
                 fontFamily = FontFamily.Monospace,
                 style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier
                     .border(1.dp, InkFaded.copy(alpha = 0.6f), RoundedCornerShape(3.dp))
                     .padding(horizontal = 4.dp, vertical = 1.dp),
