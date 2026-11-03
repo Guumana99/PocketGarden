@@ -13,7 +13,7 @@ import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.GardenExpansion
-import com.studioguu.miniaturegarden.domain.model.CollectionProgress
+import com.studioguu.miniaturegarden.domain.model.BookUnlocks
 import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -91,9 +91,9 @@ class ShopViewModel @Inject constructor(
 
     /** Decides which items are still locked. */
     val playerStats: StateFlow<PlayerStats> =
-        combine(gardenRepository.observeUserProfile(), gardenRepository.observeCollection()) { profile, pages ->
-            // Some items are opened by the encyclopedia rather than by level.
-            (profile?.stats ?: NEW_PLAYER).copy(collectionPages = CollectionProgress(pages).revealed)
+        combine(gardenRepository.observeUserProfile(), gardenRepository.observeCollection(), gardenRepository.observeNatureNotes()) { profile, pages, notes ->
+            // Some items are opened by the encyclopedia, creatures and all, rather than by level.
+            (profile?.stats ?: NEW_PLAYER).copy(collectionPages = BookUnlocks.kinds(pages, notes))
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), NEW_PLAYER)
 
     /**

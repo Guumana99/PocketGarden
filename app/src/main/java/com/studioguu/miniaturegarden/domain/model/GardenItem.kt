@@ -162,7 +162,7 @@ enum class GardenItem(
     /** Wooden decking. Paving, like the cobblestones: it goes under things. */
     FLOOR_WOOD(
         "floor_wood", price = 12, objectId = GridObject.WOOD_DECK_OBJECT_ID, category = ItemCategory.DECORATION,
-        unlock = UnlockCondition.CollectionPages(2),
+        unlock = UnlockCondition.CollectionPages(BookUnlocks.WOOD_DECK),
     ),
 
     /** A garden bench. */
@@ -174,7 +174,7 @@ enum class GardenItem(
     /** A stone lantern. */
     DECO_LANTERN(
         "deco_lantern", price = 60, objectId = "deco_lantern", category = ItemCategory.DECORATION,
-        unlock = UnlockCondition.CollectionPages(4),
+        unlock = UnlockCondition.CollectionPages(BookUnlocks.LANTERN),
     ),
 
     /**

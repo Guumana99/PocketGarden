@@ -130,14 +130,14 @@
 | 飾り | 石畳（`floor_cobblestone`） | 10 | 最初から | 確定アセット | `floor_cobblestone.png`（#74 で差し替え）、アイコン画像あり |
 | 飾り | 小川（`tile_river`） | 10 | 最初から | 生成アセット | `tile_river_autotile.png`（スクリプトで生成）。庭・図鑑での名前は「せせらぎ」 |
 | 飾り | 野の花（`ground_flowers`） | 15 | 最初から | 確定アセット | `ground_flowers.png`（#74）、アイコン画像あり |
-| 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 2 ページ | 確定アセット | `floor_wood.png`（#74）、アイコン画像あり |
+| 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 29 種類 | 確定アセット | `floor_wood.png`（#74）、アイコン画像あり |
 | 飾り | 丸い岩（`deco_rock`） | 60 | Lv2 | 確定アセット | `deco_rock`（#74）、アイコン画像あり。ショップでは「石」の 1 つにまとめて、押すと 5 種の一覧が出る |
 | 飾り | 平たい石（`deco_rock_flat`） | 80 | Lv4 | 確定アセット | `deco_rock_flat`（原画 `rock_flat.png`）、アイコン画像あり |
 | 飾り | 苔むした岩（`deco_rock_mossy`） | 150 | Lv7 | 確定アセット | `deco_rock_mossy`（原画 `rock_mossy.png`）、アイコン画像あり |
 | 飾り | 立て石（`deco_rock_standing`） | 250 | Lv10 | 確定アセット | `deco_rock_standing`（原画 `rock_standing.png`）、アイコン画像あり |
 | 飾り | 小石の山（`deco_rock_pebbles`） | 300 | Lv13 | 確定アセット | `deco_rock_pebbles`（原画 `rock_pebbles.png`）、アイコン画像あり |
 | 飾り | ベンチ（`deco_bench`） | 100 | Lv3 | 確定アセット | `deco_bench`（#74）、アイコン画像あり |
-| 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 4 ページ | 確定アセット | `deco_lantern`（#74）、アイコン画像あり |
+| 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 34 種類 | 確定アセット | `deco_lantern`（#74）、アイコン画像あり |
 | 飾り | スプリンクラー（`deco_sprinkler`） | 450 | Lv7 | 確定アセット＋コード | `deco_sprinkler`（#74）、アイコン画像あり。水しぶきは `SprinklerSpray` のコードで、絵の腕の軸から出る |
 | 飾り | 風見鶏（`deco_weathervane`） | 500 | Lv6 | 確定アセット | `deco_weathervane`（#87）、アイコン画像あり |
 | 飾り | 池（`deco_pond`） | 120 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |

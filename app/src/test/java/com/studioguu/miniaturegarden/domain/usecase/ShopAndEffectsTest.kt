@@ -1,13 +1,17 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.BookUnlocks
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
+import com.studioguu.miniaturegarden.domain.model.NatureNote
+import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -17,6 +21,7 @@ import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.UnlockCondition
 import com.studioguu.miniaturegarden.domain.model.UserProfile
+import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import kotlinx.coroutines.runBlocking
@@ -167,44 +172,77 @@ class ShopAndEffectsTest {
         assertFalse(GardenItem.DECO_LANTERN.isUnlockedFor(veteran))
 
         val beginner = PlayerStats(level = 1, totalXp = 0)
-        assertFalse(GardenItem.FLOOR_WOOD.isUnlockedFor(beginner.copy(collectionPages = 1)))
-        assertTrue(GardenItem.FLOOR_WOOD.isUnlockedFor(beginner.copy(collectionPages = 2)))
-        assertFalse(GardenItem.DECO_LANTERN.isUnlockedFor(beginner.copy(collectionPages = 3)))
-        assertTrue(GardenItem.DECO_LANTERN.isUnlockedFor(beginner.copy(collectionPages = 4)))
+        assertFalse(GardenItem.FLOOR_WOOD.isUnlockedFor(beginner.copy(collectionPages = BookUnlocks.WOOD_DECK - 1)))
+        assertTrue(GardenItem.FLOOR_WOOD.isUnlockedFor(beginner.copy(collectionPages = BookUnlocks.WOOD_DECK)))
+        assertFalse(GardenItem.DECO_LANTERN.isUnlockedFor(beginner.copy(collectionPages = BookUnlocks.LANTERN - 1)))
+        assertTrue(GardenItem.DECO_LANTERN.isUnlockedFor(beginner.copy(collectionPages = BookUnlocks.LANTERN)))
     }
 
     @Test
-    fun `both can be reached on the first day, with the pages of what is for sale from the start`() {
+    fun `neither is within reach on the first day, with only what is for sale from the start`() {
+        // Device feedback 11/03: not even in the first spring (BookUnlockPaceTest), let alone the first day.
         val newPlayer = PlayerStats(level = 1, totalXp = 0)
         val pagesWithinReach = GardenItem.entries
             .filter { it.isUnlockedFor(newPlayer) && it.category != ItemCategory.SEED }
             .count { CollectionEntry.fromObjectId(it.objectId) != null }
-        val needed = GardenItem.entries.mapNotNull { (it.unlock as? UnlockCondition.CollectionPages)?.pages }.max()
-        assertTrue("$pagesWithinReach pages within reach, $needed needed", pagesWithinReach >= needed)
+        val needed = GardenItem.entries.mapNotNull { (it.unlock as? UnlockCondition.CollectionPages)?.pages }.min()
+        assertTrue("$pagesWithinReach pages within reach, $needed needed", pagesWithinReach < needed)
     }
 
     @Test
     fun `the shop sells a page-locked item only once the pages are filled in, not merely ready`() = runBlocking {
         assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.FLOOR_WOOD))
         assertEquals(1_000L, repo.profile?.coins)
+        val pages = CollectionEntry.entries.take(BookUnlocks.WOOD_DECK)
 
-        // Two things placed: their pages are ready, but nobody has filled them in.
-        repo.discover(CollectionEntry.GRASS, revealed = false)
-        repo.discover(CollectionEntry.PEBBLE, revealed = false)
+        // Their pages are ready, but nobody has filled them in.
+        pages.forEach { repo.discover(it, revealed = false) }
         assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.FLOOR_WOOD))
 
-        repo.discover(CollectionEntry.GRASS, revealed = true)
+        pages.dropLast(1).forEach { repo.discover(it, revealed = true) }
         assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.FLOOR_WOOD))
-        repo.discover(CollectionEntry.PEBBLE, revealed = true)
+        repo.discover(pages.last(), revealed = true)
         assertEquals(ActionResult.SUCCESS, purchase(GardenItem.FLOOR_WOOD))
         assertEquals(1_000L - GardenItem.FLOOR_WOOD.price, repo.profile?.coins)
         assertEquals(InventorySlot(0, GardenItem.FLOOR_WOOD.itemId, 1), repo.slots.getValue(0).contents())
 
-        // The lantern needs four.
+        // The lantern needs more.
         assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.DECO_LANTERN))
-        repo.discover(CollectionEntry.RIVER, revealed = true)
-        repo.discover(CollectionEntry.PATH, revealed = true)
+        CollectionEntry.entries.take(BookUnlocks.LANTERN).forEach { repo.discover(it, revealed = true) }
         assertEquals(ActionResult.SUCCESS, purchase(GardenItem.DECO_LANTERN))
+    }
+
+    @Test
+    fun `a creature counts once met and its page looked at, as a page counts once filled in`() = runBlocking {
+        // Device feedback 11/03: the book's creatures count towards what it opens.
+        val pages = CollectionEntry.entries.take(BookUnlocks.WOOD_DECK - 2)
+        pages.forEach { repo.discover(it, revealed = true) }
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.FLOOR_WOOD))
+
+        // Met, but its page not yet turned to: new in the book, and not counted yet.
+        repo.upsertNatureNote(NatureNote(NatureNotes.creatureKey(Creature.BUTTERFLY), t0, count = 1, opened = false))
+        repo.upsertNatureNote(NatureNote(NatureNotes.creatureKey(Creature.BIRD), t0, count = 1, opened = false))
+        // A combination found is no kind of its own.
+        repo.upsertNatureNote(NatureNote(NatureNotes.ruleKey(VisitRule.BIRD_BENCH), t0, count = 1))
+        assertEquals(BookUnlocks.WOOD_DECK - 2, BookUnlocks.kinds(repo.getCollection(), repo.getNatureNotes()))
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.FLOOR_WOOD))
+
+        repo.upsertNatureNote(NatureNote(NatureNotes.creatureKey(Creature.BUTTERFLY), t0, count = 1, opened = true))
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.FLOOR_WOOD))
+        repo.upsertNatureNote(NatureNote(NatureNotes.creatureKey(Creature.BIRD), t0, count = 1, opened = true))
+        assertEquals(BookUnlocks.WOOD_DECK, BookUnlocks.kinds(repo.getCollection(), repo.getNatureNotes()))
+        assertEquals(ActionResult.SUCCESS, purchase(GardenItem.FLOOR_WOOD))
+    }
+
+    @Test
+    fun `decking and a lantern already in the bag can still be put down, though the shop no longer sells them`() = runBlocking {
+        // A garden from before the numbers went up keeps what it has (device feedback 11/03).
+        repo.putSlot(InventorySlot(0, GardenItem.FLOOR_WOOD.itemId, 1))
+        repo.putSlot(InventorySlot(1, GardenItem.DECO_LANTERN.itemId, 1))
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.FLOOR_WOOD))
+        assertEquals(ActionResult.ITEM_LOCKED, purchase(GardenItem.DECO_LANTERN))
+        assertEquals(ActionResult.SUCCESS, place(0, 2, 2, t0))
+        assertEquals(ActionResult.SUCCESS, place(1, 4, 4, t0))
     }
 
     @Test

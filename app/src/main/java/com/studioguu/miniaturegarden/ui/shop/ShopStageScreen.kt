@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,9 +25,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -54,20 +55,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.data.ads.AdAvailability
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -76,28 +82,27 @@ import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.UnlockCondition
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
+import com.studioguu.miniaturegarden.ui.ItemIcon
 import com.studioguu.miniaturegarden.ui.actionResultMessage
 import com.studioguu.miniaturegarden.ui.collection.asProse
 import com.studioguu.miniaturegarden.ui.collection.flavorText
 import com.studioguu.miniaturegarden.ui.components.AnswersWhenResting
 import com.studioguu.miniaturegarden.ui.components.CarvedButton
 import com.studioguu.miniaturegarden.ui.components.DialogAction
-import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
-import com.studioguu.miniaturegarden.data.ads.AdAvailability
-import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
-import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.GardenToastHost
 import com.studioguu.miniaturegarden.ui.components.GardenToastState
+import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
+import com.studioguu.miniaturegarden.ui.components.RewardConfirmDialog
+import com.studioguu.miniaturegarden.ui.components.WoodButton
 import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
-import com.studioguu.miniaturegarden.ui.hud.ExpandConfirmDialog
-import com.studioguu.miniaturegarden.ui.itemDisplayName
-import com.studioguu.miniaturegarden.ui.ItemIcon
-import com.studioguu.miniaturegarden.ui.seasonEmoji
-import com.studioguu.miniaturegarden.ui.seasonLabel
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import com.studioguu.miniaturegarden.ui.debug.adsOr
+import com.studioguu.miniaturegarden.ui.hud.ExpandConfirmDialog
+import com.studioguu.miniaturegarden.ui.itemDisplayName
+import com.studioguu.miniaturegarden.ui.seasonEmoji
+import com.studioguu.miniaturegarden.ui.seasonLabel
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 
 /**
@@ -601,7 +606,8 @@ const val EXPANSION_BOARD_TAG = "shop_expansion_board"
 /** One wooden shelf with up to [ShopShelves.PER_SHELF] things standing on it. */
 @Composable
 private fun Shelf(things: List<ShelfItem>, inHand: GardenItem?, onInspect: (GardenItem) -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val nameStyle = shelfNameStyle(maxWidth / ShopShelves.PER_SHELF)
         // The plank, with its shadow on the wall below.
         Box(
             modifier = Modifier
@@ -613,27 +619,26 @@ private fun Shelf(things: List<ShelfItem>, inHand: GardenItem?, onInspect: (Gard
                 }
                 .background(Brush.verticalGradient(listOf(GardenColors.WoodLight, GardenColors.Wood)), RoundedCornerShape(3.dp)),
         )
+        // Each thing has a third of the shelf, so that its name can use all of it.
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.Bottom,
         ) {
-            for (thing in things) ShelfThing(thing, picked = thing.item == inHand, onInspect = onInspect)
+            for (thing in things) ShelfThing(thing, picked = thing.item == inHand, nameStyle, Modifier.weight(1f), onInspect)
             // A short last shelf keeps its things where they would stand on a full one.
-            repeat(ShopShelves.PER_SHELF - things.size) { Spacer(Modifier.width(ITEM_WIDTH)) }
+            repeat(ShopShelves.PER_SHELF - things.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
 
 /** A thing on the shelf, with its tag hanging in front: the price, or why it is not for sale. */
 @Composable
-private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem) -> Unit) {
+private fun ShelfThing(thing: ShelfItem, picked: Boolean, nameStyle: TextStyle, modifier: Modifier, onInspect: (GardenItem) -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     // The one rock on the shelf stands for all the kinds of rock, and the one fence for the fences.
     val name = if (GardenItem.kindsUnder(thing.item) != null) kindsName(thing.item) else itemDisplayName(thing.item)
     Column(
-        modifier = Modifier
-            .width(ITEM_WIDTH)
+        modifier = modifier
             .pressScale(interaction)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = withTick { onInspect(thing.item) })
             .semantics { contentDescription = name }
@@ -654,15 +659,44 @@ private fun ShelfThing(thing: ShelfItem, picked: Boolean, onInspect: (GardenItem
         )
         Text(
             text = name,
-            style = MaterialTheme.typography.labelSmall,
+            style = nameStyle,
             color = GardenColors.Ink,
             maxLines = 1,
+            softWrap = false,
             textAlign = TextAlign.Center,
             modifier = Modifier.alpha(if (thing.tag == ShelfTag.LOCKED) LOCKED_ALPHA else 1f),
         )
         PriceTag(thing)
     }
 }
+
+/**
+ * How the names on the shelves are written: all at one size, the largest at which the longest name
+ * in the shop ("スノードロップの球根") still fits on one line in a third of the shelf ([slot]), and
+ * never larger than the theme's labelSmall. Device feedback 11/03: at 360dp wide with text at 1.3
+ * times, "ラベンダーの苗" and "しいたけの原木" were cut short.
+ */
+@Composable
+private fun shelfNameStyle(slot: Dp): TextStyle {
+    val base = MaterialTheme.typography.labelSmall
+    val names = shelfNames()
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    return remember(names, slot, density, base) {
+        val room = with(density) { slot.toPx() }
+        val widest = names.maxOf { measurer.measure(it, base, maxLines = 1, softWrap = false).size.width }
+        if (widest <= room) base else base.copy(fontSize = base.fontSize * (room / widest * SHELF_NAME_FIT))
+    }
+}
+
+/** Every name that can stand on a shelf, in any season. */
+@Composable
+private fun shelfNames(): List<String> =
+    ItemCategory.entries.flatMap { GardenItem.shelf(it) }
+        .map { if (GardenItem.kindsUnder(it) != null) kindsName(it) else itemDisplayName(it) }
+
+/** A hair under the width measured, so that rounding never cuts the last character. */
+private const val SHELF_NAME_FIT = 0.98f
 
 /** The paper tag in front of a thing on the shelf: its price (or why it is not for sale), and how many are in the bag. */
 @Composable
@@ -838,7 +872,6 @@ const val ITEM_CARD_TAG = "shop_item_card"
 /** Test tag of how many of the thing in hand are in the bag, on its card. */
 const val CARD_HELD_TAG = "shop_card_held"
 
-private val ITEM_WIDTH = 96.dp
 private const val LOCKED_ALPHA = 0.45f
 private const val UNAFFORDABLE_ALPHA = 0.55f
 

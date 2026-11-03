@@ -4,7 +4,7 @@ import com.studioguu.miniaturegarden.domain.model.BloomColours
 import com.studioguu.miniaturegarden.domain.model.BridgeFit
 import com.studioguu.miniaturegarden.domain.model.BridgeProblem
 import com.studioguu.miniaturegarden.domain.model.BuildingPaint
-import com.studioguu.miniaturegarden.domain.model.CollectionProgress
+import com.studioguu.miniaturegarden.domain.model.BookUnlocks
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.Footprint
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
@@ -659,7 +659,7 @@ class PurchaseItemUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(item: GardenItem): ActionResult = gardenRepository.runInTransaction {
         val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
-        val pages = CollectionProgress(gardenRepository.getCollection()).revealed
+        val pages = BookUnlocks.kinds(gardenRepository.getCollection(), gardenRepository.getNatureNotes())
         if (!item.isUnlockedFor(profile.stats.copy(collectionPages = pages))) return@runInTransaction ActionResult.ITEM_LOCKED
         // Seasonal crops are only on sale in their season; the shop does not show them otherwise.
         val season = gardenRepository.getProgress()?.season

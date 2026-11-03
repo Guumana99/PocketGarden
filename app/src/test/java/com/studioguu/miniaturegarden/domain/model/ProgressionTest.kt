@@ -157,8 +157,8 @@ class ProgressionTest {
             .mapValues { it.value.toSet() }
         assertEquals(expected, byLevel)
         // The lantern and the decking are still opened by the encyclopedia.
-        assertEquals(UnlockCondition.CollectionPages(4), GardenItem.DECO_LANTERN.unlock)
-        assertEquals(UnlockCondition.CollectionPages(2), GardenItem.FLOOR_WOOD.unlock)
+        assertEquals(UnlockCondition.CollectionPages(BookUnlocks.LANTERN), GardenItem.DECO_LANTERN.unlock)
+        assertEquals(UnlockCondition.CollectionPages(BookUnlocks.WOOD_DECK), GardenItem.FLOOR_WOOD.unlock)
     }
 
     @Test

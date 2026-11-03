@@ -1590,6 +1590,20 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
     }
 }
 
+/**
+ * How much smaller than in the garden a thing is drawn in its picture in the book, by sprite id.
+ * The well (device feedback 11/03), on a patch of its own one cell, filled it to the edges; at 0.85
+ * a rim of lawn is left round it, as round the bench and the weathervane.
+ */
+internal val PORTRAIT_SCALES = mapOf(StructureData.WELL.objectId to 0.85f)
+
+/** [this] atlas with the sprites in [PORTRAIT_SCALES] drawn that much smaller; the garden's own is untouched. */
+private fun SpriteAtlas.forPortraits(): SpriteAtlas =
+    SpriteAtlas(
+        manifest.copy(assets = manifest.assets.map { asset -> PORTRAIT_SCALES[asset.assetId]?.let { asset.copy(drawScale = asset.drawScale * it) } ?: asset }),
+        pages,
+    )
+
 /** Room over the far corner of a greenhouse's preview, in tile widths: its walls and its roof. */
 private const val GREENHOUSE_HEADROOM = GreenhouseLook.WALL_HEIGHT + 0.1f
 
@@ -1717,6 +1731,8 @@ fun ObjectPreview(
     modifier: Modifier = Modifier,
     bloomColour: String? = null,
 ) {
+    @Suppress("NAME_SHADOWING")
+    val atlas = remember(atlas) { atlas.forPortraits() }
     val scene = remember(objectId, bloomColour) { PreviewScene.of(objectId, bloomColour) }
     val map = remember(scene) { GardenMap.allGrass(scene.gridSize) }
     val grid = remember(scene) { GardenGrid(map, scene.objects) }

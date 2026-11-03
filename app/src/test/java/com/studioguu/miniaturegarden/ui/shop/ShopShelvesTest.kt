@@ -134,4 +134,20 @@ class ShopShelvesTest {
         assertEquals(stock, shelves.flatten())
         assertEquals(emptyList<List<ShelfItem>>(), ShopShelves.shelves(emptyList()))
     }
+
+    @Test
+    fun `the names on the shelves are all one size, small enough for the longest to fit on one line`() {
+        // Device feedback 11/03: at 360dp wide with text at 1.3 times, the lavender's and the
+        // shiitake's names were cut short.
+        val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
+        val shop = java.io.File(main, "java/com/studioguu/miniaturegarden/ui/shop/ShopStageScreen.kt").readText().replace("\r\n", "\n")
+        assertTrue(shop.contains("val nameStyle = shelfNameStyle(maxWidth / ShopShelves.PER_SHELF)"))
+        assertTrue(shop.contains("            style = nameStyle,\n            color = GardenColors.Ink,\n            maxLines = 1,\n            softWrap = false,"))
+        // Measured over every name that can be on a shelf, never larger than the theme's size.
+        assertTrue(shop.contains("ItemCategory.entries.flatMap { GardenItem.shelf(it) }"))
+        assertTrue(shop.contains("if (widest <= room) base else base.copy(fontSize = base.fontSize * (room / widest * SHELF_NAME_FIT))"))
+        // Each thing has a third of the shelf.
+        assertTrue(shop.contains("ShelfThing(thing, picked = thing.item == inHand, nameStyle, Modifier.weight(1f), onInspect)"))
+        assertFalse(shop.contains("ITEM_WIDTH"))
+    }
 }
