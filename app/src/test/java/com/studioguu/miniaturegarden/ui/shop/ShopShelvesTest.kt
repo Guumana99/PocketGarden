@@ -150,4 +150,19 @@ class ShopShelvesTest {
         assertTrue(shop.contains("ShelfThing(thing, picked = thing.item == inHand, nameStyle, Modifier.weight(1f), onInspect)"))
         assertFalse(shop.contains("ITEM_WIDTH"))
     }
+
+    @Test
+    fun `the shop's words are a size up, and held to a ceiling however large the device's setting`() {
+        // Device feedback 11/03: a little small at the usual setting, far too large at 1.3 times.
+        assertEquals(1.1f, ShopText.fontScale(1f), 1e-4f)
+        assertEquals(ShopText.MAX_SCALE, ShopText.fontScale(1.3f), 1e-4f)
+        assertEquals(ShopText.MAX_SCALE, ShopText.fontScale(2f), 1e-4f)
+        assertEquals(0.85f * 1.1f, ShopText.fontScale(0.85f), 1e-4f)
+        assertEquals(1.15f, ShopText.MAX_SCALE)
+        val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
+        val shop = java.io.File(main, "java/com/studioguu/miniaturegarden/ui/shop/ShopStageScreen.kt").readText().replace("\r\n", "\n")
+        // The whole stage is drawn at it, the shelf names measured at it too.
+        assertTrue(shop.contains("val shopDensity = remember(device) { Density(device.density, ShopText.fontScale(device.fontScale)) }"))
+        assertTrue(shop.contains("CompositionLocalProvider(LocalDensity provides shopDensity) {\n        Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {"))
+    }
 }
