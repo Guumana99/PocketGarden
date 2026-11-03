@@ -153,4 +153,14 @@ class EncyclopediaTest {
         assertTrue(vane, vane.contains("明日の天気が見られる。"))
         assertEquals("📖 図鑑に%1\$d種類登録すると、買えるようになります", string("shop_card_pages"))
     }
+
+    @Test
+    fun `the well's picture in the book leaves a rim of lawn round it, and the garden's well is as it was`() {
+        // Device feedback 11/03: on a patch of its own one cell, it filled it to the edges.
+        assertEquals(mapOf(com.studioguu.miniaturegarden.domain.model.StructureData.WELL.objectId to 0.85f), com.studioguu.miniaturegarden.ui.components.PORTRAIT_SCALES)
+        val canvas = source("ui/components/GardenCanvas.kt")
+        // Only the book's pictures are drawn from the scaled atlas.
+        assertEquals(1, Regex("""atlas\.forPortraits\(\)""").findAll(canvas).count())
+        assertTrue(canvas.substringAfter("fun ObjectPreview(").substringBefore("Canvas(modifier)").contains("val atlas = remember(atlas) { atlas.forPortraits() }"))
+    }
 }

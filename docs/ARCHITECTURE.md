@@ -50,7 +50,7 @@ di/       Hilt の束ね
 `domain/model/GardenItem.kt` の enum が唯一のマスター。価格、解放条件、設置 XP、建築秒数を持つ。
 価格の考え方はそのファイルの KDoc の表にある。
 
-- 解放条件 `UnlockCondition`: `None` / `PlayerLevel(n)` / `CollectionPages(n)`（図鑑の登録済みページ数）。
+- 解放条件 `UnlockCondition`: `None` / `PlayerLevel(n)` / `CollectionPages(n)`（図鑑に登録した種類の数。2026-11-03 から生き物も数える。`BookUnlocks.kinds`）。
 - 棚の並びは `GardenItem.shelf(category)`。
 - アイテムを足すときに触る場所：`GardenItem`、`CollectionEntry`（図鑑ページ）、`TileSetDefinition.objectIds`、
   `UiLabels`（名前・絵文字）、`CollectionDialog.flavorText`、`strings.xml`、描画（`GardenCanvas`）。
@@ -72,12 +72,15 @@ di/       Hilt の束ね
 - 棚の中身は純関数 `ShopShelves.stock(stage, season, stats, coins, ownsSymbol)` → `ShelfItem(item, ShelfTag)`。
   `ShelfTag` は `FOR_SALE` / `SHORT_OF_COINS` / `LOCKED` / `OWNED`（持っているコテージ）。`ShopShelves.shelves` で 1 段 3 つに並べる。
 - 棚の物を押すと手に取り（棚には薄い跡が残る）、下から**カード**がせり上がる：絵・名前・**所持数**・図鑑の説明文（`CollectionDialog.flavorText`）・
-  効果（井戸・小屋・風車、コテージは庭が広がること）・図鑑で開く物はその条件（「図鑑にNページ登録すると…」）・「棚に戻す」と「N で買う」（または解放条件／所持済み）。
+  効果（井戸・小屋・風車、コテージは庭が広がること）・図鑑で開く物はその条件（「図鑑にN種類登録すると…」）・「棚に戻す」と「N で買う」（または解放条件／所持済み）。
   #48 で作物の旬の行はやめた（棚には旬の物しか並ばないため）。
 - **庭のトースト**（`GardenToastState`、#59）：一度に 1 つずつ。表示中に来た一言は後ろに並び（最大 2 つ、あふれたら古いものから捨てる）、前のが消えて 0.32 秒おいてから出る。表示中や順番待ちと同じ文言は 1 つにまとめる。浮かぶ文字（`plusEffect`）も同じ種類は重ねず、収穫の「+N 🪙」は最新の 1 回分に置き換える（合計は上の札。以前は足していて、+22・+44・+66 と増えて見えた）、「📖 図鑑に登録できます！」は 1 枚に、道具の上達は最新の位に置き換える。以前は複数の収穫・登録で同じ場所に何枚も重なっていた。
 - 買った結果などの一言は、**高さを固定した 1 行の枠**（`MessageLine`、24dp、1 行で省略）に出す。出ても消えてもカードやボタンの位置は動かない。
 - **所持数（#48）**：持ち物にある数（全スロットの合計、`ShopShelves.heldIn`）を、棚の値札の下と、カードの名前の下に「所持数: N個」で出す。庭に置いてある数は数えない。
-- 図鑑で開く 2 つ（ウッドデッキ＝2 ページ、石灯籠＝4 ページ）の棚の札は「🔒 図鑑で解放」。ページ数はカードに書く。
+- 図鑑で開く 2 つ（ウッドデッキ＝29 種類、石灯籠＝34 種類。数は `BookUnlocks` の 1 か所）の棚の札は「🔒 図鑑で解放」。数はカードに書く。
+  数える種類は、「？」をタップして登録したページ（さくもつ・ちけい・たてもの）と、出会って「いきもの」のページを開いた生き物（`NatureNote.opened`）。
+  2026-11-03 の実機 FB で、どれだけ頑張っても最初の春には届かず、ウッドデッキは 1 年目の夏のなかごろ、石灯籠は秋のはじめに届く数にした（`BookUnlockPaceTest` が 1 年目の 12 期ごとに試算）。
+  買うときだけの条件なので、すでに持っている・置いている人の物はそのまま（持ち物から置ける）。図鑑の種類を増やしたら、この試算を見て数を決め直す。
 - 戻るキー：カードが出ていれば棚に戻す、出ていなければ庭へ。
 - 状態は `ShopViewModel`：`stage`（いる店）・`inspecting`（手に取った物）・`shelves`（派生）。`goTo` `inspect` `putBack` `leave`（入口の店・手ぶらに戻す）。
   画面は `ShopStageScreen`（view model をつなぐ）と、状態だけで描く `ShopStageContent`（Robolectric のテスト `ShopStageContentTest`）。

@@ -119,6 +119,29 @@ data class CollectionRecord(
     val revealed: Boolean = false,
 )
 
+/**
+ * The things the book opens ([UnlockCondition.CollectionPages]) and how many kinds in it open them,
+ * kept here to be tuned in one place. Device feedback 11/03: out of reach in the first spring
+ * however keen the player, the wood deck in the middle of the first summer and the lantern in the
+ * first autumn (BookUnlockPaceTest works out the first year phase by phase).
+ */
+object BookUnlocks {
+    /** The keen player has 27 kinds at the end of the first summer's start and 30 at its middle. */
+    const val WOOD_DECK = 29
+
+    /** 32 at the end of the first summer, the decking with them; 36 at the end of the autumn's start. */
+    const val LANTERN = 34
+
+    /**
+     * The kinds that count: the pages filled in ([CollectionProgress.revealed]), and the creatures
+     * met whose page in the nature notes has been looked at, as a page is filled in with a tap.
+     */
+    fun kinds(records: List<CollectionRecord>, notes: List<NatureNote>): Int {
+        val met = NatureNotes(notes)
+        return CollectionProgress(records).revealed + Creature.entries.count { met.hasMet(it) && !met.isNew(it) }
+    }
+}
+
 /** The encyclopedia as a whole. */
 data class CollectionProgress(private val records: List<CollectionRecord>) {
     private val byId = records.associateBy { it.entryId }
