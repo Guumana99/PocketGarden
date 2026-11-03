@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden
 
+import android.content.Context
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -11,12 +12,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.studioguu.miniaturegarden.ui.GardenScreen
+import com.studioguu.miniaturegarden.ui.theme.FixedFontScale
 import com.studioguu.miniaturegarden.ui.theme.GardenTheme
 import com.studioguu.miniaturegarden.ui.title.TitleScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    // The game's words keep their size whatever the device's type setting (FixedFontScale).
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(FixedFontScale.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
