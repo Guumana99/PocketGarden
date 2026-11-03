@@ -101,10 +101,11 @@ class CropScaleTest {
         for ((id, ground) in listOf("plant_eggplant_stage2" to 0.85f, "plant_eggplant_stage3" to 0.78f, "plant_eggplant_withered" to 0.83f)) {
             assertEquals(id, ground, drawn(id).anchorY, 0.005f)
         }
-        // The carrot shows only the shoulder of its root: its grown picture is barely taller than
-        // its leaves alone (stage 2), where it was twice as tall with the whole root out.
+        // The carrot shows only the top of its root: its grown picture is a little taller than its
+        // leaves alone (stage 2), where it was twice as tall with the whole root out. (Device
+        // feedback 11/02 showed 60% of the root rather than 22%: about 1.5 times as tall.)
         val carrot = raw.assets.first { it.assetId == "plant_carrot_stage3" }
-        assertTrue(carrot.height < 1.35f * raw.assets.first { it.assetId == "plant_carrot_stage2" }.height)
+        assertTrue(carrot.height < 1.6f * raw.assets.first { it.assetId == "plant_carrot_stage2" }.height)
     }
 
     @Test
@@ -120,5 +121,19 @@ class CropScaleTest {
     fun `the garden draws the atlas through the crop scale`() {
         val repository = File(main, "java/com/studioguu/miniaturegarden/data/asset/AssetRepository.kt").readText()
         assertTrue(repository.contains("readAtlas(MANIFEST_FILE, CropScale::normalized)"))
+    }
+
+    @Test
+    fun `the rose stands no larger than the sunflower beside it`() {
+        // Device feedback 11/03: grown, it stood as tall as the sunflower, its one bloom as big as
+        // the sunflower's head; the stage before stood as tall as the sunflower's leafy middle.
+        assertEquals(0.8f, CropScale.SIZE_SHARES["plant_rose"])
+        assertTrue(height("plant_rose_stage4") < height("plant_sunflower_stage3") * 0.85f)
+        assertTrue(height("plant_rose_stage4") in 0.65f..0.72f)
+        assertTrue(height("plant_rose_stage3") < height("plant_sunflower_stage2") * 0.85f)
+        assertTrue(width("plant_rose_stage4") < width("plant_sunflower_stage3"))
+        // The rose's own stages still only grow, and its seedling is as small as it was.
+        assertTrue(height("plant_rose_stage3") <= height("plant_rose_stage4"))
+        assertTrue(height("plant_rose_withered") <= height("plant_rose_stage4"))
     }
 }

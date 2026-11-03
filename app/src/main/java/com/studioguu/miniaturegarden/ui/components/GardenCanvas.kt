@@ -649,6 +649,11 @@ private fun submitObjects(
     lawn: FeatheredLawn? = null,
     /** Beds fill their cells: a preview's patch is all bed, with no rim on it. */
     wholeBeds: Boolean = false,
+    /**
+     * A picture in the book: the thing alone, with no blades of grass at its foot and no water
+     * thrown from a sprinkler (device feedback 11/03), as the garden itself still draws them.
+     */
+    portrait: Boolean = false,
 ) {
     val greenhouses = GreenhouseLayout.of(gridObjects, grid.map::isInside)
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
@@ -908,7 +913,7 @@ private fun submitObjects(
                     drawPlaceholder(obj, base, unit)
                 }
                 // Grass at its foot on open lawn, and on a lawn sown under it (#55).
-                if (grassy) drawGrassAtFoot(base, unit, unit * (if (alone) 0.28f else 0.07f), sway, seed = obj.gridX * 31 + obj.gridY * 17)
+                if (grassy && !portrait) drawGrassAtFoot(base, unit, unit * (if (alone) 0.28f else 0.07f), sway, seed = obj.gridX * 31 + obj.gridY * 17)
             }
             continue
         }
@@ -976,7 +981,7 @@ private fun submitObjects(
             // for a rock or a bench, whose picture has no foot at this point: a rock's lies under
             // its own bulk, and a bench stands on four legs round it, so that crumbs and blades came
             // out as dots on the stone or under the seat (device feedback).
-            if (!isGroundCover && structure == null && !obj.isPlant && !GridObject.isRock(obj.objectId) && obj.objectId != Decoration.BENCH.objectId && obj.objectId != Decoration.WEATHERVANE.objectId) {
+            if (!portrait && !isGroundCover && structure == null && !obj.isPlant && !GridObject.isRock(obj.objectId) && obj.objectId != Decoration.BENCH.objectId && obj.objectId != Decoration.WEATHERVANE.objectId) {
                 val floor = grid.floorAt(obj.gridX, obj.gridY)
                 val reach = if (sprite != null) min(sprite.drawnWidth(spriteScale) * 0.3f, unit * 0.3f) else unit * 0.16f
                 when {
@@ -996,7 +1001,7 @@ private fun submitObjects(
             submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit, plantTop) }
         }
         // A running sprinkler throws its water over the beds round it, on the garden's clock.
-        if (obj.isSprinkler && obj.isOn && !obj.isWorking) {
+        if (obj.isSprinkler && obj.isOn && !obj.isWorking && !portrait) {
             val frame = SprinklerSpray.frameAt(ambience.windMillis ?: 0L, running = true)
             val sprayArt = atlas[SprinklerSpray.spriteIdFor(frame.index)]
             // The water comes out of the hub its arms turn on (#74): the picture's attachment point.
@@ -1573,8 +1578,10 @@ private class PreviewScene(val gridSize: Int, val headroom: Float, val objects: 
                 RunKind.of(objectId) != null ->
                     PreviewScene(3, 0.25f, listOf(at(0, 1), at(1, 1), at(2, 1), at(2, 0)))
                 StructureData.fromObjectId(objectId) != null -> {
+                    // Its own patch and no more, so that it stands in the middle of the frame as a
+                    // crop does (device feedback 11/03: the well, one cell, sat in the far corner of two).
                     val footprint = StructureData.fromObjectId(objectId)!!.footprint
-                    val size = maxOf(2, footprint.width, footprint.height)
+                    val size = maxOf(footprint.width, footprint.height)
                     PreviewScene(size, 0.45f, listOf(at((size - footprint.width) / 2, (size - footprint.height) / 2)))
                 }
                 else -> PreviewScene(1, 0.3f, listOf(at(0, 0)))
@@ -1744,7 +1751,7 @@ fun ObjectPreview(
             val earth = terrain.wasteland
             if (scene.bareEarth && earth != null) drawFlatGround(earth, transform, transform.tilePath(0, 0))
         }
-        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, Ambience.CALM, lawn = lawn, wholeBeds = true, river = river)
+        submitObjects(pipeline, scene.objects, grid, transform, atlas, atlasImage, terrain, Ambience.CALM, lawn = lawn, wholeBeds = true, river = river, portrait = true)
         // A shadow stays on the top of the patch, off its sides and the page behind them.
         val top = Path().apply {
             val n = scene.gridSize.toFloat()

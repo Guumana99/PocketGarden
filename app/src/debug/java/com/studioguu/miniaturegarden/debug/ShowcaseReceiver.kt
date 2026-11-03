@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
  *         --ez load true                      # replaces the saved garden with [ShowcaseGarden]
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
+ *         --es garden roses                   # ... or with [RoseGarden], the rose beside crops of its size
  *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks), with load
  *         --es tutorial REVEAL_RAIN           # ... at this step of the first steps, with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
@@ -120,6 +121,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val fences = garden == "fences"
         val bridges = garden == "bridges"
         val crops = garden == "crops"
+        val roses = garden == "roses"
         val ground = garden == "ground"
         val fenceLook = garden == "fencelook"
         val lawnThings = garden == "lawnthings"
@@ -130,7 +132,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val bridgePlaces = garden == "bridgeplace"
         val expand = garden == "expand"
         val banks = garden == "banks"
-        val feedback = garden == "fb" || banks || art || fences || bridges || crops || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val feedback = garden == "fb" || banks || art || fences || bridges || crops || roses || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -142,6 +144,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     fences -> FenceGarden.fences(now)
                     bridges -> FenceGarden.bridges(now)
                     crops -> CropGarden.objects(now)
+                    roses -> RoseGarden.objects(now)
                     ground -> GroundGarden.ground(now)
                     banks -> GroundGarden.banks(now)
                     fenceLook -> GroundGarden.fencesOnGrounds(now)

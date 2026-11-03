@@ -117,4 +117,40 @@ class EncyclopediaTest {
             assertTrue(colour, string(if (colour == "red") "flavor_tulip" else "flavor_tulip_$colour") != null)
         }
     }
+
+    @Test
+    fun `outside the book a page's words run on, broken only after a sentence`() {
+        // Device feedback 11/03: the shop's card broke the mint's words twelve characters a line.
+        assertEquals(
+            "季節を選ばない、丈夫な葉。\n触れると、すっと涼やかな香りが立つ。",
+            asProse("季節を選ばない、\n丈夫な葉。\n触れると、すっと\n涼やかな香りが立つ。"),
+        )
+        assertEquals("一行だけ。", asProse("一行だけ。"))
+        assertTrue(source("ui/shop/ShopStageScreen.kt").contains("Text(asProse(stringResource(flavorText(entry))), style"))
+        // The book keeps its own breaks.
+        assertFalse(source("ui/collection/CollectionDialog.kt").contains("asProse(stringResource"))
+    }
+
+    @Test
+    fun `the book's picture of a thing shows the thing alone, in the middle`() {
+        val canvas = source("ui/components/GardenCanvas.kt")
+        assertTrue(canvas.contains("lawn = lawn, wholeBeds = true, river = river, portrait = true)"))
+        // No blades at the foot of a fence, a lantern or a sprinkler, and no water thrown.
+        assertTrue(canvas.contains("if (grassy && !portrait) drawGrassAtFoot("))
+        assertTrue(canvas.contains("if (!portrait && !isGroundCover && structure == null && !obj.isPlant &&"))
+        assertTrue(canvas.contains("if (obj.isSprinkler && obj.isOn && !obj.isWorking && !portrait) {"))
+        // A building on its own patch: the well, one cell, no longer sits in the corner of two.
+        assertTrue(canvas.contains("val size = maxOf(footprint.width, footprint.height)"))
+        assertFalse(canvas.contains("maxOf(2, footprint.width, footprint.height)"))
+    }
+
+    @Test
+    fun `the sprinkler's and the weathervane's pages say what they are for`() {
+        assertEquals("くるくる回って、\\nまわりの畑に\\n水をまく。\\n止めておけば、\\nお庭の飾りにもなる。", string("flavor_sprinkler"))
+        // The forecast opens from the weather icon at the top of the garden (onWeatherTap).
+        val vane = string("flavor_weathervane")!!
+        assertTrue(vane, vane.contains("天気アイコンを\\nタップすると"))
+        assertTrue(vane, vane.contains("明日の天気が見られる。"))
+        assertEquals("📖 図鑑に%1\$d種類登録すると、買えるようになります", string("shop_card_pages"))
+    }
 }
