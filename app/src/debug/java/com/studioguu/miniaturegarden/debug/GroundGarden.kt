@@ -112,6 +112,9 @@ object GroundGarden {
             place(now, "struct_well", listOf(GridCell(5, 5)))
     }
 
+    /** A hut alone (`--es garden hut`): the bird called to it sits on its roof. */
+    fun hutAlone(now: Long): List<GridObject> = place(now, "struct_hut", listOf(GridCell(5, 5)))
+
     /** Crops with nothing left in their soil (`--es garden feed`), to give fertilizer and watch it soak in. */
     fun hungry(now: Long): List<GridObject> {
         val beds = cells(4..6, 5..5)
