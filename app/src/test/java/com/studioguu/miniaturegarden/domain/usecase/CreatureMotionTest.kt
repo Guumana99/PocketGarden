@@ -496,13 +496,14 @@ class CreatureMotionTest {
     }
 
     @Test
-    fun `a flower is one of the seven in bloom, or wild flowers, and any other crop is leaves`() {
-        val bloom = listOf("plant_cosmos", "plant_rose", "plant_tulip", "plant_lavender", "plant_sunflower", "plant_nanohana", "plant_snowdrop")
+    fun `a flower is one of the eight in bloom, or wild flowers, and any other crop is leaves`() {
+        val bloom = listOf("plant_cosmos", "plant_rose", "plant_tulip", "plant_lavender", "plant_sunflower", "plant_nanohana", "plant_snowdrop", "plant_poinsettia")
         for (id in bloom) {
             assertEquals(id, PerchKind.FLOWER, CreaturePerches.pointsOf(at(1, 1, id, 1f)).single().kind)
             assertEquals(id, PerchKind.LEAF, CreaturePerches.pointsOf(at(1, 1, id, 0.6f)).single().kind)
         }
-        for (id in listOf("plant_poinsettia", "plant_strawberry", "plant_tomato", "plant_mint")) {
+        // Whatever their pictures show in flower, the strawberry, the watermelon and the eggplant are leaves.
+        for (id in listOf("plant_strawberry", "plant_watermelon", "plant_eggplant", "plant_tomato", "plant_mint")) {
             assertEquals(id, PerchKind.LEAF, CreaturePerches.pointsOf(at(1, 1, id, 1f)).single().kind)
         }
         assertEquals(PerchKind.FLOWER, CreaturePerches.pointsOf(at(1, 1, CreaturePerches.WILD_FLOWERS_OBJECT_ID)).single().kind)

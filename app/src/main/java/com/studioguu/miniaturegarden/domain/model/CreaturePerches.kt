@@ -90,7 +90,7 @@ object CreaturePerches {
     /** The flowers a butterfly takes for one, in bloom ([isInBloom]). */
     val FLOWERS: Set<PlantSpecies> = setOf(
         PlantSpecies.COSMOS, PlantSpecies.ROSE, PlantSpecies.TULIP, PlantSpecies.LAVENDER,
-        PlantSpecies.SUNFLOWER, PlantSpecies.NANOHANA, PlantSpecies.SNOWDROP,
+        PlantSpecies.SUNFLOWER, PlantSpecies.NANOHANA, PlantSpecies.SNOWDROP, PlantSpecies.POINSETTIA,
     )
 
     /** Whether [obj] is one of the [FLOWERS] at its last stage, in bloom. */
