@@ -31,15 +31,15 @@ import com.studioguu.miniaturegarden.ui.components.DialogAction
 import com.studioguu.miniaturegarden.ui.components.ParchmentDialog
 import com.studioguu.miniaturegarden.ui.components.WoodPanel
 import com.studioguu.miniaturegarden.ui.components.WoodSlider
-import com.studioguu.miniaturegarden.ui.components.WoodTabs
 import com.studioguu.miniaturegarden.ui.components.WoodToggle
 import com.studioguu.miniaturegarden.ui.notifications.NotificationSettingRow
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import kotlin.math.roundToInt
 
-/** The settings, one tab per kind, so new ones have somewhere to go. */
-internal enum class SettingsTab(val label: Int) {
+/** The pages of the settings, each a button on the first page, so new ones have somewhere to go. */
+internal enum class SettingsPage(val label: Int) {
     SOUND(R.string.settings_tab_sound),
+    NOTIFICATIONS(R.string.settings_tab_notifications),
     ABOUT(R.string.settings_tab_about),
     OTHER(R.string.settings_tab_other),
 }
@@ -67,8 +67,9 @@ fun SettingsDialog(
 }
 
 /**
- * The settings on a parchment sheet: tabs along the top, and under them each group of settings
- * on a wooden board of its own.
+ * The settings on a parchment sheet, two levels deep: the first page is a button for each
+ * [SettingsPage], and each page has its settings on wooden boards and a way back. The device's
+ * back button (or a tap outside) on a page goes back to the first one.
  *
  * @param notificationRow the notification switch, which asks the device for permission; a test
  *   can put a plain one in its place.
@@ -84,39 +85,41 @@ internal fun SettingsContent(
         NotificationSettingRow(enabledInGame = enabled, onEnabledChange = onChange)
     },
 ) {
-    var tab by rememberSaveable { mutableStateOf(SettingsTab.SOUND) }
+    var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
     var showLicenses by rememberSaveable { mutableStateOf(false) }
-    var showDisclaimer by rememberSaveable { mutableStateOf(false) }
+    var showVersion by rememberSaveable { mutableStateOf(false) }
+    val close = DialogAction(stringResource(R.string.action_close), onDismiss)
 
     ParchmentDialog(
-        onDismissRequest = onDismiss,
-        title = stringResource(R.string.settings_title),
-        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
+        onDismissRequest = { if (page != null) page = null else onDismiss() },
+        title = stringResource(page?.label ?: R.string.settings_title),
+        actions = if (page == null) listOf(close) else listOf(DialogAction(stringResource(R.string.settings_back), { page = null }), close),
     ) {
-        WoodTabs(
-            labels = SettingsTab.entries.map { stringResource(it.label) },
-            selectedIndex = tab.ordinal,
-            onSelect = { tab = SettingsTab.entries[it] },
-        )
         Column(
-            modifier = Modifier.heightIn(min = TAB_MIN_HEIGHT, max = TAB_MAX_HEIGHT).verticalScroll(rememberScrollState()),
+            modifier = Modifier.heightIn(min = PAGE_MIN_HEIGHT, max = PAGE_MAX_HEIGHT).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            when (tab) {
-                SettingsTab.SOUND -> SoundTab(settings, actions)
-                SettingsTab.ABOUT -> AboutTab(
-                    versionName = versionName,
-                    onShowLicenses = { showLicenses = true },
-                    onShowDisclaimer = { showDisclaimer = true },
-                    onReplayTutorial = onReplayTutorial,
-                )
-                SettingsTab.OTHER -> WoodPanel {
+            when (page) {
+                null -> WoodPanel {
+                    SettingsPage.entries.forEach { CarvedButton(text = stringResource(it.label), onClick = { page = it }, modifier = Modifier.fillMaxWidth()) }
+                }
+                SettingsPage.SOUND -> SoundPage(settings, actions)
+                SettingsPage.NOTIFICATIONS -> WoodPanel {
                     notificationRow(settings.notificationsEnabled, actions::setNotificationsEnabled)
                 }
+                SettingsPage.ABOUT -> AboutPage(onShowVersion = { showVersion = true }, onShowLicenses = { showLicenses = true })
+                SettingsPage.OTHER -> OtherPage(versionName = versionName, onReplayTutorial = onReplayTutorial)
             }
         }
     }
 
+    if (showVersion) {
+        InfoDialog(
+            title = stringResource(R.string.settings_version),
+            body = stringResource(R.string.settings_app_version, stringResource(R.string.app_name), versionName),
+            onDismiss = { showVersion = false },
+        )
+    }
     if (showLicenses) {
         InfoDialog(
             title = stringResource(R.string.settings_licenses),
@@ -124,17 +127,10 @@ internal fun SettingsContent(
             onDismiss = { showLicenses = false },
         )
     }
-    if (showDisclaimer) {
-        InfoDialog(
-            title = stringResource(R.string.settings_disclaimer),
-            body = stringResource(R.string.disclaimer_body),
-            onDismiss = { showDisclaimer = false },
-        )
-    }
 }
 
 @Composable
-private fun SoundTab(current: AppSettings, actions: SettingsActions) {
+private fun SoundPage(current: AppSettings, actions: SettingsActions) {
     VolumeControl(
         label = stringResource(R.string.settings_bgm),
         enabled = current.bgmEnabled,
@@ -154,35 +150,40 @@ private fun SoundTab(current: AppSettings, actions: SettingsActions) {
     )
 }
 
+/**
+ * The version, on a sheet of its own, and the open-source licences, which have to be shown.
+ * The disclaimer that used to be here is part of the privacy policy now.
+ */
 @Composable
-private fun AboutTab(versionName: String, onShowLicenses: () -> Unit, onShowDisclaimer: () -> Unit, onReplayTutorial: (() -> Unit)?) {
+private fun AboutPage(onShowVersion: () -> Unit, onShowLicenses: () -> Unit) {
+    WoodPanel {
+        CarvedButton(text = stringResource(R.string.settings_version), onClick = onShowVersion, modifier = Modifier.fillMaxWidth())
+        CarvedButton(text = stringResource(R.string.settings_licenses), onClick = onShowLicenses, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/** The first steps again, a review on the store, a mail to us, and the privacy policy. */
+@Composable
+private fun OtherPage(versionName: String, onReplayTutorial: (() -> Unit)?) {
     val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
     WoodPanel {
-        Text(
-            text = stringResource(R.string.settings_app_version, stringResource(R.string.app_name), versionName),
-            style = MaterialTheme.typography.bodyLarge,
-            color = GardenColors.Ink,
-        )
-    }
-    WoodPanel {
         if (onReplayTutorial != null) {
             CarvedButton(text = stringResource(R.string.settings_replay_tutorial), onClick = onReplayTutorial, modifier = Modifier.fillMaxWidth())
         }
+        CarvedButton(text = stringResource(R.string.settings_review), onClick = { openStorePage(context) }, modifier = Modifier.fillMaxWidth())
         CarvedButton(
             text = stringResource(R.string.settings_contact),
             onClick = { openContactMail(context, versionName) },
             modifier = Modifier.fillMaxWidth(),
         )
-        CarvedButton(text = stringResource(R.string.settings_licenses), onClick = onShowLicenses, modifier = Modifier.fillMaxWidth())
         CarvedButton(
             text = stringResource(R.string.settings_privacy),
             // Opens in the browser. A device with no browser at all simply does nothing.
             onClick = { runCatching { uriHandler.openUri(privacyPolicyUrl) } },
             modifier = Modifier.fillMaxWidth(),
         )
-        CarvedButton(text = stringResource(R.string.settings_disclaimer), onClick = onShowDisclaimer, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -252,6 +253,6 @@ private fun InfoDialog(title: String, body: String, onDismiss: () -> Unit) {
     }
 }
 
-private val TAB_MIN_HEIGHT = 240.dp
-private val TAB_MAX_HEIGHT = 420.dp
+private val PAGE_MIN_HEIGHT = 240.dp
+private val PAGE_MAX_HEIGHT = 420.dp
 private val INFO_MAX_HEIGHT = 420.dp

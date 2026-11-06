@@ -73,9 +73,23 @@ class SettingsContentTest {
     }
 
     @Test
-    fun `it opens on the sound tab, with the music and the effects each on a board of its own`() {
+    fun `it opens on the four pages to choose from, and a page goes back to them`() {
         show()
         compose.onNodeWithText("設定").assertIsDisplayed()
+        for (page in listOf("音量", "通知", "情報", "その他")) compose.onNodeWithText(page).assertIsDisplayed()
+        compose.onNodeWithText("BGM").assertDoesNotExist()
+        compose.onNodeWithText("音量").performClick()
+        compose.onNodeWithText("BGM").assertIsDisplayed()
+        compose.onNodeWithText("← 戻る").performClick()
+        compose.onNodeWithText("BGM").assertDoesNotExist()
+        compose.onNodeWithText("情報").assertIsDisplayed()
+        assertEquals(0, dismissed)
+    }
+
+    @Test
+    fun `the sound page has the music and the effects each on a board of its own`() {
+        show()
+        compose.onNodeWithText("音量").performClick()
         compose.onNodeWithText("BGM").assertIsDisplayed()
         compose.onNodeWithText("効果音").assertIsDisplayed()
         compose.onNodeWithContentDescription("BGM").assertIsOn()
@@ -88,6 +102,7 @@ class SettingsContentTest {
     @Test
     fun `muting the music switches it off and greys out its slider, keeping the effects`() {
         val recorder = show()
+        compose.onNodeWithText("音量").performClick()
         compose.onNodeWithContentDescription("BGM").performClick()
         assertEquals(listOf("bgm false"), recorder.calls)
         compose.onNodeWithContentDescription("BGM").assertIsOff()
@@ -98,6 +113,7 @@ class SettingsContentTest {
     @Test
     fun `moving the effects slider sets the volume and plays a sample when let go`() {
         val recorder = show()
+        compose.onNodeWithText("音量").performClick()
         compose.onNodeWithContentDescription("効果音 の音量").performSemanticsAction(SemanticsActions.SetProgress) { it(0.4f) }
         assertEquals(0.4f, recorder.settings.soundEffectVolume, 0.01f)
         assertEquals(listOf("seVolume", "preview"), recorder.calls)
@@ -106,29 +122,64 @@ class SettingsContentTest {
     @Test
     fun `a volume off its default can be put back`() {
         val recorder = show(AppSettings(bgmVolume = 0.8f))
+        compose.onNodeWithText("音量").performClick()
         compose.onAllNodesWithText("初期値に戻す").onFirst().assertIsEnabled().performClick()
         assertEquals(AppSettings.DEFAULT_BGM_VOLUME, recorder.settings.bgmVolume, 0.001f)
         compose.onAllNodesWithText("初期値に戻す").onFirst().assertIsNotEnabled()
     }
 
     @Test
-    fun `the about tab shows the version, and the licences open on a sheet of their own`() {
+    fun `the about page shows the version and the licences, each on a sheet of their own`() {
         show()
         compose.onNodeWithText("情報").performClick()
+        compose.onNodeWithText("v9.9.9", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("バージョン").performClick()
         compose.onNodeWithText("v9.9.9", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("ライセンス").performClick()
+        compose.onAllNodesWithText("閉じる").onLast().performClick()
+        compose.onNodeWithText("v9.9.9", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("オープンソースライセンス").performClick()
         compose.onNodeWithText("オープンソースライブラリ", substring = true).assertIsDisplayed()
         // Two close buttons now: the licences' own, on top, closes only them.
         compose.onAllNodesWithText("閉じる").onLast().performClick()
         compose.onNodeWithText("オープンソースライブラリ", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("v9.9.9", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("バージョン").assertIsDisplayed()
         assertEquals(0, dismissed)
+        // The disclaimer is part of the privacy policy now.
+        compose.onNodeWithText("免責事項").assertDoesNotExist()
     }
 
     @Test
-    fun `the other tab holds the notification switch`() {
-        val recorder = show(AppSettings(notificationsEnabled = false))
+    fun `the other page has the first steps again, a review, a mail to us and the privacy policy`() {
+        compose.setContent {
+            GardenTheme {
+                SettingsContent(
+                    settings = AppSettings(),
+                    versionName = "9.9.9",
+                    actions = Recorder(AppSettings()),
+                    onDismiss = {},
+                    onReplayTutorial = {},
+                    notificationRow = { _, _ -> },
+                )
+            }
+        }
         compose.onNodeWithText("その他").performClick()
+        for (button in listOf("チュートリアルをもう一度", "レビューを書く", "お問い合わせ", "プライバシーポリシー")) {
+            compose.onNodeWithText(button).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun `a review opens the store app, and the store's web page without it`() {
+        assertEquals(
+            listOf("market://details?id=a.b", "https://play.google.com/store/apps/details?id=a.b"),
+            storePageUris("a.b"),
+        )
+    }
+
+    @Test
+    fun `the notification page holds the notification switch`() {
+        val recorder = show(AppSettings(notificationsEnabled = false))
+        compose.onNodeWithText("通知").performClick()
         compose.onNodeWithTag("notifications").assertIsOff().performClick()
         assertEquals(listOf("notifications true"), recorder.calls)
         compose.onNodeWithTag("notifications").assertIsOn()

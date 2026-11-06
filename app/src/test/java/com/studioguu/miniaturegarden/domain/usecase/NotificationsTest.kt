@@ -314,7 +314,7 @@ class NotificationsTest {
         val strings = File(main, "res/values/strings.xml").readText()
         assertTrue(strings.contains("<string name=\"notification_invite_ok\">はい</string>"))
         assertTrue(strings.contains("<string name=\"notification_invite_later\">あとで</string>"))
-        assertTrue(strings.contains("<string name=\"notification_invite_later_note\">設定の「その他」から変えられます</string>"))
+        assertTrue(strings.contains("<string name=\"notification_invite_later_note\">設定の「通知」から変えられます</string>"))
         val screen = File(main, "java/com/studioguu/miniaturegarden/ui/GardenScreen.kt").readText().replace("\r\n", "\n")
         val accept = screen.substringAfter("onAccept = {").substringBefore("onLater = {")
         assertTrue(accept.contains("requestNotificationPermission()"))

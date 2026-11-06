@@ -319,7 +319,7 @@ di/       Hilt の束ね
   - 権限はあるが端末の通知設定でアプリが止められている（`OPEN_DEVICE_SETTINGS`）：**端末のアプリ通知設定を開く**。
     戻ってきたとき端末が許可していれば（`NotificationAccess.deviceReady`）、そこで初めてゲームの設定を ON にする（`NotificationSettingRow` の `awaitingDevice`）。
   端末が許可していない間は「端末で、通知が許可されていません。スイッチを入れると、許可の手続きにすすみます。」と「端末の設定を開く」を出す。ゲームはそのまま遊べる。
-- **一度だけの質問**（11/1 の FB で作り直し）：チュートリアルを終えるか「とばす」で抜け、庭が初期状態に戻って締めの板を閉じたあと、機能の紹介より先に、アプリの言葉で「作物が実ったときなどにお知らせしてもいい？」と聞く（`NotificationInviteDialog`、`NotificationAccess.shouldInvite`。Android のどの版でも聞く）。「はい」のときだけ、Android 13 以上で許可が無ければ端末の許可の画面を出す（`needsDeviceQuestion`）。「あとで」は通知を切り（`notificationsEnabled = false`）、トーストで「設定の「その他」から変えられます」と添える。どちらでも二度と自動では聞かない（`AppSettings.notificationInviteShown`）。それまでは `TutorialStep.DONE`（機能の紹介 5 枚のあと）まで待ち、Android 13 以上だけに出していたため、紹介の途中でやめた人には出なかった。既存の庭（チュートリアル済み）では、更新後に最初に庭へ入ったときに出る。
+- **一度だけの質問**（11/1 の FB で作り直し）：チュートリアルを終えるか「とばす」で抜け、庭が初期状態に戻って締めの板を閉じたあと、機能の紹介より先に、アプリの言葉で「作物が実ったときなどにお知らせしてもいい？」と聞く（`NotificationInviteDialog`、`NotificationAccess.shouldInvite`。Android のどの版でも聞く）。「はい」のときだけ、Android 13 以上で許可が無ければ端末の許可の画面を出す（`needsDeviceQuestion`）。「あとで」は通知を切り（`notificationsEnabled = false`）、トーストで「設定の「通知」から変えられます」と添える。どちらでも二度と自動では聞かない（`AppSettings.notificationInviteShown`）。それまでは `TutorialStep.DONE`（機能の紹介 5 枚のあと）まで待ち、Android 13 以上だけに出していたため、紹介の途中でやめた人には出なかった。既存の庭（チュートリアル済み）では、更新後に最初に庭へ入ったときに出る。
   どちらを選んでも二度と出ない（`AppSettings.notificationInviteShown`）。既存の庭（チュートリアル済み）では、更新後に最初に庭へ入ったときに出る。
   - 「はじめる」直後に一瞬出て消える不具合を #28 で修正：新しい庭の `garden_progress` が作られる前は段階が読めず、以前は「DONE」とみなしていたため。
     今は段階が読めるまで `GardenViewModel.tutorialStep` は null、招待は初期化（`initJob`）が済んでから判定する。
@@ -563,8 +563,8 @@ FINISHED ──タップ──▶ REVEAL_EDIT ──タップ──▶ REVEAL_RA
   - 練習中は `sync()` と通知の予約をしない（時間・手紙・季節は保存した庭のもの）。レベルアップの札と図鑑の「新しいページ」も出さない（`watchForLevelUps` `watchCollection`）。
   - 起動時に保存した庭の段階が `isGuiding` なら入る。途中でアプリを閉じたら、次は `WELCOME` からやり直す（段階は練習の庭の中にしか無い）。`GardenViewModel.onCleared` で必ず出る（タイトルへ戻るとき）。
   - 古い `OPEN_CRATE` は `fromName` で `WELCOME` と読む。
-- **出る**のは `LeavePracticeUseCase`（最後まで終えたときも「とばす」も同じ）：保存した庭が導きの段階なら `FINISHED` にし、`Gift.FIRST` を置く。設定から見直したときは何も変えない。
-- **もう一度見る**：設定の「情報」タブ「チュートリアルをもう一度」（`GardenViewModel.replayTutorial`）。練習中は出さない。
+- **出る**のは `LeavePracticeUseCase`（最後まで終えたときも「とばす」も同じ）：保存した庭が導きの段階なら `FINISHED` にし、`Gift.FIRST` を置く。設定から見直したときは何も変えない（雨乞いの回数も戻さない。11/6 まではここでも戻していた）。最初に出たときだけ、その日の雨乞いを使っていない状態に戻す。
+- **もう一度見る**：設定の「その他」の「チュートリアルをもう一度」（`GardenViewModel.replayTutorial`）。練習中は出さない。
 - **とばす**：導きの間は画面右上に常に出す（`SkipTutorialButton`。ショップの上にも重なる）。
 - 段階は名前で保存する（`garden_progress.tutorialStep`）ので、段階を足しても DB の版は上げなくてよい。
 - **道具の制限**：`TutorialStep.allows(TutorialTool)`。ツールバーのほかのボタンは灰色で押せない。`FINISHED` 以降は全部。
@@ -803,7 +803,7 @@ Lv.1 の作物は Lv.2 のひまわり未満、Lv.3 はひまわりとバラ（L
 
 ## ストアの評価の依頼（#79）
 
-Play In-App Review（`StoreReviewManager`）。設定に評価ボタンは置かない。前置きの質問も出さない。
+Play In-App Review（`StoreReviewManager`）。前置きの質問は出さない。設定の「その他」の「レビューを書く」は In-App Review ではなく、Play ストアのページを開くだけ（`openStorePage`：`market://` を開けなければ `https://play.google.com/store/apps/details?id=…`）。
 
 - 条件（`StoreReviewRule`）：遊んだ日の合計 5 日以上（`AppSettings.playDays`、庭を開いた日を数える）、Lv.4 以上、`DONE` のあと、前回から 30 日。
 - うれしい瞬間（`GardenViewModel.happyMoment`）：建物の完成、生き物の新規登録、初めての作物の収穫。そこから 1 分間だけ有効。
@@ -813,7 +813,7 @@ Play In-App Review（`StoreReviewManager`）。設定に評価ボタンは置か
 
 ## お問い合わせ（#79）
 
-設定の「情報」タブの「お問い合わせ」。`openContactMail` がメールアプリを開く（`ACTION_SENDTO`）。本文にアプリの版・機種・Android の版を入れる。宛先は `R.string.contact_email`。
+設定の「その他」の「お問い合わせ」。`openContactMail` がメールアプリを開く（`ACTION_SENDTO`）。本文にアプリの版・機種・Android の版を入れる。宛先は `R.string.contact_email`。
 
 ## 画面
 
@@ -847,7 +847,7 @@ Play In-App Review（`StoreReviewManager`）。設定に評価ボタンは置か
   - `WoodPanel`：浅い木の板（木目の線、上の縁に影・下の縁に光＝へこみ）。設定のまとまりごと、ショップの棚に使う。
   - `CarvedButton`：板に彫ったようなへこんだボタン。閉じる・初期値に戻す・ライセンスなど脇役の操作。主役の 1 つ（買う・受け取る）は今までの `WoodButton`（盛り上がった板）。
   - `WoodToggle`（オン＝オリーブ `GardenColors.Olive`、木の枠）、`WoodSlider`（オリーブの帯と木のつまみ）、`WoodTabs`（選んだタブに木の下線）。
-  - 設定（`SettingsDialog`）は ViewModel から値を受けて `SettingsContent`（状態を持たない本体）を描く。操作は `SettingsActions`（`SettingsViewModel` が実装）。
+  - 設定（`SettingsDialog`）は ViewModel から値を受けて `SettingsContent`（状態を持たない本体）を描く。操作は `SettingsActions`（`SettingsViewModel` が実装）。 2 階層（11/6）：1 階層目は「音量」「通知」「情報」「その他」のボタン（`SettingsPage`）。情報＝「バージョン」（ダイアログ）・「オープンソースライセンス」（OSS の表示の義務があるので残す）。その他＝チュートリアルをもう一度・レビューを書く・お問い合わせ・プライバシーポリシー（ブラウザで `privacy_policy_url`）。ページの中では下に「← 戻る」と「閉じる」、端末の戻るボタンと外側のタップは 1 階層目へ戻る。免責事項の画面は廃止（文はプライバシーポリシーの「3. 免責事項」に含まれる）。公式 X のリンクは置かない。
     タブ「音量」は BGM と効果音を 1 枚ずつの板に、「情報」は版と読み物、「その他」は通知の行。ショップも羊皮紙のダイアログ・木のタブ・棚の板にした。
 - 図鑑の赤丸（`CountBadge`）は、フォントの上余白を切って数字を円の中央に置く。
 - 図鑑のしおり（タブ）は「さくもつ／ちけい／たてもの／いきもの」（#33 で「ちけい・みち」「たてもの・さく」を短くした。4 つ並ぶと見切れていたため）。
