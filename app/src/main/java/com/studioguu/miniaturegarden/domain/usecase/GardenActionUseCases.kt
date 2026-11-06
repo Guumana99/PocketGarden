@@ -158,7 +158,7 @@ class CareForPlantUseCase @Inject constructor(
             }
             if (current.moistureLevel >= WATERING_THRESHOLD) return@runInTransaction ActionResult.ALREADY_MOIST
             val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
-            gardenRepository.upsertGridObject(restated(current.copy(moistureLevel = wateredMoisture(current.moistureLevel))))
+            gardenRepository.upsertGridObject(restated(current.copy(moistureLevel = wateredMoisture(current.moistureLevel)), now))
             gardenRepository.saveUserProfile(profile.gainXp(WATER_XP))
             ActionResult.SUCCESS
         }
@@ -168,6 +168,10 @@ class CareForPlantUseCase @Inject constructor(
      * [Soil.fertilizerCost] coins and [FERTILIZE_XP]. Food is all it touches: growth is left
      * exactly where it was. Refused while the cell is full, and where there is no soil to feed
      * (a log only lies on the ground).
+     *
+     * The food does not come at once: the fertilizer soaks in, then the food fills up over a few
+     * seconds ([Soil.levelAt]). Only the time is stored; full is where it is going, so a second
+     * feeding while it fills is refused like one on a full cell.
      */
     suspend fun fertilize(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         gardenRepository.runInTransaction {
@@ -186,18 +190,19 @@ class CareForPlantUseCase @Inject constructor(
             val cost = if (free) 0 else Soil.fertilizerCost(profile.playerLevel)
             if (profile.coins < cost) return@runInTransaction ActionResult.NOT_ENOUGH_COINS
 
-            gardenRepository.upsertGridObject(soil.copy(nutritionLevel = 1f))
+            val fed = Soil.fed(soil, now)
+            gardenRepository.upsertGridObject(fed)
             garden.firstOrNull { it.isPlant && it.gridX == soil.gridX && it.gridY == soil.gridY }?.let { plant ->
-                gardenRepository.upsertGridObject(restated(calculateOfflineProgress(plant, now, weather, garden).copy(nutritionLevel = 1f)))
+                gardenRepository.upsertGridObject(restated(Soil.withFoodOf(calculateOfflineProgress(plant, now, weather, garden), fed), now))
             }
             gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - cost).gainXp(FERTILIZE_XP))
             ActionResult.SUCCESS
         }
 
-    private fun restated(plant: GridObject): GridObject = plant.copy(
+    private fun restated(plant: GridObject, now: Long): GridObject = plant.copy(
         status = CalculateOfflineProgressUseCase.statusOf(
             plant.moistureLevel.toDouble(),
-            plant.nutritionLevel.toDouble(),
+            Soil.levelAt(plant, now).toDouble(),
             plant.stressRate.toDouble(),
         ),
     )
@@ -226,7 +231,7 @@ class CareForPlantUseCase @Inject constructor(
                 current.copy(
                     moistureLevel = 1f,
                     stressRate = 0f,
-                    status = CalculateOfflineProgressUseCase.statusOf(1.0, current.nutritionLevel.toDouble(), 0.0),
+                    status = CalculateOfflineProgressUseCase.statusOf(1.0, Soil.levelAt(current, now).toDouble(), 0.0),
                     lastUpdatedTimestamp = now,
                 )
             )
@@ -292,8 +297,11 @@ private fun wrongGround(ground: PlantGround): ActionResult = when (ground) {
 }
 
 /** How much food a crop of [species] (or anything else, for null) finds at ([x], [y]): it keeps a copy of its soil's. */
-internal fun GardenGrid.foodAt(species: PlantSpecies?, x: Int, y: Int): Float =
-    floorAt(x, y)?.takeIf { it.isSoil && species?.ground?.usesSoil == true }?.nutritionLevel ?: 1f
+internal fun GardenGrid.foodAt(species: PlantSpecies?, x: Int, y: Int): Float = soilFor(species, x, y)?.nutritionLevel ?: 1f
+
+/** The soil whose food a crop of [species] (or anything else, for null) at ([x], [y]) shares; null for none. */
+internal fun GardenGrid.soilFor(species: PlantSpecies?, x: Int, y: Int): GridObject? =
+    floorAt(x, y)?.takeIf { it.isSoil && species?.ground?.usesSoil == true }
 
 /**
  * Takes one item out of an inventory slot and puts its object on the garden with its first cell
@@ -343,6 +351,7 @@ class PlaceItemUseCase @Inject constructor(
             // A crop takes its food from the soil of its cell: a plant keeps a copy of how much there is.
             val species = if (item.objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(item.objectId) else null
             val food = grid.foodAt(species, gridX, gridY)
+            val soil = grid.soilFor(species, gridX, gridY)
             gardenRepository.upsertGridObject(
                 GridObject(
                     instanceId = UUID.randomUUID().toString(),
@@ -352,7 +361,10 @@ class PlaceItemUseCase @Inject constructor(
                     turned = across?.longer == true,
                     objectId = item.objectId,
                     nutritionLevel = food,
-                    status = if (Soil.isEmpty(food)) PlantStatus.UNNOURISHED else PlantStatus.HEALTHY,
+                    // Sown into soil whose fertilizer is still soaking in, it fills with it.
+                    fedAt = soil?.fedAt ?: 0L,
+                    fedFrom = soil?.fedFrom ?: 0f,
+                    status = if (Soil.isEmpty(soil?.let { Soil.levelAt(it, now) } ?: food)) PlantStatus.UNNOURISHED else PlantStatus.HEALTHY,
                     lastUpdatedTimestamp = now,
                     // A building is not there at a tap: it goes up over its building time.
                     workKind = if (item.buildSeconds > 0) WorkKind.BUILDING else WorkKind.NONE,
@@ -506,6 +518,8 @@ class HarvestPlantUseCase @Inject constructor(
                 gardenRepository.upsertGridObject(
                     plant.copy(
                         nutritionLevel = food,
+                        fedAt = tended?.fedAt ?: plant.fedAt,
+                        fedFrom = tended?.fedFrom ?: plant.fedFrom,
                         status = CalculateOfflineProgressUseCase.statusOf(plant.moistureLevel.toDouble(), food.toDouble(), plant.stressRate.toDouble()),
                     ),
                 )

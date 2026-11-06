@@ -82,8 +82,53 @@ object Soil {
     /** Whether [level] (a [GridObject.nutritionLevel]) has no food left in it. */
     fun isEmpty(level: Float): Boolean = level < EMPTY
 
+    /** How long fertilizer takes to fall onto the soil and soak in, before the food starts to rise. */
+    const val SOAK_MILLIS = 2_000L
+
+    /** How long the food then takes to fill up. */
+    const val FILL_MILLIS = 10_000L
+
+    /** From the giving of fertilizer to the food being full. */
+    const val FEEDING_MILLIS = SOAK_MILLIS + FILL_MILLIS
+
     /**
-     * How [soil] stands after a harvest of [cropId], with food in it or not.
+     * How far the food of [obj] (a cell of soil, or the crop in it) has filled at [now], 0 to 1:
+     * nothing while the fertilizer soaks in, then evenly over [FILL_MILLIS]. 1 when nothing is
+     * filling, and when the clock reads earlier than the feeding (it was put back): a clock put
+     * back never holds the food back.
+     */
+    fun fillAt(obj: GridObject, now: Long): Float {
+        if (obj.fedAt == 0L) return 1f
+        val since = now - obj.fedAt
+        if (since < 0L || since >= FEEDING_MILLIS) return 1f
+        return ((since - SOAK_MILLIS).toFloat() / FILL_MILLIS).coerceIn(0f, 1f)
+    }
+
+    /**
+     * The food of [obj] at [now]: [GridObject.nutritionLevel], or on its way there from
+     * [GridObject.fedFrom] while fertilizer soaks in ([fillAt]). Everything that reads the food
+     * (a crop's status, the panel's bar) reads it here; the time is all that is stored, so the
+     * filling goes on while the app is closed and comes out the same however it is looked at.
+     */
+    fun levelAt(obj: GridObject, now: Long): Float {
+        if (obj.fedAt == 0L) return obj.nutritionLevel
+        return obj.fedFrom + (obj.nutritionLevel - obj.fedFrom) * fillAt(obj, now)
+    }
+
+    /** Whether fertilizer given to [obj] is still falling, soaking in or filling at [now]. */
+    fun isFeeding(obj: GridObject, now: Long): Boolean = obj.fedAt != 0L && now - obj.fedAt in 0L until FEEDING_MILLIS
+
+    /** [obj] fed at [now], from the food it has then up to full. */
+    fun fed(obj: GridObject, now: Long): GridObject = obj.copy(nutritionLevel = 1f, fedAt = now, fedFrom = levelAt(obj, now))
+
+    /** [obj] with its food as its soil's ([soil]), filling as that does; full where there is no soil. */
+    fun withFoodOf(obj: GridObject, soil: GridObject?): GridObject =
+        obj.copy(nutritionLevel = soil?.nutritionLevel ?: 1f, fedAt = soil?.fedAt ?: 0L, fedFrom = soil?.fedFrom ?: 0f)
+
+    /**
+     * How [soil] stands after a harvest of [cropId], with food in it or not. Fertilizer still
+     * soaking in counts as all in: the harvest takes its share from the soil as it is when full,
+     * as it did when fertilizer filled it at once.
      *
      * @param later it is not this plant's first harvest: it counts [LATER_HARVEST_SHARE] of one.
      */
@@ -109,6 +154,8 @@ object Soil {
             lastCropId = cropId,
             idleMillis = 0L,
             lastUpdatedTimestamp = now,
+            fedAt = 0L,
+            fedFrom = 0f,
         )
     }
 

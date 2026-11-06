@@ -42,6 +42,7 @@
 | 配置・水やり・収穫・購入 | `GardenActionUseCasesTest` `HoeTest` `FloorAndFenceTest` `GroundsAndRocksTest`（地面どうしの接し方、岩と芝生） |
 | ショップ・価格・解放・建物効果 | `ShopAndEffectsTest` `ProgressionTest` |
 | 図鑑 | `CollectionTest` |
+| 肥料で栄養がゆっくり満ちる（`Soil.levelAt`）・その演出（`FeedingLook`）・DB v21 | `SoilTest` `FeedingLookTest` `MigrationSchemaTest`（＋状態の計算 `GardenActionUseCasesTest` `OnboardingTest`） |
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
 | 庭の拡張の導線（お便り・工房の板・広げる） | `ExpansionGuideTest`（＋拡張の規則 `SymbolBuildingTest` `ProgressionTest`、手紙 `PostTest`） |
 | ショップ（3 軒の店・棚・カード・購入・所持数・一言の札・ボーナスの札・文言） | `ShopShelvesTest` `ShopStageContentTest`（Robolectric）（＋購入の規則 `ShopAndEffectsTest` `SymbolBuildingTest`） |

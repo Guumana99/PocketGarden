@@ -76,6 +76,7 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.SoilGrade
 import com.studioguu.miniaturegarden.domain.model.StructureData
@@ -116,7 +117,11 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import com.studioguu.miniaturegarden.ui.render.LawnShade
 import com.studioguu.miniaturegarden.ui.render.SoilJoins
 import com.studioguu.miniaturegarden.ui.render.plantScale
+import com.studioguu.miniaturegarden.ui.render.FeedingLook
 import com.studioguu.miniaturegarden.ui.render.PlantTopFinder
+import com.studioguu.miniaturegarden.ui.render.drawFeedingGauge
+import com.studioguu.miniaturegarden.ui.render.drawFeedingGlow
+import com.studioguu.miniaturegarden.ui.render.drawFeedingSoil
 import com.studioguu.miniaturegarden.ui.render.PondJoin
 import com.studioguu.miniaturegarden.ui.render.fillWithTexture
 import com.studioguu.miniaturegarden.ui.render.SoilPalette
@@ -547,6 +552,31 @@ fun GardenCanvas(
         if (showPerches) {
             pipeline.submit(RenderLayer.TOP_EFFECTS, depth = Float.MAX_VALUE - 2f) { drawPerches(transform, grid, perches) }
         }
+        // Fertilizer soaking into its cell, on the game's clock, so that the show goes on from where
+        // it had got to after the app was away (FeedingLook).
+        for (soil in gridObjects) {
+            if (!soil.isSoil || soil.fedAt == 0L) continue
+            val since = ambience.gameMillis - soil.fedAt
+            val look = FeedingLook.at(since) ?: continue
+            val depth = LayerPipeline.depthOf(soil.gridX, soil.gridY, 0)
+            val ground = transform.tileCenter(soil.gridX, soil.gridY)
+            val unit = transform.tileWidth
+            val seed = soil.gridX * 31 + soil.gridY * 17
+            pipeline.submit(RenderLayer.BOTTOM_OBJECTS, depth = depth + 0.95f) { drawFeedingGlow(transform.tilePath(soil.gridX, soil.gridY), look, since) }
+            // Over the crop's picture, or a little over the bare bed.
+            val plant = grid.occupantAt(soil.gridX, soil.gridY)?.takeIf { it.isPlant }
+            val sprite = plant?.let { atlas[TileSetDefinition.assetIdFor(it)] }
+            val shown = if (grid.isUnderGlass(soil.gridX, soil.gridY)) spriteScale * GreenhouseLook.CROP_SCALE else spriteScale
+            val top = sprite?.let { it.drawTop(ground.y, shown) } ?: (ground.y - unit * 0.25f)
+            val gaugeAt = Offset(ground.x, top - unit * 0.08f)
+            // The panel's own bar shows the food while this cell is selected.
+            val showGauge = selectedTile == null || selectedTile.x != soil.gridX || selectedTile.y != soil.gridY
+            val level = Soil.levelAt(soil, soil.fedAt + since)
+            pipeline.submit(RenderLayer.TOP_EFFECTS, depth = depth + 0.45f) {
+                drawFeedingSoil(ground, unit, look, since, seed)
+                drawFeedingGauge(gaugeAt, unit, look, level, showGauge)
+            }
+        }
         val glint = rainGlint()
         if (glint > 0f) {
             for (plant in gridObjects) {
@@ -962,7 +992,7 @@ private fun submitObjects(
                 val painting = painted[obj.instanceId]
                 if (painting != null) {
                     drawSprite(painting, sprite.copy(atlasX = 0, atlasY = 0), base, spriteScale, flipped = obj.isFlipped)
-                } else if (obj.status == PlantStatus.UNNOURISHED) {
+                } else if (shownStatus(obj, ambience.gameMillis) == PlantStatus.UNNOURISHED) {
                     scale(WEAK_PLANT_SCALE, WEAK_PLANT_SCALE, pivot = base) {
                         drawSwayingSprite(atlasImage, sprite, base, thingScale, lean, flipped = obj.isFlipped, colorFilter = WEAK_PLANT_FILTER)
                     }
@@ -1011,7 +1041,7 @@ private fun submitObjects(
                 }
             }
         }
-        if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
+        if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || shownStatus(obj, ambience.gameMillis) == PlantStatus.UNNOURISHED)) {
             // Just over the top of the plant's picture, which is as tall as this crop at this stage.
             val plantTop = sprite?.let { base.y - it.drawTop(base.y, thingScale) }
             submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit, plantTop) }
@@ -1033,6 +1063,13 @@ private fun submitObjects(
         }
     }
 }
+
+/**
+ * [plant]'s status as the garden shows it at [now] (the game's clock): a weak crop is weak no more
+ * as soon as fertilizer's food has begun to come ([Soil.levelAt]), not at the next sync.
+ */
+private fun shownStatus(plant: GridObject, now: Long): PlantStatus =
+    if (plant.status == PlantStatus.UNNOURISHED && plant.fedAt != 0L && !Soil.isEmpty(Soil.levelAt(plant, now))) PlantStatus.HEALTHY else plant.status
 
 /** How much smaller a weak crop stands ([PlantStatus.UNNOURISHED]). */
 private const val WEAK_PLANT_SCALE = 0.93f

@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.Gift
 import com.studioguu.miniaturegarden.domain.model.GiftItem
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.PracticeGarden
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
@@ -128,12 +129,14 @@ class OnboardingTest {
         assertEquals(ActionResult.SUCCESS, care.fertilize(plant.instanceId, t0, sunny))
         assertEquals(coins, garden.getUserProfile()!!.coins)
         val fed = garden.getGridObjects().single { it.isPlant }
-        assertEquals(PlantStatus.HEALTHY, fed.status)
+        // The food soaks in over a few seconds; time going by in the next step brings it all in.
+        assertEquals(PlantStatus.HEALTHY, offline(fed, t0 + Soil.FEEDING_MILLIS, sunny).status)
         assertEquals(plant.growthProgress, fed.growthProgress, 0f)
         follow.fed()
         assertEquals(TutorialStep.GROW, step())
 
         follow.grow(0.5f)
+        assertEquals(PlantStatus.HEALTHY, garden.getGridObjects().single { it.isPlant }.status)
         assertEquals(TutorialStep.GROW, step())
         follow.grow(1f)
         assertEquals(TutorialStep.HARVEST, step())

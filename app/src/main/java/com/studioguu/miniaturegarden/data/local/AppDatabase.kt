@@ -32,7 +32,7 @@ import com.studioguu.miniaturegarden.data.local.entity.WeatherDayEntity
         LetterEntity::class,
         WeatherDayEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -256,6 +256,14 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_19_20 = object : Migration(19, 20) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN doorSide TEXT")
+            }
+        }
+
+        /** Adds when a cell of soil was fed and what its food filled from, for the food to fill up slowly. */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN fedAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE grid_objects ADD COLUMN fedFrom REAL NOT NULL DEFAULT 0")
             }
         }
     }

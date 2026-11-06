@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es garden roses                   # ... or with [RoseGarden], the rose beside crops of its size
- *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks, perches, birdwell, wellalone), with load
+ *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks, perches, birdwell, wellalone, feed), with load
  *         --es tutorial REVEAL_RAIN           # ... at this step of the first steps, with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
@@ -141,7 +141,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val perches = garden == "perches"
         val birdWell = garden == "birdwell"
         val wellAlone = garden == "wellalone"
-        val feedback = garden == "fb" || banks || perches || birdWell || wellAlone || art || fences || bridges || crops || roses || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val hungry = garden == "feed"
+        val feedback = garden == "fb" || banks || perches || birdWell || wellAlone || hungry || art || fences || bridges || crops || roses || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -159,6 +160,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     perches -> GroundGarden.perches(now)
                     birdWell -> GroundGarden.birdWell(now)
                     wellAlone -> GroundGarden.birdWell(now, crops = false)
+                    hungry -> GroundGarden.hungry(now)
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)
                     heights -> GroundGarden.heights(now)

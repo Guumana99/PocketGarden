@@ -204,8 +204,8 @@ class FollowTutorialUseCase @Inject constructor(
         if (!moveOn(TutorialStep.WATER_SEEDLING, TutorialStep.FEED_SEEDLING)) return@runInTransaction false
         val objects = gardenRepository.getGridObjects()
         TutorialGuide.tutorialPlant(objects)?.let { plant ->
-            gardenRepository.upsertGridObject(plant.copy(nutritionLevel = 0f, status = PlantStatus.UNNOURISHED))
-            Soil.under(plant, objects)?.let { gardenRepository.upsertGridObject(it.copy(nutritionLevel = 0f)) }
+            gardenRepository.upsertGridObject(plant.copy(nutritionLevel = 0f, fedAt = 0L, status = PlantStatus.UNNOURISHED))
+            Soil.under(plant, objects)?.let { gardenRepository.upsertGridObject(it.copy(nutritionLevel = 0f, fedAt = 0L)) }
         }
         true
     }
@@ -216,7 +216,11 @@ class FollowTutorialUseCase @Inject constructor(
     /** Time is brought on: the plant has grown to [growth], and at 1 it is ready. */
     suspend fun grow(growth: Float) = gardenRepository.runInTransaction {
         val objects = gardenRepository.getGridObjects()
-        TutorialGuide.tutorialPlant(objects)?.let { gardenRepository.upsertGridObject(it.copy(growthProgress = growth)) }
+        // Time goes by here, so fertilizer still soaking in is all in.
+        TutorialGuide.tutorialPlant(objects)?.let { plant ->
+            val fed = plant.status == PlantStatus.UNNOURISHED && !Soil.isEmpty(plant.nutritionLevel)
+            gardenRepository.upsertGridObject(plant.copy(growthProgress = growth, fedAt = 0L, status = if (fed) PlantStatus.HEALTHY else plant.status))
+        }
         if (growth >= 1f) moveOn(TutorialStep.GROW, TutorialStep.HARVEST)
     }
 

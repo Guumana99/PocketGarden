@@ -69,6 +69,8 @@ fun GridObjectEntity.toDomain() = GridObject(
     roofColour = roofColour,
     wallColour = wallColour,
     doorSide = doorSide?.let { name -> GreenhouseSide.entries.firstOrNull { it.name == name } },
+    fedAt = fedAt,
+    fedFrom = fedFrom,
 )
 
 fun GridObject.toEntity() = GridObjectEntity(
@@ -99,6 +101,8 @@ fun GridObject.toEntity() = GridObjectEntity(
     roofColour = roofColour,
     wallColour = wallColour,
     doorSide = doorSide?.name,
+    fedAt = fedAt,
+    fedFrom = fedFrom,
 )
 
 fun InventorySlotEntity.toDomain() = InventorySlot(

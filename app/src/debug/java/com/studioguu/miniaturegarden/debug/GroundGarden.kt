@@ -112,6 +112,13 @@ object GroundGarden {
             place(now, "struct_well", listOf(GridCell(5, 5)))
     }
 
+    /** Crops with nothing left in their soil (`--es garden feed`), to give fertilizer and watch it soak in. */
+    fun hungry(now: Long): List<GridObject> {
+        val beds = cells(4..6, 5..5)
+        return place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds).map { it.copy(nutritionLevel = 0f) } +
+            place(now, PlantSpecies.CARROT.objectId, beds).map { it.copy(growthProgress = 0.6f, nutritionLevel = 0f, status = PlantStatus.UNNOURISHED) }
+    }
+
     fun banks(now: Long): List<GridObject> =
         place(now, GridObject.RIVER_OBJECT_ID, cells(0..8, 3..3) + cells(8..8, 4..6)) +
             place(now, GridObject.TILLED_SOIL_OBJECT_ID, cells(2..4, 2..2) + cells(5..7, 4..4) + cells(2..4, 6..8).filter { it != GridCell(3, 7) }) +

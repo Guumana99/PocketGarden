@@ -44,6 +44,13 @@ data class GridObject(
     val wallColour: String? = null,
     /** Of a cell of greenhouse: the way its door was set to face ([GreenhouseDoor]); null if never. */
     val doorSide: GreenhouseSide? = null,
+    /**
+     * Of a cell of soil, and the crop in it: when fertilizer was last given (epoch millis, the
+     * game's clock), while its food is still filling up to [nutritionLevel] from [fedFrom]
+     * ([Soil.levelAt]); 0 when nothing is filling.
+     */
+    val fedAt: Long = 0L,
+    val fedFrom: Float = 0f,
 ) {
     /** Whether this is a work site: being built (or built and not yet unveiled), taken apart or packed up. */
     val isWorking: Boolean get() = workKind != WorkKind.NONE
