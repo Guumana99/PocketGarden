@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.BridgeFit
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -231,13 +232,13 @@ class MoveObjectUseCase @Inject constructor(
             val others = GardenGrid(gardenMap.current(), garden.filter { it.instanceId != instanceId })
             val fit = others.fits(current.objectId, gridX, gridY)
             if (fit != ActionResult.SUCCESS) return@runInTransaction fit
-            val food = others.foodAt(PlantSpecies.forObjectId(current.objectId), gridX, gridY)
+            val soil = others.soilFor(PlantSpecies.forObjectId(current.objectId), gridX, gridY)
+            val moved = Soil.withFoodOf(current.copy(gridX = gridX, gridY = gridY), soil)
             gardenRepository.upsertGridObject(
-                current.copy(
-                    gridX = gridX,
-                    gridY = gridY,
-                    nutritionLevel = food,
-                    status = CalculateOfflineProgressUseCase.statusOf(current.moistureLevel.toDouble(), food.toDouble(), current.stressRate.toDouble()),
+                moved.copy(
+                    status = CalculateOfflineProgressUseCase.statusOf(
+                        current.moistureLevel.toDouble(), Soil.levelAt(moved, now).toDouble(), current.stressRate.toDouble(),
+                    ),
                 ),
             )
             ActionResult.SUCCESS

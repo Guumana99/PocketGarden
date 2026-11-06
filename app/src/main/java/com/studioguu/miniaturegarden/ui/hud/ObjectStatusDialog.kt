@@ -30,6 +30,7 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.PlantSurroundings
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.SoilGrade
 import com.studioguu.miniaturegarden.domain.model.StructureEffect
 import com.studioguu.miniaturegarden.domain.model.WorkKind
@@ -94,6 +95,10 @@ fun ObjectStatusDialog(
         tonalElevation = 3.dp,
         shadowElevation = 6.dp,
     ) {
+        // The food as it is now, filling while fertilizer soaks in; a weak crop is weak no more
+        // as soon as it has begun to come, as the garden shows it.
+        val food = foodOf(gridObject, clockOffset)
+        val status = if (gridObject.status == PlantStatus.UNNOURISHED && !Soil.isEmpty(food)) PlantStatus.HEALTHY else gridObject.status
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // The header: name on the left, then the plant's state as a small tag, then the close
             // button, each with room of its own (the state used to sit right against the button).
@@ -109,7 +114,7 @@ fun ObjectStatusDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (gridObject.isPlant) StatusTag(gridObject.status)
+                if (gridObject.isPlant) StatusTag(status)
                 WoodButton(text = stringResource(R.string.action_close), onClick = onDismiss)
             }
 
@@ -134,12 +139,12 @@ fun ObjectStatusDialog(
                 LevelRow(stringResource(R.string.label_moisture), gridObject.moistureLevel)
                 // The food in its soil; a log takes none.
                 if (PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil) {
-                    LevelRow(stringResource(R.string.label_nutrition), gridObject.nutritionLevel)
+                    LevelRow(stringResource(R.string.label_nutrition), food)
                 }
                 // What is left before it withers.
                 LevelRow(stringResource(R.string.label_vitality), 1f - gridObject.stressRate)
             } else if (gridObject.isSoil) {
-                LevelRow(stringResource(R.string.label_nutrition), gridObject.nutritionLevel)
+                LevelRow(stringResource(R.string.label_nutrition), food)
             }
             val hint = when {
                 // A log (#68) only lay on the soil: cleared away, it leaves no compost.
@@ -147,7 +152,7 @@ fun ObjectStatusDialog(
                     if (PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil) R.string.hint_withered else R.string.hint_withered_log
                 endsAtHarvest -> R.string.hint_season_over
                 gridObject.isPlant && gridObject.growthProgress >= 1f -> R.string.hint_overripe
-                gridObject.status == PlantStatus.UNNOURISHED -> R.string.hint_weak
+                status == PlantStatus.UNNOURISHED -> R.string.hint_weak
                 gridObject.isLooseSoil -> R.string.hint_loose_soil
                 gridObject.isTilledSoil -> R.string.hint_ridged_soil
                 gridObject.isPlant && PlantSpecies.forObjectId(gridObject.objectId).isRepeatable -> R.string.hint_repeatable
@@ -274,6 +279,23 @@ private fun StatusTag(status: PlantStatus) {
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
+}
+
+/**
+ * The food of [gridObject] as it is now ([Soil.levelAt]): while fertilizer soaks in, looked at
+ * ten times a second, so that the bar fills up with it.
+ */
+@Composable
+private fun foodOf(gridObject: GridObject, clockOffset: Long): Float {
+    val food by produceState(Soil.levelAt(gridObject, System.currentTimeMillis() + clockOffset), gridObject, clockOffset) {
+        while (true) {
+            val now = System.currentTimeMillis() + clockOffset
+            value = Soil.levelAt(gridObject, now)
+            if (!Soil.isFeeding(gridObject, now)) break
+            delay(100)
+        }
+    }
+    return food
 }
 
 /** What is being done to a work site, how far along it is and how long it still takes. */

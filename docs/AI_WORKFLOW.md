@@ -42,6 +42,7 @@
 | 配置・水やり・収穫・購入 | `GardenActionUseCasesTest` `HoeTest` `FloorAndFenceTest` `GroundsAndRocksTest`（地面どうしの接し方、岩と芝生） |
 | ショップ・価格・解放・建物効果 | `ShopAndEffectsTest` `ProgressionTest` |
 | 図鑑 | `CollectionTest` |
+| 肥料で栄養がゆっくり満ちる（`Soil.levelAt`）・その演出（`FeedingLook`）・DB v21 | `SoilTest` `FeedingLookTest` `MigrationSchemaTest`（＋状態の計算 `GardenActionUseCasesTest` `OnboardingTest`） |
 | 建築・解体・移動 | `ConstructionTest` `StoreObjectTest` |
 | 庭の拡張の導線（お便り・工房の板・広げる） | `ExpansionGuideTest`（＋拡張の規則 `SymbolBuildingTest` `ProgressionTest`、手紙 `PostTest`） |
 | ショップ（3 軒の店・棚・カード・購入・所持数・一言の札・ボーナスの札・文言） | `ShopShelvesTest` `ShopStageContentTest`（Robolectric）（＋購入の規則 `ShopAndEffectsTest` `SymbolBuildingTest`） |
@@ -50,7 +51,7 @@
 | 建物の裏の判定・半透明・タップ位置 | `OcclusionTest` `IsometricEngineTest` `TapTargetsTest`（吹き出し・建物のタップ） |
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | 生き物の来訪・組み合わせ表 | `CreatureVisitTest` |
-| 生き物の動き（経路・入れないマス・ポン・飛来）、`CreatureSprites`、生き物の絵（`creatures_0.png`） | `CreatureMotionTest` `CodeArtTest` `AssetLedgerTest` |
+| 生き物の動き（経路・入れないマス・ポン・飛来）、止まる場所（`CreaturePerches` `PlantTops`）・描く順、`CreatureSprites`、生き物の絵（`creatures_0.png`） | `CreatureMotionTest` `CodeArtTest` `AssetLedgerTest` |
 | 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |
 | 生き物の季節の条件・自然メモの「あたらしい」・DB v11 | `NatureNotesEngineTest`（＋表の網羅 `CreatureVisitTest`） |
 | リワード・1 日の回数 | `RewardTest` |

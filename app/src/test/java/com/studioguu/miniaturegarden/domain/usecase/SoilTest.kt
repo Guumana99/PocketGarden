@@ -271,7 +271,9 @@ class SoilTest {
         assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
         assertEquals(1f, stored.nutritionLevel, 0f)
         assertEquals(1f, repo.objects.getValue("p").nutritionLevel, 0f)
-        assertEquals(PlantStatus.HEALTHY, repo.objects.getValue("p").status)
+        // Full is where it is going: the food itself comes over the next seconds (fertilizer fills slowly).
+        assertEquals(1f, Soil.levelAt(stored, t0 + Soil.FEEDING_MILLIS), 0f)
+        assertEquals(PlantStatus.HEALTHY, calc(repo.objects.getValue("p"), t0 + Soil.FEEDING_MILLIS, sunny).status)
         assertEquals(70L, repo.profile?.coins)
         assertEquals(CareForPlantUseCase.FERTILIZE_XP.toLong(), repo.profile?.currentXp)
 
@@ -282,6 +284,77 @@ class SoilTest {
         repo.put(stored.copy(nutritionLevel = 0.5f))
         assertEquals(ActionResult.SUCCESS, care.fertilize("soil", t0, sunny))
         assertEquals(1f, stored.nutritionLevel, 0f)
+    }
+
+    @Test
+    fun `fertilizer soaks in for two seconds, then the food fills evenly over ten, on the soil and its crop alike`() = runBlocking {
+        repo.put(soil(food = 0.2f))
+        repo.put(plant(PlantSpecies.CARROT, growth = 0.5f, food = 0.2f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
+        val crop = repo.objects.getValue("p")
+        for (obj in listOf(stored, crop)) {
+            assertEquals(t0, obj.fedAt)
+            assertEquals(0.2f, obj.fedFrom, 1e-6f)
+            assertEquals(0.2f, Soil.levelAt(obj, t0), 1e-6f)
+            assertEquals(0.2f, Soil.levelAt(obj, t0 + 2_000L), 1e-6f)
+            assertEquals(0.6f, Soil.levelAt(obj, t0 + 7_000L), 1e-5f)
+            assertEquals(1f, Soil.levelAt(obj, t0 + 12_000L), 1e-6f)
+            assertTrue(Soil.isFeeding(obj, t0 + 11_999L))
+            assertFalse(Soil.isFeeding(obj, t0 + 12_000L))
+        }
+        assertEquals(10_000L, Soil.FILL_MILLIS)
+        assertEquals(2_000L, Soil.SOAK_MILLIS)
+    }
+
+    @Test
+    fun `the filling goes on by the clock while away, past midnight, and a clock put back does not hold it back`() = runBlocking {
+        // Fed a few seconds before midnight (UTC and the device's day alike: only the time between counts).
+        val lateNight = 1_700_006_395_000L
+        repo.put(soil(food = 0f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("soil", lateNight, sunny))
+        assertEquals(0.5f, Soil.levelAt(stored, lateNight + 7_000L), 1e-5f)
+        assertEquals(1f, Soil.levelAt(stored, lateNight + day), 0f)
+        assertEquals(1f, Soil.levelAt(stored, lateNight - hour), 0f)
+    }
+
+    @Test
+    fun `a weak crop is weak no more once the food has come, without waiting for a minute to pass`() = runBlocking {
+        repo.put(soil(food = 0f))
+        repo.put(plant(PlantSpecies.CARROT, growth = 0.5f, food = 0f, status = PlantStatus.UNNOURISHED))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
+        val crop = repo.objects.getValue("p")
+        assertEquals(PlantStatus.UNNOURISHED, crop.status)
+        assertEquals(PlantStatus.UNNOURISHED, calc(crop, t0 + 1_000L, sunny).status)
+        assertEquals(PlantStatus.HEALTHY, calc(crop, t0 + 3_000L, sunny).status)
+    }
+
+    @Test
+    fun `while it fills, watering goes on, a second feeding is refused and costs nothing`() = runBlocking {
+        repo.put(soil(food = 0f))
+        repo.put(plant(PlantSpecies.CARROT, growth = 0.5f, food = 0f).copy(moistureLevel = 0.2f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
+        val coins = repo.profile!!.coins
+        assertEquals(ActionResult.ALREADY_FED, care.fertilize("p", t0 + 4_000L, sunny))
+        assertEquals(coins, repo.profile!!.coins)
+        assertEquals(ActionResult.SUCCESS, care.water("p", t0 + 5_000L, sunny))
+        assertEquals(t0, repo.objects.getValue("p").fedAt)
+        assertEquals(0.3f, Soil.levelAt(repo.objects.getValue("p"), t0 + 5_000L), 1e-5f)
+    }
+
+    @Test
+    fun `a harvest while it fills counts the fertilizer as all in, as when it filled at once`() = runBlocking {
+        repo.put(soil(food = 0f))
+        repo.put(plant(PlantSpecies.TOMATO, growth = 1f, food = 0f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
+        // Half-way through the filling, and a good harvest is on the cards: there is food.
+        assertEquals(ActionResult.SUCCESS, harvest("p", t0 + 4_000L, sunny, noLuck))
+        assertEquals(0L, stored.fedAt)
+        assertEquals(1f - 1f / Soil.SERVINGS, stored.nutritionLevel, 1e-5f)
+        assertEquals(stored.nutritionLevel, Soil.levelAt(stored, t0 + 4_000L), 0f)
+        // The tomato bears again, with the soil's food as it is now.
+        val again = repo.objects.getValue("p")
+        assertEquals(0L, again.fedAt)
+        assertEquals(stored.nutritionLevel, again.nutritionLevel, 0f)
     }
 
     @Test

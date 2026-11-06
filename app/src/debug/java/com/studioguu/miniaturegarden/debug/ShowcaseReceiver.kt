@@ -25,6 +25,7 @@ import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.ui.debug.Showcase
 import com.studioguu.miniaturegarden.ui.components.todayEpochDay
 import com.studioguu.miniaturegarden.ui.hud.RainCloudState
+import com.studioguu.miniaturegarden.ui.debug.PerchPreview
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -41,12 +42,13 @@ import kotlinx.coroutines.launch
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es garden roses                   # ... or with [RoseGarden], the rose beside crops of its size
- *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks), with load
+ *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks, perches, birdwell, wellalone, feed), with load
  *         --es tutorial REVEAL_RAIN           # ... at this step of the first steps, with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
  *         --ef clock_hour 22                  # what the device's clock is taken to say
  *         --ez audit_text true                # only checks how all the strings wrap ([TextAudit])
+ *         --ez perches true                   # only shows (or hides) where the visitors may settle ([PerchPreview])
  *         --ez ad_ready true --ei bonus_coins 120   # an ad waiting; a coin bonus just paid in the shop
  *         --es cloud PARCHED --ef rain_glint 0.5    # what the rain cloud shows; the crops' glint
  *         --ei use_bonus 5 --ei use_rain 1    # only spends the day's rewards
@@ -84,6 +86,10 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     pending.finish()
                 }
             }
+            return
+        }
+        if (intent.hasExtra(EXTRA_PERCHES)) {
+            PerchPreview.set(intent.getBooleanExtra(EXTRA_PERCHES, false))
             return
         }
         if (intent.getBooleanExtra(EXTRA_CLEAR, false)) {
@@ -132,7 +138,11 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val bridgePlaces = garden == "bridgeplace"
         val expand = garden == "expand"
         val banks = garden == "banks"
-        val feedback = garden == "fb" || banks || art || fences || bridges || crops || roses || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val perches = garden == "perches"
+        val birdWell = garden == "birdwell"
+        val wellAlone = garden == "wellalone"
+        val hungry = garden == "feed"
+        val feedback = garden == "fb" || banks || perches || birdWell || wellAlone || hungry || art || fences || bridges || crops || roses || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -147,6 +157,10 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     roses -> RoseGarden.objects(now)
                     ground -> GroundGarden.ground(now)
                     banks -> GroundGarden.banks(now)
+                    perches -> GroundGarden.perches(now)
+                    birdWell -> GroundGarden.birdWell(now)
+                    wellAlone -> GroundGarden.birdWell(now, crops = false)
+                    hungry -> GroundGarden.hungry(now)
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)
                     heights -> GroundGarden.heights(now)
@@ -187,6 +201,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
         const val EXTRA_LOAD = "load"
         const val EXTRA_CLEAR = "clear"
         const val EXTRA_GARDEN = "garden"
+        const val EXTRA_PERCHES = "perches"
 
         /** The level the showcase's player has: nothing from later levels is in the garden. */
         const val PLAYER_LEVEL = 5

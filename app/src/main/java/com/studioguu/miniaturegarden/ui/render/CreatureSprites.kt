@@ -76,12 +76,11 @@ data class VisitorLook(
 
         /**
          * How [creature] looks in [pose], at [now] (millis; drives the wings and the little
-         * movements). [flowerTop], how tall the flower it came for stands (tile widths), brings a
-         * butterfly settling on it down onto its bloom rather than to the route's
-         * [CreatureRoutes.PERCH_ALTITUDE]; its flight is bent to meet it on the way down.
+         * movements). A flier settles at the height of the point it settles on, which the route
+         * has ([com.studioguu.miniaturegarden.domain.model.CreaturePerches]).
          */
-        fun of(creature: Creature, pose: CreaturePose, now: Long, flowerTop: Float? = null): VisitorLook {
-            val base = VisitorLook(altitude = altitudeOf(creature, pose.altitude, flowerTop), facing = pose.facing)
+        fun of(creature: Creature, pose: CreaturePose, now: Long): VisitorLook {
+            val base = VisitorLook(altitude = pose.altitude, facing = pose.facing)
             val p = pose.progress
             val look = when (creature) {
                 Creature.SQUIRREL -> squirrel(base, pose, p, now)
@@ -206,6 +205,8 @@ data class VisitorLook(
             return when (pose.action) {
                 // A dart: the wings a blur, wide open.
                 CreatureAction.FLY -> level.copy(wingOpen = 0.8f + 0.2f * abs(sin(now / 30.0).toFloat()), tilt = pose.heading)
+                // Settled: its wings held out flat and still, only now and then a quiver.
+                CreatureAction.PERCH -> level.copy(wingOpen = 0.9f + 0.1f * abs(sin(now / 700.0).toFloat()), tilt = pose.heading, shadow = 0.6f)
                 // Holding still in the air: the wings trembling, with a slight rise and fall and a
                 // little swing of the body.
                 else -> level.copy(
@@ -214,13 +215,6 @@ data class VisitorLook(
                     tilt = pose.heading + sin(now / 1300.0).toFloat() * 4f,
                 )
             }
-        }
-
-        private fun altitudeOf(creature: Creature, altitude: Float, flowerTop: Float?): Float {
-            if (flowerTop == null) return altitude
-            val cruise = creature.hoverHeight
-            val near = ((cruise - altitude) / (cruise - CreatureRoutes.PERCH_ALTITUDE)).coerceIn(0f, 1f)
-            return altitude + (flowerTop - CreatureRoutes.PERCH_ALTITUDE) * near
         }
 
         /**

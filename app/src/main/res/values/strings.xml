@@ -375,8 +375,12 @@
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_tab_sound">音量</string>
+    <string name="settings_tab_notifications">通知</string>
     <string name="settings_tab_about">情報</string>
     <string name="settings_tab_other">その他</string>
+    <string name="settings_back">← 戻る</string>
+    <string name="settings_version">バージョン</string>
+    <string name="settings_review">レビューを書く</string>
     <string name="settings_reset_volume">初期値に戻す</string>
     <string name="settings_bgm">BGM</string>
     <string name="settings_se">効果音</string>
@@ -389,7 +393,7 @@
     <string name="notification_permission_ok">OK</string>
     <string name="notification_permission_cancel">今はしない</string>
     <string name="settings_app_version">%1$s　v%2$s</string>
-    <string name="settings_licenses">ライセンス</string>
+    <string name="settings_licenses">オープンソースライセンス</string>
     <string name="settings_privacy">プライバシーポリシー</string>
     <string name="settings_replay_tutorial">チュートリアルをもう一度</string>
     <string name="settings_contact">お問い合わせ</string>
@@ -397,17 +401,10 @@
     <string name="contact_subject">ポケット庭園へのお問い合わせ</string>
     <string name="contact_body">（ここにご用件をお書きください）\n\n\n--- 以下は変更しないでください ---\nアプリの版：%1$s\n機種：%2$s\nAndroid の版：%3$s</string>
     <string name="contact_no_mail_app">メールアプリが見つかりませんでした</string>
-    <string name="settings_disclaimer">免責事項</string>
     <string name="privacy_policy_url" translatable="false">https://guumana99.github.io/privacy-policy_pocketgarden/</string>
     <!-- TODO before release: replace the last line with the real credits for the music and the
          sound effects, as each source's licence requires. -->
     <string name="licenses_body">■ オープンソースライブラリ\n\nAndroidX / Jetpack（Compose、Room、DataStore、Lifecycle、Navigation、Activity、Core）\nCopyright The Android Open Source Project\nApache License 2.0\n\nKotlin、kotlinx.coroutines、kotlinx.serialization\nCopyright JetBrains s.r.o. and contributors\nApache License 2.0\n\nDagger / Hilt\nCopyright The Dagger Authors\nApache License 2.0\n\nSQLCipher for Android\nCopyright Zetetic LLC\nBSD-style License\n\nApache License 2.0 の全文:\nhttps://www.apache.org/licenses/LICENSE-2.0\nSQLCipher のライセンス全文:\nhttps://www.zetetic.net/sqlcipher/license/\n\n■ 使用音源\n\nBGM・効果音の提供元表記は準備中です。</string>
-    <!-- Draft. Have it reviewed before release. The privacy policy itself lives at privacy_policy_url. -->
-    <string name="disclaimer_body">本アプリは現状のまま提供されます。本アプリの利用、または利用できなかったことにより生じた損害について、開発者は責任を負いかねます。
-
-ゲームデータはバックアップされません。端末の故障、機種変更、アプリの削除などで失われたデータは復元できません。
-
-本アプリの内容は、予告なく変更または提供を終了する場合があります。</string>
 
     <!-- Debug menu (debug builds only) -->
     <string name="debug_menu_title">開発者メニュー</string>
@@ -423,6 +420,15 @@
     <string name="debug_zoom">マップ倍率 %1$s（標準 %2$s）</string>
     <string name="debug_book_all">図鑑をすべて登録</string>
     <string name="debug_book_all_hint">表示だけの切り替えです。保存された記録は変わりません</string>
+    <string name="debug_perches">生き物の止まる点を表示</string>
+    <string name="debug_perches_hint">赤：屋根　青：井戸の縁　茶：柵
+橙：ベンチ　紫：風見鶏　桃：花
+緑：葉　水色：池の縁　青緑：川の縁
+灰（小）：地面</string>
+    <string name="debug_ask_review">レビューの流れを今すぐ呼ぶ</string>
+    <string name="debug_ask_review_hint">条件を無視して呼びます。呼んだ記録は残しません。Play ストアから入れたアプリでないと、シートは出ません</string>
+    <string name="debug_review_requested">レビューの流れを受け取りました（出すかどうかは Play が決めます）</string>
+    <string name="debug_review_failed">レビューの流れを受け取れませんでした</string>
     <string name="debug_call_title">生き物を呼ぶ</string>
     <string name="debug_call_hint">2 種まで選べます。ON の間は、条件を無視して来ます。必要な物が無ければ庭に置きます</string>
 
@@ -600,7 +606,7 @@
     <string name="notification_invite_text">作物が実ったときなどにお知らせしてもいい？</string>
     <string name="notification_invite_ok">はい</string>
     <string name="notification_invite_later">あとで</string>
-    <string name="notification_invite_later_note">設定の「その他」から変えられます</string>
+    <string name="notification_invite_later_note">設定の「通知」から変えられます</string>
 
     <!-- Visitors and the nature notes -->
     <string name="creature_butterfly">ちょうちょ</string>

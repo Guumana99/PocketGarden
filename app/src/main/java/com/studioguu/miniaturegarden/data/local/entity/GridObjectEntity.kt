@@ -58,4 +58,9 @@ data class GridObjectEntity(
     val wallColour: String? = null,
     /** Of a cell of greenhouse: the way the door was set to face. Added in schema version 20. */
     val doorSide: String? = null,
+    /** Of a cell of soil and its crop: when fertilizer was given, and the food it filled from. Added in schema version 21. */
+    @ColumnInfo(defaultValue = "0")
+    val fedAt: Long = 0L,
+    @ColumnInfo(defaultValue = "0")
+    val fedFrom: Float = 0f,
 )

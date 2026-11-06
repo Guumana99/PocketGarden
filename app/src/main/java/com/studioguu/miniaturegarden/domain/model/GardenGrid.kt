@@ -79,7 +79,8 @@ enum class PlacementKind {
  */
 class GardenGrid(
     val map: GardenMap,
-    objects: List<GridObject>,
+    /** Everything in the garden, as given. */
+    val objects: List<GridObject>,
 ) {
     private val floors: Map<GridCell, GridObject> = buildMap {
         for (obj in objects) if (obj.isFloor) for (cell in obj.occupiedCells()) put(cell, obj)

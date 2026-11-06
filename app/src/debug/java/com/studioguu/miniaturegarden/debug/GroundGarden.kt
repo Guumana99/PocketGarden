@@ -76,6 +76,49 @@ object GroundGarden {
      *      7  . . R O R . . . . . .
      *      8  . . R R R . . . . . .
      */
+    /**
+     * Everything a visitor may settle on (`--es garden perches`), for the debug menu's view of the
+     * points: a well, the cottage, a run of fence, a bench, a weathervane, a pond and a stream, the
+     * seven flowers in bloom on a row of beds, two crops still growing and a patch of wild flowers.
+     */
+    fun perches(now: Long): List<GridObject> {
+        val flowers = listOf(
+            PlantSpecies.COSMOS, PlantSpecies.ROSE, PlantSpecies.TULIP, PlantSpecies.LAVENDER,
+            PlantSpecies.SUNFLOWER, PlantSpecies.NANOHANA, PlantSpecies.SNOWDROP,
+        )
+        val beds = cells(4..10, 9..9) + listOf(GridCell(8, 6), GridCell(9, 7))
+        return place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds) +
+            flowers.mapIndexed { i, species -> place(now, species.objectId, listOf(GridCell(4 + i, 9))).map { it.copy(growthProgress = 1f) } }.flatten() +
+            place(now, PlantSpecies.TOMATO.objectId, listOf(GridCell(8, 6))).map { it.copy(growthProgress = 0.5f) } +
+            place(now, PlantSpecies.STRAWBERRY.objectId, listOf(GridCell(9, 7))).map { it.copy(growthProgress = 0.5f) } +
+            place(now, "struct_well", listOf(GridCell(3, 3))) +
+            place(now, "struct_cottage", listOf(GridCell(6, 1))) +
+            place(now, "struct_fence", cells(1..3, 6..6)) +
+            place(now, "deco_bench", listOf(GridCell(5, 5))) +
+            place(now, "deco_weathervane", listOf(GridCell(7, 6))) +
+            place(now, GridObject.POND_OBJECT_ID, cells(4..5, 7..7)) +
+            place(now, GridObject.RIVER_OBJECT_ID, cells(9..10, 5..5)) +
+            place(now, "ground_flowers", listOf(GridCell(2, 4)))
+    }
+
+    /**
+     * A well with tall crops in front of it (`--es garden birdwell`): the bird called to it sits
+     * on its rim, or walks on the free cells behind the crops, hidden by them.
+     */
+    fun birdWell(now: Long, crops: Boolean = true): List<GridObject> {
+        val beds = if (crops) listOf(GridCell(6, 5), GridCell(5, 6), GridCell(6, 6), GridCell(4, 6), GridCell(6, 4)) else emptyList()
+        return place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds) +
+            place(now, PlantSpecies.CORN.objectId, beds).map { it.copy(growthProgress = 1f) } +
+            place(now, "struct_well", listOf(GridCell(5, 5)))
+    }
+
+    /** Crops with nothing left in their soil (`--es garden feed`), to give fertilizer and watch it soak in. */
+    fun hungry(now: Long): List<GridObject> {
+        val beds = cells(4..6, 5..5)
+        return place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds).map { it.copy(nutritionLevel = 0f) } +
+            place(now, PlantSpecies.CARROT.objectId, beds).map { it.copy(growthProgress = 0.6f, nutritionLevel = 0f, status = PlantStatus.UNNOURISHED) }
+    }
+
     fun banks(now: Long): List<GridObject> =
         place(now, GridObject.RIVER_OBJECT_ID, cells(0..8, 3..3) + cells(8..8, 4..6)) +
             place(now, GridObject.TILLED_SOIL_OBJECT_ID, cells(2..4, 2..2) + cells(5..7, 4..4) + cells(2..4, 6..8).filter { it != GridCell(3, 7) }) +

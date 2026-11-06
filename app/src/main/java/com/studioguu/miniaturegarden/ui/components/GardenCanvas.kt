@@ -60,6 +60,7 @@ import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.data.asset.TerrainTextures
 import com.studioguu.miniaturegarden.data.asset.AssetManifest
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.domain.model.CreaturePerches
 import com.studioguu.miniaturegarden.domain.model.CreaturePose
 import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
@@ -68,11 +69,14 @@ import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
+import com.studioguu.miniaturegarden.domain.model.Perch
+import com.studioguu.miniaturegarden.domain.model.PerchKind
 import com.studioguu.miniaturegarden.domain.model.PlantGround
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.SoilGrade
 import com.studioguu.miniaturegarden.domain.model.StructureData
@@ -113,6 +117,11 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import com.studioguu.miniaturegarden.ui.render.LawnShade
 import com.studioguu.miniaturegarden.ui.render.SoilJoins
 import com.studioguu.miniaturegarden.ui.render.plantScale
+import com.studioguu.miniaturegarden.ui.render.FeedingLook
+import com.studioguu.miniaturegarden.ui.render.PlantTopFinder
+import com.studioguu.miniaturegarden.ui.render.drawFeedingGauge
+import com.studioguu.miniaturegarden.ui.render.drawFeedingGlow
+import com.studioguu.miniaturegarden.ui.render.drawFeedingSoil
 import com.studioguu.miniaturegarden.ui.render.PondJoin
 import com.studioguu.miniaturegarden.ui.render.fillWithTexture
 import com.studioguu.miniaturegarden.ui.render.SoilPalette
@@ -173,6 +182,7 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  * @param hintCells cells the first steps point at: a few small stars twinkle quietly over each.
  * @param closedCells cells to darken: where a crop being replanted cannot go.
  * @param visitors creatures staying in the garden; each goes about it on its own route ([CreatureRoutes]).
+ * @param showPerches the debug menu's view of every point a visitor may settle on ([CreaturePerches]).
  * @param fadedObjectIds buildings to draw see-through, so that what is behind them shows (see
  *   [com.studioguu.miniaturegarden.ui.render.Occlusion]). They fade softly in and out.
  * @param onTileTapped receives the tapped tile, or null for a tap outside the grid. A tap on a
@@ -222,6 +232,7 @@ fun GardenCanvas(
     rainGlint: () -> Float = { 0f },
     fadedObjectIds: Set<String> = emptySet(),
     visitors: List<CreatureVisit> = emptyList(),
+    showPerches: Boolean = false,
     savedView: GardenView? = null,
     onViewChanged: ((GardenView) -> Unit)? = null,
     paused: Boolean = false,
@@ -303,7 +314,17 @@ fun GardenCanvas(
     val painted = remember(gridObjects, atlas) { painter.picturesFor(gridObjects, atlas) }
     // Each visitor's way about the garden, worked out once as it comes (and again only if the
     // garden changes under it); every frame then only looks up where it has got to.
-    val routes = remember(visitors, grid) { visitors.map { CreatureRoutes.plan(it, grid) } }
+    // Where they may settle: points set by hand on buildings and ornaments, and the top of each
+    // plant's picture as drawn (a crop under glass is drawn smaller).
+    val plantTops = remember(atlas) { PlantTopFinder(atlas) }
+    val perches = remember(grid, plantTops) {
+        CreaturePerches.inGarden(grid) { plant ->
+            val glass = if (grid.isUnderGlass(plant.gridX, plant.gridY)) GreenhouseLook.CROP_SCALE else 1f
+            val weak = if (plant.status == PlantStatus.UNNOURISHED) WEAK_PLANT_SCALE else 1f
+            plantTops.topOf(plant, glass * weak)
+        }
+    }
+    val routes = remember(visitors, grid, perches) { visitors.map { CreatureRoutes.plan(it, grid, perches) } }
     val currentRoutes by rememberUpdatedState(routes)
     val creatureImage = remember(atlas) { AtlasPages.of(atlas.creatures) }
     val currentAtlas by rememberUpdatedState(atlas)
@@ -519,16 +540,41 @@ fun GardenCanvas(
             val now = ambience.epochMillis
             val pose = route.poseAt(now) ?: continue
             val visit = route.visit
-            // A butterfly settles on the bloom of its flower: near the top of the flower's picture.
-            val flowerTop = visit.host?.takeIf { it.isPlant && visit.creature.flies() }?.let { flower ->
-                atlas[TileSetDefinition.assetIdFor(flower)]?.let { it.anchorY * it.drawnHeight(spriteScale) / transform.tileWidth * BLOOM_SHARE }
-            }
-            val look = VisitorLook.of(visit.creature, pose, now, flowerTop)
-            // In depth order by the cell it is in now, so that it goes behind what stands in front of it.
-            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = LayerPipeline.depthOf(pose.cell.x, pose.cell.y, 0) + 0.6f) {
+            val look = VisitorLook.of(visit.creature, pose, now)
+            // In depth order by where it is now, so that it goes behind what stands in front of it
+            // (on the ground, behind a plant's stem too: CreatureRoutes.drawDepth).
+            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = CreatureRoutes.drawDepth(pose)) {
                 // Its shadow only falls on the garden, not on the air round it.
                 val overGarden = gardenMap.isInside(pose.cell.x, pose.cell.y)
-                drawVisitor(visit.creature, visitorBase(transform, visit, pose), transform.tileWidth, look, atlas.creatures, creatureImage, shadow = overGarden)
+                drawVisitor(visit.creature, visitorBase(transform, pose), transform.tileWidth, look, atlas.creatures, creatureImage, shadow = overGarden)
+            }
+        }
+        if (showPerches) {
+            pipeline.submit(RenderLayer.TOP_EFFECTS, depth = Float.MAX_VALUE - 2f) { drawPerches(transform, grid, perches) }
+        }
+        // Fertilizer soaking into its cell, on the game's clock, so that the show goes on from where
+        // it had got to after the app was away (FeedingLook).
+        for (soil in gridObjects) {
+            if (!soil.isSoil || soil.fedAt == 0L) continue
+            val since = ambience.gameMillis - soil.fedAt
+            val look = FeedingLook.at(since) ?: continue
+            val depth = LayerPipeline.depthOf(soil.gridX, soil.gridY, 0)
+            val ground = transform.tileCenter(soil.gridX, soil.gridY)
+            val unit = transform.tileWidth
+            val seed = soil.gridX * 31 + soil.gridY * 17
+            pipeline.submit(RenderLayer.BOTTOM_OBJECTS, depth = depth + 0.95f) { drawFeedingGlow(transform.tilePath(soil.gridX, soil.gridY), look, since) }
+            // Over the crop's picture, or a little over the bare bed.
+            val plant = grid.occupantAt(soil.gridX, soil.gridY)?.takeIf { it.isPlant }
+            val sprite = plant?.let { atlas[TileSetDefinition.assetIdFor(it)] }
+            val shown = if (grid.isUnderGlass(soil.gridX, soil.gridY)) spriteScale * GreenhouseLook.CROP_SCALE else spriteScale
+            val top = sprite?.let { it.drawTop(ground.y, shown) } ?: (ground.y - unit * 0.25f)
+            val gaugeAt = Offset(ground.x, top - unit * 0.08f)
+            // The panel's own bar shows the food while this cell is selected.
+            val showGauge = selectedTile == null || selectedTile.x != soil.gridX || selectedTile.y != soil.gridY
+            val level = Soil.levelAt(soil, soil.fedAt + since)
+            pipeline.submit(RenderLayer.TOP_EFFECTS, depth = depth + 0.45f) {
+                drawFeedingSoil(ground, unit, look, since, seed)
+                drawFeedingGauge(gaugeAt, unit, look, level, showGauge)
             }
         }
         val glint = rainGlint()
@@ -946,7 +992,7 @@ private fun submitObjects(
                 val painting = painted[obj.instanceId]
                 if (painting != null) {
                     drawSprite(painting, sprite.copy(atlasX = 0, atlasY = 0), base, spriteScale, flipped = obj.isFlipped)
-                } else if (obj.status == PlantStatus.UNNOURISHED) {
+                } else if (shownStatus(obj, ambience.gameMillis) == PlantStatus.UNNOURISHED) {
                     scale(WEAK_PLANT_SCALE, WEAK_PLANT_SCALE, pivot = base) {
                         drawSwayingSprite(atlasImage, sprite, base, thingScale, lean, flipped = obj.isFlipped, colorFilter = WEAK_PLANT_FILTER)
                     }
@@ -995,7 +1041,7 @@ private fun submitObjects(
                 }
             }
         }
-        if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || obj.status == PlantStatus.UNNOURISHED)) {
+        if (obj.isPlant && (obj.status == PlantStatus.THIRSTY || shownStatus(obj, ambience.gameMillis) == PlantStatus.UNNOURISHED)) {
             // Just over the top of the plant's picture, which is as tall as this crop at this stage.
             val plantTop = sprite?.let { base.y - it.drawTop(base.y, thingScale) }
             submit(obj, RenderLayer.TOP_EFFECTS, depth) { drawStatusBubble(obj, base, unit, plantTop) }
@@ -1017,6 +1063,13 @@ private fun submitObjects(
         }
     }
 }
+
+/**
+ * [plant]'s status as the garden shows it at [now] (the game's clock): a weak crop is weak no more
+ * as soon as fertilizer's food has begun to come ([Soil.levelAt]), not at the next sync.
+ */
+private fun shownStatus(plant: GridObject, now: Long): PlantStatus =
+    if (plant.status == PlantStatus.UNNOURISHED && plant.fedAt != 0L && !Soil.isEmpty(Soil.levelAt(plant, now))) PlantStatus.HEALTHY else plant.status
 
 /** How much smaller a weak crop stands ([PlantStatus.UNNOURISHED]). */
 private const val WEAK_PLANT_SCALE = 0.93f
@@ -1467,41 +1520,53 @@ private fun DrawScope.drawCrumbling(pivot: Offset, progress: Float, unit: Float,
  */
 /**
  * Where a visitor's feet are, at [pose]: on the ground, or up on what it sits on (the seat of a
- * bench, the ridge of a roof, the leaves of a crop). A flier's height is its own ([VisitorLook.altitude]).
+ * bench, the ridge of a roof, the rim of a well: [CreaturePose.surface]). A flier's height is its
+ * own ([VisitorLook.altitude]).
  */
-private fun visitorBase(transform: IsometricTransform, visit: CreatureVisit, pose: CreaturePose): Offset {
-    val host = visit.host
-    val lift = when {
-        host == null || visit.creature.flies() -> 0f
-        // The cottage's picture stands its chimney well above its ridge: the bird sits on the ridge.
-        host.objectId == StructureData.COTTAGE.objectId -> COTTAGE_RIDGE_LIFT
-        StructureData.fromObjectId(host.objectId) != null -> StructureData.fromObjectId(host.objectId)!!.heightSteps - 0.8f
-        host.objectId == Decoration.BENCH.objectId -> 0.8f
-        host.isPlant -> ON_LEAVES_LIFT
-        else -> 0f
+private fun visitorBase(transform: IsometricTransform, pose: CreaturePose): Offset =
+    transform.worldToScreen(pose.x, pose.y, pose.surface * transform.tileWidth / transform.heightStep)
+
+/**
+ * The debug menu's view of where the visitors may be: a dot on every point to settle on, coloured
+ * by its kind ([PERCH_COLOURS]), and a small grey one on each cell of open ground.
+ */
+private fun DrawScope.drawPerches(transform: IsometricTransform, grid: GardenGrid, perches: List<Perch>) {
+    val r = transform.tileWidth * 0.035f
+    for (y in 0 until grid.map.size) for (x in 0 until grid.map.size) {
+        if (CreaturePerches.isGround(grid, x, y)) drawCircle(PERCH_COLOURS.getValue(PerchKind.GROUND), r * 0.6f, transform.tileCenter(x, y))
     }
-    return transform.worldToScreen(pose.x, pose.y, lift)
+    for (perch in perches) {
+        val at = transform.worldToScreen(perch.x, perch.y, perch.height * transform.tileWidth / transform.heightStep)
+        drawCircle(Color.White, r * 1.4f, at)
+        drawCircle(PERCH_COLOURS.getValue(perch.kind), r, at)
+    }
 }
+
+/** The colours of [drawPerches], listed in the debug menu too (`debug_perches_hint`). */
+private val PERCH_COLOURS = mapOf(
+    PerchKind.GROUND to Color(0xFF8A8A8A),
+    PerchKind.ROOF to Color(0xFFE53935),
+    PerchKind.WELL_RIM to Color(0xFF1E88E5),
+    PerchKind.FENCE to Color(0xFF6D4C41),
+    PerchKind.BENCH to Color(0xFFFB8C00),
+    PerchKind.WEATHERVANE to Color(0xFF8E24AA),
+    PerchKind.FLOWER to Color(0xFFEC407A),
+    PerchKind.LEAF to Color(0xFF43A047),
+    PerchKind.POND to Color(0xFF00ACC1),
+    PerchKind.POND_EDGE to Color(0xFF00ACC1),
+    PerchKind.RIVER_EDGE to Color(0xFF26A69A),
+)
 
 /** The visitor under [position] at [now], if any: a generous circle ([TapTargets.visitorReach]). */
 private fun visitorAt(position: Offset, routes: List<CreatureRoute>, transform: IsometricTransform, now: Long, minReach: Float): CreatureVisit? =
     routes.mapNotNull { route ->
         val pose = route.poseAt(now) ?: return@mapNotNull null
-        val body = visitorBase(transform, route.visit, pose) - Offset(0f, (pose.altitude + VISITOR_BODY_HEIGHT) * transform.tileWidth)
+        val body = visitorBase(transform, pose) - Offset(0f, (pose.altitude + VISITOR_BODY_HEIGHT) * transform.tileWidth)
         (route.visit to (body - position).getDistance()).takeIf { it.second <= TapTargets.visitorReach(transform.tileWidth, minReach) }
     }.minByOrNull { it.second }?.first
 
 /** Where a visitor's body is over its feet, in tile widths. */
 private const val VISITOR_BODY_HEIGHT = 0.12f
-
-/** How far up its flower's picture a butterfly settles: on the bloom, just below the top. */
-private const val BLOOM_SHARE = 0.8f
-
-/** How high the ridge of the cottage's picture is over the middle of its footprint, in height steps (#70, on the emulator). */
-private const val COTTAGE_RIDGE_LIFT = 13.2f
-
-/** How high a ladybird on a crop is, up among its leaves, in height steps. */
-private const val ON_LEAVES_LIFT = 0.35f
 
 /** Draws [draw] at [alpha] as a whole, so overlapping parts do not show through one another. */
 private fun DrawScope.drawFaded(alpha: Float, draw: DrawScope.() -> Unit) {

@@ -381,7 +381,20 @@ python tools/prepare_water_art.py --preview <確認用フォルダ>
 |---|---|---|
 | Recraft AI | 受け取った画像はすべて Recraft から書き出したもの（2026-10-24 に全画像の C2PA の来歴情報で確認。`ASSET_LEDGER.md` の「出所」） | 未記入 |
 | Google の生成 AI | 風車の本体と羽根（`building_windmill_*.jpg`）だけ、C2PA に Google の生成記録（SynthID）もある。Google で作り Recraft で書き出したもの | 未記入 |
-| その他 | 音（BGM・効果音）の出所は記録が無い | 未記入 |
+| その他 | 音（BGM・効果音）の出所は記録が無い。ファイルのタグから分かる手がかりは下の表（2026-11-06 に調べた） | 未記入 |
+
+#### 音のファイルのタグに残っていた手がかり
+
+| ファイル | タグ（ID3）など | 元のサイトの手がかり |
+|---|---|---|
+| `se_coin.mp3` | アルバム「ポケットサウンド」、題「お金を落とした音」、URL `http://pocket-se.info/` | ポケットサウンド（pocket-se.info） |
+| `se_level_up.mp3` | アルバム「ポケットサウンド」、題「胸キュン」、URL `https://pocket-se.info/` | ポケットサウンド（pocket-se.info） |
+| `se_fertilize.mp3` | アーティスト「My Recording」、題「190707_016」 | 不明（録音アプリの既定の名前。`se_plant` と同じ日の連番） |
+| `se_plant.mp3` | アーティスト「My Recording」、題「190707_017」 | 不明（同上） |
+| `se_error.mp3` `se_harvest.mp3` `se_tap.mp3` `se_water.mp3` | タグ無し。LAME 3.100 で書き出し | 不明 |
+| `bgm_*.mp3`（5 曲） | アーティスト「mocchi7」、コメント「made with suno」、suno.com の曲の URL、C2PA の記録 | Suno（AI 作曲）。曲名はタイトル Garden Peace・春 Pastoral Game Theme・夏 Summer Breeze・秋 Golden Autumn・冬 Cozy Winter Melody |
+
+リポジトリの中（コミット・docs・コード）には、どの音もどこから来たかの記録は無い（2026-10-11 の 2227e38 でまとめて追加）。
 
 ### プロンプトとデザイン方針
 

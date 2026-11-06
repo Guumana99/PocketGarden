@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
@@ -56,7 +57,7 @@ class GrantRewardUseCase @Inject constructor(
                     rained.copy(
                         status = CalculateOfflineProgressUseCase.statusOf(
                             rained.moistureLevel.toDouble(),
-                            rained.nutritionLevel.toDouble(),
+                            Soil.levelAt(rained, now).toDouble(),
                             rained.stressRate.toDouble(),
                         ),
                     )

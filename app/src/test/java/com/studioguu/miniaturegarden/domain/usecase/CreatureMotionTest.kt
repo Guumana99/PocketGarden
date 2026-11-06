@@ -2,6 +2,9 @@ package com.studioguu.miniaturegarden.domain.usecase
 
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureAction
+import com.studioguu.miniaturegarden.domain.model.CreaturePerches
+import com.studioguu.miniaturegarden.domain.model.PerchKind
+import com.studioguu.miniaturegarden.domain.model.PlantTop
 import com.studioguu.miniaturegarden.domain.model.CreaturePose
 import com.studioguu.miniaturegarden.domain.model.CreatureRoute
 import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
@@ -16,6 +19,7 @@ import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import com.studioguu.miniaturegarden.ui.render.PlantTops
 import com.studioguu.miniaturegarden.ui.render.VisitorLook
 import kotlin.math.abs
 import kotlin.math.floor
@@ -136,9 +140,16 @@ class CreatureMotionTest {
                     // The bird flies in and away (#71): over anything, from outside the garden.
                     if (pose.action == CreatureAction.FLY) continue
                     assertTrue("$rule at $now in ${pose.cell}", isInside(pose))
+                    // The bird come for the well may sit on its rim instead : not walking.
+                    if (pose.surface > 0f) {
+                        assertEquals(VisitRule.BIRD_WELL, rule)
+                        assertEquals(CreaturePerches.WELL_RIM_HEIGHT, pose.surface)
+                        continue
+                    }
                     val cell = GridCell(floor(pose.x).toInt(), floor(pose.y).toInt())
                     assertEquals(cell, pose.cell)
-                    val allowed = cell !in blocked || (rule.creature == Creature.FROG && (cell in ponds || cell in stream))
+                    assertTrue(pose.grounded)
+                    val allowed = cell !in blocked || (rule.creature == Creature.FROG && cell in ponds)
                     assertTrue("$rule at $now walked onto $cell", allowed)
                     assertTrue(CreatureRoutes.canWalk(rule.creature, grid, cell.x, cell.y))
                 }
@@ -194,17 +205,15 @@ class CreatureMotionTest {
     }
 
     @Test
-    fun `a frog goes into a stream as well, half under the water`() {
-        var inStream = false
+    fun `a frog keeps to the bank of a stream, and only a pond is its to go into`() {
         for (arrival in 0 until 30L) {
             val frog = CreatureRoutes.plan(visit(VisitRule.FROG_RAIN, GridCell(2, 2), arrivesAt = 3_000_000L + arrival * 299_993L), grid)
             for ((_, pose) in posesOf(frog, 250L)) {
-                assertEquals(pose.cell in stream, pose.inPond)
-                if (pose.inPond) inStream = true
+                assertFalse(pose.cell in stream)
+                assertFalse(pose.inPond)
             }
         }
-        assertTrue("the frog never went into the stream", inStream)
-        for (creature in Creature.entries - Creature.FROG) assertFalse(CreatureRoutes.canWalk(creature, grid, 2, 1))
+        for (creature in Creature.entries) assertFalse(CreatureRoutes.canWalk(creature, grid, 2, 1))
     }
 
     @Test
@@ -226,9 +235,12 @@ class CreatureMotionTest {
     }
 
     @Test
-    fun `a crop, a lawn and paving can be walked through`() {
+    fun `a lawn and paving can be walked through, and among the crops only by the squirrel`() {
+        assertTrue(CreatureRoutes.canWalk(Creature.SQUIRREL, grid, 6, 6))
+        for (creature in Creature.entries - Creature.SQUIRREL) assertFalse(CreatureRoutes.canWalk(creature, grid, 6, 6))
+        // Neither the ladybird nor the fliers walk on the ground at all.
+        for (creature in listOf(Creature.LADYBUG, Creature.BUTTERFLY, Creature.DRAGONFLY)) assertFalse(CreatureRoutes.canWalk(creature, grid, 2, 3))
         for (creature in listOf(Creature.SQUIRREL, Creature.BIRD, Creature.FROG)) {
-            assertTrue(CreatureRoutes.canWalk(creature, grid, 6, 6))
             assertTrue(CreatureRoutes.canWalk(creature, grid, 3, 5))
             assertTrue(CreatureRoutes.canWalk(creature, grid, 2, 3))
             assertFalse(CreatureRoutes.canWalk(creature, grid, 4, 6))
@@ -261,20 +273,20 @@ class CreatureMotionTest {
     }
 
     @Test
-    fun `one on what it came for moves about a little on it, drawn by its front cell`() {
+    fun `one on what it came for moves about a little on one of its points, drawn by its front cell`() {
         val cottage = objects.first { it.objectId == StructureData.COTTAGE.objectId }
         val tulip = objects.first { it.objectId == "plant_tulip" }
         for ((rule, host) in listOf(VisitRule.BIRD_COTTAGE to cottage, VisitRule.LADYBUG_CROPS to tulip)) {
             val v = visit(rule, CreatureVisits.frontCell(host), host)
             val route = CreatureRoutes.plan(v, grid)
-            val cx = host.gridX + host.footprint.width / 2f
-            val cy = host.gridY + host.footprint.height / 2f
+            val points = CreaturePerches.pointsOf(host)
             val poses = posesOf(route)
             assertTrue(poses.any { it.second.action == CreatureAction.STEP })
             for ((_, pose) in poses) {
                 assertEquals(v.cell, pose.cell)
+                assertFalse(pose.grounded)
                 if (pose.action == CreatureAction.FLY) continue
-                assertTrue(abs(pose.x - cx) <= 0.25f && abs(pose.y - cy) <= 0.25f)
+                assertTrue(points.any { abs(pose.x - it.x) <= 0.25f && abs(pose.y - it.y) <= 0.25f && pose.surface == it.height })
                 assertEquals(0f, pose.altitude)
             }
         }
@@ -346,11 +358,12 @@ class CreatureMotionTest {
                 assertEquals(CreatureRoutes.SKY_ALTITUDE, first.altitude, 0.01f)
                 assertEquals(CreatureAction.FLY, last.action)
                 assertFalse("${v.rule} left inside the garden", isInside(last))
-                // Down on its spot once it has landed, and on its feet from then until it takes off.
+                // Down on its spot once it has landed (the ground it came to, the well's rim or a
+                // point of the roof), and on its feet from then until it takes off.
                 val landed = poses.first { it.second.action != CreatureAction.FLY }.second
-                val (homeX, homeY) = if (v.host == null) 5.5f to 6.5f else (cottage.gridX + 1.5f) to (cottage.gridY + 1.5f)
-                assertEquals(homeX, landed.x, 0.001f)
-                assertEquals(homeY, landed.y, 0.001f)
+                val spots = (if (v.host == null) CreaturePerches.pointsOf(well) else CreaturePerches.pointsOf(cottage)).map { it.x to it.y } +
+                    (if (v.host == null) listOf(5.5f to 6.5f) else emptyList())
+                assertTrue("${v.rule} landed at ${landed.x}, ${landed.y}", spots.any { abs(it.first - landed.x) < 0.001f && abs(it.second - landed.y) < 0.001f })
                 for ((_, pose) in poses) if (pose.action != CreatureAction.FLY) assertEquals(0f, pose.altitude)
                 for ((a, b) in poses.zipWithNext()) assertTrue("jumped at ${b.first}", hypot(b.second.x - a.second.x, b.second.y - a.second.y) < 0.5f)
             }
@@ -393,24 +406,34 @@ class CreatureMotionTest {
                 assertTrue(poses.none { it.second.action == CreatureAction.APPEAR || it.second.action == CreatureAction.VANISH })
                 val middle = route.poseAt(v.arrivesAt + 60_000L)!!
                 assertTrue(isInside(middle))
-                assertTrue(hypot(middle.x - (host.gridX + 0.5f), middle.y - (host.gridY + 0.5f)) < 2.5f)
+                // A dragonfly settles on banks and flowers up to three cells off.
+                assertTrue(hypot(middle.x - (host.gridX + 0.5f), middle.y - (host.gridY + 0.5f)) < 4.5f)
                 for ((a, b) in poses.zipWithNext()) assertTrue("jumped at ${b.first}", hypot(b.second.x - a.second.x, b.second.y - a.second.y) < 0.5f)
             }
         }
     }
 
     @Test
-    fun `a butterfly settles on a flower now and then, a dragonfly darts and holds still in the air`() {
+    fun `a butterfly and a dragonfly settle now and then, only where they may, at the height of the point`() {
         val sunflower = objects.first { it.objectId == "plant_sunflower" }
-        val butterfly = CreatureRoutes.plan(visit(VisitRule.BUTTERFLY_BLOOMS, GridCell(6, 6), sunflower), grid)
-        val perched = posesOf(butterfly, 100L).map { it.second }.filter { it.action == CreatureAction.PERCH }
-        assertTrue(perched.isNotEmpty())
-        assertTrue(perched.all { it.altitude == CreatureRoutes.PERCH_ALTITUDE })
         val river = objects.first { it.objectId == GridObject.RIVER_OBJECT_ID }
+        val all = CreaturePerches.inGarden(grid)
+        for ((v, creature) in listOf(
+            visit(VisitRule.BUTTERFLY_BLOOMS, GridCell(6, 6), sunflower) to Creature.BUTTERFLY,
+            visit(VisitRule.DRAGONFLY_AUTUMN, GridCell(1, 1), river) to Creature.DRAGONFLY,
+        )) {
+            val route = CreatureRoutes.plan(v, grid)
+            val poses = posesOf(route, 50L).map { it.second }
+            val perched = poses.filter { it.action == CreatureAction.PERCH }
+            assertTrue("$creature never settled", perched.isNotEmpty())
+            for (pose in perched) {
+                val spot = all.filter { abs(it.x - pose.x) <= 0.05f && abs(it.y - pose.y) <= 0.05f && it.height == pose.altitude }
+                assertTrue("$creature settled at ${pose.x}, ${pose.y}, ${pose.altitude}", spot.any { CreaturePerches.allows(creature, it.kind) })
+            }
+        }
+        // The dragonfly holds still in the air between darts too.
         val dragonfly = CreatureRoutes.plan(visit(VisitRule.DRAGONFLY_AUTUMN, GridCell(1, 1), river), grid)
-        val actions = posesOf(dragonfly, 50L).map { it.second.action }
-        assertTrue(CreatureAction.HOVER in actions)
-        assertTrue(CreatureAction.PERCH !in actions)
+        assertTrue(CreatureAction.HOVER in posesOf(dragonfly, 50L).map { it.second.action })
     }
 
     @Test
@@ -433,6 +456,144 @@ class CreatureMotionTest {
         val perched = posesOf(butterfly, 100L).map { it.second }.filter { it.action == CreatureAction.PERCH }
         val visited = perched.map { floor(it.x).toInt() to floor(it.y).toInt() }.toSet()
         assertTrue(visited.toString(), visited.size >= 2)
+    }
+
+    // --- Where they may be ---
+
+    @Test
+    fun `each creature may be only where the table says`() {
+        val expected = mapOf(
+            Creature.BIRD to setOf(PerchKind.GROUND, PerchKind.ROOF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH),
+            Creature.BUTTERFLY to setOf(PerchKind.FLOWER, PerchKind.WEATHERVANE, PerchKind.WELL_RIM, PerchKind.BENCH),
+            Creature.SQUIRREL to setOf(PerchKind.GROUND),
+            Creature.DRAGONFLY to setOf(PerchKind.FLOWER, PerchKind.WELL_RIM, PerchKind.WEATHERVANE, PerchKind.POND_EDGE, PerchKind.RIVER_EDGE),
+            Creature.LADYBUG to setOf(PerchKind.FLOWER, PerchKind.LEAF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH),
+            Creature.FROG to setOf(PerchKind.POND, PerchKind.POND_EDGE, PerchKind.WELL_RIM, PerchKind.GROUND, PerchKind.BENCH),
+        )
+        assertEquals(expected, CreaturePerches.ALLOWED)
+        // The roofs are the bird's alone, and the weathervane is not.
+        for (creature in Creature.entries - Creature.BIRD) assertFalse(CreaturePerches.allows(creature, PerchKind.ROOF))
+        assertFalse(CreaturePerches.allows(Creature.BIRD, PerchKind.WEATHERVANE))
+        assertFalse(CreaturePerches.allows(Creature.FROG, PerchKind.FENCE))
+    }
+
+    @Test
+    fun `points are set on the well, the cottage, fences, benches and the weathervane, and on no rock, lantern, bridge or hut`() {
+        val things = listOf(
+            at(1, 1, StructureData.WELL.objectId), at(2, 2, StructureData.COTTAGE.objectId), at(6, 1, "struct_fence"),
+            at(7, 1, "deco_bench"), at(8, 1, "deco_weathervane"), at(1, 6, "deco_rock"), at(2, 6, "deco_lantern"),
+            at(3, 6, StructureData.HUT.objectId), at(6, 6, StructureData.BRIDGE.objectId),
+        )
+        val kinds = things.associate { it.objectId to CreaturePerches.pointsOf(it).map { p -> p.kind }.toSet() }
+        assertEquals(setOf(PerchKind.WELL_RIM), kinds[StructureData.WELL.objectId])
+        assertEquals(setOf(PerchKind.ROOF), kinds[StructureData.COTTAGE.objectId])
+        assertEquals(setOf(PerchKind.FENCE), kinds["struct_fence"])
+        assertEquals(setOf(PerchKind.BENCH), kinds["deco_bench"])
+        assertEquals(setOf(PerchKind.WEATHERVANE), kinds["deco_weathervane"])
+        for (id in listOf("deco_rock", "deco_lantern", StructureData.HUT.objectId, StructureData.BRIDGE.objectId)) assertEquals(id, emptySet<PerchKind>(), kinds[id])
+        // Each is drawn over what it is on: by its front cell.
+        for (thing in things) for (p in CreaturePerches.pointsOf(thing)) assertEquals(CreatureVisits.frontCell(thing), p.cell)
+    }
+
+    @Test
+    fun `a flower is one of the seven in bloom, or wild flowers, and any other crop is leaves`() {
+        val bloom = listOf("plant_cosmos", "plant_rose", "plant_tulip", "plant_lavender", "plant_sunflower", "plant_nanohana", "plant_snowdrop")
+        for (id in bloom) {
+            assertEquals(id, PerchKind.FLOWER, CreaturePerches.pointsOf(at(1, 1, id, 1f)).single().kind)
+            assertEquals(id, PerchKind.LEAF, CreaturePerches.pointsOf(at(1, 1, id, 0.6f)).single().kind)
+        }
+        for (id in listOf("plant_poinsettia", "plant_strawberry", "plant_tomato", "plant_mint")) {
+            assertEquals(id, PerchKind.LEAF, CreaturePerches.pointsOf(at(1, 1, id, 1f)).single().kind)
+        }
+        assertEquals(PerchKind.FLOWER, CreaturePerches.pointsOf(at(1, 1, CreaturePerches.WILD_FLOWERS_OBJECT_ID)).single().kind)
+        // The top of the picture, where the screen found it, is where the point goes: across the screen, and up.
+        val leaning = CreaturePerches.pointsOf(at(3, 3, "plant_sunflower", 1f)) { PlantTop(across = 0.2f, height = 0.7f) }.single()
+        assertEquals(3.7f, leaning.x, 1e-4f)
+        assertEquals(3.3f, leaning.y, 1e-4f)
+        assertEquals(0.7f, leaning.height)
+        assertEquals(GridCell(3, 3), leaning.cell)
+    }
+
+    @Test
+    fun `the banks of ponds and streams are points on the dry side`() {
+        val banks = CreaturePerches.inGarden(grid).filter { it.kind == PerchKind.POND_EDGE || it.kind == PerchKind.RIVER_EDGE }
+        assertTrue(banks.any { it.kind == PerchKind.POND_EDGE })
+        assertTrue(banks.any { it.kind == PerchKind.RIVER_EDGE })
+        for (bank in banks) {
+            val cell = GridCell(floor(bank.x).toInt(), floor(bank.y).toInt())
+            assertEquals(cell, bank.cell)
+            assertTrue(CreaturePerches.isGround(grid, cell.x, cell.y))
+        }
+    }
+
+    @Test
+    fun `the bird come for the hut sits on the ground beside it, never on its roof`() {
+        val hut = at(3, 3, StructureData.HUT.objectId)
+        val garden = GardenGrid(GardenMap.allGrass(11), listOf(hut))
+        for (arrival in 0 until 10L) {
+            val v = visit(VisitRule.BIRD_HUT, CreatureVisits.frontCell(hut), hut, arrivesAt = 4_000_000L + arrival * 91_111L)
+            for ((_, pose) in posesOf(CreatureRoutes.plan(v, garden), 200L)) {
+                if (pose.action == CreatureAction.FLY) continue
+                assertEquals(0f, pose.surface)
+                assertTrue(pose.grounded)
+                assertFalse(GridCell(floor(pose.x).toInt(), floor(pose.y).toInt()) in hut.occupiedCells())
+            }
+        }
+    }
+
+    @Test
+    fun `the bird come for the well sits on its rim now and then`() {
+        val rims = (0 until 20L).count { arrival ->
+            val v = visit(VisitRule.BIRD_WELL, GridCell(5, 6), arrivesAt = 6_000_000L + arrival * 55_555L)
+            posesOf(CreatureRoutes.plan(v, grid), 1_000L).any { it.second.surface == CreaturePerches.WELL_RIM_HEIGHT }
+        }
+        assertTrue(rims in 3..19)
+    }
+
+    @Test
+    fun `with nowhere to settle the bird only passes over, and a ladybird is not seen`() {
+        val log = at(3, 3, "plant_shiitake", 1f)
+        val garden = GardenGrid(GardenMap.allGrass(11), listOf(log))
+        val ladybug = CreatureRoutes.plan(visit(VisitRule.LADYBUG_CROPS, GridCell(3, 3), log), garden)
+        assertTrue((1_000_000L until 1_200_000L step 500L).all { ladybug.poseAt(it) == null })
+        // A hut standing in water all round, with no ground beside it.
+        val hut = at(0, 0, StructureData.HUT.objectId)
+        val walled = GardenGrid(GardenMap.allGrass(2), listOf(hut))
+        val v = visit(VisitRule.BIRD_HUT, CreatureVisits.frontCell(hut), hut)
+        val bird = CreatureRoutes.plan(v, walled)
+        val seen = (v.arrivesAt until v.leavesAt step 100L).mapNotNull { bird.poseAt(it) }
+        assertTrue(seen.isNotEmpty())
+        assertTrue(seen.all { it.action == CreatureAction.FLY })
+        assertNull(bird.poseAt(v.leavesAt - 1))
+    }
+
+    @Test
+    fun `on the ground a visitor is behind a plant when behind its cell's middle, and one up on something is over its cell`() {
+        fun pose(x: Float, y: Float, grounded: Boolean) =
+            CreaturePose(x, y, 0f, Facing.LEFT, CreatureAction.STAND, 0L, 1L, GridCell(floor(x).toInt(), floor(y).toInt()), grounded = grounded)
+        // A plant at (4, 4) is drawn at depth 8.
+        assertTrue(CreatureRoutes.drawDepth(pose(4.3f, 4.3f, true)) < 8f)
+        assertTrue(CreatureRoutes.drawDepth(pose(4.5f, 4.5f, true)) < 8f)
+        assertTrue(CreatureRoutes.drawDepth(pose(4.8f, 4.7f, true)) > 8f)
+        // Behind everything of the cells in front, in front of everything of the cells behind.
+        for (x in listOf(4.01f, 4.5f, 4.99f)) for (y in listOf(4.01f, 4.5f, 4.99f)) {
+            val depth = CreatureRoutes.drawDepth(pose(x, y, true))
+            assertTrue(depth > 7f && depth < 9f)
+        }
+        assertEquals(8.6f, CreatureRoutes.drawDepth(pose(4.2f, 4.2f, false)), 1e-4f)
+    }
+
+    @Test
+    fun `the top of a plant's picture is the middle of its first opaque rows, a little down`() {
+        // 10 x 20, empty but for a block whose top row is row 5, columns 6 to 8.
+        val w = 10
+        val h = 20
+        val px = IntArray(w * h)
+        for (y in 5 until 20) for (x in 6..8) px[y * w + x] = 0xFF00FF00.toInt()
+        val (fx, fy) = PlantTops.topOf(px, w, h)!!
+        assertEquals(7.5f / w, fx, 1e-4f)
+        assertTrue(fy > 5f / h && fy < 8f / h)
+        assertNull(PlantTops.topOf(IntArray(w * h), w, h))
     }
 
     // --- The title's garden, whose visitors never leave ---

@@ -80,6 +80,16 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         return current
     }
 
+    /**
+     * [plant] with its status as its food has filled by [now], within a minute: fertilizer soaks
+     * in over seconds ([Soil.levelAt]), so a weak crop is weak no more once its food has come.
+     */
+    private fun feeding(plant: GridObject, now: Long): GridObject {
+        if (plant.fedAt == 0L || !plant.isPlant || plant.status == PlantStatus.WITHERED) return plant
+        val status = statusOf(plant.moistureLevel.toDouble(), Soil.levelAt(plant, now).toDouble(), plant.stressRate.toDouble())
+        return if (status == plant.status) plant else plant.copy(status = status)
+    }
+
     /** Advances one object to [currentTimeMillis] under [weather] throughout. */
     private fun advance(
         gridObject: GridObject,
@@ -94,7 +104,7 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         // object would stay frozen until the wall clock caught up with it.
         val newTimestamp = currentTimeMillis - remainder
 
-        if (ticks == 0L && gridObject.lastUpdatedTimestamp <= currentTimeMillis) return gridObject
+        if (ticks == 0L && gridObject.lastUpdatedTimestamp <= currentTimeMillis) return feeding(gridObject, currentTimeMillis)
         // A lawn comes on with time alone, whatever the weather (LawnGrowth).
         if (ticks > 0L && LawnGrowth.isLawn(gridObject) && LawnGrowth.GROWS_IN_STAGES) {
             val grown = LawnGrowth.grownBy(gridObject.growthProgress, ticks * TICK_MILLIS)
@@ -138,7 +148,7 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         }
         val stress = (recovered + gained).coerceIn(0.0, if (species.canWither) 1.0 else NEVER_WITHERED_STRESS)
 
-        val status = statusOf(moisture, gridObject.nutritionLevel.toDouble(), stress)
+        val status = statusOf(moisture, Soil.levelAt(gridObject, currentTimeMillis).toDouble(), stress)
 
         return gridObject.copy(
             growthProgress = growth.toFloat(),
