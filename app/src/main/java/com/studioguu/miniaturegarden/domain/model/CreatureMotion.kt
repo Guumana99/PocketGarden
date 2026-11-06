@@ -54,6 +54,10 @@ enum class CreatureAction {
  * @property heading which way a flier's nose points on the screen, degrees clockwise from straight up.
  * @property setsOff a [CreatureAction.STEP] that starts a move of a few steps (the squirrel breaks
  *   into a run), and [stops] one that ends it (it sits up again).
+ * @property surface how high what it stands on is (a roof, a rim, a seat), in tile widths; 0 on
+ *   the ground. A flier's height is all in [altitude].
+ * @property grounded on its feet on the ground: drawn in depth order by where it is in its cell
+ *   ([CreatureRoutes.drawDepth]), so that it goes behind what grows there.
  */
 data class CreaturePose(
     val x: Float,
@@ -68,6 +72,8 @@ data class CreaturePose(
     val heading: Float = 0f,
     val setsOff: Boolean = false,
     val stops: Boolean = false,
+    val surface: Float = 0f,
+    val grounded: Boolean = false,
 ) {
     /** How far through [action] it is, 0 to 1. */
     val progress: Float get() = if (duration <= 0L) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
@@ -92,6 +98,15 @@ class CreatureRoute internal constructor(
     private val closing: (from: CreaturePose) -> Leg,
     private val depthCell: GridCell?,
     private val ponds: Set<GridCell>,
+    /** How high what it stands on is ([CreaturePose.surface]). */
+    private val surface: Float = 0f,
+    /** Whether it is on its feet on the ground ([CreaturePose.grounded]). */
+    private val grounded: Boolean = false,
+    /**
+     * Whether it found nowhere to settle and only passes over: in and straight out again, and
+     * then gone ([passingOver]). A route with no [opening] at all is never seen.
+     */
+    private val passing: Boolean = false,
 ) {
     private val starts = LongArray(legs.size) { legs[it].start }
 
@@ -100,6 +115,11 @@ class CreatureRoute internal constructor(
         if (!visit.isPresentAt(now)) return null
         val t = now - visit.arrivesAt
         val length = visit.leavesAt - visit.arrivesAt
+        if (passing) {
+            if (opening.duration <= 0L || t >= opening.duration + closingMillis) return null
+            if (t < opening.duration) return pose(opening, t)
+            return pose(closing(pose(opening, opening.duration)), t - opening.duration)
+        }
         if (t < opening.duration) return pose(opening, t)
         val closeAt = length - closingMillis
         if (t >= closeAt && closeAt >= opening.duration) {
@@ -129,7 +149,7 @@ class CreatureRoute internal constructor(
         val x = leg.fromX + (leg.toX - leg.fromX) * k
         val y = leg.fromY + (leg.toY - leg.fromY) * k
         val facing = if (elapsed in leg.lookFrom until leg.lookUntil) leg.facing.turned() else leg.facing
-        val cell = depthCell ?: GridCell(floor(x).toInt(), floor(y).toInt())
+        val cell = leg.cell ?: depthCell ?: GridCell(floor(x).toInt(), floor(y).toInt())
         return CreaturePose(
             x = x,
             y = y,
@@ -143,6 +163,8 @@ class CreatureRoute internal constructor(
             heading = leg.headingAt(elapsed),
             setsOff = leg.setsOff,
             stops = leg.stops,
+            surface = surface,
+            grounded = grounded && leg.action != CreatureAction.FLY,
         )
     }
 }
@@ -175,6 +197,8 @@ internal class Leg(
     val heading: Float = 0f,
     val turnedFrom: Float = heading,
     val darts: Boolean = false,
+    /** The cell it is drawn in while on this leg: that of the flower it rests on. */
+    val cell: GridCell? = null,
 ) {
     val end: Long get() = start + duration
 
@@ -223,40 +247,65 @@ object CreatureRoutes {
     fun flies(creature: Creature): Boolean = cruiseAltitude(creature) > 0f
 
     /**
-     * Whether [creature] may go onto (x, y) on foot: inside the garden, and not water, a building,
-     * a fence, a rock, a bench, a shiitake log, a work site or a greenhouse. Crops and ground
-     * cover (lawn, pebbles, wild flowers) can be walked through. A frog may go into a pond or a stream.
+     * Whether [creature] may go onto (x, y) on foot, as [CreaturePerches.ALLOWED] has it: the
+     * ground ([CreaturePerches.isGround]) for the bird, the squirrel and the frog, and a pond for
+     * the frog. Only the squirrel goes in among what grows (on the ground between the stems,
+     * behind the plants in front of it); no one walks onto a building, a fence, a rock, a bench, a
+     * shiitake log, a stream, a work site or a greenhouse.
      */
     fun canWalk(creature: Creature, grid: GardenGrid, x: Int, y: Int): Boolean {
+        if (CreaturePerches.isGround(grid, x, y)) return CreaturePerches.allows(creature, PerchKind.GROUND)
         if (!grid.map.isInside(x, y) || !grid.map.isBuildable(x, y)) return false
         if (grid.floorAt(x, y)?.isGreenhouse == true) return false
-        val thing = grid.occupantAt(x, y) ?: return true
+        val thing = grid.occupantAt(x, y) ?: return false
         return when {
             thing.isWorking -> false
-            thing.isPond || thing.isTerrain -> creature == Creature.FROG
-            thing.isPlant -> thing.objectId != PlantSpecies.SHIITAKE.objectId
-            thing.isGroundCover -> true
+            thing.isPond -> CreaturePerches.allows(creature, PerchKind.POND)
+            thing.isPlant -> creature == Creature.SQUIRREL && thing.objectId != PlantSpecies.SHIITAKE.objectId
             else -> false
         }
     }
 
-    /** Works out [visit]'s route through the garden as [grid] has it. */
-    fun plan(visit: CreatureVisit, grid: GardenGrid): CreatureRoute {
+    /**
+     * Where [pose] goes in the garden's depth order ([com.studioguu.miniaturegarden.ui.render.LayerPipeline.depthOf]:
+     * a cell's x + y, a thing at its front cell). One on its feet on the ground goes by where it
+     * is in its cell, so that it is behind a plant's stem when it is behind the cell's middle and
+     * in front of it when in front; one up on something, or in the air, is drawn over its cell.
+     */
+    fun drawDepth(pose: CreaturePose): Float {
+        val cell = (pose.cell.x + pose.cell.y).toFloat()
+        if (!pose.grounded) return cell + ABOVE_CELL_DEPTH
+        return (pose.x + pose.y - 1f - GROUND_DEPTH_BIAS).coerceIn(cell - CELL_DEPTH_SPREAD, cell + CELL_DEPTH_SPREAD)
+    }
+
+    /**
+     * Works out [visit]'s route through the garden as [grid] has it, settling only where
+     * [perches] has a place for it ([CreaturePerches.ALLOWED]).
+     */
+    fun plan(visit: CreatureVisit, grid: GardenGrid, perches: List<Perch> = CreaturePerches.inGarden(grid)): CreatureRoute {
         val creature = visit.creature
         val random = Random(seedOf(visit))
         val length = visit.leavesAt - visit.arrivesAt
+        val spots = CreaturePerches.forCreature(creature, perches)
         return when {
-            flies(creature) -> planFlight(visit, grid, random, length)
-            visit.host != null -> planOnHost(visit, grid.map.size, random, length)
-            else -> planOnGround(visit, grid, random, length)
+            flies(creature) -> planFlight(visit, grid, spots, random, length)
+            visit.host != null -> planOnHost(visit, grid, spots, random, length)
+            else -> planOnGround(visit, visit.cell, grid, spots, random, length)
         }
     }
 
     // --- Those that walk on the ground ---
 
-    private fun planOnGround(visit: CreatureVisit, grid: GardenGrid, random: Random, length: Long): CreatureRoute {
+    private fun planOnGround(visit: CreatureVisit, home: GridCell, grid: GardenGrid, spots: List<Perch>, random: Random, length: Long): CreatureRoute {
+        // The bird come for a well or a fence sits on its rim or its rail more often than not.
+        if (visit.creature == Creature.BIRD) {
+            val onAnchor = CreaturePerches.near(home.x + 0.5f, home.y + 0.5f, ANCHOR_PERCH_REACH, spots)
+                .filter { it.kind != PerchKind.GROUND && it.on != null && visit.rule.anchor.matches(it.on) }
+            if (onAnchor.isNotEmpty() && random.nextFloat() < BIRD_PERCH_CHANCE) {
+                return planOnPerch(visit, onAnchor[random.nextInt(onAnchor.size)], grid.map.size, random, length)
+            }
+        }
         val manner = Manner.of(visit.creature)
-        val home = visit.cell
         val region = regionAround(visit.creature, grid, home, manner.roam)
         val ponds = region.filterTo(HashSet()) { cell -> grid.occupantAt(cell.x, cell.y)?.let { it.isPond || it.isTerrain } == true }
         val landing = landingOf(visit.creature, home.x + 0.5f, home.y + 0.5f, grid.map.size, random)
@@ -274,7 +323,7 @@ object CreatureRoutes {
         }
         if (cyclic) goHome(plan, region, manner, home)
         plan.standUntil(span)
-        return arriving(visit, plan, landing, home.x + 0.5f, home.y + 0.5f, grid.map.size, depthCell = null, ponds = ponds)
+        return arriving(visit, plan, landing, home.x + 0.5f, home.y + 0.5f, grid.map.size, depthCell = null, ponds = ponds, grounded = true)
     }
 
     /**
@@ -358,11 +407,49 @@ object CreatureRoutes {
 
     // --- Those that walk on what they came for: a bird on a roof, a ladybird on a crop ---
 
-    private fun planOnHost(visit: CreatureVisit, size: Int, random: Random, length: Long): CreatureRoute {
-        val manner = Manner.of(visit.creature)
+    /**
+     * On one of the points of what it came for. Where that has none for it (the bird and the
+     * hut's roof), the bird comes down on the ground beside it instead; failing that, it only
+     * passes over, and the others do not come at all.
+     */
+    private fun planOnHost(visit: CreatureVisit, grid: GardenGrid, spots: List<Perch>, random: Random, length: Long): CreatureRoute {
         val host = visit.host!!
+        val on = CreaturePerches.on(host, spots)
+        if (on.isNotEmpty()) return planOnPerch(visit, on[random.nextInt(on.size)], grid.map.size, random, length)
         val homeX = host.gridX + host.footprint.width / 2f
         val homeY = host.gridY + host.footprint.height / 2f
+        if (CreaturePerches.allows(visit.creature, PerchKind.GROUND)) {
+            val beside = host.occupiedCells().flatMap(::neighbours).distinct()
+                .filter { it !in host.occupiedCells() && canWalk(visit.creature, grid, it.x, it.y) }
+                .sortedWith(compareBy({ it.y }, { it.x }))
+            if (beside.isNotEmpty()) return planOnGround(visit, beside[random.nextInt(beside.size)], grid, emptyList(), random, length)
+        }
+        return passingOver(visit, homeX, homeY, grid.map.size, random)
+    }
+
+    /**
+     * A visitor with nowhere to settle: the bird flies over what it came for and away again;
+     * the others are not seen at all.
+     */
+    private fun passingOver(visit: CreatureVisit, homeX: Float, homeY: Float, size: Int, random: Random): CreatureRoute {
+        val leave = { from: CreaturePose -> Leg(0L, 0L, CreatureAction.FLY, from.x, from.y, from.altitude, facing = from.facing) }
+        if (visit.creature != Creature.BIRD) {
+            val nothing = Leg(0L, 0L, CreatureAction.FLY, homeX, homeY, 0f, facing = Facing.LEFT)
+            return CreatureRoute(visit, nothing, emptyList(), 1L, false, 0L, leave, null, emptySet(), passing = true)
+        }
+        val manner = Manner.of(visit.creature)
+        val opening = flightIn(homeX, homeY, PASSING_ALTITUDE, size, manner.flySpeed, random)
+        val cameFrom = atan2((opening.fromY - opening.toY).toDouble(), (opening.fromX - opening.toX).toDouble())
+        // On over it, the way it was going.
+        val closing = flightOut(size, opening.duration, cameFrom + PI, 0.0)
+        return CreatureRoute(visit, opening, emptyList(), 1L, false, opening.duration, closing, null, emptySet(), passing = true)
+    }
+
+    /** Settled on [spot], moving about a little on it. */
+    private fun planOnPerch(visit: CreatureVisit, spot: Perch, size: Int, random: Random, length: Long): CreatureRoute {
+        val manner = Manner.of(visit.creature)
+        val homeX = spot.x
+        val homeY = spot.y
         val landing = landingOf(visit.creature, homeX, homeY, size, random)
         val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
         val plan = planner(random, manner, span, cyclic, homeX, homeY, landing)
@@ -372,13 +459,14 @@ object CreatureRoutes {
             val rest = plan.between(manner.rest)
             val millis = plan.pace(manner.hostStepMillis.toFloat())
             if (plan.t + millis + rest + reserve > span) break
-            val r = manner.hostReach
+            // Along a roof's ridge it may wander; on a rim, a rail, a seat or a leaf, only shuffle.
+            val r = if (spot.kind == PerchKind.ROOF) manner.hostReach else minOf(manner.hostReach, PERCH_REACH)
             plan.stepTo(homeX + random.nextFloat() * 2f * r - r, homeY + random.nextFloat() * 2f * r - r, millis)
             plan.standFor(rest)
         }
         if (cyclic) plan.stepTo(homeX, homeY, manner.hostStepMillis)
         plan.standUntil(span)
-        return arriving(visit, plan, landing, homeX, homeY, size, depthCell = visit.cell, ponds = emptySet())
+        return arriving(visit, plan, landing, homeX, homeY, size, depthCell = spot.cell, ponds = emptySet(), surface = spot.height)
     }
 
     /**
@@ -405,24 +493,26 @@ object CreatureRoutes {
         size: Int,
         depthCell: GridCell?,
         ponds: Set<GridCell>,
+        surface: Float = 0f,
+        grounded: Boolean = false,
     ): CreatureRoute {
         val span = maxOf(plan.span, plan.t)
         if (landing != null) {
             val cameFrom = atan2((landing.fromY - landing.toY).toDouble(), (landing.fromX - landing.toX).toDouble())
             val closing = flightOut(size, landing.duration, cameFrom, plan.random.nextDouble() * 1.2 - 0.6)
-            return CreatureRoute(visit, landing, plan.legs, span, plan.cyclic, landing.duration, closing, depthCell, ponds)
+            return CreatureRoute(visit, landing, plan.legs, span, plan.cyclic, landing.duration, closing, depthCell, ponds, surface, grounded)
         }
         val opening = Leg(0L, POP_MILLIS, CreatureAction.APPEAR, homeX, homeY, 0f, facing = plan.firstFacing)
         return CreatureRoute(
             visit, opening, plan.legs, span, plan.cyclic, POP_MILLIS,
             closing = { from -> Leg(0L, POP_MILLIS, CreatureAction.VANISH, from.x, from.y, 0f, facing = from.facing) },
-            depthCell = depthCell, ponds = ponds,
+            depthCell = depthCell, ponds = ponds, surface = surface, grounded = grounded,
         )
     }
 
     // --- Those that fly ---
 
-    private fun planFlight(visit: CreatureVisit, grid: GardenGrid, random: Random, length: Long): CreatureRoute {
+    private fun planFlight(visit: CreatureVisit, grid: GardenGrid, spots: List<Perch>, random: Random, length: Long): CreatureRoute {
         val creature = visit.creature
         val manner = Manner.of(creature)
         val host = visit.host
@@ -435,27 +525,29 @@ object CreatureRoutes {
         val outMillis = inMillis
         val (span, cyclic) = spanOf(length - inMillis - outMillis)
         val plan = Planner(random, manner, span, cyclic, homeX, homeY, cruise, opening.facing, heading = opening.heading)
-        val flowers = flowersAround(visit, grid)
+        val perches = perchesAround(visit, homeX, homeY, spots)
         val inside = { v: Float -> v.coerceIn(EDGE, size - EDGE) }
         val reserve = if (cyclic) 2 * (manner.reach * 2 / manner.flySpeed * 1000).toLong() + manner.rest.first else 0L
-        var flightsToPerch = 1 + random.nextInt(3)
+        var flightsToPerch = manner.flightsBetweenPerches.first + random.nextInt(manner.flightsBetweenPerches.last - manner.flightsBetweenPerches.first + 1)
         // Where it is drifting round: a flower, for as long as it stays with that one.
         var aroundX = homeX
         var aroundY = homeY
+        var perchedOn: Perch? = null
         while (true) {
-            val perching = flowers.isNotEmpty() && flightsToPerch == 0
+            val perching = perches.isNotEmpty() && flightsToPerch == 0
             val tx: Float
             val ty: Float
             val alt: Float
             if (perching) {
-                // Off to another flower, if there is one: it does not stay with the one it came for.
-                val others = flowers.filter { abs(it.x + 0.5f - aroundX) + abs(it.y + 0.5f - aroundY) > 0.01f }.ifEmpty { flowers }
-                val flower = others[random.nextInt(others.size)]
-                tx = flower.x + 0.5f + (random.nextFloat() - 0.5f) * PERCH_SCATTER
-                ty = flower.y + 0.5f + (random.nextFloat() - 0.5f) * PERCH_SCATTER
-                alt = PERCH_ALTITUDE
-                aroundX = flower.x + 0.5f
-                aroundY = flower.y + 0.5f
+                // Off to another point, if there is one: it does not stay with the one it came for.
+                val others = perches.filter { abs(it.x - aroundX) + abs(it.y - aroundY) > 0.01f }.ifEmpty { perches }
+                val spot = others[random.nextInt(others.size)]
+                tx = spot.x + (random.nextFloat() - 0.5f) * PERCH_SCATTER
+                ty = spot.y + (random.nextFloat() - 0.5f) * PERCH_SCATTER
+                alt = spot.height
+                aroundX = spot.x
+                aroundY = spot.y
+                perchedOn = spot
             } else {
                 tx = inside(aroundX + (random.nextFloat() * 2f - 1f) * manner.reach)
                 ty = inside(aroundY + (random.nextFloat() * 2f - 1f) * manner.reach)
@@ -466,8 +558,8 @@ object CreatureRoutes {
             if (plan.t + flight + pause + reserve > span) break
             plan.flyTo(tx, ty, alt, flight)
             if (perching) {
-                plan.hold(CreatureAction.PERCH, pause)
-                flightsToPerch = 1 + random.nextInt(3)
+                plan.hold(CreatureAction.PERCH, pause, cell = perchedOn?.cell)
+                flightsToPerch = manner.flightsBetweenPerches.first + random.nextInt(manner.flightsBetweenPerches.last - manner.flightsBetweenPerches.first + 1)
             } else {
                 if (pause > 0L) plan.hold(CreatureAction.HOVER, pause)
                 flightsToPerch--
@@ -527,18 +619,14 @@ object CreatureRoutes {
     }
 
     /**
-     * Where a butterfly settles now and then: the flower it came for, and what else is in full
-     * bloom within [FLOWER_REACH] cells of it. Only what is fully grown, so that the route stays
-     * the same while the others grow.
+     * Where a flier settles now and then: the points of [spots] (already only those it may
+     * settle on) within [PERCH_REACH_IN_FLIGHT] cells of where it came. A butterfly goes to the
+     * flowers in bloom, the weathervane, the well's rim and the bench; a dragonfly to the flowers,
+     * the rim, the weathervane and the banks of ponds and streams.
      */
-    private fun flowersAround(visit: CreatureVisit, grid: GardenGrid): List<GridCell> {
-        if (visit.creature != Creature.BUTTERFLY) return emptyList()
-        val home = visit.host?.let { GridCell(it.gridX, it.gridY) } ?: visit.cell
-        val nearby = (-FLOWER_REACH..FLOWER_REACH).flatMap { dy -> (-FLOWER_REACH..FLOWER_REACH).map { dx -> GridCell(home.x + dx, home.y + dy) } }
-            .filter { cell ->
-                grid.occupantAt(cell.x, cell.y)?.let { it.isPlant && it.growthProgress >= 1f && it.status != PlantStatus.WITHERED } == true
-            }
-        return (listOf(home) + nearby).distinct()
+    private fun perchesAround(visit: CreatureVisit, homeX: Float, homeY: Float, spots: List<Perch>): List<Perch> {
+        if (Manner.of(visit.creature).perch.last <= 0L) return emptyList()
+        return CreaturePerches.near(homeX, homeY, PERCH_REACH_IN_FLIGHT, spots)
     }
 
     // --- Shared ---
@@ -584,11 +672,32 @@ object CreatureRoutes {
     /** How near a flier keeps to the garden's edge while it flits about, in cells. */
     private const val EDGE = 0.3f
 
-    /** How far from the flower it came for a butterfly goes for others, in cells. */
-    private const val FLOWER_REACH = 3
+    /** How far from where it came a flier goes to settle, in cells. */
+    private const val PERCH_REACH_IN_FLIGHT = 3f
 
-    /** How far from a flower's middle a butterfly may settle, in cells. */
-    private const val PERCH_SCATTER = 0.2f
+    /** How far from a point a flier may settle, in cells. */
+    private const val PERCH_SCATTER = 0.06f
+
+    /** How far one settled on a rim, a rail, a seat or a leaf shuffles about, in cells. */
+    private const val PERCH_REACH = 0.06f
+
+    /** How far from the cell it came to the bird looks for the rim or the rail of what it came for. */
+    private const val ANCHOR_PERCH_REACH = 1.6f
+
+    /** How likely the bird come for a well or a fence is to sit on it rather than on the ground. */
+    private const val BIRD_PERCH_CHANCE = 0.6f
+
+    /** How high the bird with nowhere to settle passes over, in tile widths. */
+    private const val PASSING_ALTITUDE = 0.9f
+
+    /** Depth over its cell for one up on something or in the air: after what stands there. */
+    private const val ABOVE_CELL_DEPTH = 0.6f
+
+    /** How far a visitor on the ground stays within its own cell's depth. */
+    private const val CELL_DEPTH_SPREAD = 0.95f
+
+    /** At the middle of a cell, a visitor on the ground is just behind what stands there. */
+    private const val GROUND_DEPTH_BIAS = 0.05f
 
     /** How many points are tried for the next short move before staying put. */
     private const val NEARBY_TRIES = 6
@@ -613,7 +722,8 @@ object CreatureRoutes {
  * @property hostReach on what it came for, how far it moves from the middle of it, in cells.
  * @property flySpeed a flier's speed, in cells a second.
  * @property reach how far a flier flits from what it came for, in cells.
- * @property perch how long a butterfly rests on a flower.
+ * @property perch how long a flier rests on a flower (or what else it settles on); none, never.
+ * @property flightsBetweenPerches how many flights it makes before it settles again.
  * @property darts a flier that darts from one stop to the next ([Leg.darts]), turning first.
  */
 internal class Manner(
@@ -629,6 +739,7 @@ internal class Manner(
     val flySpeed: Float = 1f,
     val reach: Float = 1f,
     val perch: LongRange = 0L..0L,
+    val flightsBetweenPerches: IntRange = 1..3,
     val darts: Boolean = false,
 ) {
     companion object {
@@ -646,7 +757,9 @@ internal class Manner(
             hostStepMillis = 1600L, hostReach = 0.13f,
         )
         private val BUTTERFLY = Manner(stepMillis = 900L, rest = 0L..500L, flySpeed = 1.6f, reach = 0.8f, perch = 2500L..7000L)
-        private val DRAGONFLY = Manner(stepMillis = 220L, rest = 900L..2600L, flySpeed = 4f, reach = 1.4f, darts = true)
+        private val DRAGONFLY = Manner(
+            stepMillis = 220L, rest = 900L..2600L, flySpeed = 4f, reach = 1.4f, perch = 2500L..6500L, flightsBetweenPerches = 3..6, darts = true,
+        )
 
         fun of(creature: Creature): Manner = when (creature) {
             Creature.SQUIRREL -> SQUIRREL
@@ -722,9 +835,9 @@ private class Planner(
         while (t < end) standFor(minOf(between(manner.rest).coerceAtLeast(500L), end - t))
     }
 
-    fun hold(action: CreatureAction, millis: Long) {
+    fun hold(action: CreatureAction, millis: Long, cell: GridCell? = null) {
         if (millis <= 0L) return
-        legs += Leg(t, millis, action, x, y, alt, facing = facing, heading = heading)
+        legs += Leg(t, millis, action, x, y, alt, facing = facing, heading = heading, cell = cell)
         t += millis
     }
 

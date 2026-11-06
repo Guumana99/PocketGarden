@@ -98,6 +98,7 @@ import com.studioguu.miniaturegarden.ui.components.findActivity
 import com.studioguu.miniaturegarden.ui.components.pressScale
 import com.studioguu.miniaturegarden.ui.components.withTick
 import com.studioguu.miniaturegarden.ui.debug.BookPreview
+import com.studioguu.miniaturegarden.ui.debug.PerchPreview
 import com.studioguu.miniaturegarden.ui.debug.DebugMenuDialog
 import com.studioguu.miniaturegarden.ui.debug.DebugZoomReadout
 import com.studioguu.miniaturegarden.ui.debug.ShowcaseControls
@@ -299,6 +300,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             // The garden comes in softly once it has been read, so the default lawn is never seen
             // for a moment before the saved one; until then there is only the sky.
             val gardenAlpha by animateFloatAsState(if (gardenReady) 1f else 0f, tween(GARDEN_FADE_IN_MILLIS), label = "gardenIn")
+            val perchesShown by PerchPreview.shown.collectAsStateWithLifecycle()
             if (gardenReady) GardenCanvas(
                 gridObjects = gridObjects,
                 // In camera mode the garden is only looked at: no selection, no grid, and taps
@@ -322,6 +324,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 brokenCells = brokenGround,
                 // The visitors stay in camera mode: they belong in a picture of the garden.
                 visitors = visitors,
+                showPerches = perchesShown,
                 onVisitorTapped = viewModel::onVisitorTapped,
                 onZoomChanged = if (BuildConfig.DEBUG) ({ debugZoom = it }) else null,
                 // The showcase's view (debug builds only), taken up afresh whenever it changes.
@@ -817,6 +820,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onCreatureCall = viewModel::debugCallCreatures,
             bookAllRegistered = bookAllRegistered,
             onBookAllRegistered = BookPreview::set,
+            perchesShown = PerchPreview.shown.collectAsStateWithLifecycle().value,
+            onPerchesShown = PerchPreview::set,
             onAskForReview = { context.findActivity()?.let(viewModel::debugAskForReview) },
             onDismiss = { showDebugMenu = false },
         )

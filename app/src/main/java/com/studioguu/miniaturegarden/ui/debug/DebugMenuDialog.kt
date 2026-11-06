@@ -58,6 +58,7 @@ private const val DAY_MILLIS = 24 * HOUR_MILLIS
  * @param creatureCall the creatures called to the garden, to look at how they move.
  * @param bookAllRegistered whether the book shows every page as registered ([BookPreview]).
  * @param onAskForReview calls the store's review flow now, whatever the rules say.
+ * @param perchesShown whether the garden shows every point a visitor may settle on ([PerchPreview]).
  */
 @Composable
 fun DebugMenuDialog(
@@ -75,6 +76,8 @@ fun DebugMenuDialog(
     bookAllRegistered: Boolean = false,
     onBookAllRegistered: (Boolean) -> Unit = {},
     onAskForReview: () -> Unit = {},
+    perchesShown: Boolean = false,
+    onPerchesShown: (Boolean) -> Unit = {},
 ) {
     ParchmentDialog(
         onDismissRequest = onDismiss,
@@ -118,6 +121,8 @@ fun DebugMenuDialog(
                 CreatureCallSection(creatureCall, onCreatureCall)
                 SwitchRow(R.string.debug_book_all, bookAllRegistered, onBookAllRegistered, BOOK_ALL_SWITCH_TAG)
                 Text(stringResource(R.string.debug_book_all_hint), fontSize = 12.sp)
+                SwitchRow(R.string.debug_perches, perchesShown, onPerchesShown, PERCHES_SWITCH_TAG)
+                Text(stringResource(R.string.debug_perches_hint), fontSize = 12.sp)
                 FilledTonalButton(onClick = onAskForReview) {
                     Text(stringResource(R.string.debug_ask_review))
                 }
@@ -159,6 +164,7 @@ private fun SwitchRow(@StringRes title: Int, on: Boolean, onChange: (Boolean) ->
 /** Test tags of the switches and of each creature's chip. */
 const val CREATURE_CALL_SWITCH_TAG = "debug_call_switch"
 const val BOOK_ALL_SWITCH_TAG = "debug_book_all_switch"
+const val PERCHES_SWITCH_TAG = "debug_perches_switch"
 fun creatureCallTag(creature: Creature): String = "debug_call_${creature.id}"
 
 /** Test tag of the zoom read-out laid over the garden. */

@@ -93,6 +93,17 @@ object BookPreview {
     }
 }
 
+/** Whether the garden shows every point a visitor may settle on (debug builds only). */
+object PerchPreview {
+    private val _shown = MutableStateFlow(false)
+    val shown: StateFlow<Boolean> = _shown.asStateFlow()
+
+    /** Does nothing in a release build. */
+    fun set(on: Boolean) {
+        if (BuildConfig.DEBUG) _shown.value = on
+    }
+}
+
 /** Where the showcase is set: by the debug build's receiver only (src/debug), never in a release build. */
 object ShowcaseControls {
     private val _showcase = MutableStateFlow<Showcase?>(null)
