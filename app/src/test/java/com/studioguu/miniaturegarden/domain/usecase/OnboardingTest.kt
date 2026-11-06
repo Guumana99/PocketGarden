@@ -170,6 +170,16 @@ class OnboardingTest {
     }
 
     @Test
+    fun `playing the first steps again from the settings leaves the day's rain as it was`() = runBlocking {
+        repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.DONE)
+        val limits = FakeRewardLimits()
+        assertTrue(limits.tryConsume(RewardType.BLESSED_RAIN, TODAY))
+        LeavePracticeUseCase(repo, FakePractice(), PlaceGiftUseCase(repo, GardenMap.DEFAULT), limits)(t0, TODAY)
+        assertEquals(1, limits.usedToday(RewardType.BLESSED_RAIN))
+        assertFalse(limits.tryConsume(RewardType.BLESSED_RAIN, TODAY))
+    }
+
+    @Test
     fun `leaving the practice garden the first time brings the closing board and the first gift`() = runBlocking {
         val practice = FakePractice()
         val leave = LeavePracticeUseCase(repo, practice, PlaceGiftUseCase(repo, GardenMap.DEFAULT), FakeRewardLimits())

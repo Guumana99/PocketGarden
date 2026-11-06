@@ -135,9 +135,10 @@ class LeavePracticeUseCase @Inject constructor(
     /** @return the step the saved garden is on. */
     suspend operator fun invoke(now: Long, today: Long): TutorialStep {
         practice.leave()
-        rewardLimits.giveBack(RewardType.BLESSED_RAIN, today)
         val saved = gardenRepository.getProgress() ?: return TutorialStep.DONE
+        // Played again from the settings: the day's rain stays as it was.
         if (!saved.tutorialStep.isGuiding) return saved.tutorialStep
+        rewardLimits.giveBack(RewardType.BLESSED_RAIN, today)
         placeGift(Gift.FIRST, now)
         gardenRepository.saveProgress(saved.copy(tutorialStep = TutorialStep.FINISHED))
         return TutorialStep.FINISHED
