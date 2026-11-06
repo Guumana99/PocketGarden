@@ -149,6 +149,28 @@ class SettingsContentTest {
     }
 
     @Test
+    fun `the about page has the version, the credits and the licences in that order, and the credits link to each site`() {
+        show()
+        compose.onNodeWithText("情報").performClick()
+        val tops = listOf("バージョン", "クレジット", "オープンソースライセンス").map {
+            compose.onNodeWithText(it).fetchSemanticsNode().boundsInRoot.top
+        }
+        assertEquals(tops.sorted(), tops)
+        compose.onNodeWithText("クレジット").performClick()
+        for ((name, url) in listOf(
+            "ポケットサウンド" to "https://pocket-se.info/",
+            "タダノオト" to "https://tadanote.tokyo/",
+            "効果音ラボ" to "https://soundeffect-lab.info/",
+        )) {
+            compose.onNodeWithText("効果音：$name", substring = true).assertIsDisplayed()
+            compose.onNodeWithText(url, substring = true).assertIsDisplayed()
+        }
+        assertEquals(3, SOUND_CREDITS.size)
+        compose.onAllNodesWithText("閉じる").onLast().performClick()
+        compose.onNodeWithText("タダノオト", substring = true).assertDoesNotExist()
+    }
+
+    @Test
     fun `the other page has the first steps again, a review, a mail to us and the privacy policy`() {
         compose.setContent {
             GardenTheme {

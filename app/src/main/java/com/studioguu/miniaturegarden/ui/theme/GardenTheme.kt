@@ -23,6 +23,9 @@ object GardenColors {
     val Ink = Color(0xFF3E2723)
     val InkSoft = Color(0xFF6D4C41)
     val Leaf = Color(0xFF5E8C3A)
+
+    /** A link in a sheet of text: a deep blue that reads on parchment. */
+    val Link = Color(0xFF1E5A8C)
     val Gold = Color(0xFFFFD54F)
 
     /** The pale, worn parchment of dialogs and the panels inside them. */
