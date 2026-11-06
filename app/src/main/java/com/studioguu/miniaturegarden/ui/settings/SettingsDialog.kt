@@ -21,6 +21,12 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -88,6 +94,7 @@ internal fun SettingsContent(
     var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
     var showLicenses by rememberSaveable { mutableStateOf(false) }
     var showVersion by rememberSaveable { mutableStateOf(false) }
+    var showCredits by rememberSaveable { mutableStateOf(false) }
     val close = DialogAction(stringResource(R.string.action_close), onDismiss)
 
     ParchmentDialog(
@@ -107,7 +114,11 @@ internal fun SettingsContent(
                 SettingsPage.NOTIFICATIONS -> WoodPanel {
                     notificationRow(settings.notificationsEnabled, actions::setNotificationsEnabled)
                 }
-                SettingsPage.ABOUT -> AboutPage(onShowVersion = { showVersion = true }, onShowLicenses = { showLicenses = true })
+                SettingsPage.ABOUT -> AboutPage(
+                    onShowVersion = { showVersion = true },
+                    onShowCredits = { showCredits = true },
+                    onShowLicenses = { showLicenses = true },
+                )
                 SettingsPage.OTHER -> OtherPage(versionName = versionName, onReplayTutorial = onReplayTutorial)
             }
         }
@@ -120,6 +131,7 @@ internal fun SettingsContent(
             onDismiss = { showVersion = false },
         )
     }
+    if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
     if (showLicenses) {
         InfoDialog(
             title = stringResource(R.string.settings_licenses),
@@ -151,14 +163,51 @@ private fun SoundPage(current: AppSettings, actions: SettingsActions) {
 }
 
 /**
- * The version, on a sheet of its own, and the open-source licences, which have to be shown.
- * The disclaimer that used to be here is part of the privacy policy now.
+ * The version, the credits and the open-source licences (which have to be shown), each on a
+ * sheet of its own. The disclaimer that used to be here is part of the privacy policy now.
  */
 @Composable
-private fun AboutPage(onShowVersion: () -> Unit, onShowLicenses: () -> Unit) {
+private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onShowLicenses: () -> Unit) {
     WoodPanel {
         CarvedButton(text = stringResource(R.string.settings_version), onClick = onShowVersion, modifier = Modifier.fillMaxWidth())
+        CarvedButton(text = stringResource(R.string.settings_credits), onClick = onShowCredits, modifier = Modifier.fillMaxWidth())
         CarvedButton(text = stringResource(R.string.settings_licenses), onClick = onShowLicenses, modifier = Modifier.fillMaxWidth())
+    }
+}
+
+/** One line of the credits: what it is for, whose it is, and their site. */
+internal data class Credit(val what: Int, val name: String, val url: String)
+
+/** Where the sound effects may come from; which file is whose is not known for each (ASSETS.md). */
+internal val SOUND_CREDITS = listOf(
+    Credit(R.string.credits_sound_effects, "ポケットサウンド", "https://pocket-se.info/"),
+    Credit(R.string.credits_sound_effects, "タダノオト", "https://tadanote.tokyo/"),
+    Credit(R.string.credits_sound_effects, "効果音ラボ", "https://soundeffect-lab.info/"),
+)
+
+/** The credits, each site's address a link that opens in the browser. */
+@Composable
+private fun CreditsDialog(onDismiss: () -> Unit) {
+    ParchmentDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.settings_credits),
+        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (credit in SOUND_CREDITS) {
+                val what = stringResource(credit.what)
+                Text(
+                    text = buildAnnotatedString {
+                        append("$what：${credit.name}\n")
+                        withLink(LinkAnnotation.Url(credit.url, TextLinkStyles(SpanStyle(color = GardenColors.Link, textDecoration = TextDecoration.Underline)))) {
+                            append(credit.url)
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = GardenColors.Ink,
+                )
+            }
+        }
     }
 }
 

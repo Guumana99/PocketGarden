@@ -478,31 +478,33 @@ class CreatureMotionTest {
     }
 
     @Test
-    fun `points are set on the well, the cottage, fences, benches and the weathervane, and on no rock, lantern, bridge or hut`() {
+    fun `points are set on the well, the cottage, the hut, fences, benches and the weathervane, and on no rock, lantern, bridge or windmill`() {
         val things = listOf(
             at(1, 1, StructureData.WELL.objectId), at(2, 2, StructureData.COTTAGE.objectId), at(6, 1, "struct_fence"),
             at(7, 1, "deco_bench"), at(8, 1, "deco_weathervane"), at(1, 6, "deco_rock"), at(2, 6, "deco_lantern"),
-            at(3, 6, StructureData.HUT.objectId), at(6, 6, StructureData.BRIDGE.objectId),
+            at(3, 6, StructureData.HUT.objectId), at(6, 6, StructureData.BRIDGE.objectId), at(8, 6, StructureData.WINDMILL.objectId),
         )
         val kinds = things.associate { it.objectId to CreaturePerches.pointsOf(it).map { p -> p.kind }.toSet() }
         assertEquals(setOf(PerchKind.WELL_RIM), kinds[StructureData.WELL.objectId])
         assertEquals(setOf(PerchKind.ROOF), kinds[StructureData.COTTAGE.objectId])
+        assertEquals(setOf(PerchKind.ROOF), kinds[StructureData.HUT.objectId])
         assertEquals(setOf(PerchKind.FENCE), kinds["struct_fence"])
         assertEquals(setOf(PerchKind.BENCH), kinds["deco_bench"])
         assertEquals(setOf(PerchKind.WEATHERVANE), kinds["deco_weathervane"])
-        for (id in listOf("deco_rock", "deco_lantern", StructureData.HUT.objectId, StructureData.BRIDGE.objectId)) assertEquals(id, emptySet<PerchKind>(), kinds[id])
+        for (id in listOf("deco_rock", "deco_lantern", StructureData.BRIDGE.objectId, StructureData.WINDMILL.objectId)) assertEquals(id, emptySet<PerchKind>(), kinds[id])
         // Each is drawn over what it is on: by its front cell.
         for (thing in things) for (p in CreaturePerches.pointsOf(thing)) assertEquals(CreatureVisits.frontCell(thing), p.cell)
     }
 
     @Test
-    fun `a flower is one of the seven in bloom, or wild flowers, and any other crop is leaves`() {
-        val bloom = listOf("plant_cosmos", "plant_rose", "plant_tulip", "plant_lavender", "plant_sunflower", "plant_nanohana", "plant_snowdrop")
+    fun `a flower is one of the eight in bloom, or wild flowers, and any other crop is leaves`() {
+        val bloom = listOf("plant_cosmos", "plant_rose", "plant_tulip", "plant_lavender", "plant_sunflower", "plant_nanohana", "plant_snowdrop", "plant_poinsettia")
         for (id in bloom) {
             assertEquals(id, PerchKind.FLOWER, CreaturePerches.pointsOf(at(1, 1, id, 1f)).single().kind)
             assertEquals(id, PerchKind.LEAF, CreaturePerches.pointsOf(at(1, 1, id, 0.6f)).single().kind)
         }
-        for (id in listOf("plant_poinsettia", "plant_strawberry", "plant_tomato", "plant_mint")) {
+        // Whatever their pictures show in flower, the strawberry, the watermelon and the eggplant are leaves.
+        for (id in listOf("plant_strawberry", "plant_watermelon", "plant_eggplant", "plant_tomato", "plant_mint")) {
             assertEquals(id, PerchKind.LEAF, CreaturePerches.pointsOf(at(1, 1, id, 1f)).single().kind)
         }
         assertEquals(PerchKind.FLOWER, CreaturePerches.pointsOf(at(1, 1, CreaturePerches.WILD_FLOWERS_OBJECT_ID)).single().kind)
@@ -527,18 +529,21 @@ class CreatureMotionTest {
     }
 
     @Test
-    fun `the bird come for the hut sits on the ground beside it, never on its roof`() {
+    fun `the bird come for the hut sits on its roof, and no flier settles there`() {
         val hut = at(3, 3, StructureData.HUT.objectId)
         val garden = GardenGrid(GardenMap.allGrass(11), listOf(hut))
+        val ridge = CreaturePerches.pointsOf(hut)
         for (arrival in 0 until 10L) {
             val v = visit(VisitRule.BIRD_HUT, CreatureVisits.frontCell(hut), hut, arrivesAt = 4_000_000L + arrival * 91_111L)
             for ((_, pose) in posesOf(CreatureRoutes.plan(v, garden), 200L)) {
                 if (pose.action == CreatureAction.FLY) continue
-                assertEquals(0f, pose.surface)
-                assertTrue(pose.grounded)
-                assertFalse(GridCell(floor(pose.x).toInt(), floor(pose.y).toInt()) in hut.occupiedCells())
+                assertEquals(CreaturePerches.HUT_RIDGE_HEIGHT, pose.surface)
+                assertFalse(pose.grounded)
+                assertEquals(CreatureVisits.frontCell(hut), pose.cell)
+                assertTrue(ridge.any { abs(it.x - pose.x) <= 0.25f && abs(it.y - pose.y) <= 0.25f })
             }
         }
+        for (creature in listOf(Creature.BUTTERFLY, Creature.DRAGONFLY, Creature.LADYBUG)) assertTrue(CreaturePerches.forCreature(creature, ridge).isEmpty())
     }
 
     @Test
@@ -556,10 +561,10 @@ class CreatureMotionTest {
         val garden = GardenGrid(GardenMap.allGrass(11), listOf(log))
         val ladybug = CreatureRoutes.plan(visit(VisitRule.LADYBUG_CROPS, GridCell(3, 3), log), garden)
         assertTrue((1_000_000L until 1_200_000L step 500L).all { ladybug.poseAt(it) == null })
-        // A hut standing in water all round, with no ground beside it.
-        val hut = at(0, 0, StructureData.HUT.objectId)
-        val walled = GardenGrid(GardenMap.allGrass(2), listOf(hut))
-        val v = visit(VisitRule.BIRD_HUT, CreatureVisits.frontCell(hut), hut)
+        // Something with no point for it, filling a garden with no ground beside it.
+        val rock = at(0, 0, "deco_rock")
+        val walled = GardenGrid(GardenMap.allGrass(1), listOf(rock))
+        val v = visit(VisitRule.BIRD_HUT, CreatureVisits.frontCell(rock), rock)
         val bird = CreatureRoutes.plan(v, walled)
         val seen = (v.arrivesAt until v.leavesAt step 100L).mapNotNull { bird.poseAt(it) }
         assertTrue(seen.isNotEmpty())

@@ -73,8 +73,8 @@ object CreaturePerches {
 
     /**
      * Where each kind of visitor may be: nowhere else. The ground is walked on; the others are
-     * points to settle on. Stone lanterns, rocks, the arched bridge, the greenhouse and the roofs
-     * of the hut and the windmill are no one's.
+     * points to settle on. Stone lanterns, rocks, the arched bridge, the greenhouse and the
+     * windmill are no one's. The roofs (the cottage's and the hut's) are the bird's alone.
      */
     val ALLOWED: Map<Creature, Set<PerchKind>> = mapOf(
         Creature.BIRD to setOf(PerchKind.GROUND, PerchKind.ROOF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH),
@@ -90,7 +90,7 @@ object CreaturePerches {
     /** The flowers a butterfly takes for one, in bloom ([isInBloom]). */
     val FLOWERS: Set<PlantSpecies> = setOf(
         PlantSpecies.COSMOS, PlantSpecies.ROSE, PlantSpecies.TULIP, PlantSpecies.LAVENDER,
-        PlantSpecies.SUNFLOWER, PlantSpecies.NANOHANA, PlantSpecies.SNOWDROP,
+        PlantSpecies.SUNFLOWER, PlantSpecies.NANOHANA, PlantSpecies.SNOWDROP, PlantSpecies.POINSETTIA,
     )
 
     /** Whether [obj] is one of the [FLOWERS] at its last stage, in bloom. */
@@ -107,6 +107,8 @@ object CreaturePerches {
         StructureData.WELL.objectId to listOf(Triple(0.5f, 0.82f, WELL_RIM_HEIGHT), Triple(0.82f, 0.5f, WELL_RIM_HEIGHT)),
         // Along the ridge of the roof, away from the chimney.
         StructureData.COTTAGE.objectId to listOf(Triple(1.4f, 1.5f, COTTAGE_RIDGE_HEIGHT), Triple(2.0f, 1.5f, COTTAGE_RIDGE_HEIGHT)),
+        // Along the high back edge of the hut's one-sloped roof.
+        StructureData.HUT.objectId to listOf(Triple(0.75f, 0.85f, HUT_RIDGE_HEIGHT), Triple(0.75f, 1.3f, HUT_RIDGE_HEIGHT)),
         BENCH_OBJECT_ID to listOf(Triple(0.5f, 0.5f, BENCH_SEAT_HEIGHT)),
         WeatherOutlook.WEATHERVANE_OBJECT_ID to listOf(Triple(0.5f, 0.5f, WEATHERVANE_TIP_HEIGHT)),
     )
@@ -135,7 +137,7 @@ object CreaturePerches {
         BY_HAND[obj.objectId]?.let { points ->
             val kind = when (obj.objectId) {
                 StructureData.WELL.objectId -> PerchKind.WELL_RIM
-                StructureData.COTTAGE.objectId -> PerchKind.ROOF
+                StructureData.COTTAGE.objectId, StructureData.HUT.objectId -> PerchKind.ROOF
                 BENCH_OBJECT_ID -> PerchKind.BENCH
                 else -> PerchKind.WEATHERVANE
             }
@@ -219,6 +221,7 @@ object CreaturePerches {
     /** Heights set by hand, in tile widths (a height step is an eighth of one). */
     const val WELL_RIM_HEIGHT = 0.3f
     const val COTTAGE_RIDGE_HEIGHT = 1.83f
+    const val HUT_RIDGE_HEIGHT = 1.52f
     const val BENCH_SEAT_HEIGHT = 0.1f
     const val WEATHERVANE_TIP_HEIGHT = 0.6f
     private const val WILD_FLOWER_HEIGHT = 0.04f
