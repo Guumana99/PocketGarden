@@ -809,6 +809,7 @@ Play In-App Review（`StoreReviewManager`）。前置きの質問は出さない
 - うれしい瞬間（`GardenViewModel.happyMoment`）：建物の完成、生き物の新規登録、初めての作物の収穫。そこから 1 分間だけ有効。
 - 画面（`GardenScreen` の `gardenAlone`）：ほかの画面・ダイアログ・案内・選択中のパネルが無いときに、トーストの最長 5 秒＋2.5 秒待って呼ぶ。何か開くと待ち直し。作物が弱っている・枯れているときは呼ばない（`cropsInTrouble`）。
 - 呼んだら `reviewAskedAt` を記録する（Play が実際に出したかどうかは分からない）。
+- 開発者メニューの「レビューの流れを今すぐ呼ぶ」（`debugAskForReview`、デバッグビルドのみ）：条件を無視して `StoreReviewManager.ask` を呼び、`reviewAskedAt` は記録しない。Play から入れたアプリでないとシートは出ないので、流れを受け取れたかどうかだけトーストで出す。
 - ライブラリ `com.google.android.play:review` は権限を増やさない（`core-common` の非公開のアクティビティが 1 つ増えるだけ）。
 
 ## お問い合わせ（#79）

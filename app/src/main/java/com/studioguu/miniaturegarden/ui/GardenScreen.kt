@@ -817,6 +817,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onCreatureCall = viewModel::debugCallCreatures,
             bookAllRegistered = bookAllRegistered,
             onBookAllRegistered = BookPreview::set,
+            onAskForReview = { context.findActivity()?.let(viewModel::debugAskForReview) },
             onDismiss = { showDebugMenu = false },
         )
     }

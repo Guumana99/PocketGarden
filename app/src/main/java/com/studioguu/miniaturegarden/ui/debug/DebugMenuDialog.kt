@@ -57,6 +57,7 @@ private const val DAY_MILLIS = 24 * HOUR_MILLIS
  * @param zoomScale the garden's zoom as it is now, shown at the top.
  * @param creatureCall the creatures called to the garden, to look at how they move.
  * @param bookAllRegistered whether the book shows every page as registered ([BookPreview]).
+ * @param onAskForReview calls the store's review flow now, whatever the rules say.
  */
 @Composable
 fun DebugMenuDialog(
@@ -73,6 +74,7 @@ fun DebugMenuDialog(
     onCreatureCall: (CreatureCall) -> Unit = {},
     bookAllRegistered: Boolean = false,
     onBookAllRegistered: (Boolean) -> Unit = {},
+    onAskForReview: () -> Unit = {},
 ) {
     ParchmentDialog(
         onDismissRequest = onDismiss,
@@ -116,6 +118,10 @@ fun DebugMenuDialog(
                 CreatureCallSection(creatureCall, onCreatureCall)
                 SwitchRow(R.string.debug_book_all, bookAllRegistered, onBookAllRegistered, BOOK_ALL_SWITCH_TAG)
                 Text(stringResource(R.string.debug_book_all_hint), fontSize = 12.sp)
+                FilledTonalButton(onClick = onAskForReview) {
+                    Text(stringResource(R.string.debug_ask_review))
+                }
+                Text(stringResource(R.string.debug_ask_review_hint), fontSize = 12.sp)
             }
         }
     }

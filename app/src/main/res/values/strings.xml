@@ -420,6 +420,10 @@
     <string name="debug_zoom">マップ倍率 %1$s（標準 %2$s）</string>
     <string name="debug_book_all">図鑑をすべて登録</string>
     <string name="debug_book_all_hint">表示だけの切り替えです。保存された記録は変わりません</string>
+    <string name="debug_ask_review">レビューの流れを今すぐ呼ぶ</string>
+    <string name="debug_ask_review_hint">条件を無視して呼びます。呼んだ記録は残しません。Play ストアから入れたアプリでないと、シートは出ません</string>
+    <string name="debug_review_requested">レビューの流れを受け取りました（出すかどうかは Play が決めます）</string>
+    <string name="debug_review_failed">レビューの流れを受け取れませんでした</string>
     <string name="debug_call_title">生き物を呼ぶ</string>
     <string name="debug_call_hint">2 種まで選べます。ON の間は、条件を無視して来ます。必要な物が無ければ庭に置きます</string>
 

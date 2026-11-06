@@ -13,8 +13,17 @@ import javax.inject.Singleton
  */
 @Singleton
 class StoreReviewManager @Inject constructor(@param:ApplicationContext private val context: Context) {
-    fun ask(activity: Activity) {
+    /**
+     * @param onRequested told whether Play handed over a review flow (the debug menu shows it);
+     *   even when it did, Play may show nothing.
+     */
+    fun ask(activity: Activity, onRequested: (Boolean) -> Unit = {}) {
         val manager = ReviewManagerFactory.create(context)
-        manager.requestReviewFlow().addOnSuccessListener { info -> manager.launchReviewFlow(activity, info) }
+        manager.requestReviewFlow()
+            .addOnSuccessListener { info ->
+                onRequested(true)
+                manager.launchReviewFlow(activity, info)
+            }
+            .addOnFailureListener { onRequested(false) }
     }
 }

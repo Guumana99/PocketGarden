@@ -630,6 +630,18 @@ class GardenViewModel @Inject constructor(
     /** The debug menu's creatures, called to the garden whatever the table says. */
     val creatureCall: StateFlow<CreatureCall> = _creatureCall.asStateFlow()
 
+    /**
+     * Debug menu: asks for the store's review sheet now, past every rule and without noting it
+     * as asked. Play shows a sheet only to an app installed from it, so on a debug build the
+     * message says no more than whether a flow came back.
+     */
+    fun debugAskForReview(activity: Activity) {
+        if (!BuildConfig.DEBUG) return
+        storeReview.ask(activity) { got ->
+            _messages.trySend(if (got) R.string.debug_review_requested else R.string.debug_review_failed)
+        }
+    }
+
     /** Debug menu: calls these creatures, setting down what the garden lacks for them. */
     fun debugCallCreatures(call: CreatureCall) {
         if (!BuildConfig.DEBUG) return
