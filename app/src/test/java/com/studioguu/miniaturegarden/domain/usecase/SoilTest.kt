@@ -278,10 +278,10 @@ class SoilTest {
         assertEquals(CareForPlantUseCase.FERTILIZE_XP.toLong(), repo.profile?.currentXp)
 
         // Full: no more to take. And the bed can be fed with nothing on it.
-        assertEquals(ActionResult.ALREADY_FED, care.fertilize("p", t0, sunny))
+        assertEquals(ActionResult.ALREADY_FED, care.fertilize("p", t0 + Soil.feedingMillis(stored), sunny))
         assertEquals(70L, repo.profile?.coins)
         repo.objects.remove("p")
-        repo.put(stored.copy(nutritionLevel = 0.5f))
+        repo.put(stored.copy(nutritionLevel = 0.5f, fedAt = 0L))
         assertEquals(ActionResult.SUCCESS, care.fertilize("soil", t0, sunny))
         assertEquals(1f, stored.nutritionLevel, 0f)
     }
@@ -352,27 +352,93 @@ class SoilTest {
         repo.put(plant(PlantSpecies.CARROT, growth = 0.5f, food = 0f).copy(moistureLevel = 0.2f))
         assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
         val coins = repo.profile!!.coins
-        assertEquals(ActionResult.ALREADY_FED, care.fertilize("p", t0 + 4_000L, sunny))
+        assertEquals(ActionResult.FEEDING, care.fertilize("p", t0 + 4_000L, sunny))
         assertEquals(coins, repo.profile!!.coins)
+        assertEquals(t0, stored.fedAt)
         assertEquals(ActionResult.SUCCESS, care.water("p", t0 + 5_000L, sunny))
         assertEquals(t0, repo.objects.getValue("p").fedAt)
         assertEquals(0.03f, Soil.levelAt(repo.objects.getValue("p"), t0 + 5_000L), 1e-5f)
     }
 
     @Test
-    fun `a harvest while it fills counts the fertilizer as all in, as when it filled at once`() = runBlocking {
+    fun `a second feeding says the food is on its way while it fills, and that it is full once full`() = runBlocking {
+        repo.put(soil(food = 0.5f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("soil", t0, sunny))
+        val coins = repo.profile!!.coins
+        // Soaking in, and rising: on its way. Neither costs anything nor feeds again.
+        assertEquals(ActionResult.FEEDING, care.fertilize("soil", t0 + 1_000L, sunny))
+        assertEquals(ActionResult.FEEDING, care.fertilize("soil", t0 + 30_000L, sunny))
+        assertEquals(coins, repo.profile!!.coins)
+        assertEquals(t0, stored.fedAt)
+        assertEquals(ActionResult.ALREADY_FED, care.fertilize("soil", t0 + 52_000L, sunny))
+        assertEquals(coins, repo.profile!!.coins)
+    }
+
+    @Test
+    fun `a harvest while it fills takes its share of the food as it is, and the filling goes on to full`() = runBlocking {
         repo.put(soil(food = 0f))
         repo.put(plant(PlantSpecies.TOMATO, growth = 1f, food = 0f))
         assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
-        // Half-way through the filling, and a good harvest is on the cards: there is food.
-        assertEquals(ActionResult.SUCCESS, harvest("p", t0 + 4_000L, sunny, noLuck))
-        assertEquals(0L, stored.fedAt)
-        assertEquals(1f - 1f / Soil.SERVINGS, stored.nutritionLevel, 1e-5f)
-        assertEquals(stored.nutritionLevel, Soil.levelAt(stored, t0 + 4_000L), 0f)
-        // The tomato bears again, with the soil's food as it is now.
+        // 50 percent in (2 s soaking, then 50 s), and the harvest takes a third.
+        val at = t0 + 52_000L
+        assertEquals(ActionResult.SUCCESS, harvest("p", at, sunny, noLuck))
+        val left = 0.5f - 1f / Soil.SERVINGS
+        assertEquals(left, Soil.levelAt(stored, at), 1e-5f)
+        assertTrue(Soil.isFeeding(stored, at))
+        assertEquals(ActionResult.FEEDING, care.fertilize("soil", at + 1_000L, sunny))
+        // Still a percent a second, with no soaking in again: full (1 - left) * 100 seconds on.
+        assertEquals(left + 0.1f, Soil.levelAt(stored, at + 10_000L), 1e-5f)
+        val full = at + ((1f - left) * 100_000f).toLong() + 10L
+        assertEquals(1f, Soil.levelAt(stored, full), 0f)
+        assertFalse(Soil.isFeeding(stored, full))
+        // The tomato bears again, its food filling with the cell's.
         val again = repo.objects.getValue("p")
-        assertEquals(0L, again.fedAt)
-        assertEquals(stored.nutritionLevel, again.nutritionLevel, 0f)
+        assertEquals(stored.fedAt, again.fedAt)
+        assertEquals(Soil.levelAt(stored, at + 10_000L), Soil.levelAt(again, at + 10_000L), 0f)
+    }
+
+    @Test
+    fun `a harvest while it soaks in leaves it soaking, from nothing, and an empty cell bears no good harvest`() = runBlocking {
+        repo.put(soil(food = 0f, quality = 2))
+        repo.put(plant(PlantSpecies.CARROT, growth = 1f, food = 0f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
+        var good = false
+        assertEquals(ActionResult.SUCCESS, harvest("p", t0 + 1_000L, sunny, luck) { _, bounty -> good = bounty })
+        assertFalse(good)
+        assertEquals(t0, stored.fedAt)
+        assertEquals(0f, stored.fedFrom, 0f)
+        assertEquals(1f, Soil.levelAt(stored, t0 + Soil.feedingMillis(stored)), 0f)
+    }
+
+    @Test
+    fun `the next crop sown takes the food as it comes, ridging keeps it, and turning the cell back to the ground ends it`() = runBlocking {
+        repo.put(soil(food = 0f))
+        repo.put(plant(PlantSpecies.CARROT, growth = 1f, food = 0f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
+        assertEquals(ActionResult.SUCCESS, harvest("p", t0 + 20_000L, sunny, noLuck))
+        assertNull(repo.objects["p"])
+        // Sown again (replanting): the seedling fills with the cell.
+        repo.putSlot(InventorySlot(0, GardenItem.SEED_TOMATO.itemId, 1))
+        assertEquals(ActionResult.SUCCESS, place(0, 2, 2, t0 + 30_000L))
+        val seedling = repo.plants.single()
+        assertEquals(stored.fedAt, seedling.fedAt)
+        assertEquals(stored.fedFrom, seedling.fedFrom, 0f)
+        assertEquals(1f, Soil.levelAt(seedling, t0 + 200_000L), 0f)
+
+        // Ridges back to tilled earth and tilled again: the same cell, still filling.
+        repo.objects.remove(seedling.instanceId)
+        assertEquals(ActionResult.SUCCESS, remove("soil"))
+        assertTrue(stored.isLooseSoil)
+        assertTrue(Soil.isFeeding(stored, t0 + 40_000L))
+        assertEquals(ActionResult.SUCCESS, strike(2, 2, 1))
+        assertTrue(stored.isTilledSoil)
+        assertTrue(Soil.isFeeding(stored, t0 + 40_000L))
+        // Tilled earth back to the ground: the cell is gone, and its food with it.
+        remove("soil")
+        remove("soil")
+        assertFalse(repo.objects.containsKey("soil"))
+        assertEquals(ActionResult.SUCCESS, strike(2, 2, 1))
+        assertTrue(repo.objects.values.single().fedAt == 0L)
     }
 
     @Test

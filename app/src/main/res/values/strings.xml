@@ -245,6 +245,7 @@
     <string name="msg_withered">枯れてしまっています</string>
     <string name="msg_not_ready">まだ収穫できません</string>
     <string name="msg_already_fed">栄養は満タンです</string>
+    <string name="msg_feeding">栄養を補給中です</string>
     <string name="msg_edit_mode_tools">✏️ 編集モード中は、並べ替えと片づけだけができます</string>
     <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やりできます）</string>
     <string name="msg_tile_occupied">他の物があるため置けません</string>
