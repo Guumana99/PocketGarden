@@ -274,7 +274,7 @@ data class VisitorLook(
         const val TURN_NARROWEST = 0.6f
 
         /** How much of the turn, either side of its moment, the two pictures cross over in (of [CreaturePose.turn]). */
-        const val TURN_CROSSING = 0.3f
+        const val TURN_CROSSING = 0.2f
 
         /** How high the bird hops as it turns round, in tile widths (its hop between spots is 0.05). */
         const val TURN_HOP = 0.028f
