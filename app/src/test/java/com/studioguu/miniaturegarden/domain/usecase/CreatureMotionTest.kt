@@ -601,6 +601,50 @@ class CreatureMotionTest {
         assertNull(PlantTops.topOf(IntArray(w * h), w, h))
     }
 
+    // --- Turning round ---
+
+    @Test
+    fun `a visitor turns round smoothly, narrowing to the moment it faces the other way and widening after, never in quick succession`() {
+        val tulip = objects.first { it.objectId == "plant_tulip" }
+        var turns = 0
+        for (arrival in 0 until 8L) {
+            val start = 2_000_000L + arrival * 211_111L
+            for (v in listOf(
+                visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 4), arrivesAt = start),
+                visit(VisitRule.FROG_RAIN, GridCell(5, 6), arrivesAt = start),
+                visit(VisitRule.BIRD_WELL, GridCell(5, 6), arrivesAt = start),
+                visit(VisitRule.LADYBUG_CROPS, GridCell(8, 8), tulip, arrivesAt = start),
+            )) {
+                val poses = (v.arrivesAt until v.leavesAt step 10L).map { it to CreatureRoutes.plan(v, grid).poseAt(it)!! }
+                val switches = poses.zipWithNext().filter { (a, b) -> a.second.facing != b.second.facing }.map { it.second.first }
+                turns += switches.size
+                for ((a, b) in switches.zipWithNext()) assertTrue("${v.rule} turned again after ${b - a} ms", b - a >= CreatureRoutes.MIN_FACING_MILLIS - 20L)
+                for (at in switches) {
+                    // At the moment of turning it is a sliver, on either side of it.
+                    val (before, after) = poses.first { it.first == at - 10L }.second to poses.first { it.first == at }.second
+                    assertTrue("${v.rule} at ${at - v.arrivesAt}: ${before.action} ${before.elapsed}/${before.duration} ${before.turn} -> ${after.action} ${after.elapsed}/${after.duration} ${after.turn}", before.turn < 0.25f && after.turn < 0.25f)
+                }
+                // Well away from any turn it is its full width.
+                for ((t, pose) in poses) {
+                    if (switches.all { abs(it - t) > CreatureRoutes.FACE_TURN_MILLIS }) assertEquals(1f, pose.turn, 0f)
+                }
+            }
+        }
+        assertTrue("no visitor turned round at all", turns > 10)
+    }
+
+    @Test
+    fun `turning narrows the picture, but not the dragonfly's, which turns by its heading`() {
+        fun pose(turn: Float) = CreaturePose(5f, 5f, 0f, Facing.LEFT, CreatureAction.STAND, 0L, 1_000L, GridCell(5, 5), turn = turn)
+        for (creature in Creature.entries - Creature.DRAGONFLY) {
+            val whole = VisitorLook.of(creature, pose(1f), 0L).scaleX
+            val turning = VisitorLook.of(creature, pose(0f), 0L).scaleX
+            assertTrue("$creature", abs(turning) < abs(whole) * 0.1f)
+            assertEquals(whole, VisitorLook.of(creature, pose(1f), 0L).scaleX, 0f)
+        }
+        assertEquals(VisitorLook.of(Creature.DRAGONFLY, pose(1f), 0L).scaleX, VisitorLook.of(Creature.DRAGONFLY, pose(0f), 0L).scaleX, 0f)
+    }
+
     // --- The title's garden, whose visitors never leave ---
 
     @Test

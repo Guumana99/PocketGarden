@@ -89,7 +89,7 @@ data class VisitorLook(
                 Creature.LADYBUG -> ladybug(base, pose, now)
                 Creature.BUTTERFLY -> butterfly(base, pose, now)
                 Creature.DRAGONFLY -> dragonfly(base, pose, now)
-            }
+            }.turning(creature, pose.turn)
             return when (pose.action) {
                 CreatureAction.APPEAR -> look.popped(popIn(p))
                 CreatureAction.VANISH -> look.popped(popIn(1f - p))
@@ -233,6 +233,19 @@ data class VisitorLook(
             val cruise = creature.hoverHeight
             return (1f - (altitude - cruise) / (CreatureRoutes.SKY_ALTITUDE - cruise)).coerceIn(0f, 1f)
         }
+
+        /**
+         * Narrowed as it turns from facing one way to the other ([CreaturePose.turn]), eased so that
+         * it slows into the turn and out of it. Not the dragonfly, which is seen from above and turns
+         * by its heading instead.
+         */
+        private fun VisitorLook.turning(creature: Creature, turn: Float): VisitorLook {
+            if (creature == Creature.DRAGONFLY || turn >= 1f) return this
+            return copy(scaleX = scaleX * sin(turn * PI / 2).toFloat().coerceAtLeast(TURN_NARROWEST))
+        }
+
+        /** How narrow it gets at the very moment it turns: a sliver, not nothing. */
+        private const val TURN_NARROWEST = 0.05f
 
         private fun VisitorLook.popped(size: Float) = copy(scaleX = scaleX * size, scaleY = scaleY * size, shadow = shadow * size.coerceIn(0f, 1f))
 

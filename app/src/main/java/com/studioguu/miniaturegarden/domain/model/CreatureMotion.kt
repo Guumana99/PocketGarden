@@ -58,6 +58,9 @@ enum class CreatureAction {
  *   the ground. A flier's height is all in [altitude].
  * @property grounded on its feet on the ground: drawn in depth order by where it is in its cell
  *   ([CreatureRoutes.drawDepth]), so that it goes behind what grows there.
+ * @property turn how wide it is drawn as it turns from facing one way to the other: 1 as usual,
+ *   down to 0 at the moment it turns ([CreatureRoutes.FACE_TURN_MILLIS]), so that it is seen to
+ *   turn round rather than flip from one picture to the other.
  */
 data class CreaturePose(
     val x: Float,
@@ -74,6 +77,7 @@ data class CreaturePose(
     val stops: Boolean = false,
     val surface: Float = 0f,
     val grounded: Boolean = false,
+    val turn: Float = 1f,
 ) {
     /** How far through [action] it is, 0 to 1. */
     val progress: Float get() = if (duration <= 0L) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
@@ -110,6 +114,17 @@ class CreatureRoute internal constructor(
 ) {
     private val starts = LongArray(legs.size) { legs[it].start }
 
+    /** Every moment of [legs] it turns to face the other way, in order: across legs, however short. */
+    private val turns: LongArray = legs.flatMap { leg ->
+        buildList {
+            if (leg.turnIn) add(leg.start)
+            if (leg.lookFrom >= 0L) {
+                add(leg.start + leg.lookFrom)
+                add(leg.start + leg.lookUntil)
+            }
+        }
+    }.sorted().toLongArray()
+
     /** Where the visitor is at [now] and what it is doing; null while it is not in the garden. */
     fun poseAt(now: Long): CreaturePose? {
         if (!visit.isPresentAt(now)) return null
@@ -126,7 +141,13 @@ class CreatureRoute internal constructor(
             val leg = closing(middle(closeAt - opening.duration))
             return pose(leg, t - closeAt)
         }
-        return middle(t - opening.duration)
+        val pose = middle(t - opening.duration)
+        // Going away the other way: it turns round just before it goes.
+        val toClose = closeAt - t
+        if (closeAt >= opening.duration && toClose < CreatureRoutes.FACE_TURN_MILLIS / 2 && closing(middle(closeAt - opening.duration)).turnIn) {
+            return pose.copy(turn = minOf(pose.turn, toClose.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)))
+        }
+        return pose
     }
 
     private fun middle(t: Long): CreaturePose {
@@ -135,7 +156,18 @@ class CreatureRoute internal constructor(
         var index = starts.binarySearch(u)
         if (index < 0) index = -index - 2
         val leg = legs[index.coerceIn(0, legs.lastIndex)]
-        return pose(leg, u - leg.start)
+        val pose = pose(leg, u - leg.start)
+        return if (turns.isEmpty()) pose else pose.copy(turn = minOf(pose.turn, turnNear(u)))
+    }
+
+    /** How wide it is drawn at [u] for the nearest turn of [turns] ([CreaturePose.turn]). */
+    private fun turnNear(u: Long): Float {
+        var i = turns.binarySearch(u)
+        if (i < 0) i = -i - 1
+        var near = Long.MAX_VALUE
+        if (i < turns.size) near = minOf(near, turns[i] - u)
+        if (i > 0) near = minOf(near, u - turns[i - 1])
+        return (near.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)).coerceIn(0f, 1f)
     }
 
     private fun pose(leg: Leg, into: Long): CreaturePose {
@@ -165,7 +197,21 @@ class CreatureRoute internal constructor(
             stops = leg.stops,
             surface = surface,
             grounded = grounded && leg.action != CreatureAction.FLY,
+            turn = turnOf(leg, elapsed),
         )
+    }
+
+    /**
+     * How wide it is drawn [elapsed] millis into [leg]: narrowing over the half of
+     * [CreatureRoutes.FACE_TURN_MILLIS] before the moment it faces the other way, and widening again
+     * over the half after.
+     */
+    private fun turnOf(leg: Leg, elapsed: Long): Float {
+        var near = Long.MAX_VALUE
+        if (leg.turnIn) near = minOf(near, elapsed)
+        if (leg.turnOut) near = minOf(near, leg.duration - elapsed)
+        if (leg.lookFrom >= 0L) near = minOf(near, abs(elapsed - leg.lookFrom), abs(elapsed - leg.lookUntil))
+        return (near.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)).coerceIn(0f, 1f)
     }
 }
 
@@ -200,6 +246,12 @@ internal class Leg(
     /** The cell it is drawn in while on this leg: that of the flower it rests on. */
     val cell: GridCell? = null,
 ) {
+    /** It starts facing the other way from the leg before ([CreaturePose.turn]). */
+    var turnIn: Boolean = false
+
+    /** The leg after it starts facing the other way. */
+    var turnOut: Boolean = false
+
     val end: Long get() = start + duration
 
     fun headingAt(elapsed: Long): Float {
@@ -233,6 +285,15 @@ object CreatureRoutes {
 
     /** How long a flier takes to turn to a new heading. */
     const val TURN_MILLIS = 170L
+
+    /**
+     * How long turning from facing one way to the other takes: it narrows to nothing and widens
+     * again facing the other way, like turning round on the spot.
+     */
+    const val FACE_TURN_MILLIS = 200L
+
+    /** The least time between two turns from facing one way to the other: no flapping to and fro. */
+    const val MIN_FACING_MILLIS = 900L
 
     /** How high a butterfly sits on a flower, in tile widths. */
     const val PERCH_ALTITUDE = 0.2f
@@ -497,12 +558,14 @@ object CreatureRoutes {
         grounded: Boolean = false,
     ): CreatureRoute {
         val span = maxOf(plan.span, plan.t)
+        landing?.turnOut = plan.legs.firstOrNull()?.turnIn == true
         if (landing != null) {
             val cameFrom = atan2((landing.fromY - landing.toY).toDouble(), (landing.fromX - landing.toX).toDouble())
             val closing = flightOut(size, landing.duration, cameFrom, plan.random.nextDouble() * 1.2 - 0.6)
             return CreatureRoute(visit, landing, plan.legs, span, plan.cyclic, landing.duration, closing, depthCell, ponds, surface, grounded)
         }
         val opening = Leg(0L, POP_MILLIS, CreatureAction.APPEAR, homeX, homeY, 0f, facing = plan.firstFacing)
+        opening.turnOut = plan.legs.firstOrNull()?.turnIn == true
         return CreatureRoute(
             visit, opening, plan.legs, span, plan.cyclic, POP_MILLIS,
             closing = { from -> Leg(0L, POP_MILLIS, CreatureAction.VANISH, from.x, from.y, 0f, facing = from.facing) },
@@ -604,7 +667,7 @@ object CreatureRoutes {
         Leg(
             0L, millis, CreatureAction.FLY, from.x, from.y, from.altitude, endX, endY, SKY_ALTITUDE, facing = facingOf(endX - from.x, endY - from.y, from.facing),
             heading = headingOf(endX - from.x, endY - from.y, from.heading), turnedFrom = from.heading,
-        )
+        ).also { it.turnIn = it.facing != from.facing }
     }
 
     /**
@@ -802,6 +865,41 @@ private class Planner(
     val legs = ArrayList<Leg>()
     var t = 0L
 
+    /** Which way it was last seen facing, at the end of the last leg laid. */
+    private var shown: Facing = facing
+
+    /** When it last turned to face the other way. */
+    private var lastTurn = Long.MIN_VALUE / 2
+
+    /** Whether it may turn to face the other way at [at]: not too soon after the last time ([CreatureRoutes.MIN_FACING_MILLIS]). */
+    private fun mayTurn(at: Long): Boolean = at - lastTurn >= CreatureRoutes.MIN_FACING_MILLIS
+
+    /**
+     * The way it faces going by (dx, dy). If that is the other way and it turned too lately to
+     * turn again, it first stays put (or hovers) a moment until it may: it never goes backwards.
+     */
+    private fun facingFor(dx: Float, dy: Float): Facing {
+        val wanted = CreatureRoutes.facingOf(dx, dy, facing)
+        if (wanted != shown && !mayTurn(t)) {
+            val wait = lastTurn + CreatureRoutes.MIN_FACING_MILLIS - t
+            add(Leg(t, wait, if (alt > 0f) CreatureAction.HOVER else CreatureAction.STAND, x, y, alt, facing = shown, heading = heading))
+            t += wait
+        }
+        return wanted
+    }
+
+    /** Lays [leg], marking where it turns to face the other way. */
+    private fun add(leg: Leg) {
+        if (leg.facing != shown) {
+            leg.turnIn = true
+            legs.lastOrNull()?.turnOut = true
+            lastTurn = leg.start
+        }
+        if (leg.lookFrom >= 0L) lastTurn = leg.start + leg.lookUntil
+        shown = leg.facing
+        legs += leg
+    }
+
     fun between(range: LongRange): Long {
         val stop = if (range.last <= range.first) range.first else range.first + random.nextLong(range.last - range.first)
         return if (range.first > 0L && random.nextFloat() < Manner.LINGER_CHANCE) stop * Manner.LINGER else stop
@@ -811,18 +909,18 @@ private class Planner(
     fun pace(millis: Float): Long = (millis * (MIN_PACE + random.nextFloat() * (MAX_PACE - MIN_PACE))).toLong().coerceAtLeast(1L)
 
     fun stepTo(toX: Float, toY: Float, millis: Long) {
-        facing = CreatureRoutes.facingOf(toX - x, toY - y, facing)
-        legs += Leg(t, millis, CreatureAction.STEP, x, y, alt, toX, toY, alt, facing = facing, setsOff = true, stops = true)
+        facing = facingFor(toX - x, toY - y)
+        add(Leg(t, millis, CreatureAction.STEP, x, y, alt, toX, toY, alt, facing = facing, setsOff = true, stops = true))
         x = toX
         y = toY
         t += millis
     }
 
     fun flyTo(toX: Float, toY: Float, toAlt: Float, millis: Long) {
-        facing = CreatureRoutes.facingOf(toX - x, toY - y, facing)
+        facing = facingFor(toX - x, toY - y)
         val from = heading
         heading = CreatureRoutes.headingOf(toX - x, toY - y, heading)
-        legs += Leg(t, millis, CreatureAction.FLY, x, y, alt, toX, toY, toAlt, facing = facing, heading = heading, turnedFrom = from, darts = manner.darts)
+        add(Leg(t, millis, CreatureAction.FLY, x, y, alt, toX, toY, toAlt, facing = facing, heading = heading, turnedFrom = from, darts = manner.darts))
         x = toX
         y = toY
         alt = toAlt
@@ -833,11 +931,18 @@ private class Planner(
     fun standFor(millis: Long) {
         if (millis <= 0L) return
         val looks = millis >= 1200L && random.nextFloat() < manner.lookChance
-        val lookFrom = if (looks) millis * (25 + random.nextInt(20)) / 100 else -1L
-        val lookUntil = if (looks) lookFrom + millis * (25 + random.nextInt(20)) / 100 else -1L
-        legs += Leg(t, millis, CreatureAction.STAND, x, y, alt, facing = facing, lookFrom = lookFrom, lookUntil = lookUntil)
+        var lookFrom = if (looks) millis * (25 + random.nextInt(20)) / 100 else -1L
+        var lookUntil = if (looks) lookFrom + millis * (25 + random.nextInt(20)) / 100 else -1L
+        // A look the other way only when it is long enough, and not too soon after the last turn.
+        val turnedAt = if (facing != shown) t else lastTurn
+        val tooSoon = looks && (t + lookFrom - turnedAt < CreatureRoutes.MIN_FACING_MILLIS || lookUntil - lookFrom < CreatureRoutes.MIN_FACING_MILLIS || millis - lookUntil < CreatureRoutes.FACE_TURN_MILLIS)
+        if (tooSoon) {
+            lookFrom = -1L
+            lookUntil = -1L
+        }
+        add(Leg(t, millis, CreatureAction.STAND, x, y, alt, facing = facing, lookFrom = lookFrom, lookUntil = lookUntil))
         t += millis
-        if (random.nextFloat() < manner.turnChance) facing = facing.turned()
+        if (random.nextFloat() < manner.turnChance && mayTurn(t)) facing = facing.turned()
     }
 
     /** Stands until [end], in stops of the creature's usual length. */
@@ -847,7 +952,7 @@ private class Planner(
 
     fun hold(action: CreatureAction, millis: Long, cell: GridCell? = null) {
         if (millis <= 0L) return
-        legs += Leg(t, millis, action, x, y, alt, facing = facing, heading = heading, cell = cell)
+        add(Leg(t, millis, action, x, y, alt, facing = facing, heading = heading, cell = cell))
         t += millis
     }
 
