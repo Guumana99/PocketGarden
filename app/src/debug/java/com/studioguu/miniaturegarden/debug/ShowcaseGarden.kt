@@ -71,6 +71,7 @@ object ShowcaseGarden {
      * Everything in the garden, as last looked after at [now]. [bare] cells have nothing on them,
      * not even lawn (open ground for the hoe); [emptyBeds] are ridged soil with nothing sown, of
      * the grade given ([GridObject.soilQuality]). [roof] and [wall] paint the cottage (BuildingPaint ids).
+     * [thirsty] leaves every crop half watered, so that a rain helps them all and they all glint after it.
      * [tulipBed] turns the mint's row into tulips and opens them all, for the close picture of them.
      */
     fun objects(
@@ -80,6 +81,7 @@ object ShowcaseGarden {
         roof: String? = null,
         wall: String? = null,
         tulipBed: Boolean = false,
+        thirsty: Boolean = false,
     ): List<GridObject> {
         fun at(cell: GridCell, objectId: String, growth: Float = 0f, flipped: Boolean = false) = GridObject(
             instanceId = "showcase_${objectId}_${cell.x}_${cell.y}",
@@ -100,7 +102,7 @@ object ShowcaseGarden {
             val growth = if (tulipBed && species == PlantSpecies.TULIP) 1f else growthOf(index, cell)
             at(cell, species.objectId, growth = growth, flipped = (cell.x * 3 + cell.y) % 2 == 0).let {
                 if (species == PlantSpecies.TULIP && growth >= 1f) it.copy(bloomColour = TULIP_COLOURS[(cell.x + cell.y) % TULIP_COLOURS.size]) else it
-            }
+            }.let { if (thirsty) it.copy(moistureLevel = 0.5f) else it }
         }
         val beds = BEDS.filter { (cell, _) -> cell !in bare }
             .map { (cell, _) -> at(cell, GridObject.TILLED_SOIL_OBJECT_ID).copy(soilQuality = emptyBeds[cell] ?: 0) }

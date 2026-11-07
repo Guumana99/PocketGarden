@@ -232,9 +232,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var cameraMode by rememberSaveable { mutableStateOf(false) }
     // A level-up waits on its board until OK; it holds back while another board is up, so two
     // never stack.
-    val levelUpNow = levelUp?.takeIf { openingGift == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideUi }
+    val levelUpNow = levelUp?.takeIf { openingGift == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideBars }
     // The question about notifications comes first of what follows the closing board.
-    val inviteNow = notificationInviteDue && openingGift == null && !cameraMode && !hideUi && levelUpNow == null
+    val inviteNow = notificationInviteDue && openingGift == null && !cameraMode && !hideBars && levelUpNow == null
     var shots by remember { mutableStateOf(0) }
     val toast = remember { GardenToastState() }
     val context = LocalContext.current
@@ -862,7 +862,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // open, and a little after the toast and the show have finished. Anything that opens meanwhile
     // starts the wait over.
     val gardenAlone = !showShop && !showInventory && !showSettings && !showCollection && !showPost && !showWeather &&
-        !showDebugMenu && !confirmRain && !confirmRemove && !confirmTurnBack && !cameraMode && !hideUi && !editMode &&
+        !showDebugMenu && !confirmRain && !confirmRemove && !confirmTurnBack && !cameraMode && !hideBars && !editMode &&
         selectedObject == null && openingGift == null && levelUpNow == null && !inviteNow && gardenTip == null
     LaunchedEffect(reviewDue, gardenAlone) {
         if (reviewDue && gardenAlone) {

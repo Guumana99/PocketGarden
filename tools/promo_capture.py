@@ -68,10 +68,12 @@ class Look:
     butterfly: bool = False
     # Anything more for the receiver, as adb extras ("--ez", "hoe", "true", ...).
     more: tuple[str, ...] = ()
+    # Nothing on screen but the garden; off for the shots with the buttons down the right edge (side_only).
+    hide_ui: bool = True
 
     def extras(self) -> list[str]:
         out = ["--es", "season", self.season, "--es", "time", self.time, "--es", "weather", self.weather,
-               "--ez", "hide_ui", "true", "--es", "creatures", self.creatures]
+               "--ez", "hide_ui", "true" if self.hide_ui else "false", "--es", "creatures", self.creatures]
         if self.butterfly:
             out += ["--ez", "butterfly", "true"]
         return out + list(self.more)
@@ -143,12 +145,12 @@ class Device:
     def display(self, size: tuple[int, int] | None) -> None:
         self.shell("wm", "size", "reset" if size is None else f"{size[0]}x{size[1]}")
 
-    def find_text(self, text: str) -> tuple[int, int] | None:
-        """The middle of what shows [text] on screen, or None (also when the screen cannot be read)."""
+    def find_text(self, text: str, attribute: str = "text") -> tuple[int, int] | None:
+        """The middle of what shows [text] on screen (or has it as its [attribute]), or None (also when the screen cannot be read)."""
         self.adb("shell", "rm", "-f", "/sdcard/promo_ui.xml", check=False)
         self.adb("shell", "uiautomator", "dump", "/sdcard/promo_ui.xml", check=False)
         xml = self.adb("exec-out", "cat", "/sdcard/promo_ui.xml", capture=True, check=False).decode(errors="replace")
-        match = re.search(rf'text="{re.escape(text)}"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml)
+        match = re.search(rf'{attribute}="{re.escape(text)}"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml)
         if not match:
             return None
         x1, y1, x2, y2 = map(int, match.groups())
@@ -189,6 +191,10 @@ def open_showcase(device: Device, install: bool, load: tuple[str, ...] = ()) -> 
     else:
         raise RuntimeError("could not get past the title screen")
     time.sleep(6)
+    # Right after an install the garden sometimes ends up behind the launcher: bring it back.
+    if PACKAGE not in device.shell("dumpsys", "window", "displays").split("mCurrentFocus", 1)[-1][:300]:
+        device.shell("am", "start", "-n", f"{PACKAGE}/.MainActivity")
+        time.sleep(4)
 
 
 def set_look(device: Device, look: Look, view: View, settle: float = 4.0) -> None:
@@ -314,7 +320,36 @@ def till_row(device: Device, shot: Shot) -> None:
         time.sleep(0.3)
 
 
+def call_rain(device: Device, shot: Shot) -> None:
+    """The rain cloud tapped, the dialog answered: the shower, then the crops glint (no ad: skip_ad)."""
+    time.sleep(1.0)
+    # The screen cannot always be read at the first try (a fresh install).
+    cloud = None
+    for _ in range(3):
+        cloud = device.find_text(RAIN_BUTTON, attribute="content-desc")
+        if cloud is not None:
+            break
+        time.sleep(1.0)
+    if cloud is None:
+        raise RuntimeError("the rain cloud is not on screen")
+    device.shell("input", "tap", str(cloud[0]), str(cloud[1]))
+    time.sleep(1.5)
+    ok = device.find_text(RAIN_OK)
+    if ok is None:
+        raise RuntimeError("the rain's dialog did not open")
+    time.sleep(0.5)
+    device.shell("input", "tap", str(ok[0]), str(ok[1]))
+
+
+# strings.xml: reward_rain_button, reward_rain_confirm_ok.
+RAIN_BUTTON = "雨乞い"
+RAIN_OK = "☔ 雨を降らせる"
+# The right-hand buttons and nothing else of the controls; a rain may be called, and comes without an ad.
+RAIN_LOOK = Look(hide_ui=False, more=("--ez", "side_only", "true", "--ez", "skip_ad", "true", "--ez", "ad_ready", "true", "--es", "cloud", "READY"))
+
 TILL = ("--es", "garden", "till")
+# Every crop half watered: the rain helps them all, and they all glint after it.
+THIRSTY = ("--es", "garden", "thirsty")
 COTTAGE_VIEW = View(1.4, cell=(1, 1), lift=520)
 # Roof and wall: the picture's own, then three others (4 roofs x 4 walls = 16 in all).
 COTTAGE_COLOURS = [("red", "white"), ("blue", "cream"), ("green", "pale_blue"), ("dark_brown", "pale_pink")]
@@ -342,6 +377,9 @@ NOVEMBER = [
     # The first set's clips again, upright for TikTok and closer.
     Shot("X-005_butterfly_9x16.mp4", Look(), View(1.9, cell=(8, 8), lift=150), "T", clip=(24, 3.0, 15.0),
          action=lambda device, shot: set_look(device, Look(butterfly=True), shot.view, settle=0)),
+    # The rain cloud down the right edge tapped, the dialog, the shower and the crops' glint after it.
+    Shot("X-024_raincloud_16x9.mp4", RAIN_LOOK, View(0.40, cell=(5, 5), lift=-30), "W", THIRSTY, clip=(22, 4.0, 15.0), action=call_rain, fresh=True),
+    Shot("X-024_raincloud_9x16.mp4", RAIN_LOOK, View(0.50, cell=(5, 5), lift=-40), "T", THIRSTY, clip=(22, 4.0, 15.0), action=call_rain, fresh=True),
     Shot("X-007_rain_9x16.mp4", Look(weather="RAINY"), View(0.62, cell=(5, 4.5), lift=60), "T", clip=(10, 1.5, 7.0)),
 ]
 
@@ -351,7 +389,8 @@ def take_shot(device: Device, shot: Shot, out: Path, scratch: Path) -> Path:
     time.sleep(3)
     # The plain look first: hiding the controls lets the window turn to fill the display, which
     # starts the screen afresh and would put down a hoe handed over in the same breath.
-    set_look(device, Look(shot.look.time, shot.look.weather, shot.look.season, shot.look.creatures), shot.view, settle=7)
+    set_look(device, Look(shot.look.time, shot.look.weather, shot.look.season, shot.look.creatures, hide_ui=shot.look.hide_ui,
+                          more=("--ez", "side_only", "true") if not shot.look.hide_ui else ()), shot.view, settle=7)
     set_look(device, shot.look, shot.view, settle=shot.settle)
     target = out / shot.name
     width, height = display_of(shot.size)
