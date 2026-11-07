@@ -85,38 +85,41 @@ object Soil {
     /** How long fertilizer takes to fall onto the soil and soak in, before the food starts to rise. */
     const val SOAK_MILLIS = 2_000L
 
-    /** How long the food then takes to fill up. */
-    const val FILL_MILLIS = 10_000L
-
-    /** From the giving of fertilizer to the food being full. */
-    const val FEEDING_MILLIS = SOAK_MILLIS + FILL_MILLIS
+    /** How long the food takes to rise by one percent, once soaking in: from empty to full in 100 seconds. */
+    const val MILLIS_PER_PERCENT = 1_000L
 
     /**
-     * How far the food of [obj] (a cell of soil, or the crop in it) has filled at [now], 0 to 1:
-     * nothing while the fertilizer soaks in, then evenly over [FILL_MILLIS]. 1 when nothing is
-     * filling, and when the clock reads earlier than the feeding (it was put back): a clock put
-     * back never holds the food back.
+     * How long a clock may read before the feeding and still count as the same moment: the game's
+     * clock and the screen's can be a moment apart. Further back than that, the clock was put back.
      */
-    fun fillAt(obj: GridObject, now: Long): Float {
-        if (obj.fedAt == 0L) return 1f
-        val since = now - obj.fedAt
-        if (since < 0L || since >= FEEDING_MILLIS) return 1f
-        return ((since - SOAK_MILLIS).toFloat() / FILL_MILLIS).coerceIn(0f, 1f)
-    }
+    private const val CLOCK_SLACK_MILLIS = 60_000L
+
+    /** How long the food of [obj] takes to fill, after soaking in: one second a percent still to come. */
+    fun fillMillis(obj: GridObject): Long =
+        ((obj.nutritionLevel - obj.fedFrom).coerceAtLeast(0f) * 100f * MILLIS_PER_PERCENT).toLong()
+
+    /** From the giving of fertilizer to [obj]'s food being full. */
+    fun feedingMillis(obj: GridObject): Long = SOAK_MILLIS + fillMillis(obj)
 
     /**
      * The food of [obj] at [now]: [GridObject.nutritionLevel], or on its way there from
-     * [GridObject.fedFrom] while fertilizer soaks in ([fillAt]). Everything that reads the food
-     * (a crop's status, the panel's bar) reads it here; the time is all that is stored, so the
-     * filling goes on while the app is closed and comes out the same however it is looked at.
+     * [GridObject.fedFrom] while fertilizer soaks in: nothing more for [SOAK_MILLIS], then one
+     * percent a second ([MILLIS_PER_PERCENT]) up to it. Everything that reads the food (a crop's
+     * status, the panel's bar) reads it here; the time is all that is stored, so the filling goes
+     * on while the app is closed and comes out the same however it is looked at, midnight or not.
+     * A clock that reads well before the feeding was put back: that never holds the food back.
      */
     fun levelAt(obj: GridObject, now: Long): Float {
         if (obj.fedAt == 0L) return obj.nutritionLevel
-        return obj.fedFrom + (obj.nutritionLevel - obj.fedFrom) * fillAt(obj, now)
+        val since = now - obj.fedAt
+        if (since < -CLOCK_SLACK_MILLIS) return obj.nutritionLevel
+        val risen = (since - SOAK_MILLIS).coerceAtLeast(0L).toFloat() / MILLIS_PER_PERCENT / 100f
+        return (obj.fedFrom + risen).coerceAtMost(obj.nutritionLevel)
     }
 
-    /** Whether fertilizer given to [obj] is still falling, soaking in or filling at [now]. */
-    fun isFeeding(obj: GridObject, now: Long): Boolean = obj.fedAt != 0L && now - obj.fedAt in 0L until FEEDING_MILLIS
+    /** Whether fertilizer given to [obj] is still falling, soaking in or filling at [now] (or about to). */
+    fun isFeeding(obj: GridObject, now: Long): Boolean =
+        obj.fedAt != 0L && now - obj.fedAt in -CLOCK_SLACK_MILLIS until feedingMillis(obj)
 
     /** [obj] fed at [now], from the food it has then up to full. */
     fun fed(obj: GridObject, now: Long): GridObject = obj.copy(nutritionLevel = 1f, fedAt = now, fedFrom = levelAt(obj, now))

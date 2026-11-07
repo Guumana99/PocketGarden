@@ -125,7 +125,7 @@ class GardenActionUseCasesTest {
         // #59: no boost any more; growth is where it was.
         assertEquals(0.5f, stored("p1").growthProgress, 1e-4f)
         // The food soaks in over a few seconds, and then it is well again.
-        assertEquals(PlantStatus.HEALTHY, calc(stored("p1"), t0 + Soil.FEEDING_MILLIS, sunny).status)
+        assertEquals(PlantStatus.HEALTHY, calc(stored("p1"), t0 + Soil.feedingMillis(stored("p1")), sunny).status)
         assertEquals(0.99f, stored("p2").growthProgress, 1e-4f)
     }
 

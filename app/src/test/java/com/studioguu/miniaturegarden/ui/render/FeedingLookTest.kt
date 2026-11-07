@@ -11,22 +11,28 @@ import org.junit.Test
 /** How fertilizer shows on its cell over time ([FeedingLook]). */
 class FeedingLookTest {
 
+    /** From empty: soaking in, then a hundred seconds of filling. */
+    private val feeding = Soil.SOAK_MILLIS + 100_000L
+
     @Test
-    fun `granules fall while it soaks in, then the soil glows and bubbles while the food fills, then a sparkle`() {
-        val soaking = FeedingLook.at(1_000L)!!
+    fun `granules fall while it soaks in, then the soil glows and bubbles until the food is full, then a sparkle`() {
+        val soaking = FeedingLook.at(1_000L, feeding)!!
         assertTrue(soaking.granules)
         assertFalse(soaking.bubbles)
         assertEquals(0f, soaking.glow, 0f)
         assertNull(soaking.sparkle)
 
-        val filling = FeedingLook.at(Soil.SOAK_MILLIS + 5_000L)!!
-        assertFalse(filling.granules)
-        assertTrue(filling.bubbles)
-        assertEquals(1f, filling.glow, 0f)
-        assertEquals(1f, filling.gauge, 0f)
-        assertNull(filling.sparkle)
+        // However long the filling takes, it shows all the way.
+        for (since in listOf(Soil.SOAK_MILLIS + 5_000L, 60_000L, feeding - 1L)) {
+            val filling = FeedingLook.at(since, feeding)!!
+            assertFalse(filling.granules)
+            assertTrue(filling.bubbles)
+            assertEquals(1f, filling.glow, 0f)
+            assertEquals(1f, filling.gauge, 0f)
+            assertNull(filling.sparkle)
+        }
 
-        val full = FeedingLook.at(Soil.FEEDING_MILLIS + 100L)!!
+        val full = FeedingLook.at(feeding + 100L, feeding)!!
         assertFalse(full.bubbles)
         assertNotNull(full.sparkle)
         assertTrue(full.gauge < 1f)
@@ -34,8 +40,8 @@ class FeedingLookTest {
 
     @Test
     fun `nothing shows before the fertilizer is given, nor once the sparkle is over`() {
-        assertNull(FeedingLook.at(-1L))
-        assertNull(FeedingLook.at(FeedingLook.SHOW_MILLIS))
-        assertNull(FeedingLook.at(Soil.FEEDING_MILLIS + 60_000L))
+        assertNull(FeedingLook.at(-1L, feeding))
+        assertNull(FeedingLook.at(feeding + FeedingLook.SPARKLE_MILLIS, feeding))
+        assertNull(FeedingLook.at(feeding + 60_000L, feeding))
     }
 }
