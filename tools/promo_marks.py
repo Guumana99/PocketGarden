@@ -70,7 +70,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--only", nargs="*")
     args = parser.parse_args()
-    wanted = set(args.only) if args.only else None
+    return main_for(args.only)
+
+
+def main_for(only: list[str] | None) -> int:
+    """Marks the pictures named in [only] (all of them for None)."""
+    wanted = set(only) if only else None
     for name, rings in RINGS.items():
         if wanted is None or name in wanted:
             ring(Image.open(RAW / name), rings).save(DIR / name, optimize=True)

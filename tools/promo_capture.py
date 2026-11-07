@@ -294,6 +294,9 @@ class Shot:
     settle: float = 5.0
     # A clip made of a short take of each of these looks, one after another, cross-faded.
     segments: tuple[Look, ...] = ()
+    # Cells to write a name under afterwards (tools/promo_marks.py): the plain picture goes to raw/,
+    # with the points under these cells beside it.
+    label_cells: tuple[tuple[float, float], ...] = ()
 
 
 def display_of(size: str) -> tuple[int, int]:
@@ -371,8 +374,10 @@ NOVEMBER = [
     # The same garden from morning to night, about 3 s each, faded one into the next (some 10 s).
     Shot("X-017_timeofday_16x9.mp4", Look(), WHOLE_WIDE, "W", segments=DAY_ROUND, settle=4),
     Shot("X-017_timeofday_9x16.mp4", Look(), View(0.62, cell=(5, 4.5), lift=60), "T", segments=DAY_ROUND, settle=4),
-    # Plain, good and fluffy soil, side by side, nothing sown (ShowcaseGarden.OPEN_ROW, left to right).
-    Shot("X-019_soil_16x9.png", Look(), View(3.0, cell=(8, 5), lift=60), "W", ("--es", "garden", "soil")),
+    # Plain, good and fluffy soil, a cell each side by side across the screen, nothing sown
+    # (ShowcaseGarden.soilRow), with their names written under them afterwards (promo_marks.py).
+    Shot("X-019_soil_16x9.png", Look(), View(2.0, cell=(5, 5), lift=-60), "W", ("--es", "garden", "soilrow"),
+         label_cells=((4, 6), (5, 5), (6, 4))),
     # The cottage in four of its colours (BuildingPaint: roof, wall), from the same place.
     *[
         Shot(f"X-021_cottage_{i}_16x9.png", Look(), COTTAGE_VIEW, "W", ("--es", "roof", roof, "--es", "wall", wall))
@@ -454,7 +459,22 @@ def take_shot(device: Device, shot: Shot, out: Path, scratch: Path) -> Path:
         raw = scratch / "shot_raw.png"
         device.screencap(raw)
         out_size = WIDE_OUT if shot.size == "W" else TALL_SIZE
-        Image.open(raw).convert("RGB").resize(out_size, Image.LANCZOS).save(target, optimize=True)
+        if shot.label_cells:
+            import promo_marks
+
+            plain = out / "raw" / shot.name
+            plain.parent.mkdir(exist_ok=True)
+            Image.open(raw).convert("RGB").resize(out_size, Image.LANCZOS).save(plain, optimize=True)
+            # A little below the front corner of each cell, in the picture's own pixels.
+            factor = out_size[0] / width
+            points = []
+            for cell in shot.label_cells:
+                x, y = cell_point(shot, cell)
+                points.append((round(x * factor), round((y + TILE_H * shot.view.scale * 0.62) * factor)))
+            plain.with_suffix(".points.txt").write_text("".join(f"{x},{y}\n" for x, y in points))
+            promo_marks.main_for([shot.name])
+        else:
+            Image.open(raw).convert("RGB").resize(out_size, Image.LANCZOS).save(target, optimize=True)
         print("took", target.name)
         return target
     seconds, start, length = shot.clip
