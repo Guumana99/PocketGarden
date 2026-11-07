@@ -316,11 +316,11 @@ object CreatureRoutes {
 
     /**
      * How long turning from facing one way to the other takes: it narrows (to six tenths of its
-     * width, never to nothing) and widens again facing the other way, the two pictures crossing
-     * at the narrowest, like turning round on the spot (#fb-1107: 0.2 s before, with a flat sliver
-     * in the middle).
+     * width, never to nothing) and widens again facing the other way, the bird and the squirrel
+     * facing the viewer for a moment in between, like turning round on the spot (0.2 s before
+     * 11/7, with a flat sliver in the middle).
      */
-    const val FACE_TURN_MILLIS = 280L
+    const val FACE_TURN_MILLIS = 300L
 
     /** The least time between two turns from facing one way to the other: no flapping to and fro. */
     const val MIN_FACING_MILLIS = 900L

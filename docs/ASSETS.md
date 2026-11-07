@@ -175,6 +175,7 @@
 - **接地点（anchor）**：地上の生き物は足元（てんとうむしは体の中ほどの下）。走るりすは体の下の中央、飛ぶことりは胴の中心、ちょうちょ・とんぼは胸（羽の付け根の高さの体の中心）。
   飛ぶことりは胴の中心が接地点なので、コードは立つことりの胴の高さ（`BIRD_BODY_HEIGHT` 0.08 マス）だけ持ち上げて描き、降り立つときに体の位置が跳ねないようにしている。
 - **ポーズの絵**（2026-11-02）：ことりの `creature_bird_peck`（つつく間）、りすの `creature_squirrel_run2`（跳ねの地面側）、かえるの `creature_frog_jump`（跳ぶ間）。薄めず一度に切り替える（`VisitorLook.pose`）。大きさは目と頭で合わせた（`SAME_SCALE`）。かえるの跳ぶ絵は水の切り抜きを受けない。
+- **正面の絵**（2026-11-07）：ことりの `creature_bird_front` とりすの `creature_squirrel_front`。振り向きの途中に一瞬だけ出す。大きさは横向きの絵と頭から足までの高さをそろえ（`FRONT_OF`）、接地点は両足の間。
 - **2 枚の絵**：りすは座る `creature_squirrel` と走る `creature_squirrel_run`（移動中）、ことりは立つ `creature_bird` と飛ぶ `creature_bird_fly_*`（庭の外から飛んで来て降りるまでと、飛び去るとき）。
   切り替えは一瞬で替えず、りすは 0.14 秒、ことりは地面から 0.025 マスの高さで重ねて入れ替える（約 0.25 秒）。
   走る姿・飛ぶ姿は、頭の大きさがそろうよう、座る姿・立つ姿と同じ倍率に合わせた（原画の頭の長さ：りす 190 と 123、ことり 228 と 135）。
@@ -197,7 +198,7 @@
 | `crop_cosmos_stage1.png` | コスモス段階 1（#87 で差し替え）。淡いので `deepened` で段階 2 の葉の色に寄せ、半透明の筋を濃くする |
 | `item_fence_wood.png` | **#85 から未使用（保管）**。正面向きのパーツ集。#84 まで柵・支柱・横木を切り出していた |
 | `struct_fence_wood.png` `struct_fence_white.png` `struct_fence_bamboo.png` `struct_edging_brick.png` | 柵 3 種と縁石（#85、Recraft、白背景 1024×1024）。1 区画を正面から見た絵。`tools/prepare_fence_art.py` で切り出す |
-| `creature_{squirrel,squirrel_run,squirrel_run2,bird,bird_fly,bird_peck,frog,frog_jump,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures_0.png` に |
+| `creature_{squirrel,squirrel_run,squirrel_run2,squirrel_front,bird,bird_fly,bird_peck,bird_front,frog,frog_jump,ladybug,butterfly,dragonfly}.png` | 生き物 6 種（#71、Recraft、白背景 1024×1024）。`tools/prepare_creature_art.py` で切り抜いて `creatures_0.png` に |
 | `tile_path_cobblestone.png` | **#74 から未使用（保管）**。イラスト調の石畳（#40）。#73 まで `build_terrain_assets.py`（#85 で削除）が 4 分の 1 を切り出して石畳の床にしていた。#74 で `tile_cobblestone_iso.png` から作った `floor_cobblestone.png` に差し替え |
 | `building_cottage.png` | コテージ（#40）。透過はきれいだった。切り抜いて 3 マス分の幅で描く（描画倍率 約 2.5）。土台が 2:1 より平たい。#41 では土台の左右の角を 3×3 の左右の角にそろえていた（anchorY 0.7975）が、前の列が空いて奥に寄って見えたので、#55 から他の建物と同じく左右の角と前の角のずれを半分ずつにする（`ground_centre_y`、anchorY 0.7481、約 0.2 マス手前へ） |
 | `building_greenhouse.png` | 温室（#40）。**#90 からゲームでは未使用（保管）**。アトラスの `floor_greenhouse` はこれから作る |

@@ -127,6 +127,13 @@ object TileSetDefinition {
     /** The bird with its beak at the ground, `creature_bird_peck`, anchored on its feet. */
     const val BIRD_PECKING = "creature_bird_peck"
 
+    /**
+     * The bird and the squirrel facing the viewer, `creature_bird_front` and `creature_squirrel_front`,
+     * anchored between their feet and as tall as the side views: shown for a moment as they turn round.
+     */
+    const val BIRD_FRONT = "creature_bird_front"
+    const val SQUIRREL_FRONT = "creature_squirrel_front"
+
     /** The frog in mid-leap, `creature_frog_jump`, anchored so that its head lies where the sitting frog's does. */
     const val FROG_LEAPING = "creature_frog_jump"
 
@@ -155,7 +162,7 @@ object TileSetDefinition {
     /** Every sprite id the creatures' atlas has: each visitor's picture, its other poses, and the fliers in parts. */
     val expectedCreatureSpriteIds: List<String> =
         Creature.entries.flatMap { listOf(assetIdFor(it)) + listOfNotNull(wingedBodyId(it)) + wingIds(it) } +
-            listOf(SQUIRREL_RUNNING, SQUIRREL_GATHERED, BIRD_PECKING, FROG_LEAPING)
+            listOf(SQUIRREL_RUNNING, SQUIRREL_GATHERED, BIRD_PECKING, FROG_LEAPING, BIRD_FRONT, SQUIRREL_FRONT)
 
     /**
      * Things drawn from a picture of their own in `res/drawable` (through [TerrainTextures]),
