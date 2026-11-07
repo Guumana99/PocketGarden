@@ -129,17 +129,26 @@ object Soil {
         obj.copy(nutritionLevel = soil?.nutritionLevel ?: 1f, fedAt = soil?.fedAt ?: 0L, fedFrom = soil?.fedFrom ?: 0f)
 
     /**
-     * How [soil] stands after a harvest of [cropId], with food in it or not. Fertilizer still
-     * soaking in counts as all in: the harvest takes its share from the soil as it is when full,
-     * as it did when fertilizer filled it at once.
+     * Whether a second feeding of [soil] at [now] would find it still filling ("補給中"): its
+     * fertilizer is soaking in or its food is on its way up, not yet full.
+     */
+    fun isFilling(soil: GridObject, now: Long): Boolean = isFeeding(soil, now) && levelAt(soil, now) < soil.nutritionLevel
+
+    /**
+     * How [soil] stands after a harvest of [cropId], with food in it or not. The harvest takes its
+     * share from the food as it is at [now] ([levelAt]); fertilizer still filling the cell goes on
+     * filling it, from what is left, at the same pace and up to full (#fb-1107): the food belongs
+     * to the cell, not to the crop, and the next crop sown there takes it as it comes.
      *
      * @param later it is not this plant's first harvest: it counts [LATER_HARVEST_SHARE] of one.
      */
     fun afterHarvest(soil: GridObject, cropId: String, now: Long, later: Boolean = false): GridObject {
         val grade = SoilGrade.of(soil.soilQuality)
         val share = if (later) LATER_HARVEST_SHARE else 1f
-        val left = soil.nutritionLevel - grade.nutritionPerHarvest * share / SERVINGS
-        val fed = !isEmpty(soil.nutritionLevel)
+        val level = levelAt(soil, now)
+        val left = (level - grade.nutritionPerHarvest * share / SERVINGS).let { if (isEmpty(it)) 0f else it }
+        val filling = isFilling(soil, now)
+        val fed = !isEmpty(level)
         var quality = soil.soilQuality
         var points = soil.soilProgress
         if (fed && quality < SoilGrade.entries.lastIndex) {
@@ -151,20 +160,26 @@ object Soil {
             }
         }
         return soil.copy(
-            nutritionLevel = if (isEmpty(left)) 0f else left,
+            nutritionLevel = if (filling) soil.nutritionLevel else left,
             soilQuality = quality,
             soilProgress = points,
             lastCropId = cropId,
             idleMillis = 0L,
             lastUpdatedTimestamp = now,
-            fedAt = 0L,
-            fedFrom = 0f,
+            // Still soaking in: it soaks in as it was. Rising: it rises on from now, from what is left.
+            fedAt = if (!filling) 0L else if (now - soil.fedAt < SOAK_MILLIS) soil.fedAt else now - SOAK_MILLIS,
+            fedFrom = if (filling) left else 0f,
         )
     }
 
-    /** [soil] with a crop dug into it: a serving more, up to full. */
-    fun withCompost(soil: GridObject): GridObject =
-        soil.copy(nutritionLevel = (soil.nutritionLevel + 1f / SERVINGS).coerceAtMost(1f))
+    /** [soil] with a crop dug into it: a serving more, up to full, now (and on the way up, if it is filling). */
+    fun withCompost(soil: GridObject): GridObject {
+        val serving = 1f / SERVINGS
+        return soil.copy(
+            nutritionLevel = (soil.nutritionLevel + serving).coerceAtMost(1f),
+            fedFrom = if (soil.fedAt != 0L) (soil.fedFrom + serving).coerceAtMost(1f) else soil.fedFrom,
+        )
+    }
 
     /**
      * [soil] brought up to [now]. While something grows in it ([planted]) nothing changes. Left

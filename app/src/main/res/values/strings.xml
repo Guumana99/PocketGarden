@@ -6,6 +6,11 @@
     <string name="status_level">Lv.%1$d</string>
     <string name="status_level_max">Lv.%1$d　MAX</string>
     <string name="weather_title">お天気</string>
+    <string name="level_info_xp">経験値 %1$d / %2$d（%3$d％）</string>
+    <string name="level_info_next_one">次の Lv で %1$s が手に入ります</string>
+    <string name="level_info_next_two">次の Lv で %1$s と %2$s が手に入ります</string>
+    <string name="level_info_next_many">次の Lv で %1$s や %2$s など</string>
+    <string name="level_info_max">最大レベル</string>
     <string name="weather_today">今日</string>
     <string name="weather_tomorrow">明日</string>
     <string name="weather_sunny">晴れ</string>
@@ -245,6 +250,7 @@
     <string name="msg_withered">枯れてしまっています</string>
     <string name="msg_not_ready">まだ収穫できません</string>
     <string name="msg_already_fed">栄養は満タンです</string>
+    <string name="msg_feeding">栄養を補給中です</string>
     <string name="msg_edit_mode_tools">✏️ 編集モード中は、並べ替えと片づけだけができます</string>
     <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やりできます）</string>
     <string name="msg_tile_occupied">他の物があるため置けません</string>
@@ -418,6 +424,7 @@
     <string name="debug_skip_hour">+1 時間</string>
     <string name="debug_skip_day">+1 日</string>
     <string name="debug_cycle_weather">天気を切り替え</string>
+    <string name="debug_snow_lying">雪を降らせて積もらせる</string>
     <string name="debug_boost">+500 コイン・Lv+1</string>
     <string name="debug_next_season">次の季節へ</string>
     <string name="debug_cycle_time">時間帯を切り替える（%1$s）</string>

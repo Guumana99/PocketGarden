@@ -221,6 +221,8 @@ class FollowTutorialUseCase @Inject constructor(
         TutorialGuide.tutorialPlant(objects)?.let { plant ->
             val fed = plant.status == PlantStatus.UNNOURISHED && !Soil.isEmpty(plant.nutritionLevel)
             gardenRepository.upsertGridObject(plant.copy(growthProgress = growth, fedAt = 0L, status = if (fed) PlantStatus.HEALTHY else plant.status))
+            // Its soil too: the harvest that follows finds the food all in.
+            Soil.under(plant, objects)?.takeIf { it.fedAt != 0L }?.let { gardenRepository.upsertGridObject(it.copy(fedAt = 0L, fedFrom = 0f)) }
         }
         if (growth >= 1f) moveOn(TutorialStep.GROW, TutorialStep.HARVEST)
     }

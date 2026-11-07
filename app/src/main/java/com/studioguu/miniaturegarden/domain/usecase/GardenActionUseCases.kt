@@ -84,6 +84,9 @@ enum class ActionResult {
     /** Fertilizer was given to a cell whose food is full. */
     ALREADY_FED,
 
+    /** Fertilizer was given to a cell whose food is still filling from the last ([Soil.isFilling]). */
+    FEEDING,
+
     /** The thing is being built or taken apart; it has to be finished first. */
     BUSY,
 
@@ -171,7 +174,8 @@ class CareForPlantUseCase @Inject constructor(
      *
      * The food does not come at once: the fertilizer soaks in, then the food fills up over a few
      * seconds ([Soil.levelAt]). Only the time is stored; full is where it is going, so a second
-     * feeding while it fills is refused like one on a full cell.
+     * feeding while it fills is refused, with [ActionResult.FEEDING] ("補給中") rather than the full
+     * cell's [ActionResult.ALREADY_FED], and like it costs nothing.
      */
     suspend fun fertilize(instanceId: String, now: Long, weather: WeatherForecast): ActionResult =
         gardenRepository.runInTransaction {
@@ -183,6 +187,7 @@ class CareForPlantUseCase @Inject constructor(
                 target.isPlant && PlantSpecies.forObjectId(target.objectId).ground.usesSoil -> Soil.under(target, garden)
                 else -> null
             } ?: return@runInTransaction ActionResult.NO_SOIL
+            if (Soil.isFilling(soil, now)) return@runInTransaction ActionResult.FEEDING
             if (soil.nutritionLevel >= 1f) return@runInTransaction ActionResult.ALREADY_FED
             val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
             // The first steps' fertilizer is on the house.
@@ -504,7 +509,7 @@ class HarvestPlantUseCase @Inject constructor(
             val species = PlantSpecies.forObjectId(current.objectId)
             val soil = Soil.under(current, garden)?.takeIf { species.ground.usesSoil }
             val plain = species.harvestReward(current.harvestCount)
-            val fed = soil != null && !Soil.isEmpty(soil.nutritionLevel)
+            val fed = soil != null && !Soil.isEmpty(Soil.levelAt(soil, now))
             val bounty = fed && random.nextFloat() < SoilGrade.of(soil!!.soilQuality).bountyChance
             val reward = if (bounty) Soil.bounty(plain) else plain
 
@@ -514,12 +519,14 @@ class HarvestPlantUseCase @Inject constructor(
             val left = if (ended) null else afterHarvest(current, species, now)
             if (tended != null) gardenRepository.upsertGridObject(if (ended) Soil.withCompost(tended) else tended)
             left?.let { plant ->
-                val food = tended?.nutritionLevel ?: plant.nutritionLevel
+                val fedPlant = plant.copy(
+                    nutritionLevel = tended?.nutritionLevel ?: plant.nutritionLevel,
+                    fedAt = tended?.fedAt ?: plant.fedAt,
+                    fedFrom = tended?.fedFrom ?: plant.fedFrom,
+                )
+                val food = Soil.levelAt(fedPlant, now)
                 gardenRepository.upsertGridObject(
-                    plant.copy(
-                        nutritionLevel = food,
-                        fedAt = tended?.fedAt ?: plant.fedAt,
-                        fedFrom = tended?.fedFrom ?: plant.fedFrom,
+                    fedPlant.copy(
                         status = CalculateOfflineProgressUseCase.statusOf(plant.moistureLevel.toDouble(), food.toDouble(), plant.stressRate.toDouble()),
                     ),
                 )

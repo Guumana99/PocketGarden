@@ -109,6 +109,8 @@ import com.studioguu.miniaturegarden.ui.effects.RainOverlay
 import com.studioguu.miniaturegarden.ui.effects.SnowOverlay
 import com.studioguu.miniaturegarden.ui.effects.RainStyle
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
+import com.studioguu.miniaturegarden.ui.hud.LevelDialog
+import com.studioguu.miniaturegarden.ui.hud.LevelInfo
 import com.studioguu.miniaturegarden.ui.hud.LevelUpDialog
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
 import com.studioguu.miniaturegarden.ui.hud.PaintDialog
@@ -220,6 +222,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var debugZoom by remember { mutableFloatStateOf(0f) }
     var showPost by rememberSaveable { mutableStateOf(false) }
     var showWeather by rememberSaveable { mutableStateOf(false) }
+    var showLevel by rememberSaveable { mutableStateOf(false) }
     var confirmTurnBack by rememberSaveable { mutableStateOf(false) }
     val pulledIds by viewModel.pulled.collectAsStateWithLifecycle()
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -323,6 +326,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             // for a moment before the saved one; until then there is only the sky.
             val gardenAlpha by animateFloatAsState(if (gardenReady) 1f else 0f, tween(GARDEN_FADE_IN_MILLIS), label = "gardenIn")
             val perchesShown by PerchPreview.shown.collectAsStateWithLifecycle()
+            val edgeSnow by viewModel.edgeSnow.collectAsStateWithLifecycle()
             if (gardenReady) GardenCanvas(
                 gridObjects = gridObjects,
                 // In camera mode the garden is only looked at: no selection, no grid, and taps
@@ -358,6 +362,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 lightByTimeOfDay = true,
                 clockOffset = clockOffset,
                 pulledIds = pulledIds,
+                edgeSnow = edgeSnow,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
                 // the hoe), or when the selected cell is behind one of them.
                 fadedObjectIds = remember(gridObjects, selectedTile, placingSlot, hoeActive, movingObject, cameraMode) {
@@ -419,7 +424,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 season = season,
                 phase = seasonPhase,
                 modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp).alpha(if (sideOnly) 0f else 1f),
-                onWeatherTap = { showWeather = true },
+                // Never both at once: one bubble closes as the other opens.
+                onWeatherTap = { showLevel = false; showWeather = true },
+                onLevelTap = { showWeather = false; showLevel = true },
             ) }
 
             Column(
@@ -833,6 +840,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         DebugMenuDialog(
             onSkipTime = viewModel::debugSkipTime,
             onCycleWeather = viewModel::debugCycleWeather,
+            onSnowLying = viewModel::debugSnowLying,
             onBoost = viewModel::debugBoost,
             onNextSeason = viewModel::debugNextSeason,
             onCycleTimeOfDay = viewModel::debugCycleTimeOfDay,
@@ -854,6 +862,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         val forecastReadable by viewModel.forecastReadable.collectAsStateWithLifecycle()
         outlook?.let { WeatherDialog(outlook = it, readable = forecastReadable, onDismiss = { showWeather = false }) }
     }
+    if (showLevel) {
+        LevelDialog(LevelInfo.of(profile?.playerLevel ?: 1, profile?.currentXp ?: 0L), onDismiss = { showLevel = false })
+    }
     if (showPost) {
         PostDialog(letters = letters, onRead = viewModel::markLetterRead, onDismiss = { showPost = false })
     }
@@ -861,7 +872,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // After a happy moment the store's own review sheet, only on the plain garden with nothing else
     // open, and a little after the toast and the show have finished. Anything that opens meanwhile
     // starts the wait over.
-    val gardenAlone = !showShop && !showInventory && !showSettings && !showCollection && !showPost && !showWeather &&
+    val gardenAlone = !showShop && !showInventory && !showSettings && !showCollection && !showPost && !showWeather && !showLevel &&
         !showDebugMenu && !confirmRain && !confirmRemove && !confirmTurnBack && !cameraMode && !hideBars && !editMode &&
         selectedObject == null && openingGift == null && levelUpNow == null && !inviteNow && gardenTip == null
     LaunchedEffect(reviewDue, gardenAlone) {

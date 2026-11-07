@@ -30,6 +30,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
@@ -92,9 +93,10 @@ data class TopBarFit(val textScale: Float, val padding: Float, val gap: Float) {
  * The experience itself is never written out as numbers: the gauge fills as it grows, and empties
  * again when the level goes up.
  *
- * Deliberately built without Surface, and with only the season and weather taking taps (they open
- * the weather, [onWeatherTap]): a pointer-input handler swallows touches, and the rest of this
- * bar must let drags and taps fall through to the garden below.
+ * Deliberately built without Surface, and with only the level (it opens the level's bubble,
+ * [onLevelTap]) and the season and weather taking taps (they open the weather, [onWeatherTap]):
+ * a pointer-input handler swallows touches, and the rest of this bar must let drags and taps fall
+ * through to the garden below.
  */
 @Composable
 fun TopStatusBar(
@@ -106,6 +108,7 @@ fun TopStatusBar(
     season: Season = Season.SPRING,
     phase: SeasonPhase = SeasonPhase.EARLY,
     onWeatherTap: (() -> Unit)? = null,
+    onLevelTap: (() -> Unit)? = null,
 ) {
     val coinsText = "🪙 $coins"
     val levelText = if (playerLevel >= LevelTable.MAX_LEVEL) {
@@ -135,7 +138,7 @@ fun TopStatusBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 StatusChip(coinsText, scaled, padding)
-                LevelChip(playerLevel, currentXp, levelText, scaled, padding, fit.textScale)
+                LevelChip(playerLevel, currentXp, levelText, scaled, padding, fit.textScale, onLevelTap)
                 StatusChip(seasonText, scaled, padding, onClick = onWeatherTap)
             }
         }
@@ -157,7 +160,7 @@ private val TAG_GAP_TIGHT = 5.dp
  * its animation redraws the bar without recomposing it.
  */
 @Composable
-private fun LevelChip(playerLevel: Int, currentXp: Long, text: String, style: TextStyle, padding: Dp, scale: Float) {
+private fun LevelChip(playerLevel: Int, currentXp: Long, text: String, style: TextStyle, padding: Dp, scale: Float, onClick: (() -> Unit)? = null) {
     val target = LevelTable.progressInLevel(currentXp, playerLevel)
     val gauge = remember { Animatable(target) }
     var shownLevel by remember { mutableIntStateOf(playerLevel) }
@@ -174,6 +177,8 @@ private fun LevelChip(playerLevel: Int, currentXp: Long, text: String, style: Te
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
+            .clip(CircleShape)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick).testTag(LEVEL_CHIP_TAG) else Modifier)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape)
             .padding(start = padding, end = padding, top = 4.dp, bottom = 6.dp),
     ) {
@@ -199,6 +204,9 @@ private fun LevelChip(playerLevel: Int, currentXp: Long, text: String, style: Te
         ) {}
     }
 }
+
+/** Test tag of the level on the bar, when it opens the level's bubble. */
+const val LEVEL_CHIP_TAG = "level_chip"
 
 private val LEVEL_GAUGE_WIDTH = 56.dp
 private val LEVEL_GAUGE_HEIGHT = 5.dp

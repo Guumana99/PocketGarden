@@ -137,7 +137,9 @@ class GardenActionUseCasesTest {
         assertEquals(ActionResult.SUCCESS, care.fertilize("p1", t0, sunny))
         val once = stored("p1").growthProgress
         // Tapping again and again does nothing more: it is fed, and grows at its own pace.
-        repeat(20) { assertEquals(ActionResult.ALREADY_FED, care.fertilize("p1", t0, sunny)) }
+        // While the food is still on its way it says so (#fb-1107); once full, that it is full.
+        repeat(20) { assertEquals(ActionResult.FEEDING, care.fertilize("p1", t0, sunny)) }
+        assertEquals(ActionResult.ALREADY_FED, care.fertilize("p1", t0 + Soil.feedingMillis(stored("p1")), sunny))
         assertEquals(once, stored("p1").growthProgress, 0f)
         assertTrue(once < 0.3f)
     }

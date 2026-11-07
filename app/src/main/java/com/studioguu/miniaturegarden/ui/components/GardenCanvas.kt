@@ -84,6 +84,7 @@ import com.studioguu.miniaturegarden.domain.model.TileType
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.render.Daylight
+import com.studioguu.miniaturegarden.ui.render.EdgeSnow
 import com.studioguu.miniaturegarden.ui.render.SceneTint
 import com.studioguu.miniaturegarden.ui.render.drawSpriteSnow
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
@@ -250,6 +251,8 @@ fun GardenCanvas(
     lightByTimeOfDay: Boolean = false,
     clockOffset: Long = 0L,
     pulledIds: Set<String> = emptySet(),
+    /** How much snow lies along the roofs and the fences, 0 to 1 ([EdgeSnow.depthAt]). */
+    edgeSnow: Float = 0f,
 ) {
     val currentPulled by rememberUpdatedState(pulledIds)
     val density = LocalDensity.current
@@ -455,6 +458,7 @@ fun GardenCanvas(
         val wallMillis = System.currentTimeMillis()
         val ambience = Ambience(
             Daylight.at(hour, weather), weather, windMillis, epochMillis = wallMillis, gameMillis = wallMillis + clockOffset, season = season,
+            edgeSnow = edgeSnow,
             // The bare ground as it is actually laid: the lawn wherever the wasteland cannot be read.
             bareGround = if (bareGround == BareGround.WASTELAND && terrain.wasteland != null) BareGround.WASTELAND else BareGround.LAWN,
         )
@@ -655,6 +659,8 @@ private class Ambience(
     val season: Season = Season.SPRING,
     /** What the cells with nothing on them are: what stands on open ground grows from it. */
     val bareGround: BareGround = BareGround.LAWN,
+    /** How much snow lies along the roofs and the fences ([EdgeSnow]). */
+    val edgeSnow: Float = 0f,
 ) {
     /** How far something at this place in the grid leans right now, see [Wind.sway]. */
     fun sway(gridX: Float, gridY: Float): Float =
@@ -947,7 +953,12 @@ private fun submitObjects(
                         if (earthy) drawRunFootShadow(base, next, unit)
                         drawRunPieceShadow(atlasImage, rail, base, next, spriteScale, fenceLight, mirrored)
                     }
-                    submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.RAIL_DEPTH) { drawRunPiece(atlasImage, rail, base, next, spriteScale, mirrored) }
+                    val railTop = EdgeSnow.railTop(run)?.takeIf { ambience.edgeSnow > 0f }
+                    submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.RAIL_DEPTH) {
+                        drawRunPiece(atlasImage, rail, base, next, spriteScale, mirrored)
+                        // Snow along the top of the rail, from post to post.
+                        if (railTop != null) with(EdgeSnow) { drawBand(listOf(base, next).map { it - Offset(0f, railTop * unit) }, unit, ambience.edgeSnow) }
+                    }
                 }
             }
             submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.POST_DEPTH) {
@@ -957,6 +968,17 @@ private fun submitObjects(
                     drawSprite(atlasImage, post, base, spriteScale)
                 } else if (run.hasPosts) {
                     drawPlaceholder(obj, base, unit)
+                }
+                // Snow on its top: along the whole of one alone, a cap on a post.
+                if (ambience.edgeSnow > 0f && !obj.isWorking && run.isFence) with(EdgeSnow) {
+                    val aloneTop = EdgeSnow.aloneTop(run)
+                    if (alone && aloneTop != null) {
+                        val (half, top) = aloneTop
+                        drawBand(listOf(base + Offset(-half * unit, -top * unit), base + Offset(half * unit, -top * unit)), unit, ambience.edgeSnow)
+                    } else if (!alone && post != null) {
+                        val cap = base - Offset(0f, EdgeSnow.POST_TOP * unit)
+                        drawBand(listOf(cap - Offset(unit * 0.012f, 0f), cap + Offset(unit * 0.012f, 0f)), unit, ambience.edgeSnow)
+                    }
                 }
                 // Grass at its foot on open lawn, and on a lawn sown under it (#55).
                 if (grassy && !portrait) drawGrassAtFoot(base, unit, unit * (if (alone) 0.28f else 0.07f), sway, seed = obj.gridX * 31 + obj.gridY * 17)
@@ -1002,6 +1024,10 @@ private fun submitObjects(
                 // On a snowy day the snow lies on the top of every plant out in the open.
                 if (obj.isPlant && !underGlass && ambience.weather == WeatherType.SNOWY) {
                     drawSpriteSnow(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
+                }
+                // And a little along the roofs while it lies (#fb-1107).
+                if (ambience.edgeSnow > 0f && !obj.isWorking) {
+                    EdgeSnow.linesOf(obj.objectId, obj.isFlipped)?.let { lines -> with(EdgeSnow) { drawEdgeSnow(base, unit, lines, ambience.edgeSnow) } }
                 }
                 if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {
                     val sails = atlas[WindmillSails.SAILS_ASSET_ID]

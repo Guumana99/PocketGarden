@@ -61,6 +61,9 @@ enum class CreatureAction {
  * @property turn how wide it is drawn as it turns from facing one way to the other: 1 as usual,
  *   down to 0 at the moment it turns ([CreatureRoutes.FACE_TURN_MILLIS]), so that it is seen to
  *   turn round rather than flip from one picture to the other.
+ * @property turnPassed whether the moment of that turn ([turn] below 1) is behind it, so that it
+ *   already faces the new way; before it, it still faces the old one. Drawing crosses from the old
+ *   picture to the new one about that moment (#fb-1107).
  */
 data class CreaturePose(
     val x: Float,
@@ -78,6 +81,7 @@ data class CreaturePose(
     val surface: Float = 0f,
     val grounded: Boolean = false,
     val turn: Float = 1f,
+    val turnPassed: Boolean = false,
 ) {
     /** How far through [action] it is, 0 to 1. */
     val progress: Float get() = if (duration <= 0L) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
@@ -145,7 +149,8 @@ class CreatureRoute internal constructor(
         // Going away the other way: it turns round just before it goes.
         val toClose = closeAt - t
         if (closeAt >= opening.duration && toClose < CreatureRoutes.FACE_TURN_MILLIS / 2 && closing(middle(closeAt - opening.duration)).turnIn) {
-            return pose.copy(turn = minOf(pose.turn, toClose.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)))
+            val closing = toClose.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)
+            if (closing < pose.turn) return pose.copy(turn = closing, turnPassed = false)
         }
         return pose
     }
@@ -157,17 +162,28 @@ class CreatureRoute internal constructor(
         if (index < 0) index = -index - 2
         val leg = legs[index.coerceIn(0, legs.lastIndex)]
         val pose = pose(leg, u - leg.start)
-        return if (turns.isEmpty()) pose else pose.copy(turn = minOf(pose.turn, turnNear(u)))
+        if (turns.isEmpty()) return pose
+        val near = turnNear(u)
+        return if (abs(near) < pose.turn) pose.copy(turn = abs(near), turnPassed = near >= 0f) else pose
     }
 
-    /** How wide it is drawn at [u] for the nearest turn of [turns] ([CreaturePose.turn]). */
+    /**
+     * How wide it is drawn at [u] for the nearest turn of [turns] ([CreaturePose.turn]), signed:
+     * less than 0 before the moment of turning, 0 or more from it on.
+     */
     private fun turnNear(u: Long): Float {
         var i = turns.binarySearch(u)
         if (i < 0) i = -i - 1
         var near = Long.MAX_VALUE
-        if (i < turns.size) near = minOf(near, turns[i] - u)
-        if (i > 0) near = minOf(near, u - turns[i - 1])
-        return (near.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)).coerceIn(0f, 1f)
+        var passed = false
+        if (i < turns.size) near = turns[i] - u
+        if (i > 0 && u - turns[i - 1] < near) {
+            near = u - turns[i - 1]
+            passed = true
+        }
+        if (near == 0L) passed = true
+        val width = (near.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)).coerceIn(0f, 1f)
+        return if (passed) width else -width
     }
 
     private fun pose(leg: Leg, into: Long): CreaturePose {
@@ -197,21 +213,33 @@ class CreatureRoute internal constructor(
             stops = leg.stops,
             surface = surface,
             grounded = grounded && leg.action != CreatureAction.FLY,
-            turn = turnOf(leg, elapsed),
+            turn = abs(turnOf(leg, elapsed)),
+            turnPassed = turnOf(leg, elapsed) >= 0f,
         )
     }
 
     /**
      * How wide it is drawn [elapsed] millis into [leg]: narrowing over the half of
      * [CreatureRoutes.FACE_TURN_MILLIS] before the moment it faces the other way, and widening again
-     * over the half after.
+     * over the half after. Signed like [turnNear]: less than 0 before the moment.
      */
     private fun turnOf(leg: Leg, elapsed: Long): Float {
         var near = Long.MAX_VALUE
-        if (leg.turnIn) near = minOf(near, elapsed)
-        if (leg.turnOut) near = minOf(near, leg.duration - elapsed)
-        if (leg.lookFrom >= 0L) near = minOf(near, abs(elapsed - leg.lookFrom), abs(elapsed - leg.lookUntil))
-        return (near.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)).coerceIn(0f, 1f)
+        var passed = false
+        fun consider(distance: Long, after: Boolean) {
+            if (distance < near) {
+                near = distance
+                passed = after || distance == 0L
+            }
+        }
+        if (leg.turnIn) consider(elapsed, true)
+        if (leg.turnOut) consider(leg.duration - elapsed, false)
+        if (leg.lookFrom >= 0L) {
+            consider(abs(elapsed - leg.lookFrom), elapsed >= leg.lookFrom)
+            consider(abs(elapsed - leg.lookUntil), elapsed >= leg.lookUntil)
+        }
+        val width = (near.toFloat() / (CreatureRoutes.FACE_TURN_MILLIS / 2)).coerceIn(0f, 1f)
+        return if (passed) width else -width
     }
 }
 
@@ -287,10 +315,12 @@ object CreatureRoutes {
     const val TURN_MILLIS = 170L
 
     /**
-     * How long turning from facing one way to the other takes: it narrows to nothing and widens
-     * again facing the other way, like turning round on the spot.
+     * How long turning from facing one way to the other takes: it narrows (to six tenths of its
+     * width, never to nothing) and widens again facing the other way, the two pictures crossing
+     * at the narrowest, like turning round on the spot (#fb-1107: 0.2 s before, with a flat sliver
+     * in the middle).
      */
-    const val FACE_TURN_MILLIS = 200L
+    const val FACE_TURN_MILLIS = 280L
 
     /** The least time between two turns from facing one way to the other: no flapping to and fro. */
     const val MIN_FACING_MILLIS = 900L
