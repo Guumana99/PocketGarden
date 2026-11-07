@@ -52,9 +52,12 @@ class View:
     scale: float
     cell: tuple[float, float] = ((GARDEN_SIZE - 1) / 2, (GARDEN_SIZE - 1) / 2)
     lift: float = 0.0
+    # How many device pixels to one at 420 dpi (2 on a display set to 840 dpi).
+    pixels: float = 1.0
 
     def extras(self) -> list[str]:
         px, py = pan_to(self.cell, self.scale, self.lift)
+        px, py = px * self.pixels, py * self.pixels
         return ["--ef", "scale", str(self.scale), "--ef", "pan_x", f"{px:.1f}", "--ef", "pan_y", f"{py:.1f}"]
 
 
