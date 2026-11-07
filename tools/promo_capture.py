@@ -315,6 +315,9 @@ def till_row(device: Device, shot: Shot) -> None:
 
 
 TILL = ("--es", "garden", "till")
+COTTAGE_VIEW = View(1.4, cell=(1, 1), lift=520)
+# Roof and wall: the picture's own, then three others (4 roofs x 4 walls = 16 in all).
+COTTAGE_COLOURS = [("red", "white"), ("blue", "cream"), ("green", "pale_blue"), ("dark_brown", "pale_pink")]
 HOE = Look(more=("--ez", "hoe", "true"))
 
 NOVEMBER = [
@@ -327,6 +330,19 @@ NOVEMBER = [
     Shot("X-017_noon_16x9.png", Look(time="DAY"), WHOLE_WIDE),
     Shot("X-017_evening_16x9.png", Look(time="EVENING"), WHOLE_WIDE),
     Shot("X-017_night_16x9.png", Look(time="NIGHT"), WHOLE_WIDE),
+    # Plain, good and fluffy soil, side by side, nothing sown (ShowcaseGarden.OPEN_ROW, left to right).
+    Shot("X-019_soil_16x9.png", Look(), View(3.0, cell=(8, 5), lift=60), "W", ("--es", "garden", "soil")),
+    # The cottage in four of its colours (BuildingPaint: roof, wall), from the same place.
+    *[
+        Shot(f"X-021_cottage_{i}_16x9.png", Look(), COTTAGE_VIEW, "W", ("--es", "roof", roof, "--es", "wall", wall))
+        for i, (roof, wall) in enumerate(COTTAGE_COLOURS, start=1)
+    ],
+    # A little of the garden on a snowy winter day: snow on the tops of the crops and over the ground (none lies on roofs).
+    Shot("X-028_snow_16x9.png", Look(season="WINTER", weather="SNOWY"), View(1.9, cell=(5, 2.2), lift=260)),
+    # The first set's clips again, upright for TikTok and closer.
+    Shot("X-005_butterfly_9x16.mp4", Look(), View(1.9, cell=(8, 8), lift=150), "T", clip=(24, 3.0, 15.0),
+         action=lambda device, shot: set_look(device, Look(butterfly=True), shot.view, settle=0)),
+    Shot("X-007_rain_9x16.mp4", Look(weather="RAINY"), View(0.62, cell=(5, 4.5), lift=60), "T", clip=(10, 1.5, 7.0)),
 ]
 
 
