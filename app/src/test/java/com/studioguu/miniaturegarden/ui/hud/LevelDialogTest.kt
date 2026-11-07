@@ -70,7 +70,7 @@ class LevelDialogTest {
         var shownNames = emptyList<String>()
         compose.setContent {
             GardenTheme {
-                shownNames = info.nextItems.map { com.studioguu.miniaturegarden.ui.itemDisplayName(it) }
+                shownNames = info.nextItems.map { com.studioguu.miniaturegarden.ui.itemDisplayName(it).toList().joinToString("⁠") }
                 LevelDialog(info, onDismiss = {})
             }
         }

@@ -101,7 +101,8 @@ fun LevelDialog(info: LevelInfo, onDismiss: () -> Unit) {
         )
         if (info.nextItems.isNotEmpty()) {
             // One: "次の Lv で 池 が手に入ります"; two: "… 小屋 と パプリカの苗 が…"; more: the first two "… や … など".
-            val names = info.nextItems.take(2).map { itemDisplayName(it) }
+            // Each name kept whole on its line ("パプリカの苗" broke after "の"): word joiners between its letters.
+            val names = info.nextItems.take(2).map { itemDisplayName(it).toList().joinToString(WORD_JOINER) }
             val line = when (info.nextItems.size) {
                 1 -> stringResource(R.string.level_info_next_one, names[0])
                 2 -> stringResource(R.string.level_info_next_two, names[0], names[1])
@@ -116,6 +117,8 @@ fun LevelDialog(info: LevelInfo, onDismiss: () -> Unit) {
         }
     }
 }
+
+private const val WORD_JOINER = "⁠"
 
 const val LEVEL_XP_TAG = "level_xp"
 const val LEVEL_NEXT_TAG = "level_next"
