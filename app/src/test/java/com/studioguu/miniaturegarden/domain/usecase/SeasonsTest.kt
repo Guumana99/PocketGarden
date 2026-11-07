@@ -160,6 +160,37 @@ class SeasonsTest {
     }
 
     @Test
+    fun `the debug menu's next season starts today, at its beginning, and then goes on by the days as any other`() = runBlocking {
+        // #fb-1107: by design. The season it brings starts on the day it is pressed, as a season
+        // does on the day the last one ends: its first phase, whatever phase the last was in.
+        advance(t0)
+        val midway = t0 + 5 * day
+        assertEquals(SeasonPhase.MID, SeasonClock.phaseAt(repo.progress!!.seasonStartedAt, midway))
+        assertEquals(Season.SUMMER, advance.skipSeason(midway))
+        val started = repo.progress!!.seasonStartedAt
+        assertEquals(GameDay.startOf(GameDay.of(midway)), started)
+        assertEquals(SeasonPhase.EARLY, SeasonClock.phaseAt(started, midway))
+        assertEquals(SeasonPhase.MID, SeasonClock.phaseAt(started, midway + 3 * day))
+        assertEquals(SeasonPhase.LATE, SeasonClock.phaseAt(started, midway + 6 * day))
+        assertEquals(Season.AUTUMN, advance(GameDay.startOf(GameDay.of(midway) + SeasonClock.DAYS_PER_SEASON) + 1))
+    }
+
+    @Test
+    fun `the year turns by the days alone without the debug menu, the phases three days each, and looking often changes nothing`() = runBlocking {
+        advance(t0)
+        val startedAt = repo.progress!!.seasonStartedAt
+        for (d in 0 until SeasonClock.DAYS_PER_SEASON) {
+            // Looked at every hour of the day: nothing is moved.
+            for (h in 0 until 24 step 6) assertNull(advance(GameDay.startOf(firstDay + d) + h * 3_600_000L + 1))
+            assertEquals(startedAt, repo.progress!!.seasonStartedAt)
+            assertEquals(Season.SPRING, repo.progress!!.season)
+            assertEquals(SeasonPhase.entries[d / SeasonClock.DAYS_PER_PHASE], SeasonClock.phaseAt(startedAt, GameDay.startOf(firstDay + d) + 1))
+        }
+        assertEquals(Season.SUMMER, advance(end + 1))
+        assertEquals(end, repo.progress!!.seasonStartedAt)
+    }
+
+    @Test
     fun `skipping time in the debug menu turns the year as well`() = runBlocking {
         advance(t0)
         SkipTimeUseCase(repo, CalculateOfflineProgressUseCase())(season, t0, com.studioguu.miniaturegarden.domain.model.WeatherType.SUNNY)
