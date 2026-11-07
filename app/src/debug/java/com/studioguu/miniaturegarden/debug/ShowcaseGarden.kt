@@ -71,6 +71,7 @@ object ShowcaseGarden {
      * Everything in the garden, as last looked after at [now]. [bare] cells have nothing on them,
      * not even lawn (open ground for the hoe); [emptyBeds] are ridged soil with nothing sown, of
      * the grade given ([GridObject.soilQuality]). [roof] and [wall] paint the cottage (BuildingPaint ids).
+     * [tulipBed] turns the mint's row into tulips and opens them all, for the close picture of them.
      */
     fun objects(
         now: Long,
@@ -78,6 +79,7 @@ object ShowcaseGarden {
         emptyBeds: Map<GridCell, Int> = emptyMap(),
         roof: String? = null,
         wall: String? = null,
+        tulipBed: Boolean = false,
     ): List<GridObject> {
         fun at(cell: GridCell, objectId: String, growth: Float = 0f, flipped: Boolean = false) = GridObject(
             instanceId = "showcase_${objectId}_${cell.x}_${cell.y}",
@@ -90,11 +92,14 @@ object ShowcaseGarden {
         )
         fun at(x: Int, y: Int, objectId: String) = at(GridCell(x, y), objectId)
 
-        val plants = BEDS.mapIndexedNotNull { index, (cell, species) ->
+        val plants = BEDS.mapIndexedNotNull { index, (bedCell, bedSpecies) ->
+            val cell = bedCell
             if (cell in bare || cell in emptyBeds) return@mapIndexedNotNull null
-            val growth = growthOf(index, cell)
+            // The tulip bed: the mint's row turned to tulips too, and every tulip open.
+            val species = if (tulipBed && bedSpecies == PlantSpecies.MINT) PlantSpecies.TULIP else bedSpecies
+            val growth = if (tulipBed && species == PlantSpecies.TULIP) 1f else growthOf(index, cell)
             at(cell, species.objectId, growth = growth, flipped = (cell.x * 3 + cell.y) % 2 == 0).let {
-                if (species == PlantSpecies.TULIP && growth >= 1f) it.copy(bloomColour = TULIP_COLOURS[cell.x % TULIP_COLOURS.size]) else it
+                if (species == PlantSpecies.TULIP && growth >= 1f) it.copy(bloomColour = TULIP_COLOURS[(cell.x + cell.y) % TULIP_COLOURS.size]) else it
             }
         }
         val beds = BEDS.filter { (cell, _) -> cell !in bare }

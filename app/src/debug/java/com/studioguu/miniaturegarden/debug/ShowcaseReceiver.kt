@@ -44,6 +44,8 @@ import kotlinx.coroutines.launch
  *         --es roof blue --es wall cream      # ... with the cottage painted so (BuildingPaint ids), with load
  *         --ez hoe true                       # the hoe in hand: taps till the garden
  *         --es bird struct_well               # a bird comes now to the well (or struct_cottage, onto its roof)
+ *         --ez side_only true --ez skip_ad true   # only the buttons down the right edge; the cloud's rain without the ad
+ *         --es garden tulips                  # ... [ShowcaseGarden] with a bed of tulips in bloom (ordinary colours), with load
  *         --es garden birdcrops               # ... [ShowcaseGarden.birdCrops], a well among tomatoes, with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es garden roses                   # ... or with [RoseGarden], the rose beside crops of its size
@@ -182,6 +184,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     expand -> FeedbackGarden.objects(now) + GroundGarden.joinedUp(now)
                     feedback -> FeedbackGarden.objects(now)
                     garden == "birdcrops" -> ShowcaseGarden.birdCrops(now)
+                    garden == "tulips" -> ShowcaseGarden.objects(now, tulipBed = true, roof = roof, wall = wall)
                     garden == "till" -> ShowcaseGarden.objects(now, bare = ShowcaseGarden.OPEN_ROW, roof = roof, wall = wall)
                     garden == "soil" -> ShowcaseGarden.objects(now, emptyBeds = ShowcaseGarden.OPEN_ROW.mapIndexed { i, cell -> cell to i }.toMap(), roof = roof, wall = wall)
                     else -> ShowcaseGarden.objects(now, roof = roof, wall = wall)
@@ -243,6 +246,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 rainGlint = intent.takeIf { it.hasExtra("rain_glint") }?.getFloatExtra("rain_glint", 0f),
                 hoe = intent.getBooleanExtra("hoe", false),
                 bird = intent.getStringExtra("bird"),
+                sideOnly = intent.getBooleanExtra("side_only", false),
+                skipAd = intent.getBooleanExtra("skip_ad", false),
             )
         }
     }

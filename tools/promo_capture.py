@@ -320,6 +320,13 @@ HOE = Look(more=("--ez", "hoe", "true"))
 NOVEMBER = [
     Shot("X-010_tilling_16x9.mp4", HOE, View(2.0, cell=(8, 5)), "W", TILL, clip=(21, 2.5, 15.0), action=till_row, fresh=True),
     Shot("X-010_tilling_9x16.mp4", HOE, View(1.7, cell=(8, 5)), "T", TILL, clip=(21, 2.5, 15.0), action=till_row, fresh=True),
+    # The tulip bed in bloom, ordinary colours only (red, pink, yellow).
+    Shot("X-014_tulips_16x9.png", Look(), View(2.4, cell=(5, 1.5), lift=250), "W", ("--es", "garden", "tulips")),
+    # The whole garden at four times of a day, from the same place.
+    Shot("X-017_morning_16x9.png", Look(time="MORNING"), WHOLE_WIDE),
+    Shot("X-017_noon_16x9.png", Look(time="DAY"), WHOLE_WIDE),
+    Shot("X-017_evening_16x9.png", Look(time="EVENING"), WHOLE_WIDE),
+    Shot("X-017_night_16x9.png", Look(time="NIGHT"), WHOLE_WIDE),
 ]
 
 

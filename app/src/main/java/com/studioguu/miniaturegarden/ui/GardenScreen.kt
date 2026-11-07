@@ -42,6 +42,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -201,6 +202,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // A fixed look for promotional pictures, set from a debug build only (docs/promo/README.md).
     val showcase by ShowcaseControls.showcase.collectAsStateWithLifecycle()
     val hideUi = showcase?.hideUi == true
+    // Only the buttons down the right edge (debug builds only): the rain cloud's pictures.
+    val sideOnly = showcase?.sideOnly == true && !hideUi
+    val hideBars = hideUi || sideOnly
     // The showcase may put the hoe in hand (debug builds only), for the tilling clip.
     val showcaseHoe = showcase?.hoe == true
     LaunchedEffect(showcaseHoe) { viewModel.holdHoe(showcaseHoe) }
@@ -241,19 +245,19 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // The showcase's pictures have nothing but the garden in them, not even the system bars. And
     // they are taken on a display made wide for the moment, which the garden must fill: the
     // portrait lock is let go while they are taken, or the system would letterbox it.
-    DisposableEffect(hideUi) {
+    DisposableEffect(hideBars) {
         val activity = context.findActivity()
         val window = activity?.window
         val bars = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
         val locked = activity?.requestedOrientation
-        if (hideUi) {
+        if (hideBars) {
             bars?.hide(WindowInsetsCompat.Type.systemBars())
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
             // Turned, the window comes back with its bars: hide them again once it has settled.
             window?.decorView?.postDelayed({ bars?.hide(WindowInsetsCompat.Type.systemBars()) }, 800)
         }
         onDispose {
-            if (hideUi) {
+            if (hideBars) {
                 bars?.show(WindowInsetsCompat.Type.systemBars())
                 if (locked != null) activity.requestedOrientation = locked
             }
@@ -414,7 +418,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 weather = weather,
                 season = season,
                 phase = seasonPhase,
-                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp).alpha(if (sideOnly) 0f else 1f),
                 onWeatherTap = { showWeather = true },
             ) }
 
@@ -481,7 +485,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     }
                 }
                 SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
-                if (BuildConfig.DEBUG) {
+                if (BuildConfig.DEBUG && !sideOnly) {
                     SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
                     if (debugZoom > 0f) DebugZoomReadout(debugZoom)
                 }
@@ -510,6 +514,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .alpha(if (sideOnly) 0f else 1f)
                     .safeDrawingPadding()
                     .padding(horizontal = 12.dp, vertical = 12.dp)
                     .fillMaxWidth(),

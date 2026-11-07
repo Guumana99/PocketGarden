@@ -38,6 +38,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * @property bird a bird that comes now, whatever the dice say: to the first building of this id (the well or
  *   the cottage), or onto the ground about the cell "x,y".
  * @property birdAt when it comes; set by [ShowcaseControls.set].
+ * @property sideOnly of the controls only the buttons down the right edge (the rain cloud's column); no
+ *   figures at the top and no tool bar. The system bars are hidden as with [hideUi].
+ * @property skipAd a rain called from the cloud falls at once, with no ad and not against the day's limit.
  * @property hoe the hoe in hand, so that taps on the garden till it with nothing on screen but the garden.
  */
 data class Showcase(
@@ -55,6 +58,8 @@ data class Showcase(
     val cloud: RainCloudState? = null,
     val rainGlint: Float? = null,
     val hoe: Boolean = false,
+    val sideOnly: Boolean = false,
+    val skipAd: Boolean = false,
     val bird: String? = null,
     val birdAt: Long = 0L,
 ) {

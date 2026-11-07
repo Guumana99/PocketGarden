@@ -379,20 +379,27 @@ class GardenViewModel @Inject constructor(
      */
     fun claimBlessedRain(activity: Activity) {
         var grant: Deferred<RewardResult>? = null
-        rewardedAds.show(
+        // The showcase's clip of the rain (debug builds only) has no ad in it, nor the day's limit.
+        val skipAd = ShowcaseControls.showcase.value?.skipAd == true
+        val show: (Activity, () -> Unit, (RewardedAdResult) -> Unit) -> Unit = if (skipAd) {
+            { _, earned, closed -> earned(); closed(RewardedAdResult.EARNED) }
+        } else {
+            { a, earned, closed -> rewardedAds.show(a, onEarned = earned, onClosed = closed) }
+        }
+        show(
             activity,
-            onEarned = {
+            {
                 grant = viewModelScope.async {
                     initJob.join()
                     actionMutex.withLock {
                         val now = clock.now()
                         // Not against the day's limit until the first steps are over.
                         val freePlay = (gardenRepository.getProgress()?.tutorialStep ?: TutorialStep.DONE) == TutorialStep.DONE
-                        grantReward.blessedRain(now, currentWeather(now), todayEpochDay(), counted = freePlay)
+                        grantReward.blessedRain(now, currentWeather(now), todayEpochDay(), counted = freePlay && !skipAd)
                     }
                 }
             },
-            onClosed = { result ->
+            { result ->
                 when (result) {
                     RewardedAdResult.EARNED -> viewModelScope.launch {
                         if (grant?.await() != RewardResult.GRANTED) {
