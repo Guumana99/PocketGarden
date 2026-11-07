@@ -65,6 +65,35 @@ class LevelDialogTest {
     }
 
     @Test
+    fun `the next level's line is worded by how many things it opens`() {
+        var info by mutableStateOf(LevelInfo.of(1, 0L))
+        var shownNames = emptyList<String>()
+        compose.setContent {
+            GardenTheme {
+                shownNames = info.nextItems.map { com.studioguu.miniaturegarden.ui.itemDisplayName(it) }
+                LevelDialog(info, onDismiss = {})
+            }
+        }
+        val seen = mutableSetOf<Int>()
+        for (level in 1 until 20) {
+            val items = GardenItem.unlockedBetween(level, level + 1)
+            if (items.isEmpty()) continue
+            info = LevelInfo.of(level, LevelTable.xpForLevel(level))
+            compose.waitForIdle()
+            val names = shownNames
+            val expected = when (items.size) {
+                1 -> "次の Lv で ${names[0]} が手に入ります"
+                2 -> "次の Lv で ${names[0]} と ${names[1]} が手に入ります"
+                else -> "次の Lv で ${names[0]} や ${names[1]} など"
+            }
+            compose.onNodeWithText(expected).assertIsDisplayed()
+            seen += items.size.coerceAtMost(3)
+        }
+        // The table has levels opening one thing and levels opening two.
+        assertTrue(seen.containsAll(listOf(1, 2)))
+    }
+
+    @Test
     fun `with nothing coming next there is no next line, and at the top level no experience line`() {
         val quiet = (1 until 30).first { GardenItem.unlockedBetween(it, it + 1).isEmpty() }
         var info by mutableStateOf(LevelInfo.of(quiet, LevelTable.xpForLevel(quiet)))

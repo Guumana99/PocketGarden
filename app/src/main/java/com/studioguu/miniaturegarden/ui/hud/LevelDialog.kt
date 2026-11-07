@@ -61,13 +61,11 @@ data class LevelInfo(
     }
 }
 
-/** How many of the next level's items are named; the rest are "ほか". */
-private const val NEXT_ITEMS_NAMED = 3
-
 /**
  * The level's bubble, opened from the level on the status bar: made like the weather's
  * ([WeatherDialog]), closed by a tap outside it. "Lv.12", the experience through the level with
- * a gauge ("経験値 340 / 500（68％）"), and a line for what the next level opens, if anything. At
+ * a gauge ("経験値 340 / 500（68％）"), and a line for what the next level opens, if anything,
+ * worded by how many things it opens. At
  * the top level it says so instead of the experience.
  */
 @Composable
@@ -102,11 +100,15 @@ fun LevelDialog(info: LevelInfo, onDismiss: () -> Unit) {
                 },
         )
         if (info.nextItems.isNotEmpty()) {
-            val named = info.nextItems.take(NEXT_ITEMS_NAMED).map { itemDisplayName(it) }
-            val names = named.joinToString(stringResource(R.string.level_info_separator)) +
-                if (info.nextItems.size > NEXT_ITEMS_NAMED) stringResource(R.string.level_info_more) else ""
+            // One: "次の Lv で 池 が手に入ります"; two: "… 小屋 と パプリカの苗 が…"; more: the first two "… や … など".
+            val names = info.nextItems.take(2).map { itemDisplayName(it) }
+            val line = when (info.nextItems.size) {
+                1 -> stringResource(R.string.level_info_next_one, names[0])
+                2 -> stringResource(R.string.level_info_next_two, names[0], names[1])
+                else -> stringResource(R.string.level_info_next_many, names[0], names[1])
+            }
             Text(
-                stringResource(R.string.level_info_next, names),
+                line,
                 style = MaterialTheme.typography.bodyMedium,
                 color = GardenColors.InkSoft,
                 modifier = Modifier.testTag(LEVEL_NEXT_TAG),
