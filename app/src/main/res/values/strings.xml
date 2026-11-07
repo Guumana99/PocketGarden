@@ -436,7 +436,7 @@
     <string name="debug_review_requested">レビューの流れを受け取りました（出すかどうかは Play が決めます）</string>
     <string name="debug_review_failed">レビューの流れを受け取れませんでした</string>
     <string name="debug_call_title">生き物を呼ぶ</string>
-    <string name="debug_call_hint">2 種まで選べます。ON の間は、条件を無視して来ます。必要な物が無ければ庭に置きます</string>
+    <string name="debug_call_hint">2 種まで選べます。ON の間は、季節・時間帯・天気・確率を無視して来ます。止まれる物（ことり：井戸、とんぼ・かえる：池、てんとうむし：柵、ちょうちょ：チューリップ、りす：岩）が無ければ、庭の真ん中近くに置きます</string>
 
     <!-- Title screen -->
     <string name="title_subtitle">Pocket Garden</string>

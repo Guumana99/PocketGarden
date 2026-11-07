@@ -38,22 +38,62 @@ object CreatureCalls {
 
     fun roundStart(round: Long, since: Long = 0L): Long = since + round * ROUND_MILLIS
 
-    /** The visits of the round [now] falls in, of those of [creatures] the garden has a place for. */
+    /**
+     * The visits of the round [now] falls in, of those of [creatures] the garden has a place for.
+     * Nothing of the rules holds them back: not the season, the hour, the weather or the dice.
+     *
+     * Each goes to its own thing to settle on ([perchFor]), the one nearest the middle of the
+     * garden, so that it is in view; only a garden without one has it go wherever its rules find
+     * room, as before (11/7: one came to a bench or a stream at the edge of the garden, out of view).
+     */
     fun visitsAt(now: Long, creatures: List<Creature>, objects: List<GridObject>, map: GardenMap, since: Long = 0L): List<CreatureVisit> {
         val round = roundOf(now, since)
         val start = roundStart(round, since)
         val garden = GardenSnapshot(objects, WeatherType.SUNNY)
         val grid = GardenGrid(map, objects)
         val taken = HashSet<GridCell>()
+        val middle = (map.size - 1) / 2f
         return creatures.mapNotNull { creature ->
-            VisitRule.forCreature(creature).firstNotNullOfOrNull { rule ->
-                CreatureVisits.spotFor(rule, garden, grid, map, round, taken)?.let { spot ->
+            val rule = VisitRule.forCreature(creature).first()
+            val perch = garden.settled.filter { isPerchFor(creature, it) }
+                .minWithOrNull(compareBy({ (it.gridX - middle) * (it.gridX - middle) + (it.gridY - middle) * (it.gridY - middle) }, { it.gridY }, { it.gridX }))
+            val onPerch = perch?.let { thing ->
+                // One that walks the ground next to its thing (the frog by the pond, the squirrel by
+                // the rock) stands on a cell of its own beside it; the others are on it, or over it.
+                val beside = !CreatureRoutes.flies(creature) && CreaturePerches.forCreature(creature, CreaturePerches.pointsOf(thing)).isEmpty()
+                val cell = if (beside) {
+                    thing.occupiedCells().flatMap { listOf(GridCell(it.x + 1, it.y), GridCell(it.x, it.y + 1), GridCell(it.x - 1, it.y), GridCell(it.x, it.y - 1)) }
+                        .firstOrNull { it !in taken && it !in thing.occupiedCells() && CreatureRoutes.canWalk(creature, grid, it.x, it.y) }
+                } else {
+                    CreatureVisits.frontCell(thing)
+                }
+                cell?.let { CreatureVisit(rule, it, thing, start + ARRIVES_AFTER_MILLIS, start + ROUND_MILLIS - AWAY_MILLIS) }
+            }
+            onPerch?.also { taken += it.cell } ?: VisitRule.forCreature(creature).firstNotNullOfOrNull { r ->
+                CreatureVisits.spotFor(r, garden, grid, map, round, taken)?.let { spot ->
                     taken += spot.first
-                    CreatureVisit(rule, spot.first, spot.second, start + ARRIVES_AFTER_MILLIS, start + ROUND_MILLIS - AWAY_MILLIS)
+                    CreatureVisit(r, spot.first, spot.second, start + ARRIVES_AFTER_MILLIS, start + ROUND_MILLIS - AWAY_MILLIS)
                 }
             }
         }
     }
+
+    /**
+     * The one thing set down for [creature] to settle on when it is called: the well's rim for
+     * the bird, a pond for the dragonfly and the frog, a fence for the ladybird, a tulip in bloom
+     * for the butterfly, a rock for the squirrel to run about by.
+     */
+    fun perchFor(creature: Creature): String = when (creature) {
+        Creature.BIRD -> StructureData.WELL.objectId
+        Creature.DRAGONFLY, Creature.FROG -> GridObject.POND_OBJECT_ID
+        Creature.LADYBUG -> "struct_fence"
+        Creature.BUTTERFLY -> PlantSpecies.TULIP.objectId
+        Creature.SQUIRREL -> "deco_rock"
+    }
+
+    /** Whether [obj] is the thing [creature] is called to ([perchFor]); a tulip only in bloom. */
+    fun isPerchFor(creature: Creature, obj: GridObject): Boolean =
+        obj.objectId == perchFor(creature) && (!obj.isPlant || CreaturePerches.isInBloom(obj))
 
     /** What is set down on the free [cell] for [creature] to come to, when the garden has nothing for it. */
     fun thingsFor(creature: Creature, cell: GridCell, now: Long): List<GridObject> {
@@ -68,10 +108,7 @@ object CreatureCalls {
         fun grown(species: PlantSpecies) = listOf(thing(GridObject.TILLED_SOIL_OBJECT_ID), thing(species.objectId, growth = 1f))
         return when (creature) {
             Creature.BUTTERFLY -> grown(PlantSpecies.TULIP)
-            Creature.LADYBUG -> grown(PlantSpecies.MINT)
-            Creature.BIRD -> listOf(thing("deco_bench"))
-            Creature.SQUIRREL -> listOf(thing("deco_rock"))
-            Creature.FROG, Creature.DRAGONFLY -> listOf(thing(GridObject.POND_OBJECT_ID))
+            else -> listOf(thing(perchFor(creature)))
         }
     }
 
