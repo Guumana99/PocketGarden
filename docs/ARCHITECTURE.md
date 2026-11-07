@@ -423,6 +423,7 @@ di/       Hilt の束ね
 
 `GridObject` に `workKind` `workStartedAt` `workEndsAt` がある（DB v5）。
 
+- **経験値の吹き出し（11/7 夜）**：上部の Lv の札をタップすると、天気と同じ作りの吹き出し（`ParchmentDialog`、`ui/hud/LevelDialog.kt`）。題は「Lv.12」、「経験値 340 / 500（68％）」とゲージ（その Lv に上がってからの分 / 次の Lv までの分、％は切り捨て。`LevelInfo.of`）、次の Lv でショップに並ぶ品があれば「次の Lv で：池、…」（3 つまで名前、それより多ければ「ほか」。`GardenItem.unlockedBetween`。庭の拡張など品でない物は出さない）。最大 Lv（99）では「最大レベル」だけで経験値の行は出さない。外をタップするか「閉じる」で閉じる。天気の吹き出しを開くと Lv のほうは閉じ、その逆も同じ（同時には出ない）。
 - **経験値と図鑑は、お披露目のとき**（#50）：建築に時間のかかる物（`buildSeconds > 0`、柵も含む）は、置いたときではなく
   `UnveilBuildingUseCase` で `placeXp` を得て、初めてなら図鑑のページが登録待ちになる（`RecordCollectionUseCase`）。すぐ置ける物は従来どおり置いたとき。
   工事中・お披露目前に取りやめた物は経験値を得ていないので、しまっても減らない（`StoreObjectUseCase`）。

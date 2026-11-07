@@ -6,6 +6,11 @@
     <string name="status_level">Lv.%1$d</string>
     <string name="status_level_max">Lv.%1$d　MAX</string>
     <string name="weather_title">お天気</string>
+    <string name="level_info_xp">経験値 %1$d / %2$d（%3$d％）</string>
+    <string name="level_info_next">次の Lv で：%1$s</string>
+    <string name="level_info_separator">、</string>
+    <string name="level_info_more"> ほか</string>
+    <string name="level_info_max">最大レベル</string>
     <string name="weather_today">今日</string>
     <string name="weather_tomorrow">明日</string>
     <string name="weather_sunny">晴れ</string>
