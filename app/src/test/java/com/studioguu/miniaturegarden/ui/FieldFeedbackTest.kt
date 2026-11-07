@@ -77,7 +77,8 @@ class FieldFeedbackTest {
     @Test
     fun `the tools are for a debug build only`() {
         val screen = source("ui/GardenScreen.kt")
-        assertTrue(screen.substringBefore("SideButton(\"🛠\"").endsWith("if (BuildConfig.DEBUG) {\n                    "))
+        // Put away too while the showcase shows only the buttons down the edge (docs/promo).
+        assertTrue(screen.substringBefore("SideButton(\"🛠\"").endsWith("if (BuildConfig.DEBUG && !sideOnly) {\n                    "))
         assertTrue(source("ui/GardenViewModel.kt").substringAfter("fun debugCallCreatures(").contains("if (!BuildConfig.DEBUG) return"))
     }
 

@@ -80,6 +80,66 @@ class ShowcaseTest {
     }
 
     @Test
+    fun `the garden's variants - a bare row, empty beds of each grade, a tulip bed, thirsty crops`() {
+        fun at(objects: List<GridObject>, cell: GridCell) = objects.filter { cell in it.occupiedCells() }
+        val bare = ShowcaseGarden.objects(now, bare = ShowcaseGarden.OPEN_ROW)
+        assertTrue(ShowcaseGarden.OPEN_ROW.all { at(bare, it).isEmpty() })
+
+        val soil = ShowcaseGarden.objects(now, emptyBeds = ShowcaseGarden.OPEN_ROW.mapIndexed { i, cell -> cell to i }.toMap())
+        assertEquals(listOf(0, 1, 2), ShowcaseGarden.OPEN_ROW.map { cell -> at(soil, cell).single { it.isTilledSoil }.soilQuality })
+        assertTrue(ShowcaseGarden.OPEN_ROW.all { cell -> at(soil, cell).none { it.isPlant } })
+
+        val tulips = ShowcaseGarden.objects(now, tulipBed = true).filter { it.objectId == PlantSpecies.TULIP.objectId }
+        assertEquals(6, tulips.size)
+        assertTrue(tulips.all { it.growthProgress == 1f })
+        // Only the ordinary colours, here and in the garden as it is (docs/promo: no rare ones shown).
+        val ordinary = setOf("red", "pink", "yellow")
+        assertTrue(tulips.all { it.bloomColour in ordinary })
+        assertTrue(garden.filter { it.objectId == PlantSpecies.TULIP.objectId && it.growthProgress >= 1f }.all { it.bloomColour in ordinary })
+
+        assertTrue(ShowcaseGarden.objects(now, thirsty = true).filter { it.isPlant }.all { it.moistureLevel < 1f })
+
+        val painted = ShowcaseGarden.objects(now, roof = "blue", wall = "cream").single { it.objectId == StructureData.COTTAGE.objectId }
+        assertEquals("blue" to "cream", painted.roofColour to painted.wallColour)
+    }
+
+    @Test
+    fun `the bird's garden is strawberries in a chequer, with lawn where it is called`() {
+        val crops = ShowcaseGarden.birdCrops(now)
+        assertEquals(setOf(PlantSpecies.STRAWBERRY.objectId), crops.filter { it.isPlant }.map { it.objectId }.toSet())
+        val ground = crops.filter { ShowcaseGarden.BIRD_GROUND in it.occupiedCells() }
+        assertTrue(ground.isNotEmpty() && ground.all { LawnGrowth.isLawn(it) })
+        assertEquals(ShowcaseGarden.SIZE * ShowcaseGarden.SIZE, crops.flatMap { it.occupiedCells() }.toSet().size)
+    }
+
+    @Test
+    fun `a bird is called to a building or onto the ground, in place of any other bird`() {
+        val other = CreatureVisit(VisitRule.BIRD_BENCH, GridCell(7, 8), null, now, now + 60_000L)
+        val roof = Showcase(bird = StructureData.COTTAGE.objectId, birdAt = now).visitors(listOf(other), garden).single()
+        assertEquals(VisitRule.BIRD_COTTAGE, roof.rule)
+        assertEquals(StructureData.COTTAGE.objectId, roof.host?.objectId)
+        assertEquals(now + Showcase.BIRD_STAY_MILLIS, roof.leavesAt)
+
+        val well = Showcase(bird = StructureData.WELL.objectId).visitors(emptyList(), garden).single()
+        assertEquals(VisitRule.BIRD_WELL, well.rule)
+
+        val walking = Showcase(bird = "5,4").visitors(listOf(other), garden).single()
+        assertEquals(GridCell(5, 4), walking.cell)
+        assertEquals(null, walking.host)
+        assertEquals(Creature.BIRD, walking.creature)
+
+        // Nothing of that id in the garden: no bird is called, and the others stay.
+        assertEquals(listOf(other), Showcase(bird = StructureData.HUT.objectId).visitors(listOf(other), garden))
+    }
+
+    @Test
+    fun `a called bird comes when the showcase is set`() {
+        ShowcaseControls.set(Showcase(bird = "5,4"), now = now)
+        assertEquals(now, ShowcaseControls.showcase.value?.birdAt)
+        ShowcaseControls.set(null)
+    }
+
+    @Test
     fun `a summoned butterfly sets off when the showcase is set`() {
         ShowcaseControls.set(Showcase(butterfly = ShowcaseGarden.BUTTERFLY_FLOWER), now = now)
         assertEquals(now, ShowcaseControls.showcase.value?.butterflyAt)
