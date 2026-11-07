@@ -642,38 +642,50 @@ class CreatureMotionTest {
             CreaturePose(5f, 5f, 0f, Facing.LEFT, CreatureAction.STAND, 0L, 1_000L, GridCell(5, 5), turn = turn, turnPassed = passed)
         for (creature in Creature.entries - Creature.DRAGONFLY) {
             val whole = VisitorLook.of(creature, pose(1f), 0L).scaleX
-            val turning = VisitorLook.of(creature, pose(0f), 0L).scaleX
+            // Its narrowest side view: at the moment for most, just before the front for the bird and the squirrel.
+            val narrowest = if (VisitorLook.hasFront(creature)) VisitorLook.FRONT_SHARE + 1e-4f else 0f
+            val turning = VisitorLook.of(creature, pose(narrowest), 0L).scaleX
             assertEquals("$creature", VisitorLook.TURN_NARROWEST, turning / whole, 0.02f)
             assertEquals(whole, VisitorLook.of(creature, pose(1f), 0L).scaleX, 0f)
         }
         assertEquals(VisitorLook.of(Creature.DRAGONFLY, pose(1f), 0L).scaleX, VisitorLook.of(Creature.DRAGONFLY, pose(0f), 0L).scaleX, 0f)
-        assertEquals(1f, VisitorLook.of(Creature.DRAGONFLY, pose(0f), 0L).crossing, 0f)
+        assertFalse(VisitorLook.of(Creature.DRAGONFLY, pose(0f), 0L).front)
     }
 
     @Test
-    fun `turning round, the old picture crosses into the new one about the moment, and each does a little of its own`() {
-        fun pose(turn: Float, passed: Boolean) =
-            CreaturePose(5f, 5f, 0f, Facing.RIGHT, CreatureAction.STAND, 0L, 1_000L, GridCell(5, 5), turn = turn, turnPassed = passed)
+    fun `the bird and the squirrel face the viewer for a moment as they turn, the others change at once, and each does a little of its own`() {
+        fun pose(turn: Float, passed: Boolean, facing: Facing) =
+            CreaturePose(5f, 5f, 0f, facing, CreatureAction.STAND, 0L, 1_000L, GridCell(5, 5), turn = turn, turnPassed = passed)
         for (creature in Creature.entries - Creature.DRAGONFLY) {
-            // Before the moment the pose still faces the old way (RIGHT here): the look faces the new (LEFT)
-            // way, with none of it shown yet well before, half at the moment, all of it well after.
-            val early = VisitorLook.of(creature, pose(0.8f, passed = false), 0L)
-            val before = VisitorLook.of(creature, pose(0.01f, passed = false), 0L)
-            val after = VisitorLook.of(creature, pose(0.01f, passed = true).copy(facing = Facing.LEFT), 0L)
-            val late = VisitorLook.of(creature, pose(0.8f, passed = true).copy(facing = Facing.LEFT), 0L)
-            for (look in listOf(early, before, after, late)) assertEquals("$creature", Facing.LEFT, look.facing)
-            assertEquals("$creature", 0f, early.crossing, 0f)
-            assertEquals("$creature", 0.5f, before.crossing, 0.05f)
-            assertEquals("$creature", 0.5f, after.crossing, 0.05f)
-            assertEquals("$creature", 1f, late.crossing, 0f)
+            // Side view the old way, the front (bird and squirrel), side view the other way: each
+            // look facing the way its pose does, never drawn both ways at once.
+            val early = VisitorLook.of(creature, pose(0.8f, false, Facing.RIGHT), 0L)
+            val before = VisitorLook.of(creature, pose(0.1f, false, Facing.RIGHT), 0L)
+            val after = VisitorLook.of(creature, pose(0.1f, true, Facing.LEFT), 0L)
+            val late = VisitorLook.of(creature, pose(0.8f, true, Facing.LEFT), 0L)
+            assertEquals("$creature", Facing.RIGHT, early.facing)
+            assertEquals("$creature", Facing.LEFT, late.facing)
+            assertFalse("$creature", early.front || late.front)
+            assertEquals("$creature", VisitorLook.hasFront(creature), before.front)
+            assertEquals("$creature", VisitorLook.hasFront(creature), after.front)
+            if (!VisitorLook.hasFront(creature)) {
+                assertEquals("$creature", Facing.RIGHT, before.facing)
+                assertEquals("$creature", Facing.LEFT, after.facing)
+            }
             // Something moves at the narrowest, and nothing at all when not turning.
-            val still = VisitorLook.of(creature, pose(1f, passed = false), 0L)
+            val still = VisitorLook.of(creature, pose(1f, false, Facing.RIGHT), 0L)
             assertTrue("$creature", before.lift != still.lift || before.scaleY != still.scaleY || before.tilt != still.tilt || before.wingOpen != still.wingOpen)
         }
-        // The bird hops, the squirrel sinks.
-        assertTrue(VisitorLook.of(Creature.BIRD, pose(0f, true), 0L).lift > VisitorLook.of(Creature.BIRD, pose(1f, true), 0L).lift + 0.02f)
-        assertTrue(VisitorLook.of(Creature.SQUIRREL, pose(0f, true), 0L).scaleY < VisitorLook.of(Creature.SQUIRREL, pose(1f, true), 0L).scaleY - 0.05f)
-        assertTrue(CreatureRoutes.FACE_TURN_MILLIS in 250L..300L)
+        // The bird hops, the squirrel sinks, in the front view too.
+        assertTrue(VisitorLook.of(Creature.BIRD, pose(0f, true, Facing.LEFT), 0L).lift > VisitorLook.of(Creature.BIRD, pose(1f, true, Facing.LEFT), 0L).lift + 0.02f)
+        assertTrue(VisitorLook.of(Creature.SQUIRREL, pose(0f, true, Facing.LEFT), 0L).scaleY < VisitorLook.of(Creature.SQUIRREL, pose(1f, true, Facing.LEFT), 0L).scaleY - 0.05f)
+        // Flying or running, no front: the side view changes at once.
+        val flying = CreaturePose(5f, 5f, 0.5f, Facing.LEFT, CreatureAction.FLY, 0L, 1_000L, GridCell(5, 5), turn = 0.1f, turnPassed = true)
+        assertFalse(VisitorLook.of(Creature.BIRD, flying, 0L).front)
+        // The whole turn 0.28 to 0.32 s, the front some 0.08 to 0.1 s of it; the least time between turns as it was.
+        assertTrue(CreatureRoutes.FACE_TURN_MILLIS in 280L..320L)
+        val frontMillis = CreatureRoutes.FACE_TURN_MILLIS * VisitorLook.FRONT_SHARE
+        assertTrue("$frontMillis", frontMillis in 80f..100f)
         assertEquals(900L, CreatureRoutes.MIN_FACING_MILLIS)
     }
 
