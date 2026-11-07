@@ -52,9 +52,12 @@ class View:
     scale: float
     cell: tuple[float, float] = ((GARDEN_SIZE - 1) / 2, (GARDEN_SIZE - 1) / 2)
     lift: float = 0.0
+    # How many device pixels to one at 420 dpi (2 on a display set to 840 dpi).
+    pixels: float = 1.0
 
     def extras(self) -> list[str]:
         px, py = pan_to(self.cell, self.scale, self.lift)
+        px, py = px * self.pixels, py * self.pixels
         return ["--ef", "scale", str(self.scale), "--ef", "pan_x", f"{px:.1f}", "--ef", "pan_y", f"{py:.1f}"]
 
 
@@ -292,6 +295,11 @@ class Shot:
     fresh: bool = False
     # Seconds to wait after the look is set, before the picture or the recording.
     settle: float = 5.0
+    # A clip made of a short take of each of these looks, one after another, cross-faded.
+    segments: tuple[Look, ...] = ()
+    # Cells to write a name under afterwards (tools/promo_marks.py): the plain picture goes to raw/,
+    # with the points under these cells beside it.
+    label_cells: tuple[tuple[float, float], ...] = ()
 
 
 def display_of(size: str) -> tuple[int, int]:
@@ -348,6 +356,7 @@ RAIN_OK = "☔ 雨を降らせる"
 RAIN_LOOK = Look(hide_ui=False, more=("--ez", "side_only", "true", "--ez", "skip_ad", "true", "--ez", "ad_ready", "true", "--es", "cloud", "READY"))
 
 TILL = ("--es", "garden", "till")
+DAY_ROUND = (Look(time="MORNING"), Look(time="DAY"), Look(time="EVENING"), Look(time="NIGHT"))
 # Every crop half watered: the rain helps them all, and they all glint after it.
 THIRSTY = ("--es", "garden", "thirsty")
 COTTAGE_VIEW = View(1.4, cell=(1, 1), lift=520)
@@ -365,8 +374,13 @@ NOVEMBER = [
     Shot("X-017_noon_16x9.png", Look(time="DAY"), WHOLE_WIDE),
     Shot("X-017_evening_16x9.png", Look(time="EVENING"), WHOLE_WIDE),
     Shot("X-017_night_16x9.png", Look(time="NIGHT"), WHOLE_WIDE),
-    # Plain, good and fluffy soil, side by side, nothing sown (ShowcaseGarden.OPEN_ROW, left to right).
-    Shot("X-019_soil_16x9.png", Look(), View(3.0, cell=(8, 5), lift=60), "W", ("--es", "garden", "soil")),
+    # The same garden from morning to night, about 3 s each, faded one into the next (some 10 s).
+    Shot("X-017_timeofday_16x9.mp4", Look(), WHOLE_WIDE, "W", segments=DAY_ROUND, settle=4),
+    Shot("X-017_timeofday_9x16.mp4", Look(), View(0.62, cell=(5, 4.5), lift=60), "T", segments=DAY_ROUND, settle=4),
+    # Plain, good and fluffy soil, a cell each side by side across the screen, nothing sown
+    # (ShowcaseGarden.soilRow), with their names written under them afterwards (promo_marks.py).
+    Shot("X-019_soil_16x9.png", Look(), View(2.0, cell=(5, 5), lift=-60), "W", ("--es", "garden", "soilrow"),
+         label_cells=((4, 6), (5, 5), (6, 4))),
     # The cottage in four of its colours (BuildingPaint: roof, wall), from the same place.
     *[
         Shot(f"X-021_cottage_{i}_16x9.png", Look(), COTTAGE_VIEW, "W", ("--es", "roof", roof, "--es", "wall", wall))
@@ -384,7 +398,57 @@ NOVEMBER = [
 ]
 
 
+# Each look of a clip of segments: seconds recorded, seconds kept, and how long one fades into the next.
+SEGMENT_RECORD, SEGMENT_KEEP, SEGMENT_FADE = 5, 3.0, 0.7
+
+
+def take_segments(device: Device, shot: Shot, out: Path, scratch: Path) -> Path:
+    """A short take of each of [shot]'s looks from the same place, joined with a soft cross-fade."""
+    device.display(display_of(shot.size))
+    time.sleep(3)
+    first = shot.segments[0]
+    set_look(device, first, shot.view, settle=7)
+    width, height = display_of(shot.size)
+    record = "1600x900" if shot.size == "W" else f"{width}x{height}"
+    takes = []
+    for i, look in enumerate(shot.segments):
+        set_look(device, look, shot.view, settle=shot.settle)
+        remote = "/sdcard/promo_seg.mp4"
+        device.shell("rm", "-f", remote)
+        device.shell("screenrecord", "--size", record, "--bit-rate", "16000000", "--time-limit", str(SEGMENT_RECORD), remote)
+        take = scratch / f"seg{i}_{shot.name}"
+        device.adb("pull", remote, str(take))
+        takes.append(take)
+    # Each take from 1 s in (screenrecord's first frame may be black), SEGMENT_KEEP long, at 30 fps.
+    # screenrecord writes no frames while nothing moves, so a quiet take can end early: its last
+    # frame is held (tpad) for as long as it takes.
+    inputs = []
+    for take in takes:
+        inputs += ["-i", str(take)]
+    chains = [
+        f"[{i}:v]setpts=PTS-STARTPTS,fps=30,tpad=stop_mode=clone:stop_duration={SEGMENT_RECORD},"
+        f"trim=start=1:duration={SEGMENT_KEEP},setpts=PTS-STARTPTS,fps=30,format=yuv420p[v{i}]"
+        for i in range(len(takes))
+    ]
+    last = "v0"
+    for i in range(1, len(takes)):
+        offset = i * (SEGMENT_KEEP - SEGMENT_FADE)
+        chains.append(f"[{last}][v{i}]xfade=transition=fade:duration={SEGMENT_FADE}:offset={offset:.2f}[x{i}]")
+        last = f"x{i}"
+    target = out / shot.name
+    subprocess.run(
+        [ffmpeg_exe(), "-y", "-loglevel", "error", *inputs, "-filter_complex", ";".join(chains), "-map", f"[{last}]",
+         "-c:v", "libx264", "-profile:v", "high", "-pix_fmt", "yuv420p", "-r", "30", "-crf", "18",
+         "-movflags", "+faststart", "-an", str(target)],
+        check=True,
+    )
+    print("took", target.name)
+    return target
+
+
 def take_shot(device: Device, shot: Shot, out: Path, scratch: Path) -> Path:
+    if shot.segments:
+        return take_segments(device, shot, out, scratch)
     device.display(display_of(shot.size))
     time.sleep(3)
     # The plain look first: hiding the controls lets the window turn to fill the display, which
@@ -398,7 +462,22 @@ def take_shot(device: Device, shot: Shot, out: Path, scratch: Path) -> Path:
         raw = scratch / "shot_raw.png"
         device.screencap(raw)
         out_size = WIDE_OUT if shot.size == "W" else TALL_SIZE
-        Image.open(raw).convert("RGB").resize(out_size, Image.LANCZOS).save(target, optimize=True)
+        if shot.label_cells:
+            import promo_marks
+
+            plain = out / "raw" / shot.name
+            plain.parent.mkdir(exist_ok=True)
+            Image.open(raw).convert("RGB").resize(out_size, Image.LANCZOS).save(plain, optimize=True)
+            # A little below the front corner of each cell, in the picture's own pixels.
+            factor = out_size[0] / width
+            points = []
+            for cell in shot.label_cells:
+                x, y = cell_point(shot, cell)
+                points.append((round(x * factor), round((y + TILE_H * shot.view.scale * 0.62) * factor)))
+            plain.with_suffix(".points.txt").write_text("".join(f"{x},{y}\n" for x, y in points))
+            promo_marks.main_for([shot.name])
+        else:
+            Image.open(raw).convert("RGB").resize(out_size, Image.LANCZOS).save(target, optimize=True)
         print("took", target.name)
         return target
     seconds, start, length = shot.clip

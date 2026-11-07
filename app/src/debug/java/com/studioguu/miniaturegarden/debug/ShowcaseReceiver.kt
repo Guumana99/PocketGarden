@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
  *         --ez side_only true --ez skip_ad true   # only the buttons down the right edge; the cloud's rain without the ad
  *         --es garden thirsty                 # ... [ShowcaseGarden] with every crop half watered (all glint after a rain), with load
  *         --es garden tulips                  # ... [ShowcaseGarden] with a bed of tulips in bloom (ordinary colours), with load
+ *         --es garden soilrow                 # ... [ShowcaseGarden.soilRow], three empty beds of each grade side by side, with load
  *         --es garden birdcrops               # ... [ShowcaseGarden.birdCrops], a well among tomatoes, with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es garden roses                   # ... or with [RoseGarden], the rose beside crops of its size
@@ -185,6 +186,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     expand -> FeedbackGarden.objects(now) + GroundGarden.joinedUp(now)
                     feedback -> FeedbackGarden.objects(now)
                     garden == "birdcrops" -> ShowcaseGarden.birdCrops(now)
+                    garden == "soilrow" -> ShowcaseGarden.soilRow(now)
                     garden == "thirsty" -> ShowcaseGarden.objects(now, thirsty = true, roof = roof, wall = wall)
                     garden == "tulips" -> ShowcaseGarden.objects(now, tulipBed = true, roof = roof, wall = wall)
                     garden == "till" -> ShowcaseGarden.objects(now, bare = ShowcaseGarden.OPEN_ROW, roof = roof, wall = wall)

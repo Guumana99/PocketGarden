@@ -113,6 +113,17 @@ class ShowcaseTest {
     }
 
     @Test
+    fun `the soil's row is three empty beds, plain to fluffy, side by side across the screen, on a lawn`() {
+        val row = ShowcaseGarden.soilRow(now)
+        val beds = ShowcaseGarden.SOIL_ROW.map { cell -> row.single { it.isTilledSoil && GridCell(it.gridX, it.gridY) == cell } }
+        assertEquals(listOf(0, 1, 2), beds.map { it.soilQuality })
+        assertTrue(row.none { it.isPlant })
+        // Side by side on the screen: each a step right (x + 1) and a step up (y - 1), so x - y grows and x + y stays.
+        assertEquals(1, ShowcaseGarden.SOIL_ROW.map { it.x + it.y }.toSet().size)
+        assertEquals(ShowcaseGarden.SIZE * ShowcaseGarden.SIZE, row.flatMap { it.occupiedCells() }.toSet().size)
+    }
+
+    @Test
     fun `a bird is called to a building or onto the ground, in place of any other bird`() {
         val other = CreatureVisit(VisitRule.BIRD_BENCH, GridCell(7, 8), null, now, now + 60_000L)
         val roof = Showcase(bird = StructureData.COTTAGE.objectId, birdAt = now).visitors(listOf(other), garden).single()

@@ -147,4 +147,24 @@ object ShowcaseGarden {
 
     /** Where the bird is called to in [birdCrops]: a cell of lawn in the middle of the crops. */
     val BIRD_GROUND = GridCell(5, 4)
+
+    /**
+     * Three empty beds side by side across the screen (`--es garden soilrow`), plain, good and
+     * fluffy soil from left to right ([SOIL_ROW]), on a lawn: for the close picture of the grades.
+     */
+    fun soilRow(now: Long): List<GridObject> {
+        fun at(cell: GridCell, objectId: String, growth: Float = 0f) = GridObject(
+            instanceId = "soilrow_${objectId}_${cell.x}_${cell.y}",
+            gridX = cell.x,
+            gridY = cell.y,
+            objectId = objectId,
+            growthProgress = growth,
+            lastUpdatedTimestamp = now,
+        )
+        val beds = SOIL_ROW.mapIndexed { grade, cell -> at(cell, GridObject.TILLED_SOIL_OBJECT_ID).copy(soilQuality = grade) }
+        return beds + cells(0 until SIZE, 0 until SIZE).filter { it !in SOIL_ROW }.map { at(it, "ground_grass", growth = 1f) }
+    }
+
+    /** The cells of [soilRow], left to right on the screen: each a step right and a step up from the last. */
+    val SOIL_ROW: List<GridCell> = listOf(GridCell(4, 6), GridCell(5, 5), GridCell(6, 4))
 }
