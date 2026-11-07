@@ -1,8 +1,10 @@
 package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -55,6 +57,8 @@ fun Creature.flies(): Boolean = hoverHeight > 0f
  * @property submerged a frog in a pond: the lower half of it is under the water.
  * @property shadow how dark its shadow is, 0 to 1.
  * @property whole drawn from its whole picture, not from its parts: the nature notes.
+ * @property crossing while it turns round, how far its picture has crossed from facing the old way
+ *   (`facing.turned()`) to facing the new way ([facing]), 0 to 1; 1 when it is not turning.
  */
 data class VisitorLook(
     val altitude: Float = 0f,
@@ -69,6 +73,7 @@ data class VisitorLook(
     val submerged: Boolean = false,
     val shadow: Float = 1f,
     val whole: Boolean = false,
+    val crossing: Float = 1f,
 ) {
     companion object {
         /** Standing (or hovering) still, as the nature notes show it. */
@@ -89,7 +94,7 @@ data class VisitorLook(
                 Creature.LADYBUG -> ladybug(base, pose, now)
                 Creature.BUTTERFLY -> butterfly(base, pose, now)
                 Creature.DRAGONFLY -> dragonfly(base, pose, now)
-            }.turning(creature, pose.turn)
+            }.turning(creature, pose)
             return when (pose.action) {
                 CreatureAction.APPEAR -> look.popped(popIn(p))
                 CreatureAction.VANISH -> look.popped(popIn(1f - p))
@@ -235,17 +240,44 @@ data class VisitorLook(
         }
 
         /**
-         * Narrowed as it turns from facing one way to the other ([CreaturePose.turn]), eased so that
-         * it slows into the turn and out of it. Not the dragonfly, which is seen from above and turns
-         * by its heading instead.
+         * Turning from facing one way to the other ([CreaturePose.turn]), eased so that it slows
+         * into the turn and out of it: it narrows to [TURN_NARROWEST] of its width, never flat, and
+         * at the narrowest its old picture crosses into the new one ([crossing], over
+         * [TURN_CROSSING] of the turn either side of the moment). Each does a little of its own to
+         * carry the narrow moment: the bird hops, the squirrel and the frog sink down, the ladybug
+         * rocks, the butterfly lifts and draws its wings in (#fb-1107). Not the dragonfly, which is
+         * seen from above and turns by its heading instead.
          */
-        private fun VisitorLook.turning(creature: Creature, turn: Float): VisitorLook {
+        private fun VisitorLook.turning(creature: Creature, pose: CreaturePose): VisitorLook {
+            val turn = pose.turn
             if (creature == Creature.DRAGONFLY || turn >= 1f) return this
-            return copy(scaleX = scaleX * sin(turn * PI / 2).toFloat().coerceAtLeast(TURN_NARROWEST))
+            val eased = sin(turn.coerceIn(0f, 1f) * PI / 2).toFloat()
+            val width = TURN_NARROWEST + (1f - TURN_NARROWEST) * eased
+            val bump = 1f - eased
+            val side = if (pose.turnPassed) turn else -turn
+            val turned = copy(
+                scaleX = scaleX * width,
+                facing = if (pose.turnPassed) facing else facing.turned(),
+                crossing = ((side / TURN_CROSSING + 1f) / 2f).coerceIn(0f, 1f),
+            )
+            return when (creature) {
+                Creature.BIRD -> turned.copy(lift = lift + TURN_HOP * bump, scaleY = scaleY * (1f + 0.04f * bump), shadow = shadow * (1f - 0.25f * bump))
+                Creature.SQUIRREL -> turned.copy(scaleY = scaleY * (1f - 0.08f * bump))
+                Creature.FROG -> turned.copy(scaleY = scaleY * (1f - 0.07f * bump))
+                Creature.LADYBUG -> turned.copy(tilt = tilt + 7f * bump * (if (pose.turnPassed) 1f else -1f), scaleY = scaleY * (1f - 0.05f * bump))
+                Creature.BUTTERFLY -> turned.copy(lift = lift + 0.02f * bump, wingOpen = wingOpen * (1f - 0.35f * bump))
+                Creature.DRAGONFLY -> this
+            }
         }
 
-        /** How narrow it gets at the very moment it turns: a sliver, not nothing. */
-        private const val TURN_NARROWEST = 0.05f
+        /** How narrow it gets at the very moment it turns: still well over half its width (#fb-1107: a sliver before). */
+        const val TURN_NARROWEST = 0.6f
+
+        /** How much of the turn, either side of its moment, the two pictures cross over in (of [CreaturePose.turn]). */
+        const val TURN_CROSSING = 0.3f
+
+        /** How high the bird hops as it turns round, in tile widths (its hop between spots is 0.05). */
+        const val TURN_HOP = 0.028f
 
         private fun VisitorLook.popped(size: Float) = copy(scaleX = scaleX * size, scaleY = scaleY * size, shadow = shadow * size.coerceIn(0f, 1f))
 
@@ -317,19 +349,34 @@ fun DrawScope.drawVisitor(
     shadow: Boolean = true,
 ) {
     val image = atlasImage ?: return
+    // Mirrored, and narrowed as it turns, about the middle of its body over its feet, not about
+    // its anchor: it turns round where it stands (#fb-1107).
+    val pivot = if (look.whole) 0f else (TURN_PIVOT[creature] ?: 0f) * unit
     if (shadow && look.shadow > 0f) {
         val size = min(abs(look.scaleX), 1.1f)
-        drawCreatureShadow(base, unit, SHADOW_WIDTH.getValue(creature) * size, alpha = look.shadow)
+        drawCreatureShadow(base + Offset(pivot, 0f), unit, SHADOW_WIDTH.getValue(creature) * size, alpha = look.shadow)
     }
     val feet = base - Offset(0f, (look.altitude + look.lift) * unit)
     val scale = unit / atlas.manifest.tileWidth
-    val picture: DrawScope.() -> Unit = {
+    fun DrawScope.facingWay(facing: Facing) {
         withTransform({
-            translate(feet.x, feet.y)
-            scale(if (look.facing == Facing.RIGHT) -look.scaleX else look.scaleX, look.scaleY, Offset.Zero)
+            translate(feet.x + pivot, feet.y)
+            scale(if (facing == Facing.RIGHT) -look.scaleX else look.scaleX, look.scaleY, Offset.Zero)
+            translate(-pivot, 0f)
             rotate(look.tilt, Offset.Zero)
         }) {
             drawPictures(creature, look, atlas, image, scale, unit)
+        }
+    }
+    val picture: DrawScope.() -> Unit = {
+        if (look.crossing >= 1f) {
+            facingWay(look.facing)
+        } else {
+            // The old way fades out under the new as the new comes in over it: never see-through.
+            val old = if (look.crossing <= 0.5f) 1f else (1f - look.crossing) * 2f
+            val new = if (look.crossing >= 0.5f) 1f else look.crossing * 2f
+            faded(old) { facingWay(look.facing.turned()) }
+            faded(new) { facingWay(look.facing) }
         }
     }
     if (look.submerged) {
@@ -401,6 +448,30 @@ private fun rootOf(wing: AssetManifest, scale: Float): Offset {
     val attachY = wing.attachY ?: wing.anchorY
     return Offset((wing.anchorX - attachX) * wing.drawnWidth(scale), (wing.anchorY - attachY) * wing.drawnHeight(scale))
 }
+
+/** [block] drawn as one, at [alpha]: nothing for 0, and as it is for 1. */
+private inline fun DrawScope.faded(alpha: Float, block: DrawScope.() -> Unit) {
+    if (alpha <= 0f) return
+    if (alpha >= 1f) {
+        block()
+        return
+    }
+    drawContext.canvas.saveLayer(Rect(Offset.Zero, size), Paint().apply { this.alpha = alpha })
+    block()
+    drawContext.canvas.restore()
+}
+
+/**
+ * Where each visitor turns round about, in tile widths from its anchor (along its picture, which
+ * faces left): the middle of its body over its feet, measured on creatures_0.png. The squirrel has
+ * its anchor at its front paws, the middle of its body (its tail left out) further back; the
+ * others have theirs close to it already.
+ */
+private val TURN_PIVOT: Map<Creature, Float> = mapOf(
+    Creature.SQUIRREL to 0.022f,
+    Creature.BIRD to 0.004f,
+    Creature.FROG to 0.015f,
+)
 
 /** How far the standing bird's body is above its feet, in tile widths (prepare_creature_art.py prints it). */
 private const val BIRD_BODY_HEIGHT = 0.08f

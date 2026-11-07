@@ -623,6 +623,9 @@ class CreatureMotionTest {
                     // At the moment of turning it is a sliver, on either side of it.
                     val (before, after) = poses.first { it.first == at - 10L }.second to poses.first { it.first == at }.second
                     assertTrue("${v.rule} at ${at - v.arrivesAt}: ${before.action} ${before.elapsed}/${before.duration} ${before.turn} -> ${after.action} ${after.elapsed}/${after.duration} ${after.turn}", before.turn < 0.25f && after.turn < 0.25f)
+                    // It knows which side of the moment it is on: still the old way before, the new way from it.
+                    assertFalse("${v.rule} at ${at - v.arrivesAt}: passed before the moment", before.turnPassed)
+                    assertTrue("${v.rule} at ${at - v.arrivesAt}: not passed at the moment", after.turnPassed)
                 }
                 // Well away from any turn it is its full width.
                 for ((t, pose) in poses) {
@@ -634,15 +637,44 @@ class CreatureMotionTest {
     }
 
     @Test
-    fun `turning narrows the picture, but not the dragonfly's, which turns by its heading`() {
-        fun pose(turn: Float) = CreaturePose(5f, 5f, 0f, Facing.LEFT, CreatureAction.STAND, 0L, 1_000L, GridCell(5, 5), turn = turn)
+    fun `turning narrows the picture to six tenths, never flat, but not the dragonfly's, which turns by its heading`() {
+        fun pose(turn: Float, passed: Boolean = false) =
+            CreaturePose(5f, 5f, 0f, Facing.LEFT, CreatureAction.STAND, 0L, 1_000L, GridCell(5, 5), turn = turn, turnPassed = passed)
         for (creature in Creature.entries - Creature.DRAGONFLY) {
             val whole = VisitorLook.of(creature, pose(1f), 0L).scaleX
             val turning = VisitorLook.of(creature, pose(0f), 0L).scaleX
-            assertTrue("$creature", abs(turning) < abs(whole) * 0.1f)
+            assertEquals("$creature", VisitorLook.TURN_NARROWEST, turning / whole, 0.02f)
             assertEquals(whole, VisitorLook.of(creature, pose(1f), 0L).scaleX, 0f)
         }
         assertEquals(VisitorLook.of(Creature.DRAGONFLY, pose(1f), 0L).scaleX, VisitorLook.of(Creature.DRAGONFLY, pose(0f), 0L).scaleX, 0f)
+        assertEquals(1f, VisitorLook.of(Creature.DRAGONFLY, pose(0f), 0L).crossing, 0f)
+    }
+
+    @Test
+    fun `turning round, the old picture crosses into the new one about the moment, and each does a little of its own`() {
+        fun pose(turn: Float, passed: Boolean) =
+            CreaturePose(5f, 5f, 0f, Facing.RIGHT, CreatureAction.STAND, 0L, 1_000L, GridCell(5, 5), turn = turn, turnPassed = passed)
+        for (creature in Creature.entries - Creature.DRAGONFLY) {
+            // Before the moment the pose still faces the old way (RIGHT here): the look faces the new (LEFT)
+            // way, with none of it shown yet well before, half at the moment, all of it well after.
+            val early = VisitorLook.of(creature, pose(0.8f, passed = false), 0L)
+            val before = VisitorLook.of(creature, pose(0.01f, passed = false), 0L)
+            val after = VisitorLook.of(creature, pose(0.01f, passed = true).copy(facing = Facing.LEFT), 0L)
+            val late = VisitorLook.of(creature, pose(0.8f, passed = true).copy(facing = Facing.LEFT), 0L)
+            for (look in listOf(early, before, after, late)) assertEquals("$creature", Facing.LEFT, look.facing)
+            assertEquals("$creature", 0f, early.crossing, 0f)
+            assertEquals("$creature", 0.5f, before.crossing, 0.05f)
+            assertEquals("$creature", 0.5f, after.crossing, 0.05f)
+            assertEquals("$creature", 1f, late.crossing, 0f)
+            // Something moves at the narrowest, and nothing at all when not turning.
+            val still = VisitorLook.of(creature, pose(1f, passed = false), 0L)
+            assertTrue("$creature", before.lift != still.lift || before.scaleY != still.scaleY || before.tilt != still.tilt || before.wingOpen != still.wingOpen)
+        }
+        // The bird hops, the squirrel sinks.
+        assertTrue(VisitorLook.of(Creature.BIRD, pose(0f, true), 0L).lift > VisitorLook.of(Creature.BIRD, pose(1f, true), 0L).lift + 0.02f)
+        assertTrue(VisitorLook.of(Creature.SQUIRREL, pose(0f, true), 0L).scaleY < VisitorLook.of(Creature.SQUIRREL, pose(1f, true), 0L).scaleY - 0.05f)
+        assertTrue(CreatureRoutes.FACE_TURN_MILLIS in 250L..300L)
+        assertEquals(900L, CreatureRoutes.MIN_FACING_MILLIS)
     }
 
     // --- The title's garden, whose visitors never leave ---
