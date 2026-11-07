@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -21,12 +22,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -132,13 +127,7 @@ internal fun SettingsContent(
         )
     }
     if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
-    if (showLicenses) {
-        InfoDialog(
-            title = stringResource(R.string.settings_licenses),
-            body = stringResource(R.string.licenses_body),
-            onDismiss = { showLicenses = false },
-        )
-    }
+    if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
 }
 
 @Composable
@@ -175,17 +164,44 @@ private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onSh
     }
 }
 
-/** One line of the credits: what it is for, whose it is, and their site. */
-internal data class Credit(val what: Int, val name: String, val url: String)
+/**
+ * The open-source software the app adds itself (app/build.gradle.kts), by name and licence, and
+ * then each licence's text once: Apache License 2.0, and SQLCipher's (BSD-style). Short and
+ * written by hand, not a generated list of everything every library pulls in.
+ */
+@Composable
+private fun LicensesDialog(onDismiss: () -> Unit) {
+    val assets = LocalContext.current.assets
+    val texts = remember(assets) { LICENCE_TEXTS.map { (heading, file) -> heading to runCatching { assets.open(file).bufferedReader().use { it.readText() } }.getOrDefault("") } }
+    ParchmentDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.settings_licenses),
+        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
+    ) {
+        Column(
+            modifier = Modifier.heightIn(max = INFO_MAX_HEIGHT).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(stringResource(R.string.licenses_intro), style = MaterialTheme.typography.bodyMedium, color = GardenColors.Ink)
+            Text(stringResource(R.string.licenses_list), style = MaterialTheme.typography.bodyMedium, color = GardenColors.Ink)
+            for ((heading, text) in texts) {
+                Text(stringResource(heading), style = MaterialTheme.typography.titleSmall, color = GardenColors.Ink)
+                Text(text.trim(), style = MaterialTheme.typography.bodySmall, color = GardenColors.Ink)
+            }
+        }
+    }
+}
 
-/** Where the sound effects may come from; which file is whose is not known for each (ASSETS.md). */
-internal val SOUND_CREDITS = listOf(
-    Credit(R.string.credits_sound_effects, "ポケットサウンド", "https://pocket-se.info/"),
-    Credit(R.string.credits_sound_effects, "タダノオト", "https://tadanote.tokyo/"),
-    Credit(R.string.credits_sound_effects, "効果音ラボ", "https://soundeffect-lab.info/"),
+/** Each licence's text, once, with its heading: in assets/licenses. */
+private val LICENCE_TEXTS = listOf(
+    R.string.licenses_apache_heading to "licenses/apache-2.0.txt",
+    R.string.licenses_sqlcipher_heading to "licenses/sqlcipher.txt",
 )
 
-/** The credits, each site's address a link that opens in the browser. */
+/** Where the sounds may come from, by the sites' names; which file is whose is not known for each (ASSETS.md). */
+internal val SOUND_CREDITS = listOf("ポケットサウンド", "タダノオト", "効果音ラボ")
+
+/** The credits: under the heading of the sounds, the sites' names, one to a line. */
 @Composable
 private fun CreditsDialog(onDismiss: () -> Unit) {
     ParchmentDialog(
@@ -193,19 +209,10 @@ private fun CreditsDialog(onDismiss: () -> Unit) {
         title = stringResource(R.string.settings_credits),
         actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            for (credit in SOUND_CREDITS) {
-                val what = stringResource(credit.what)
-                Text(
-                    text = buildAnnotatedString {
-                        append("$what：${credit.name}\n")
-                        withLink(LinkAnnotation.Url(credit.url, TextLinkStyles(SpanStyle(color = GardenColors.Link, textDecoration = TextDecoration.Underline)))) {
-                            append(credit.url)
-                        }
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = GardenColors.Ink,
-                )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.credits_sounds), style = MaterialTheme.typography.titleSmall, color = GardenColors.Ink)
+            for (name in SOUND_CREDITS) {
+                Text(stringResource(R.string.credits_item, name), style = MaterialTheme.typography.bodyMedium, color = GardenColors.Ink)
             }
         }
     }

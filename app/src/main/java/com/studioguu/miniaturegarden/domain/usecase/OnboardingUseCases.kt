@@ -109,7 +109,8 @@ class SetDownForCalledCreaturesUseCase @Inject constructor(
         val map = gardenMap.current()
         for (creature in creatures) {
             val objects = gardenRepository.getGridObjects()
-            if (CreatureCalls.visitsAt(now, listOf(creature), objects, map).isNotEmpty()) continue
+            // Its own thing to settle on, if the garden has none yet (debug builds only).
+            if (objects.any { CreatureCalls.isPerchFor(creature, it) && !it.isWorking }) continue
             val cell = CreatureCalls.freeCell(objects, map) ?: continue
             CreatureCalls.coverAt(cell, objects).forEach { gardenRepository.deleteGridObject(it.instanceId) }
             gardenRepository.upsertGridObjects(CreatureCalls.thingsFor(creature, cell, now))

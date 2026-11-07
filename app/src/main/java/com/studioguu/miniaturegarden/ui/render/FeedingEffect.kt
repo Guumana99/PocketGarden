@@ -12,12 +12,12 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 /**
- * How fertilizer shows on its cell, by the time since it was given ([Soil.SOAK_MILLIS],
- * [Soil.FILL_MILLIS]), all drawn in code:
+ * How fertilizer shows on its cell, by the time since it was given ([Soil.SOAK_MILLIS], then
+ * [Soil.fillMillis] while the food rises a percent a second), all drawn in code:
  *
  * - while it soaks in, granules patter down onto the soil and sink into it;
- * - while the food fills, the soil glows softly and small bubbles rise from it, and a little
- *   gauge over the cell fills with the food (unless the panel's own bar is showing);
+ * - while the food fills, however long that takes, the soil glows softly and small bubbles rise
+ *   from it, and a little gauge over the cell fills with the food (unless the panel's own bar is showing);
  * - when it is full, a small sparkle.
  *
  * @property granules whether the granules are falling.
@@ -40,29 +40,29 @@ data class FeedingLook(
         /** How long the glow and the gauge take to come and to go. */
         private const val FADE_MILLIS = 400f
 
-        /** From the giving of fertilizer to the end of its show. */
-        const val SHOW_MILLIS = Soil.FEEDING_MILLIS + SPARKLE_MILLIS
-
-        /** The look [since] millis after fertilizer was given; null when there is nothing to show. */
-        fun at(since: Long): FeedingLook? {
-            if (since < 0L || since >= SHOW_MILLIS) return null
-            val filling = since >= Soil.SOAK_MILLIS && since < Soil.FEEDING_MILLIS
+        /**
+         * The look [since] millis after fertilizer was given, whose food is full [feeding] millis
+         * after it ([Soil.feedingMillis]); null when there is nothing to show.
+         */
+        fun at(since: Long, feeding: Long): FeedingLook? {
+            if (since < 0L || since >= feeding + SPARKLE_MILLIS) return null
+            val filling = since >= Soil.SOAK_MILLIS && since < feeding
             val inFill = (since - Soil.SOAK_MILLIS).toFloat()
             val glow = when {
                 since < Soil.SOAK_MILLIS -> 0f
-                since < Soil.FEEDING_MILLIS -> (inFill / FADE_MILLIS).coerceAtMost(1f)
-                else -> (1f - (since - Soil.FEEDING_MILLIS) / FADE_MILLIS).coerceAtLeast(0f)
+                since < feeding -> (inFill / FADE_MILLIS).coerceAtMost(1f)
+                else -> (1f - (since - feeding) / FADE_MILLIS).coerceAtLeast(0f)
             }
             val gauge = when {
-                since < Soil.FEEDING_MILLIS -> (since / FADE_MILLIS).coerceAtMost(1f)
-                else -> (1f - (since - Soil.FEEDING_MILLIS) / FADE_MILLIS).coerceAtLeast(0f)
+                since < feeding -> (since / FADE_MILLIS).coerceAtMost(1f)
+                else -> (1f - (since - feeding) / FADE_MILLIS).coerceAtLeast(0f)
             }
             return FeedingLook(
                 granules = since < Soil.SOAK_MILLIS,
                 glow = glow,
                 bubbles = filling,
                 gauge = gauge,
-                sparkle = if (since >= Soil.FEEDING_MILLIS) (since - Soil.FEEDING_MILLIS).toFloat() / SPARKLE_MILLIS else null,
+                sparkle = if (since >= feeding) (since - feeding).toFloat() / SPARKLE_MILLIS else null,
             )
         }
     }

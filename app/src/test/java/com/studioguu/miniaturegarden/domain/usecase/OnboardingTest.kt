@@ -130,7 +130,7 @@ class OnboardingTest {
         assertEquals(coins, garden.getUserProfile()!!.coins)
         val fed = garden.getGridObjects().single { it.isPlant }
         // The food soaks in over a few seconds; time going by in the next step brings it all in.
-        assertEquals(PlantStatus.HEALTHY, offline(fed, t0 + Soil.FEEDING_MILLIS, sunny).status)
+        assertEquals(PlantStatus.HEALTHY, offline(fed, t0 + Soil.feedingMillis(fed), sunny).status)
         assertEquals(plant.growthProgress, fed.growthProgress, 0f)
         follow.fed()
         assertEquals(TutorialStep.GROW, step())

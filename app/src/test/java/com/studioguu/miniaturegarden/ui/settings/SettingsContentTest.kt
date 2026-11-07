@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -138,10 +139,10 @@ class SettingsContentTest {
         compose.onAllNodesWithText("閉じる").onLast().performClick()
         compose.onNodeWithText("v9.9.9", substring = true).assertDoesNotExist()
         compose.onNodeWithText("オープンソースライセンス").performClick()
-        compose.onNodeWithText("オープンソースライブラリ", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("このアプリは次のオープンソースソフトウェアを使用しています。").assertIsDisplayed()
         // Two close buttons now: the licences' own, on top, closes only them.
         compose.onAllNodesWithText("閉じる").onLast().performClick()
-        compose.onNodeWithText("オープンソースライブラリ", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("このアプリは次のオープンソースソフトウェアを使用しています。").assertDoesNotExist()
         compose.onNodeWithText("バージョン").assertIsDisplayed()
         assertEquals(0, dismissed)
         // The disclaimer is part of the privacy policy now.
@@ -149,7 +150,21 @@ class SettingsContentTest {
     }
 
     @Test
-    fun `the about page has the version, the credits and the licences in that order, and the credits link to each site`() {
+    fun `the licences are a short page by hand - the libraries, then the Apache licence once and SQLCipher's, and no word of the sounds`() {
+        show()
+        compose.onNodeWithText("情報").performClick()
+        compose.onNodeWithText("オープンソースライセンス").performClick()
+        for (name in listOf("AndroidX", "Jetpack Compose", "Kotlin", "Dagger / Hilt", "SQLCipher for Android")) {
+            compose.onAllNodesWithText(name, substring = true).onFirst().assertExists()
+        }
+        compose.onAllNodesWithText("TERMS AND CONDITIONS FOR USE", substring = true).assertCountEquals(1)
+        compose.onAllNodesWithText("ZETETIC", substring = true).assertCountEquals(1)
+        compose.onNodeWithText("使用音源", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("準備中", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the about page has the version, the credits and the licences in that order, and the credits name the sound sites only`() {
         show()
         compose.onNodeWithText("情報").performClick()
         val tops = listOf("バージョン", "クレジット", "オープンソースライセンス").map {
@@ -157,14 +172,9 @@ class SettingsContentTest {
         }
         assertEquals(tops.sorted(), tops)
         compose.onNodeWithText("クレジット").performClick()
-        for ((name, url) in listOf(
-            "ポケットサウンド" to "https://pocket-se.info/",
-            "タダノオト" to "https://tadanote.tokyo/",
-            "効果音ラボ" to "https://soundeffect-lab.info/",
-        )) {
-            compose.onNodeWithText("効果音：$name", substring = true).assertIsDisplayed()
-            compose.onNodeWithText(url, substring = true).assertIsDisplayed()
-        }
+        compose.onNodeWithText("音源").assertIsDisplayed()
+        for (name in listOf("ポケットサウンド", "タダノオト", "効果音ラボ")) compose.onNodeWithText("・$name").assertIsDisplayed()
+        compose.onNodeWithText("https://", substring = true).assertDoesNotExist()
         assertEquals(3, SOUND_CREDITS.size)
         compose.onAllNodesWithText("閉じる").onLast().performClick()
         compose.onNodeWithText("タダノオト", substring = true).assertDoesNotExist()

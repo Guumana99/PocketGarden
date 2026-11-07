@@ -272,8 +272,8 @@ class SoilTest {
         assertEquals(1f, stored.nutritionLevel, 0f)
         assertEquals(1f, repo.objects.getValue("p").nutritionLevel, 0f)
         // Full is where it is going: the food itself comes over the next seconds (fertilizer fills slowly).
-        assertEquals(1f, Soil.levelAt(stored, t0 + Soil.FEEDING_MILLIS), 0f)
-        assertEquals(PlantStatus.HEALTHY, calc(repo.objects.getValue("p"), t0 + Soil.FEEDING_MILLIS, sunny).status)
+        assertEquals(1f, Soil.levelAt(stored, t0 + Soil.feedingMillis(stored)), 0f)
+        assertEquals(PlantStatus.HEALTHY, calc(repo.objects.getValue("p"), t0 + Soil.feedingMillis(stored), sunny).status)
         assertEquals(70L, repo.profile?.coins)
         assertEquals(CareForPlantUseCase.FERTILIZE_XP.toLong(), repo.profile?.currentXp)
 
@@ -287,7 +287,7 @@ class SoilTest {
     }
 
     @Test
-    fun `fertilizer soaks in for two seconds, then the food fills evenly over ten, on the soil and its crop alike`() = runBlocking {
+    fun `fertilizer soaks in for two seconds, then the food rises a percent a second, on the soil and its crop alike`() = runBlocking {
         repo.put(soil(food = 0.2f))
         repo.put(plant(PlantSpecies.CARROT, growth = 0.5f, food = 0.2f))
         assertEquals(ActionResult.SUCCESS, care.fertilize("p", t0, sunny))
@@ -297,13 +297,28 @@ class SoilTest {
             assertEquals(0.2f, obj.fedFrom, 1e-6f)
             assertEquals(0.2f, Soil.levelAt(obj, t0), 1e-6f)
             assertEquals(0.2f, Soil.levelAt(obj, t0 + 2_000L), 1e-6f)
-            assertEquals(0.6f, Soil.levelAt(obj, t0 + 7_000L), 1e-5f)
-            assertEquals(1f, Soil.levelAt(obj, t0 + 12_000L), 1e-6f)
-            assertTrue(Soil.isFeeding(obj, t0 + 11_999L))
-            assertFalse(Soil.isFeeding(obj, t0 + 12_000L))
+            // 50 seconds on: 50 percent more.
+            assertEquals(0.7f, Soil.levelAt(obj, t0 + 52_000L), 1e-5f)
+            // 80 percent to come: 80 seconds after the soaking in.
+            assertEquals(82_000L, Soil.feedingMillis(obj))
+            assertEquals(1f, Soil.levelAt(obj, t0 + 82_000L), 1e-6f)
+            assertEquals(1f, Soil.levelAt(obj, t0 + 200_000L), 1e-6f)
+            assertTrue(Soil.isFeeding(obj, t0 + 81_999L))
+            assertFalse(Soil.isFeeding(obj, t0 + 82_000L))
         }
-        assertEquals(10_000L, Soil.FILL_MILLIS)
         assertEquals(2_000L, Soil.SOAK_MILLIS)
+        assertEquals(1_000L, Soil.MILLIS_PER_PERCENT)
+    }
+
+    @Test
+    fun `from empty the food takes a hundred seconds, from half fifty`() = runBlocking {
+        repo.put(soil(food = 0f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("soil", t0, sunny))
+        assertEquals(102_000L, Soil.feedingMillis(stored))
+        assertEquals(0.99f, Soil.levelAt(stored, t0 + 101_000L), 1e-5f)
+        repo.put(soil(food = 0.5f))
+        assertEquals(ActionResult.SUCCESS, care.fertilize("soil", t0, sunny))
+        assertEquals(52_000L, Soil.feedingMillis(stored))
     }
 
     @Test
@@ -312,9 +327,12 @@ class SoilTest {
         val lateNight = 1_700_006_395_000L
         repo.put(soil(food = 0f))
         assertEquals(ActionResult.SUCCESS, care.fertilize("soil", lateNight, sunny))
-        assertEquals(0.5f, Soil.levelAt(stored, lateNight + 7_000L), 1e-5f)
+        assertEquals(0.5f, Soil.levelAt(stored, lateNight + 52_000L), 1e-5f)
         assertEquals(1f, Soil.levelAt(stored, lateNight + day), 0f)
         assertEquals(1f, Soil.levelAt(stored, lateNight - hour), 0f)
+        // The game's clock and the screen's a moment apart: not yet begun, rather than full.
+        assertEquals(0f, Soil.levelAt(stored, lateNight - 2_000L), 0f)
+        assertTrue(Soil.isFeeding(stored, lateNight - 2_000L))
     }
 
     @Test
@@ -338,7 +356,7 @@ class SoilTest {
         assertEquals(coins, repo.profile!!.coins)
         assertEquals(ActionResult.SUCCESS, care.water("p", t0 + 5_000L, sunny))
         assertEquals(t0, repo.objects.getValue("p").fedAt)
-        assertEquals(0.3f, Soil.levelAt(repo.objects.getValue("p"), t0 + 5_000L), 1e-5f)
+        assertEquals(0.03f, Soil.levelAt(repo.objects.getValue("p"), t0 + 5_000L), 1e-5f)
     }
 
     @Test

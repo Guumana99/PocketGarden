@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -283,15 +284,21 @@ private fun StatusTag(status: PlantStatus) {
 
 /**
  * The food of [gridObject] as it is now ([Soil.levelAt]): while fertilizer soaks in, looked at
- * ten times a second, so that the bar fills up with it.
+ * ten times a second, so that the bar fills up with it while the panel stays open. Started
+ * afresh whenever the fertilizer changes; it stops once the food is full.
  */
 @Composable
 private fun foodOf(gridObject: GridObject, clockOffset: Long): Float {
-    val food by produceState(Soil.levelAt(gridObject, System.currentTimeMillis() + clockOffset), gridObject, clockOffset) {
+    val currentObject by rememberUpdatedState(gridObject)
+    val currentOffset by rememberUpdatedState(clockOffset)
+    val food by produceState(
+        Soil.levelAt(gridObject, System.currentTimeMillis() + clockOffset),
+        gridObject.instanceId, gridObject.fedAt, gridObject.fedFrom, gridObject.nutritionLevel,
+    ) {
         while (true) {
-            val now = System.currentTimeMillis() + clockOffset
-            value = Soil.levelAt(gridObject, now)
-            if (!Soil.isFeeding(gridObject, now)) break
+            val now = System.currentTimeMillis() + currentOffset
+            value = Soil.levelAt(currentObject, now)
+            if (!Soil.isFeeding(currentObject, now)) break
             delay(100)
         }
     }

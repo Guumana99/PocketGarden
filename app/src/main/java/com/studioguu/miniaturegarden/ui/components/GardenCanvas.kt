@@ -557,7 +557,7 @@ fun GardenCanvas(
         for (soil in gridObjects) {
             if (!soil.isSoil || soil.fedAt == 0L) continue
             val since = ambience.gameMillis - soil.fedAt
-            val look = FeedingLook.at(since) ?: continue
+            val look = FeedingLook.at(since, Soil.feedingMillis(soil)) ?: continue
             val depth = LayerPipeline.depthOf(soil.gridX, soil.gridY, 0)
             val ground = transform.tileCenter(soil.gridX, soil.gridY)
             val unit = transform.tileWidth

@@ -102,6 +102,34 @@ class CreatureCallTest {
     }
 
     @Test
+    fun `each called creature gets a thing it can settle on, and goes to the one nearest the middle`() {
+        val expected = mapOf(
+            Creature.BIRD to StructureData.WELL.objectId, Creature.DRAGONFLY to GridObject.POND_OBJECT_ID,
+            Creature.LADYBUG to "struct_fence", Creature.FROG to GridObject.POND_OBJECT_ID,
+            Creature.BUTTERFLY to PlantSpecies.TULIP.objectId, Creature.SQUIRREL to "deco_rock",
+        )
+        for ((creature, id) in expected) {
+            assertEquals(id, CreatureCalls.perchFor(creature))
+            assertTrue(withThingsFor(creature).any { it.objectId == id })
+        }
+        // A well at the edge, out of view, and one in the middle: the bird goes to the middle one, onto its rim.
+        val far = at(0, 10, StructureData.WELL.objectId)
+        val near = at(5, 6, StructureData.WELL.objectId)
+        val visit = CreatureCalls.visitsAt(t0, listOf(Creature.BIRD), listOf(far, near, at(10, 0, "deco_bench")), map).single()
+        assertEquals(near, visit.host)
+        val route = CreatureRoutes.plan(visit, GardenGrid(map, listOf(far, near)))
+        val settled = (visit.arrivesAt until visit.leavesAt step 500L).mapNotNull { route.poseAt(it) }.filter { it.action != CreatureAction.FLY }
+        assertTrue(settled.isNotEmpty())
+        assertTrue(settled.all { it.surface == CreaturePerches.WELL_RIM_HEIGHT })
+        // The ladybird on a fence, and nowhere else.
+        val fence = at(5, 5, "struct_fence")
+        val ladybug = CreatureCalls.visitsAt(t0, listOf(Creature.LADYBUG), listOf(fence), map).single()
+        assertEquals(fence, ladybug.host)
+        val onFence = CreatureRoutes.plan(ladybug, GardenGrid(map, listOf(fence))).poseAt(ladybug.arrivesAt + 10_000L)!!
+        assertTrue(onFence.surface > 0f)
+    }
+
+    @Test
     fun `a crop set down for a creature stands grown on its own bed`() {
         val things = withThingsFor(Creature.BUTTERFLY)
         assertTrue(things.any { it.isFloor })
