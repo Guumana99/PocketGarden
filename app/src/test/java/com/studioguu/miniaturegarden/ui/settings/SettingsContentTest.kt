@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -138,14 +139,28 @@ class SettingsContentTest {
         compose.onAllNodesWithText("閉じる").onLast().performClick()
         compose.onNodeWithText("v9.9.9", substring = true).assertDoesNotExist()
         compose.onNodeWithText("オープンソースライセンス").performClick()
-        compose.onNodeWithText("オープンソースライブラリ", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("このアプリは次のオープンソースソフトウェアを使用しています。").assertIsDisplayed()
         // Two close buttons now: the licences' own, on top, closes only them.
         compose.onAllNodesWithText("閉じる").onLast().performClick()
-        compose.onNodeWithText("オープンソースライブラリ", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("このアプリは次のオープンソースソフトウェアを使用しています。").assertDoesNotExist()
         compose.onNodeWithText("バージョン").assertIsDisplayed()
         assertEquals(0, dismissed)
         // The disclaimer is part of the privacy policy now.
         compose.onNodeWithText("免責事項").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the licences are a short page by hand - the libraries, then the Apache licence once and SQLCipher's, and no word of the sounds`() {
+        show()
+        compose.onNodeWithText("情報").performClick()
+        compose.onNodeWithText("オープンソースライセンス").performClick()
+        for (name in listOf("AndroidX", "Jetpack Compose", "Kotlin", "Dagger / Hilt", "SQLCipher for Android")) {
+            compose.onAllNodesWithText(name, substring = true).onFirst().assertExists()
+        }
+        compose.onAllNodesWithText("TERMS AND CONDITIONS FOR USE", substring = true).assertCountEquals(1)
+        compose.onAllNodesWithText("ZETETIC", substring = true).assertCountEquals(1)
+        compose.onNodeWithText("使用音源", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("準備中", substring = true).assertDoesNotExist()
     }
 
     @Test

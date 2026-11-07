@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -126,13 +127,7 @@ internal fun SettingsContent(
         )
     }
     if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
-    if (showLicenses) {
-        InfoDialog(
-            title = stringResource(R.string.settings_licenses),
-            body = stringResource(R.string.licenses_body),
-            onDismiss = { showLicenses = false },
-        )
-    }
+    if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
 }
 
 @Composable
@@ -168,6 +163,40 @@ private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onSh
         CarvedButton(text = stringResource(R.string.settings_licenses), onClick = onShowLicenses, modifier = Modifier.fillMaxWidth())
     }
 }
+
+/**
+ * The open-source software the app adds itself (app/build.gradle.kts), by name and licence, and
+ * then each licence's text once: Apache License 2.0, and SQLCipher's (BSD-style). Short and
+ * written by hand, not a generated list of everything every library pulls in.
+ */
+@Composable
+private fun LicensesDialog(onDismiss: () -> Unit) {
+    val assets = LocalContext.current.assets
+    val texts = remember(assets) { LICENCE_TEXTS.map { (heading, file) -> heading to runCatching { assets.open(file).bufferedReader().use { it.readText() } }.getOrDefault("") } }
+    ParchmentDialog(
+        onDismissRequest = onDismiss,
+        title = stringResource(R.string.settings_licenses),
+        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
+    ) {
+        Column(
+            modifier = Modifier.heightIn(max = INFO_MAX_HEIGHT).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(stringResource(R.string.licenses_intro), style = MaterialTheme.typography.bodyMedium, color = GardenColors.Ink)
+            Text(stringResource(R.string.licenses_list), style = MaterialTheme.typography.bodyMedium, color = GardenColors.Ink)
+            for ((heading, text) in texts) {
+                Text(stringResource(heading), style = MaterialTheme.typography.titleSmall, color = GardenColors.Ink)
+                Text(text.trim(), style = MaterialTheme.typography.bodySmall, color = GardenColors.Ink)
+            }
+        }
+    }
+}
+
+/** Each licence's text, once, with its heading: in assets/licenses. */
+private val LICENCE_TEXTS = listOf(
+    R.string.licenses_apache_heading to "licenses/apache-2.0.txt",
+    R.string.licenses_sqlcipher_heading to "licenses/sqlcipher.txt",
+)
 
 /** Where the sounds may come from, by the sites' names; which file is whose is not known for each (ASSETS.md). */
 internal val SOUND_CREDITS = listOf("ポケットサウンド", "タダノオト", "効果音ラボ")
