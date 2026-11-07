@@ -109,6 +109,7 @@ import com.studioguu.miniaturegarden.ui.effects.GardenEffect
 import com.studioguu.miniaturegarden.ui.effects.plusEffect
 import com.studioguu.miniaturegarden.ui.debug.adsOr
 import com.studioguu.miniaturegarden.ui.hud.RainCloudState
+import com.studioguu.miniaturegarden.ui.render.EdgeSnow
 import com.studioguu.miniaturegarden.ui.render.TileCoord
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -1388,6 +1389,24 @@ class GardenViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /**
+     * How much snow lies along the roofs and the fences ([EdgeSnow.depthAt]): it builds up while it
+     * snows and goes once it stops, looked at again every minute and whenever the weather changes.
+     */
+    val edgeSnow: StateFlow<Float> = combine(minutes, weather) { _, _ -> EdgeSnow.depthAt(gardenForecast(), clock.now()) }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0f)
+
+    /**
+     * Debug menu: snow, lying as thick as it gets, in place of the day's own weather until restart:
+     * a forecast of snow all along has snowed for as long as it takes ([EdgeSnow.SETTLE_MILLIS]).
+     */
+    fun debugSnowLying() {
+        if (!BuildConfig.DEBUG) return
+        debugWeather = WeatherType.SNOWY
+        currentWeather(clock.now())
     }
 
     /** Debug menu: switch to the next kind of weather, in place of the day's own, until restart. */

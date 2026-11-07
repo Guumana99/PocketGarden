@@ -323,6 +323,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             // for a moment before the saved one; until then there is only the sky.
             val gardenAlpha by animateFloatAsState(if (gardenReady) 1f else 0f, tween(GARDEN_FADE_IN_MILLIS), label = "gardenIn")
             val perchesShown by PerchPreview.shown.collectAsStateWithLifecycle()
+            val edgeSnow by viewModel.edgeSnow.collectAsStateWithLifecycle()
             if (gardenReady) GardenCanvas(
                 gridObjects = gridObjects,
                 // In camera mode the garden is only looked at: no selection, no grid, and taps
@@ -358,6 +359,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 lightByTimeOfDay = true,
                 clockOffset = clockOffset,
                 pulledIds = pulledIds,
+                edgeSnow = edgeSnow,
                 // Buildings turn see-through while a cell is being looked for (placing, moving,
                 // the hoe), or when the selected cell is behind one of them.
                 fadedObjectIds = remember(gridObjects, selectedTile, placingSlot, hoeActive, movingObject, cameraMode) {
@@ -833,6 +835,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         DebugMenuDialog(
             onSkipTime = viewModel::debugSkipTime,
             onCycleWeather = viewModel::debugCycleWeather,
+            onSnowLying = viewModel::debugSnowLying,
             onBoost = viewModel::debugBoost,
             onNextSeason = viewModel::debugNextSeason,
             onCycleTimeOfDay = viewModel::debugCycleTimeOfDay,

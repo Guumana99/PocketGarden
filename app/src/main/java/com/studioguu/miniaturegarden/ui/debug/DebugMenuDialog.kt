@@ -49,6 +49,7 @@ private const val DAY_MILLIS = 24 * HOUR_MILLIS
  * pressed so the buttons can be pressed repeatedly.
  *
  * @param onCycleWeather switches to the next kind of weather, overriding the day's own.
+ * @param onSnowLying snow, lying on the roofs and the fences as thick as it gets.
  * @param onBoost adds coins and a level, to reach what opens late (the symbol building) quickly.
  * @param onNextSeason lets the rest of the season go by, so that the next one comes now.
  * @param onCycleTimeOfDay shows the garden at the next time of day, for a look at its light.
@@ -76,6 +77,7 @@ fun DebugMenuDialog(
     bookAllRegistered: Boolean = false,
     onBookAllRegistered: (Boolean) -> Unit = {},
     onAskForReview: () -> Unit = {},
+    onSnowLying: () -> Unit = {},
     perchesShown: Boolean = false,
     onPerchesShown: (Boolean) -> Unit = {},
 ) {
@@ -98,6 +100,9 @@ fun DebugMenuDialog(
                 }
                 FilledTonalButton(onClick = onCycleWeather) {
                     Text(stringResource(R.string.debug_cycle_weather))
+                }
+                FilledTonalButton(onClick = onSnowLying) {
+                    Text(stringResource(R.string.debug_snow_lying))
                 }
                 FilledTonalButton(onClick = onCycleTimeOfDay) {
                     val shown = timeOfDayShown?.let { stringResource(timeOfDayLabel(it)) } ?: stringResource(R.string.debug_time_clock)
