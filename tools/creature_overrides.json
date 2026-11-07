@@ -27,6 +27,14 @@
     "anchorX": 0.3889,
     "anchorY": 0.9819
   },
+  "creature_bird_front": {
+    "anchorX": 0.4999,
+    "anchorY": 1.0
+  },
+  "creature_squirrel_front": {
+    "anchorX": 0.4913,
+    "anchorY": 1.0
+  },
   "creature_frog_jump": {
     "anchorX": 0.2744,
     "anchorY": 0.8603

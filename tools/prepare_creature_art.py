@@ -88,6 +88,11 @@ SAME_SCALE: dict[str, tuple[str, float]] = {
     "frog_jump": ("frog", 1.8),
 }
 
+#: Pictures facing the viewer (2026-11-07), shown for a moment as the bird and the squirrel turn
+#: round: brought to the height of the one seen from the side (head to feet), and stood on their
+#: feet like it, so that turning does not jump.
+FRONT_OF: dict[str, str] = {"bird_front": "bird", "squirrel_front": "squirrel"}
+
 #: Where the pecking bird's feet are on the original: its beak reaches as low as they do, so
 #: feet() would take it for one of them.
 BIRD_PECK_FEET = (430.0, 888.0)
@@ -304,13 +309,18 @@ def fraction(point, zero, scale, picture) -> dict:
 
 def prepare() -> tuple[dict[str, np.ndarray], dict[str, dict]]:
     cuts = {name: cut(name) for name in
-            ["squirrel", "squirrel_run", "squirrel_run2", "bird", "bird_fly", "bird_peck", "frog", "frog_jump", "ladybug", "butterfly", "dragonfly"]}
+            ["squirrel", "squirrel_run", "squirrel_run2", "squirrel_front", "bird", "bird_fly", "bird_peck", "bird_front",
+             "frog", "frog_jump", "ladybug", "butterfly", "dragonfly"]}
     scales: dict[str, float] = {}
     for name, (side, share) in SIZES.items():
         x0, y0, x1, y1 = bounds(cuts[name])
         scales[name] = share * TILE / ((x1 - x0) if side == "w" else (y1 - y0))
     for name, (other, ratio) in SAME_SCALE.items():
         scales[name] = scales[other] * ratio
+    for name, side in FRONT_OF.items():
+        _, sy0, _, sy1 = bounds(cuts[side])
+        _, fy0, _, fy1 = bounds(cuts[name])
+        scales[name] = scales[side] * (sy1 - sy0) / (fy1 - fy0)
 
     pictures: dict[str, np.ndarray] = {}
     overrides: dict[str, dict] = {}
@@ -336,6 +346,9 @@ def prepare() -> tuple[dict[str, np.ndarray], dict[str, dict]]:
     # The gathered squirrel touches the ground: it stands on its feet.
     add("creature_squirrel_run2", cuts["squirrel_run2"], scales["squirrel_run2"], feet(cuts["squirrel_run2"]))
     add("creature_bird_peck", cuts["bird_peck"], scales["bird_peck"], BIRD_PECK_FEET)
+    # Facing the viewer: stood between its two feet.
+    for name in FRONT_OF:
+        add(f"creature_{name}", cuts[name], scales[name], feet(cuts[name]))
     add("creature_frog_jump", cuts["frog_jump"], scales["frog_jump"], leaping_anchor(feet(cuts["frog"]), SAME_SCALE["frog_jump"][1]))
 
     # The flying bird: anchored on the middle of its body; each wing hung on its root.
