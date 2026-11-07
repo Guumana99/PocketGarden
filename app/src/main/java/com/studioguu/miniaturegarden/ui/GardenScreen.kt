@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.ui
 
+import android.content.pm.ActivityInfo
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -41,6 +42,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -200,6 +202,12 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // A fixed look for promotional pictures, set from a debug build only (docs/promo/README.md).
     val showcase by ShowcaseControls.showcase.collectAsStateWithLifecycle()
     val hideUi = showcase?.hideUi == true
+    // Only the buttons down the right edge (debug builds only): the rain cloud's pictures.
+    val sideOnly = showcase?.sideOnly == true && !hideUi
+    val hideBars = hideUi || sideOnly
+    // The showcase may put the hoe in hand (debug builds only), for the tilling clip.
+    val showcaseHoe = showcase?.hoe == true
+    LaunchedEffect(showcaseHoe) { viewModel.holdHoe(showcaseHoe) }
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     // Why the seed just tapped stays in the bag: said in the bag, which stays open over the toasts.
@@ -224,9 +232,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var cameraMode by rememberSaveable { mutableStateOf(false) }
     // A level-up waits on its board until OK; it holds back while another board is up, so two
     // never stack.
-    val levelUpNow = levelUp?.takeIf { openingGift == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideUi }
+    val levelUpNow = levelUp?.takeIf { openingGift == null && tutorialStep != TutorialStep.FINISHED && !cameraMode && !hideBars }
     // The question about notifications comes first of what follows the closing board.
-    val inviteNow = notificationInviteDue && openingGift == null && !cameraMode && !hideUi && levelUpNow == null
+    val inviteNow = notificationInviteDue && openingGift == null && !cameraMode && !hideBars && levelUpNow == null
     var shots by remember { mutableStateOf(0) }
     val toast = remember { GardenToastState() }
     val context = LocalContext.current
@@ -234,12 +242,26 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
-    // The showcase's pictures have nothing but the garden in them, not even the system bars.
-    DisposableEffect(hideUi) {
-        val window = context.findActivity()?.window
+    // The showcase's pictures have nothing but the garden in them, not even the system bars. And
+    // they are taken on a display made wide for the moment, which the garden must fill: the
+    // portrait lock is let go while they are taken, or the system would letterbox it.
+    DisposableEffect(hideBars) {
+        val activity = context.findActivity()
+        val window = activity?.window
         val bars = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
-        if (hideUi) bars?.hide(WindowInsetsCompat.Type.systemBars())
-        onDispose { if (hideUi) bars?.show(WindowInsetsCompat.Type.systemBars()) }
+        val locked = activity?.requestedOrientation
+        if (hideBars) {
+            bars?.hide(WindowInsetsCompat.Type.systemBars())
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            // Turned, the window comes back with its bars: hide them again once it has settled.
+            window?.decorView?.postDelayed({ bars?.hide(WindowInsetsCompat.Type.systemBars()) }, 800)
+        }
+        onDispose {
+            if (hideBars) {
+                bars?.show(WindowInsetsCompat.Type.systemBars())
+                if (locked != null) activity.requestedOrientation = locked
+            }
+        }
     }
 
     // Everything drawn inside the garden box below is also recorded into this layer, which is
@@ -396,7 +418,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 weather = weather,
                 season = season,
                 phase = seasonPhase,
-                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp),
+                modifier = Modifier.align(Alignment.TopCenter).safeDrawingPadding().padding(top = 8.dp).alpha(if (sideOnly) 0f else 1f),
                 onWeatherTap = { showWeather = true },
             ) }
 
@@ -463,7 +485,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     }
                 }
                 SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
-                if (BuildConfig.DEBUG) {
+                if (BuildConfig.DEBUG && !sideOnly) {
                     SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
                     if (debugZoom > 0f) DebugZoomReadout(debugZoom)
                 }
@@ -492,6 +514,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .alpha(if (sideOnly) 0f else 1f)
                     .safeDrawingPadding()
                     .padding(horizontal = 12.dp, vertical = 12.dp)
                     .fillMaxWidth(),
@@ -839,7 +862,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // open, and a little after the toast and the show have finished. Anything that opens meanwhile
     // starts the wait over.
     val gardenAlone = !showShop && !showInventory && !showSettings && !showCollection && !showPost && !showWeather &&
-        !showDebugMenu && !confirmRain && !confirmRemove && !confirmTurnBack && !cameraMode && !hideUi && !editMode &&
+        !showDebugMenu && !confirmRain && !confirmRemove && !confirmTurnBack && !cameraMode && !hideBars && !editMode &&
         selectedObject == null && openingGift == null && levelUpNow == null && !inviteNow && gardenTip == null
     LaunchedEffect(reviewDue, gardenAlone) {
         if (reviewDue && gardenAlone) {

@@ -40,6 +40,14 @@ import kotlinx.coroutines.launch
  *     adb shell am broadcast -a com.studioguu.miniaturegarden.debug.SHOWCASE -p com.studioguu.miniaturegarden \
  *         --ez load true                      # replaces the saved garden with [ShowcaseGarden]
  *         --es garden fb                      # ... or with [FeedbackGarden], with load
+ *         --es garden till                    # ... or with [ShowcaseGarden] and its daikons' row bare (soil: empty beds plain, good, fluffy)
+ *         --es roof blue --es wall cream      # ... with the cottage painted so (BuildingPaint ids), with load
+ *         --ez hoe true                       # the hoe in hand: taps till the garden
+ *         --es bird struct_well               # a bird comes now to the well (or struct_cottage, onto its roof)
+ *         --ez side_only true --ez skip_ad true   # only the buttons down the right edge; the cloud's rain without the ad
+ *         --es garden thirsty                 # ... [ShowcaseGarden] with every crop half watered (all glint after a rain), with load
+ *         --es garden tulips                  # ... [ShowcaseGarden] with a bed of tulips in bloom (ordinary colours), with load
+ *         --es garden birdcrops               # ... [ShowcaseGarden.birdCrops], a well among tomatoes, with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es garden roses                   # ... or with [RoseGarden], the rose beside crops of its size
  *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks, perches, birdwell, wellalone, feed, hut, flowers), with load
@@ -108,6 +116,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
                         intent.getIntExtra("expand_size", GroundGarden.EXPAND_SIZE),
                         intent.getIntExtra("expand_level", GroundGarden.EXPAND_LEVEL),
                         intent.getIntExtra("expand_coins", GroundGarden.EXPAND_COINS),
+                        intent.getStringExtra("roof"),
+                        intent.getStringExtra("wall"),
                     )
                     Log.i(TAG, "showcase garden loaded")
                 } finally {
@@ -115,14 +125,14 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 }
             }
         }
-        val keys = intent.extras?.keySet().orEmpty() - setOf(EXTRA_LOAD, EXTRA_GARDEN, "tutorial")
+        val keys = intent.extras?.keySet().orEmpty() - setOf(EXTRA_LOAD, EXTRA_GARDEN, "tutorial", "roof", "wall")
         if (keys.isEmpty()) return
         val showcase = showcaseOf(intent)
         ShowcaseControls.set(showcase)
         Log.i(TAG, "showcase set: $showcase")
     }
 
-    private suspend fun loadGarden(garden: String?, step: TutorialStep, expandSize: Int, expandLevel: Int, expandCoins: Int) {
+    private suspend fun loadGarden(garden: String?, step: TutorialStep, expandSize: Int, expandLevel: Int, expandCoins: Int, roof: String?, wall: String?) {
         val art = garden == "art"
         val fences = garden == "fences"
         val bridges = garden == "bridges"
@@ -174,7 +184,12 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     bridgePlaces -> FenceGarden.bridgePlaces(now)
                     expand -> FeedbackGarden.objects(now) + GroundGarden.joinedUp(now)
                     feedback -> FeedbackGarden.objects(now)
-                    else -> ShowcaseGarden.objects(now)
+                    garden == "birdcrops" -> ShowcaseGarden.birdCrops(now)
+                    garden == "thirsty" -> ShowcaseGarden.objects(now, thirsty = true, roof = roof, wall = wall)
+                    garden == "tulips" -> ShowcaseGarden.objects(now, tulipBed = true, roof = roof, wall = wall)
+                    garden == "till" -> ShowcaseGarden.objects(now, bare = ShowcaseGarden.OPEN_ROW, roof = roof, wall = wall)
+                    garden == "soil" -> ShowcaseGarden.objects(now, emptyBeds = ShowcaseGarden.OPEN_ROW.mapIndexed { i, cell -> cell to i }.toMap(), roof = roof, wall = wall)
+                    else -> ShowcaseGarden.objects(now, roof = roof, wall = wall)
                 },
             )
             gardenRepository.saveProgress(
@@ -231,6 +246,10 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 bonusCoins = intent.takeIf { it.hasExtra("bonus_coins") }?.getIntExtra("bonus_coins", 0),
                 cloud = intent.getStringExtra("cloud")?.let(RainCloudState::valueOf),
                 rainGlint = intent.takeIf { it.hasExtra("rain_glint") }?.getFloatExtra("rain_glint", 0f),
+                hoe = intent.getBooleanExtra("hoe", false),
+                bird = intent.getStringExtra("bird"),
+                sideOnly = intent.getBooleanExtra("side_only", false),
+                skipAd = intent.getBooleanExtra("skip_ad", false),
             )
         }
     }
