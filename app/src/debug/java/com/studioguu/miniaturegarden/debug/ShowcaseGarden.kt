@@ -115,4 +115,29 @@ object ShowcaseGarden {
         val lawn = cells(0 until SIZE, 0 until SIZE).filter { it !in taken }.map { at(it, "ground_grass", growth = 1f) }
         return placed + lawn
     }
+
+    /**
+     * Strawberries in a chequer on a lawn (`--es garden birdcrops`): the bird called to
+     * the ground among them ([BIRD_GROUND]) walks on the lawn between the crops, for the pictures
+     * of it going behind their stems.
+     */
+    fun birdCrops(now: Long): List<GridObject> {
+        val beds = cells(2..8, 2..8).filter { (it.x + it.y) % 2 == 0 }
+        fun at(cell: GridCell, objectId: String, growth: Float = 0f) = GridObject(
+            instanceId = "birdcrops_${objectId}_${cell.x}_${cell.y}",
+            gridX = cell.x,
+            gridY = cell.y,
+            objectId = objectId,
+            growthProgress = growth,
+            isFlipped = (cell.x + cell.y * 3) % 2 == 0,
+            lastUpdatedTimestamp = now,
+        )
+        val placed = beds.map { at(it, GridObject.TILLED_SOIL_OBJECT_ID) } +
+            beds.map { at(it, PlantSpecies.STRAWBERRY.objectId, growth = 1f) }
+        val taken = placed.flatMap { it.occupiedCells() }.toSet()
+        return placed + cells(0 until SIZE, 0 until SIZE).filter { it !in taken }.map { at(it, "ground_grass", growth = 1f) }
+    }
+
+    /** Where the bird is called to in [birdCrops]: a cell of lawn in the middle of the crops. */
+    val BIRD_GROUND = GridCell(5, 4)
 }

@@ -7,6 +7,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.TimeOfDay
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherType
@@ -34,6 +35,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * @property bonusCoins a coin bonus taken to have just been paid in the shop; null for none.
  * @property cloud what the rain cloud shows, in place of what is so.
  * @property rainGlint how far on the crops' glint after a shower stands, 0 to 1; null for none.
+ * @property bird a bird that comes now, whatever the dice say: to the first building of this id (the well or
+ *   the cottage), or onto the ground about the cell "x,y".
+ * @property birdAt when it comes; set by [ShowcaseControls.set].
  * @property hoe the hoe in hand, so that taps on the garden till it with nothing on screen but the garden.
  */
 data class Showcase(
@@ -51,20 +55,39 @@ data class Showcase(
     val cloud: RainCloudState? = null,
     val rainGlint: Float? = null,
     val hoe: Boolean = false,
+    val bird: String? = null,
+    val birdAt: Long = 0L,
 ) {
     /**
      * The visitors to show: [visits] of the kinds allowed, and the butterfly asked for, if there
      * is a plant at its cell in [objects].
      */
     fun visitors(visits: List<CreatureVisit>, objects: List<GridObject>): List<CreatureVisit> {
-        val allowed = creatures?.let { kinds -> visits.filter { it.creature in kinds } } ?: visits
+        val kept = creatures?.let { kinds -> visits.filter { it.creature in kinds } } ?: visits
+        val allowed = calledBird(objects)?.let { called -> kept.filter { it.creature != Creature.BIRD } + called } ?: kept
         val cell = butterfly ?: return allowed
         val host = objects.firstOrNull { it.isPlant && it.gridX == cell.x && it.gridY == cell.y } ?: return allowed
         val summoned = CreatureVisit(VisitRule.BUTTERFLY_BLOOMS, cell, host, butterflyAt, butterflyAt + BUTTERFLY_STAY_MILLIS)
         return allowed.filter { it.creature != Creature.BUTTERFLY } + summoned
     }
 
+    /**
+     * The bird asked for by [bird]: at the first building of that id in [objects], or walking on
+     * the ground about a cell given as "x,y"; null for none.
+     */
+    private fun calledBird(objects: List<GridObject>): CreatureVisit? {
+        val id = bird ?: return null
+        val cell = id.split(',').mapNotNull { it.trim().toIntOrNull() }.takeIf { it.size == 2 }
+        if (cell != null) return CreatureVisit(VisitRule.BIRD_FENCE, GridCell(cell[0], cell[1]), null, birdAt, birdAt + BIRD_STAY_MILLIS)
+        val host = objects.firstOrNull { it.objectId == id } ?: return null
+        val rule = if (id == StructureData.COTTAGE.objectId) VisitRule.BIRD_COTTAGE else VisitRule.BIRD_WELL
+        return CreatureVisit(rule, GridCell(host.gridX, host.gridY), host, birdAt, birdAt + BIRD_STAY_MILLIS)
+    }
+
     companion object {
+        /** How long the called bird stays. */
+        const val BIRD_STAY_MILLIS = 120_000L
+
         /**
          * How long the summoned butterfly is about, from setting off outside the garden to having
          * left it: some 6.5 seconds each way in an 11 x 11 garden, and a little time at the flower.
@@ -115,5 +138,6 @@ object ShowcaseControls {
     fun set(showcase: Showcase?, now: Long = System.currentTimeMillis()) {
         if (!BuildConfig.DEBUG) return
         _showcase.value = showcase?.let { if (it.butterfly != null) it.copy(butterflyAt = now) else it }
+            ?.let { if (it.bird != null) it.copy(birdAt = now) else it }
     }
 }

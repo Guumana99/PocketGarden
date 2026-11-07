@@ -43,6 +43,8 @@ import kotlinx.coroutines.launch
  *         --es garden till                    # ... or with [ShowcaseGarden] and its daikons' row bare (soil: empty beds plain, good, fluffy)
  *         --es roof blue --es wall cream      # ... with the cottage painted so (BuildingPaint ids), with load
  *         --ez hoe true                       # the hoe in hand: taps till the garden
+ *         --es bird struct_well               # a bird comes now to the well (or struct_cottage, onto its roof)
+ *         --es garden birdcrops               # ... [ShowcaseGarden.birdCrops], a well among tomatoes, with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es garden roses                   # ... or with [RoseGarden], the rose beside crops of its size
  *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks, perches, birdwell, wellalone, feed, hut, flowers), with load
@@ -179,6 +181,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     bridgePlaces -> FenceGarden.bridgePlaces(now)
                     expand -> FeedbackGarden.objects(now) + GroundGarden.joinedUp(now)
                     feedback -> FeedbackGarden.objects(now)
+                    garden == "birdcrops" -> ShowcaseGarden.birdCrops(now)
                     garden == "till" -> ShowcaseGarden.objects(now, bare = ShowcaseGarden.OPEN_ROW, roof = roof, wall = wall)
                     garden == "soil" -> ShowcaseGarden.objects(now, emptyBeds = ShowcaseGarden.OPEN_ROW.mapIndexed { i, cell -> cell to i }.toMap(), roof = roof, wall = wall)
                     else -> ShowcaseGarden.objects(now, roof = roof, wall = wall)
@@ -239,6 +242,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 cloud = intent.getStringExtra("cloud")?.let(RainCloudState::valueOf),
                 rainGlint = intent.takeIf { it.hasExtra("rain_glint") }?.getFloatExtra("rain_glint", 0f),
                 hoe = intent.getBooleanExtra("hoe", false),
+                bird = intent.getStringExtra("bird"),
             )
         }
     }
