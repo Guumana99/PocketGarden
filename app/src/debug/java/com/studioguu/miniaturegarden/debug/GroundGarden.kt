@@ -112,6 +112,17 @@ object GroundGarden {
             place(now, "struct_well", listOf(GridCell(5, 5)))
     }
 
+    /**
+     * Fourteen flowers in bloom on two rows of beds (`--es garden flowers`), for the butterflies
+     * and ladybirds to come in numbers ([com.studioguu.miniaturegarden.domain.model.CreatureCrowds]).
+     */
+    fun flowerBeds(now: Long): List<GridObject> {
+        val kinds = listOf(PlantSpecies.TULIP, PlantSpecies.COSMOS, PlantSpecies.ROSE, PlantSpecies.LAVENDER, PlantSpecies.SNOWDROP, PlantSpecies.NANOHANA, PlantSpecies.SUNFLOWER)
+        val beds = cells(2..8, 4..4) + cells(2..8, 6..6)
+        return place(now, GridObject.TILLED_SOIL_OBJECT_ID, beds) +
+            beds.mapIndexed { i, cell -> place(now, kinds[i % kinds.size].objectId, listOf(cell)).map { it.copy(growthProgress = 1f) } }.flatten()
+    }
+
     /** A hut alone (`--es garden hut`): the bird called to it sits on its roof. */
     fun hutAlone(now: Long): List<GridObject> = place(now, "struct_hut", listOf(GridCell(5, 5)))
 

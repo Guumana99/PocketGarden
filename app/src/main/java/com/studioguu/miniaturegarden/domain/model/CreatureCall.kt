@@ -45,35 +45,53 @@ object CreatureCalls {
      * Each goes to its own thing to settle on ([perchFor]), the one nearest the middle of the
      * garden, so that it is in view; only a garden without one has it go wherever its rules find
      * room, as before (11/7: one came to a bench or a stream at the edge of the garden, out of view).
+     * Those that come in numbers come as many as the garden and [level] allow at most
+     * ([CreatureCrowds.mostFor]), to be watched together.
      */
-    fun visitsAt(now: Long, creatures: List<Creature>, objects: List<GridObject>, map: GardenMap, since: Long = 0L): List<CreatureVisit> {
+    fun visitsAt(now: Long, creatures: List<Creature>, objects: List<GridObject>, map: GardenMap, since: Long = 0L, level: Int = 1): List<CreatureVisit> {
         val round = roundOf(now, since)
         val start = roundStart(round, since)
         val garden = GardenSnapshot(objects, WeatherType.SUNNY)
         val grid = GardenGrid(map, objects)
         val taken = HashSet<GridCell>()
         val middle = (map.size - 1) / 2f
-        return creatures.mapNotNull { creature ->
-            val rule = VisitRule.forCreature(creature).first()
-            val perch = garden.settled.filter { isPerchFor(creature, it) }
-                .minWithOrNull(compareBy({ (it.gridX - middle) * (it.gridX - middle) + (it.gridY - middle) * (it.gridY - middle) }, { it.gridY }, { it.gridX }))
-            val onPerch = perch?.let { thing ->
-                // One that walks the ground next to its thing (the frog by the pond, the squirrel by
-                // the rock) stands on a cell of its own beside it; the others are on it, or over it.
-                val beside = !CreatureRoutes.flies(creature) && CreaturePerches.forCreature(creature, CreaturePerches.pointsOf(thing)).isEmpty()
-                val cell = if (beside) {
-                    thing.occupiedCells().flatMap { listOf(GridCell(it.x + 1, it.y), GridCell(it.x, it.y + 1), GridCell(it.x - 1, it.y), GridCell(it.x, it.y - 1)) }
-                        .firstOrNull { it !in taken && it !in thing.occupiedCells() && CreatureRoutes.canWalk(creature, grid, it.x, it.y) }
-                } else {
-                    CreatureVisits.frontCell(thing)
-                }
-                cell?.let { CreatureVisit(rule, it, thing, start + ARRIVES_AFTER_MILLIS, start + ROUND_MILLIS - AWAY_MILLIS) }
+        return creatures.flatMap { creature ->
+            val first = firstOf(creature, round, start, garden, grid, map, taken, middle) ?: return@flatMap emptyList()
+            val most = CreatureCrowds.mostFor(creature, CreatureCrowds.habitat(creature, garden.settled), level)
+            CreatureCrowds.crowdOf(first, most, garden, grid, map, taken) { k -> round * 7 + k }
+        }
+    }
+
+    /** The first of [creature] to come in the round: to its own thing, or where its rules find room. */
+    private fun firstOf(
+        creature: Creature,
+        round: Long,
+        start: Long,
+        garden: GardenSnapshot,
+        grid: GardenGrid,
+        map: GardenMap,
+        taken: MutableSet<GridCell>,
+        middle: Float,
+    ): CreatureVisit? {
+        val rule = VisitRule.forCreature(creature).first()
+        val perch = garden.settled.filter { isPerchFor(creature, it) }
+            .minWithOrNull(compareBy({ (it.gridX - middle) * (it.gridX - middle) + (it.gridY - middle) * (it.gridY - middle) }, { it.gridY }, { it.gridX }))
+        val onPerch = perch?.let { thing ->
+            // One that walks the ground next to its thing (the frog by the pond, the squirrel by
+            // the rock) stands on a cell of its own beside it; the others are on it, or over it.
+            val beside = !CreatureRoutes.flies(creature) && CreaturePerches.forCreature(creature, CreaturePerches.pointsOf(thing)).isEmpty()
+            val cell = if (beside) {
+                thing.occupiedCells().flatMap { listOf(GridCell(it.x + 1, it.y), GridCell(it.x, it.y + 1), GridCell(it.x - 1, it.y), GridCell(it.x, it.y - 1)) }
+                    .firstOrNull { it !in taken && it !in thing.occupiedCells() && CreatureRoutes.canWalk(creature, grid, it.x, it.y) }
+            } else {
+                CreatureVisits.frontCell(thing)
             }
-            onPerch?.also { taken += it.cell } ?: VisitRule.forCreature(creature).firstNotNullOfOrNull { r ->
-                CreatureVisits.spotFor(r, garden, grid, map, round, taken)?.let { spot ->
-                    taken += spot.first
-                    CreatureVisit(r, spot.first, spot.second, start + ARRIVES_AFTER_MILLIS, start + ROUND_MILLIS - AWAY_MILLIS)
-                }
+            cell?.let { CreatureVisit(rule, it, thing, start + ARRIVES_AFTER_MILLIS, start + ROUND_MILLIS - AWAY_MILLIS) }
+        }
+        return onPerch?.also { taken += it.cell } ?: VisitRule.forCreature(creature).firstNotNullOfOrNull { r ->
+            CreatureVisits.spotFor(r, garden, grid, map, round, taken)?.let { spot ->
+                taken += spot.first
+                CreatureVisit(r, spot.first, spot.second, start + ARRIVES_AFTER_MILLIS, start + ROUND_MILLIS - AWAY_MILLIS)
             }
         }
     }

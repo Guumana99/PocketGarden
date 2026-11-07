@@ -626,7 +626,17 @@ object CreatureRoutes {
      */
     private fun perchesAround(visit: CreatureVisit, homeX: Float, homeY: Float, spots: List<Perch>): List<Perch> {
         if (Manner.of(visit.creature).perch.last <= 0L) return emptyList()
-        return CreaturePerches.near(homeX, homeY, PERCH_REACH_IN_FLIGHT, spots)
+        return CreaturePerches.near(homeX, homeY, PERCH_REACH_IN_FLIGHT, shareOf(visit, spots))
+    }
+
+    /**
+     * The points of [spots] that [visit] has to itself among a crowd of its kind: every n-th of
+     * them in a fixed order, so that no two of the crowd ever settle on the same point.
+     */
+    internal fun shareOf(visit: CreatureVisit, spots: List<Perch>): List<Perch> {
+        if (visit.crowd <= 1) return spots
+        return spots.sortedWith(compareBy({ it.y }, { it.x }, { it.height }))
+            .filterIndexed { i, _ -> i % visit.crowd == visit.companion }
     }
 
     // --- Shared ---
@@ -673,7 +683,7 @@ object CreatureRoutes {
     private const val EDGE = 0.3f
 
     /** How far from where it came a flier goes to settle, in cells. */
-    private const val PERCH_REACH_IN_FLIGHT = 3f
+    internal const val PERCH_REACH_IN_FLIGHT = 3f
 
     /** How far from a point a flier may settle, in cells. */
     private const val PERCH_SCATTER = 0.06f

@@ -702,10 +702,12 @@ class GardenViewModel @Inject constructor(
                 .collectLatest { (visiting, showcase, call) ->
                     val now = System.currentTimeMillis()
                     val leftAt = settingsRepository.settings.first().visitorsLeftAt
+                    // Some come in greater numbers to a player further on (CreatureCrowds).
+                    val level = gardenRepository.getUserProfile()?.playerLevel ?: 1
                     val visits = if (call.calling) {
-                        CreatureCalls.visitsAt(now, call.creatures, visiting.objects, visiting.map, call.since)
+                        CreatureCalls.visitsAt(now, call.creatures, visiting.objects, visiting.map, call.since, level)
                     } else {
-                        CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay, visiting.phase, leftAt)
+                        CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay, visiting.phase, leftAt, level)
                     }
                         .filter { it.leavesAt > now }
                         .let { if (call.calling) it else showcase?.visitors(it, visiting.objects) ?: it }
@@ -715,7 +717,7 @@ class GardenViewModel @Inject constructor(
                             launch {
                                 delay((visit.arrivesAt - now).coerceAtLeast(0L))
                                 // A called creature leaves the natural ones' comings and goings as they were.
-                                if (!call.calling) settingsRepository.update { it.copy(visitorsLeftAt = it.visitorsLeftAt + (visit.creature to visit.leavesAt)) }
+                                if (!call.calling && visit.companion == 0) settingsRepository.update { it.copy(visitorsLeftAt = it.visitorsLeftAt + (visit.creature to visit.leavesAt)) }
                                 announceVisit(visit)
                             }
                         }

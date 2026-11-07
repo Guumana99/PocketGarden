@@ -18,6 +18,10 @@ data class CreatureVisit(
     val host: GridObject?,
     val arrivesAt: Long,
     val leavesAt: Long,
+    /** Which of a crowd of its kind this one is, 0 for the first ([CreatureCrowds]). */
+    val companion: Int = 0,
+    /** How many of its kind came together. */
+    val crowd: Int = 1,
 ) {
     val creature: Creature get() = rule.creature
 
@@ -66,6 +70,7 @@ object CreatureVisits {
         timeOfDay: TimeOfDay = TimeOfDay.DAY,
         phase: SeasonPhase = SeasonPhase.EARLY,
         leftAt: Map<Creature, Long> = emptyMap(),
+        level: Int = 1,
     ): List<CreatureVisit> {
         val period = periodOf(now)
         val start = periodStart(period)
@@ -74,7 +79,8 @@ object CreatureVisits {
         val taken = HashSet<GridCell>()
         val visits = ArrayList<CreatureVisit>()
         for (creature in Creature.entries) {
-            if (visits.size >= MAX_VISITORS) break
+            // Two kinds at most, however many of each.
+            if (visits.map { it.creature }.distinct().size >= MAX_VISITORS) break
             val dice = roll(period, creature)
             val (rule, spot) = VisitRule.forCreature(creature).filter { it.isMetBy(garden) }
                 .sortedWith(compareBy({ -it.chanceIn(garden) }, { hash(period, it.ordinal, salt = 4) }))
@@ -86,13 +92,16 @@ object CreatureVisits {
             val left = leftAt[creature]
             if (left != null && left < start && arrivesAt < left + AWAY_MILLIS) continue
             taken += spot.first
-            visits += CreatureVisit(
+            val first = CreatureVisit(
                 rule = rule,
                 cell = spot.first,
                 host = spot.second,
                 arrivesAt = arrivesAt,
                 leavesAt = start + PERIOD_MILLIS - margin(period, rule, salt = 2),
             )
+            // Some come in numbers (CreatureCrowds): a second roll says how many.
+            val count = CreatureCrowds.countFor(creature, CreatureCrowds.habitat(creature, garden.settled), level, crowdRoll(period, creature))
+            visits += CreatureCrowds.crowdOf(first, count, garden, grid, map, taken) { k -> period * 7 + k }
         }
         return visits
     }
@@ -136,6 +145,9 @@ object CreatureVisits {
 
     /** A number in [0, 1) fixed by the period and the creature. */
     private fun roll(period: Long, creature: Creature): Float = (hash(period, creature.ordinal, salt = 0) % 10_000L) / 10_000f
+
+    /** Another, for how many of [creature] come together in the period. */
+    internal fun crowdRoll(period: Long, creature: Creature): Float = (hash(period, creature.ordinal, salt = 7) % 10_000L) / 10_000f
 
     private fun pick(period: Long, rule: VisitRule, size: Int): Int = (hash(period, rule.ordinal, salt = 3) % size).toInt()
 
