@@ -292,6 +292,8 @@ class Shot:
     fresh: bool = False
     # Seconds to wait after the look is set, before the picture or the recording.
     settle: float = 5.0
+    # A clip made of a short take of each of these looks, one after another, cross-faded.
+    segments: tuple[Look, ...] = ()
 
 
 def display_of(size: str) -> tuple[int, int]:
@@ -348,6 +350,7 @@ RAIN_OK = "☔ 雨を降らせる"
 RAIN_LOOK = Look(hide_ui=False, more=("--ez", "side_only", "true", "--ez", "skip_ad", "true", "--ez", "ad_ready", "true", "--es", "cloud", "READY"))
 
 TILL = ("--es", "garden", "till")
+DAY_ROUND = (Look(time="MORNING"), Look(time="DAY"), Look(time="EVENING"), Look(time="NIGHT"))
 # Every crop half watered: the rain helps them all, and they all glint after it.
 THIRSTY = ("--es", "garden", "thirsty")
 COTTAGE_VIEW = View(1.4, cell=(1, 1), lift=520)
@@ -365,6 +368,9 @@ NOVEMBER = [
     Shot("X-017_noon_16x9.png", Look(time="DAY"), WHOLE_WIDE),
     Shot("X-017_evening_16x9.png", Look(time="EVENING"), WHOLE_WIDE),
     Shot("X-017_night_16x9.png", Look(time="NIGHT"), WHOLE_WIDE),
+    # The same garden from morning to night, about 3 s each, faded one into the next (some 10 s).
+    Shot("X-017_timeofday_16x9.mp4", Look(), WHOLE_WIDE, "W", segments=DAY_ROUND, settle=4),
+    Shot("X-017_timeofday_9x16.mp4", Look(), View(0.62, cell=(5, 4.5), lift=60), "T", segments=DAY_ROUND, settle=4),
     # Plain, good and fluffy soil, side by side, nothing sown (ShowcaseGarden.OPEN_ROW, left to right).
     Shot("X-019_soil_16x9.png", Look(), View(3.0, cell=(8, 5), lift=60), "W", ("--es", "garden", "soil")),
     # The cottage in four of its colours (BuildingPaint: roof, wall), from the same place.
@@ -384,7 +390,57 @@ NOVEMBER = [
 ]
 
 
+# Each look of a clip of segments: seconds recorded, seconds kept, and how long one fades into the next.
+SEGMENT_RECORD, SEGMENT_KEEP, SEGMENT_FADE = 5, 3.0, 0.7
+
+
+def take_segments(device: Device, shot: Shot, out: Path, scratch: Path) -> Path:
+    """A short take of each of [shot]'s looks from the same place, joined with a soft cross-fade."""
+    device.display(display_of(shot.size))
+    time.sleep(3)
+    first = shot.segments[0]
+    set_look(device, first, shot.view, settle=7)
+    width, height = display_of(shot.size)
+    record = "1600x900" if shot.size == "W" else f"{width}x{height}"
+    takes = []
+    for i, look in enumerate(shot.segments):
+        set_look(device, look, shot.view, settle=shot.settle)
+        remote = "/sdcard/promo_seg.mp4"
+        device.shell("rm", "-f", remote)
+        device.shell("screenrecord", "--size", record, "--bit-rate", "16000000", "--time-limit", str(SEGMENT_RECORD), remote)
+        take = scratch / f"seg{i}_{shot.name}"
+        device.adb("pull", remote, str(take))
+        takes.append(take)
+    # Each take from 1 s in (screenrecord's first frame may be black), SEGMENT_KEEP long, at 30 fps.
+    # screenrecord writes no frames while nothing moves, so a quiet take can end early: its last
+    # frame is held (tpad) for as long as it takes.
+    inputs = []
+    for take in takes:
+        inputs += ["-i", str(take)]
+    chains = [
+        f"[{i}:v]setpts=PTS-STARTPTS,fps=30,tpad=stop_mode=clone:stop_duration={SEGMENT_RECORD},"
+        f"trim=start=1:duration={SEGMENT_KEEP},setpts=PTS-STARTPTS,fps=30,format=yuv420p[v{i}]"
+        for i in range(len(takes))
+    ]
+    last = "v0"
+    for i in range(1, len(takes)):
+        offset = i * (SEGMENT_KEEP - SEGMENT_FADE)
+        chains.append(f"[{last}][v{i}]xfade=transition=fade:duration={SEGMENT_FADE}:offset={offset:.2f}[x{i}]")
+        last = f"x{i}"
+    target = out / shot.name
+    subprocess.run(
+        [ffmpeg_exe(), "-y", "-loglevel", "error", *inputs, "-filter_complex", ";".join(chains), "-map", f"[{last}]",
+         "-c:v", "libx264", "-profile:v", "high", "-pix_fmt", "yuv420p", "-r", "30", "-crf", "18",
+         "-movflags", "+faststart", "-an", str(target)],
+        check=True,
+    )
+    print("took", target.name)
+    return target
+
+
 def take_shot(device: Device, shot: Shot, out: Path, scratch: Path) -> Path:
+    if shot.segments:
+        return take_segments(device, shot, out, scratch)
     device.display(display_of(shot.size))
     time.sleep(3)
     # The plain look first: hiding the controls lets the window turn to fill the display, which
