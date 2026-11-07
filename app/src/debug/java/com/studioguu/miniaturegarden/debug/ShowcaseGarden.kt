@@ -31,6 +31,15 @@ object ShowcaseGarden {
     /** The cosmos a summoned butterfly comes to (docs/promo/README.md). */
     val BUTTERFLY_FLOWER = GridCell(8, 8)
 
+    /**
+     * The daikons' row, in the middle with the path in front: left bare for the tilling clip, or
+     * as empty beds of each grade of soil.
+     */
+    val OPEN_ROW: List<GridCell> = cells(7..9, 5..5)
+
+    /** The tulips' ordinary colours, laid along their bed (never the rare ones: docs/promo). */
+    private val TULIP_COLOURS = listOf("red", "pink", "yellow")
+
     private fun cells(xs: IntRange, ys: IntRange): List<GridCell> = ys.flatMap { y -> xs.map { x -> GridCell(x, y) } }
 
     private val BEDS: List<Pair<GridCell, PlantSpecies>> =
@@ -58,8 +67,18 @@ object ShowcaseGarden {
     private val FLOWERS = listOf(0 to 3, 1 to 9, 6 to 5, 10 to 7, 0 to 10, 5 to 10, 8 to 10)
     private val PEBBLES = listOf(7 to 9, 1 to 10)
 
-    /** Everything in the garden, as last looked after at [now]. */
-    fun objects(now: Long): List<GridObject> {
+    /**
+     * Everything in the garden, as last looked after at [now]. [bare] cells have nothing on them,
+     * not even lawn (open ground for the hoe); [emptyBeds] are ridged soil with nothing sown, of
+     * the grade given ([GridObject.soilQuality]). [roof] and [wall] paint the cottage (BuildingPaint ids).
+     */
+    fun objects(
+        now: Long,
+        bare: Collection<GridCell> = emptyList(),
+        emptyBeds: Map<GridCell, Int> = emptyMap(),
+        roof: String? = null,
+        wall: String? = null,
+    ): List<GridObject> {
         fun at(cell: GridCell, objectId: String, growth: Float = 0f, flipped: Boolean = false) = GridObject(
             instanceId = "showcase_${objectId}_${cell.x}_${cell.y}",
             gridX = cell.x,
@@ -71,12 +90,17 @@ object ShowcaseGarden {
         )
         fun at(x: Int, y: Int, objectId: String) = at(GridCell(x, y), objectId)
 
-        val plants = BEDS.mapIndexed { index, (cell, species) ->
-            at(cell, species.objectId, growth = growthOf(index, cell), flipped = (cell.x * 3 + cell.y) % 2 == 0)
+        val plants = BEDS.mapIndexedNotNull { index, (cell, species) ->
+            if (cell in bare || cell in emptyBeds) return@mapIndexedNotNull null
+            val growth = growthOf(index, cell)
+            at(cell, species.objectId, growth = growth, flipped = (cell.x * 3 + cell.y) % 2 == 0).let {
+                if (species == PlantSpecies.TULIP && growth >= 1f) it.copy(bloomColour = TULIP_COLOURS[cell.x % TULIP_COLOURS.size]) else it
+            }
         }
-        val beds = BEDS.map { (cell, _) -> at(cell, GridObject.TILLED_SOIL_OBJECT_ID) }
+        val beds = BEDS.filter { (cell, _) -> cell !in bare }
+            .map { (cell, _) -> at(cell, GridObject.TILLED_SOIL_OBJECT_ID).copy(soilQuality = emptyBeds[cell] ?: 0) }
         val things = listOf(
-            at(0, 0, StructureData.COTTAGE.objectId),
+            at(0, 0, StructureData.COTTAGE.objectId).copy(roofColour = roof, wallColour = wall),
             at(2, 3, StructureData.WELL.objectId),
             at(1, 5, GridObject.POND_OBJECT_ID),
             at(1, 6, "deco_rock"),
@@ -87,7 +111,7 @@ object ShowcaseGarden {
         val placed = PATHS.map { at(it, GridObject.COBBLESTONE_OBJECT_ID) } +
             FENCES.map { at(it, GridObject.FENCE_OBJECT_ID) } + beds + plants + things + covers
         // Lawn on every cell left over, and under the fences (as a player may sow it), so that no bare earth shows.
-        val taken = placed.filter { it.objectId != GridObject.FENCE_OBJECT_ID }.flatMap { it.occupiedCells() }.toSet()
+        val taken = placed.filter { it.objectId != GridObject.FENCE_OBJECT_ID }.flatMap { it.occupiedCells() }.toSet() + bare
         val lawn = cells(0 until SIZE, 0 until SIZE).filter { it !in taken }.map { at(it, "ground_grass", growth = 1f) }
         return placed + lawn
     }

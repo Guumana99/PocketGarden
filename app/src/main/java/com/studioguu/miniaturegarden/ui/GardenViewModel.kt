@@ -1125,6 +1125,11 @@ class GardenViewModel @Inject constructor(
         _hoeActive.value = active
     }
 
+    /** Puts the hoe in hand or down, whichever it is now (the showcase's tilling clip). */
+    fun holdHoe(active: Boolean) {
+        if (active != _hoeActive.value) toggleHoe()
+    }
+
     /** Enters move mode for the selected object: the next tap on a tile moves it there. */
     fun startMovingSelected() = withSelectedObject { obj ->
         when {

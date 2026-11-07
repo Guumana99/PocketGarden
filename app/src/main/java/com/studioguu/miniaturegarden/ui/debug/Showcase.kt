@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * @property bonusCoins a coin bonus taken to have just been paid in the shop; null for none.
  * @property cloud what the rain cloud shows, in place of what is so.
  * @property rainGlint how far on the crops' glint after a shower stands, 0 to 1; null for none.
+ * @property hoe the hoe in hand, so that taps on the garden till it with nothing on screen but the garden.
  */
 data class Showcase(
     val season: Season? = null,
@@ -49,6 +50,7 @@ data class Showcase(
     val bonusCoins: Int? = null,
     val cloud: RainCloudState? = null,
     val rainGlint: Float? = null,
+    val hoe: Boolean = false,
 ) {
     /**
      * The visitors to show: [visits] of the kinds allowed, and the butterfly asked for, if there

@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.ui
 
+import android.content.pm.ActivityInfo
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -200,6 +201,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // A fixed look for promotional pictures, set from a debug build only (docs/promo/README.md).
     val showcase by ShowcaseControls.showcase.collectAsStateWithLifecycle()
     val hideUi = showcase?.hideUi == true
+    // The showcase may put the hoe in hand (debug builds only), for the tilling clip.
+    val showcaseHoe = showcase?.hoe == true
+    LaunchedEffect(showcaseHoe) { viewModel.holdHoe(showcaseHoe) }
 
     var showInventory by rememberSaveable { mutableStateOf(false) }
     // Why the seed just tapped stays in the bag: said in the bag, which stays open over the toasts.
@@ -234,12 +238,26 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
-    // The showcase's pictures have nothing but the garden in them, not even the system bars.
+    // The showcase's pictures have nothing but the garden in them, not even the system bars. And
+    // they are taken on a display made wide for the moment, which the garden must fill: the
+    // portrait lock is let go while they are taken, or the system would letterbox it.
     DisposableEffect(hideUi) {
-        val window = context.findActivity()?.window
+        val activity = context.findActivity()
+        val window = activity?.window
         val bars = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
-        if (hideUi) bars?.hide(WindowInsetsCompat.Type.systemBars())
-        onDispose { if (hideUi) bars?.show(WindowInsetsCompat.Type.systemBars()) }
+        val locked = activity?.requestedOrientation
+        if (hideUi) {
+            bars?.hide(WindowInsetsCompat.Type.systemBars())
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            // Turned, the window comes back with its bars: hide them again once it has settled.
+            window?.decorView?.postDelayed({ bars?.hide(WindowInsetsCompat.Type.systemBars()) }, 800)
+        }
+        onDispose {
+            if (hideUi) {
+                bars?.show(WindowInsetsCompat.Type.systemBars())
+                if (locked != null) activity.requestedOrientation = locked
+            }
+        }
     }
 
     // Everything drawn inside the garden box below is also recorded into this layer, which is

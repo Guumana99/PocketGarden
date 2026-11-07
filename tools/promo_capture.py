@@ -66,13 +66,15 @@ class Look:
     season: str = "AUTUMN"
     creatures: str = "none"
     butterfly: bool = False
+    # Anything more for the receiver, as adb extras ("--ez", "hoe", "true", ...).
+    more: tuple[str, ...] = ()
 
     def extras(self) -> list[str]:
         out = ["--es", "season", self.season, "--es", "time", self.time, "--es", "weather", self.weather,
                "--ez", "hide_ui", "true", "--es", "creatures", self.creatures]
         if self.butterfly:
             out += ["--ez", "butterfly", "true"]
-        return out
+        return out + list(self.more)
 
 
 @dataclass
@@ -162,7 +164,7 @@ def ffmpeg_exe() -> str:
         return "ffmpeg"
 
 
-def open_showcase(device: Device, install: bool) -> None:
+def open_showcase(device: Device, install: bool, load: tuple[str, ...] = ()) -> None:
     device.display(None)
     if install:
         print("installing", APK.name)
@@ -170,7 +172,7 @@ def open_showcase(device: Device, install: bool) -> None:
     # The pictures have nothing but the garden in them; the system's note on full screen would cover it.
     device.shell("settings", "put", "secure", "immersive_mode_confirmations", "confirmed")
     device.shell("am", "force-stop", PACKAGE)
-    device.broadcast("--ez", "load", "true")
+    device.broadcast("--ez", "load", "true", *load)
     time.sleep(4)
     device.shell("am", "start", "-n", f"{PACKAGE}/.MainActivity")
     # Right after starting, the first taps are often lost: tap つづきから until the title has gone.
@@ -262,18 +264,142 @@ def contact_sheet(stills: list[Path], target: Path) -> None:
         x += t.width + gap
     sheet.save(target, quality=85)
 
+# --- The November 2026 posts (docs/promo/2026-11): one size per file, wide 16:9 or tall 9:16 ---------
+
+TALL_SIZE = (1080, 1920)
+
+
+@dataclass
+class Shot:
+    """One picture or clip of the November set, at one size ("W" 1600x900 or "T" 1080x1920)."""
+    name: str
+    look: Look
+    view: View
+    size: str = "W"
+    # What to load: the showcase garden's variant and its extras ("--es", "garden", "till", ...).
+    load: tuple[str, ...] = ()
+    # A clip: seconds recorded, where the cut starts and how long it is. None for a picture.
+    clip: tuple[int, float, float] | None = None
+    # What is done once recording has begun (taps, a later look), given the device and the shot.
+    action: "object" = None
+    # Load the garden afresh first even if it is the one loaded (the hoe leaves it tilled).
+    fresh: bool = False
+    # Seconds to wait after the look is set, before the picture or the recording.
+    settle: float = 5.0
+
+
+def display_of(size: str) -> tuple[int, int]:
+    return WIDE_SIZE if size == "W" else TALL_SIZE
+
+
+def cell_point(shot: Shot, cell: tuple[float, float]) -> tuple[int, int]:
+    """Where on the display the middle of [cell] is, with [shot]'s view."""
+    width, height = display_of(shot.size)
+    px, py = pan_to(shot.view.cell, shot.view.scale, shot.view.lift)
+    middle = (GARDEN_SIZE - 1) / 2
+    x, y = cell[0] - middle, cell[1] - middle
+    sx = (x - y) * TILE_W / 2 * shot.view.scale + px
+    sy = (x + y) * TILE_H / 2 * shot.view.scale + py
+    return round(width / 2 + sx), round(height / 2 + sy)
+
+
+def till_row(device: Device, shot: Shot) -> None:
+    """The hoe over the open row, cell by cell: two strikes to tilled earth, two more to ridges."""
+    time.sleep(3.0)
+    for cell in [(7, 5), (8, 5), (9, 5)]:
+        x, y = cell_point(shot, cell)
+        for _ in range(4):
+            device.shell("input", "tap", str(x), str(y))
+            time.sleep(0.6)
+        time.sleep(0.3)
+
+
+TILL = ("--es", "garden", "till")
+HOE = Look(more=("--ez", "hoe", "true"))
+
+NOVEMBER = [
+    Shot("X-010_tilling_16x9.mp4", HOE, View(2.0, cell=(8, 5)), "W", TILL, clip=(21, 2.5, 15.0), action=till_row, fresh=True),
+    Shot("X-010_tilling_9x16.mp4", HOE, View(1.7, cell=(8, 5)), "T", TILL, clip=(21, 2.5, 15.0), action=till_row, fresh=True),
+]
+
+
+def take_shot(device: Device, shot: Shot, out: Path, scratch: Path) -> Path:
+    device.display(display_of(shot.size))
+    time.sleep(3)
+    # The plain look first: hiding the controls lets the window turn to fill the display, which
+    # starts the screen afresh and would put down a hoe handed over in the same breath.
+    set_look(device, Look(shot.look.time, shot.look.weather, shot.look.season, shot.look.creatures), shot.view, settle=7)
+    set_look(device, shot.look, shot.view, settle=shot.settle)
+    target = out / shot.name
+    width, height = display_of(shot.size)
+    if shot.clip is None:
+        raw = scratch / "shot_raw.png"
+        device.screencap(raw)
+        out_size = WIDE_OUT if shot.size == "W" else TALL_SIZE
+        Image.open(raw).convert("RGB").resize(out_size, Image.LANCZOS).save(target, optimize=True)
+        print("took", target.name)
+        return target
+    seconds, start, length = shot.clip
+    record = "1600x900" if shot.size == "W" else f"{width}x{height}"
+    remote = "/sdcard/promo_clip.mp4"
+    device.shell("rm", "-f", remote)
+    recorder = subprocess.Popen(
+        ["adb", "-s", device.serial, "shell", "screenrecord", "--size", record, "--bit-rate", "16000000",
+         "--time-limit", str(seconds), remote],
+    )
+    time.sleep(1.0)
+    if shot.action is not None:
+        shot.action(device, shot)
+    recorder.wait()
+    time.sleep(1)
+    raw = scratch / f"raw_{shot.name}"
+    device.adb("pull", remote, str(raw))
+    subprocess.run(
+        [ffmpeg_exe(), "-y", "-loglevel", "error", "-ss", str(start), "-i", str(raw), "-t", str(length),
+         "-c:v", "libx264", "-profile:v", "high", "-pix_fmt", "yuv420p", "-r", "30", "-crf", "18",
+         "-movflags", "+faststart", "-an", str(target)],
+        check=True,
+    )
+    print("took", target.name)
+    return target
+
+
+def run_november(device: Device, args: argparse.Namespace) -> None:
+    out, scratch = Path(args.out or ROOT / "docs/promo/2026-11"), Path(args.scratch)
+    out.mkdir(parents=True, exist_ok=True)
+    scratch.mkdir(parents=True, exist_ok=True)
+    wanted = set(args.only) if args.only else None
+    install = not args.no_install
+    loaded: tuple[str, ...] | None = None
+    try:
+        for shot in NOVEMBER:
+            if wanted is not None and shot.name not in wanted:
+                continue
+            if shot.load != loaded or shot.fresh:
+                open_showcase(device, install=install, load=shot.load)
+                install = False
+                loaded = shot.load
+            take_shot(device, shot, out, scratch)
+    finally:
+        device.display(None)
+        device.broadcast("--ez", "clear", "true")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--serial", default="emulator-5554")
-    parser.add_argument("--out", default=str(ROOT / "docs/promo"))
+    parser.add_argument("--set", default="first", choices=["first", "2026-11"], help="which set of shots to take")
+    parser.add_argument("--out", help="where they go (docs/promo, or docs/promo/2026-11 for that set)")
     parser.add_argument("--scratch", default=str(ROOT / "app/build/promo"), help="where raw captures are kept")
     parser.add_argument("--no-install", action="store_true")
     parser.add_argument("--only", nargs="*", help="file names of the shots to take")
     parser.add_argument("--sheet", help="also write a contact sheet of the stills here")
     args = parser.parse_args()
 
-    out, scratch = Path(args.out), Path(args.scratch)
+    if args.set == "2026-11":
+        run_november(Device(args.serial), args)
+        return 0
+    out, scratch = Path(args.out or ROOT / "docs/promo"), Path(args.scratch)
     out.mkdir(parents=True, exist_ok=True)
     scratch.mkdir(parents=True, exist_ok=True)
     device = Device(args.serial)
