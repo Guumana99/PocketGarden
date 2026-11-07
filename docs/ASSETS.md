@@ -398,7 +398,7 @@ python tools/prepare_water_art.py --preview <確認用フォルダ>
 
 **効果音の出どころの候補（2026-11-07、ユーザーの指定）**：ポケットサウンド（https://pocket-se.info/）、タダノオト（https://tadanote.tokyo/）、効果音ラボ（https://soundeffect-lab.info/）。
 **どのファイルがどのサイトのものかは確定していない**（タグで分かるのは上の表の `se_coin` `se_level_up` がポケットサウンド、ということだけ）。
-アプリでは設定の「情報」→「クレジット」に 3 サイトを並べて出す（`SOUND_CREDITS`、URL はタップでブラウザ）。
+アプリでは設定の「情報」→「クレジット」に、見出し「音源」と 3 サイトの名前だけを並べて出す（`SOUND_CREDITS`。11/7 から URL は出さない）。
 
 ### プロンプトとデザイン方針
 

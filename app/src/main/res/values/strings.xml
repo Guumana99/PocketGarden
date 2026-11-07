@@ -382,7 +382,8 @@
     <string name="settings_version">バージョン</string>
     <string name="settings_review">レビューを書く</string>
     <string name="settings_credits">クレジット</string>
-    <string name="credits_sound_effects">効果音</string>
+    <string name="credits_sounds">音源</string>
+    <string name="credits_item">・%1$s</string>
     <string name="settings_reset_volume">初期値に戻す</string>
     <string name="settings_bgm">BGM</string>
     <string name="settings_se">効果音</string>

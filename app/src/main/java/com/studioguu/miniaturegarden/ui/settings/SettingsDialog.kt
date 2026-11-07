@@ -21,12 +21,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -175,17 +169,10 @@ private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onSh
     }
 }
 
-/** One line of the credits: what it is for, whose it is, and their site. */
-internal data class Credit(val what: Int, val name: String, val url: String)
+/** Where the sounds may come from, by the sites' names; which file is whose is not known for each (ASSETS.md). */
+internal val SOUND_CREDITS = listOf("ポケットサウンド", "タダノオト", "効果音ラボ")
 
-/** Where the sound effects may come from; which file is whose is not known for each (ASSETS.md). */
-internal val SOUND_CREDITS = listOf(
-    Credit(R.string.credits_sound_effects, "ポケットサウンド", "https://pocket-se.info/"),
-    Credit(R.string.credits_sound_effects, "タダノオト", "https://tadanote.tokyo/"),
-    Credit(R.string.credits_sound_effects, "効果音ラボ", "https://soundeffect-lab.info/"),
-)
-
-/** The credits, each site's address a link that opens in the browser. */
+/** The credits: under the heading of the sounds, the sites' names, one to a line. */
 @Composable
 private fun CreditsDialog(onDismiss: () -> Unit) {
     ParchmentDialog(
@@ -193,19 +180,10 @@ private fun CreditsDialog(onDismiss: () -> Unit) {
         title = stringResource(R.string.settings_credits),
         actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            for (credit in SOUND_CREDITS) {
-                val what = stringResource(credit.what)
-                Text(
-                    text = buildAnnotatedString {
-                        append("$what：${credit.name}\n")
-                        withLink(LinkAnnotation.Url(credit.url, TextLinkStyles(SpanStyle(color = GardenColors.Link, textDecoration = TextDecoration.Underline)))) {
-                            append(credit.url)
-                        }
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = GardenColors.Ink,
-                )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.credits_sounds), style = MaterialTheme.typography.titleSmall, color = GardenColors.Ink)
+            for (name in SOUND_CREDITS) {
+                Text(stringResource(R.string.credits_item, name), style = MaterialTheme.typography.bodyMedium, color = GardenColors.Ink)
             }
         }
     }
