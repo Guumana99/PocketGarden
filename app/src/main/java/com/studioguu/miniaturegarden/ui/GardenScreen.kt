@@ -110,6 +110,7 @@ import com.studioguu.miniaturegarden.ui.effects.SnowOverlay
 import com.studioguu.miniaturegarden.ui.effects.RainStyle
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
 import com.studioguu.miniaturegarden.ui.hud.LevelDialog
+import com.studioguu.miniaturegarden.ui.settings.ReplayTutorialDialog
 import com.studioguu.miniaturegarden.ui.hud.LevelInfo
 import com.studioguu.miniaturegarden.ui.hud.LevelUpDialog
 import com.studioguu.miniaturegarden.ui.hud.ObjectStatusDialog
@@ -223,6 +224,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     var showPost by rememberSaveable { mutableStateOf(false) }
     var showWeather by rememberSaveable { mutableStateOf(false) }
     var showLevel by rememberSaveable { mutableStateOf(false) }
+    var confirmReplay by rememberSaveable { mutableStateOf(false) }
     var confirmTurnBack by rememberSaveable { mutableStateOf(false) }
     val pulledIds by viewModel.pulled.collectAsStateWithLifecycle()
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -735,8 +737,18 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             // Not while they are being played.
             onReplayTutorial = {
                 showSettings = false
-                viewModel.replayTutorial()
+                confirmReplay = true
             }.takeIf { !practising },
+        )
+    }
+    // Asked first (2026-11-08): the practice garden comes at once.
+    if (confirmReplay) {
+        ReplayTutorialDialog(
+            onConfirm = {
+                confirmReplay = false
+                viewModel.replayTutorial()
+            },
+            onDismiss = { confirmReplay = false },
         )
     }
     openingGift?.let { box ->

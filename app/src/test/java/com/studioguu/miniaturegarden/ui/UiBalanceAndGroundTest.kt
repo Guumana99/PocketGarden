@@ -55,7 +55,8 @@ class UiBalanceAndGroundTest {
         val panel = source("ui/hud/ObjectStatusDialog.kt")
         val header = panel.substringAfter("// The header:").substringBefore("if (gridObject.isWorking) WorkRow")
         assertTrue(header.contains("horizontalArrangement = Arrangement.spacedBy(HEADER_GAP)"))
-        assertTrue(header.contains("StatusTag(gridObject.status)"))
+        // Whatever the state is passed as: the tag is in the header row.
+        assertTrue(Regex("StatusTag\\(\\w").containsMatchIn(header))
         assertTrue(panel.contains("modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)"))
     }
 

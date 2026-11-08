@@ -405,6 +405,9 @@
     <string name="settings_licenses">オープンソースライセンス</string>
     <string name="settings_privacy">プライバシーポリシー</string>
     <string name="settings_replay_tutorial">チュートリアルをもう一度</string>
+    <string name="replay_tutorial_question">チュートリアルを\nもう一度はじめますか？</string>
+    <string name="replay_tutorial_ok">はじめる</string>
+    <string name="replay_tutorial_cancel">やめる</string>
     <string name="settings_contact">お問い合わせ</string>
     <string name="contact_email" translatable="false">golphable.deve7@gmail.com</string>
     <string name="contact_subject">ポケット庭園へのお問い合わせ</string>
@@ -514,7 +517,7 @@
     <string name="tip_visitor">お客さんが来ているよ！\nタップすると、自然メモに書き留められるよ</string>
     <!-- The closing board. Lines are broken by hand so that no phrase is split. -->
     <string name="tutorial_done_title">🎉 いよいよ本番！</string>
-    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\nお庭に「はじめてのおくりもの」\nをおいたよ。開けてみてね。</string>
+    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\nお庭に「はじめてのおくりもの」を\nおいたよ。開けてみてね。</string>
     <string name="tutorial_done_ok">お庭づくりを始める</string>
     <!-- Features handed over one by one after the first steps. -->
     <string name="reveal_title">新しい機能が使えるようになりました</string>

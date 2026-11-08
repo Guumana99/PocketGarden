@@ -86,7 +86,9 @@ class CodeArtTest {
         fun widthOf(id: String) = creatureManifest.assets.single { it.assetId == id }.width.toFloat() / creatureManifest.tileWidth
         fun heightOf(id: String) = creatureManifest.assets.single { it.assetId == id }.height.toFloat() / creatureManifest.tileWidth
         assertEquals(0.2f, heightOf("creature_squirrel"), 0.01f)
-        for (id in listOf("creature_bird", "creature_frog", "creature_butterfly", "creature_dragonfly")) assertEquals(id, 0.2f, widthOf(id), 0.01f)
+        for (id in listOf("creature_bird", "creature_frog", "creature_butterfly")) assertEquals(id, 0.2f, widthOf(id), 0.01f)
+        // The dragonfly 1.3 times that (2026-11-08): small as it was, it was hard to tell it was flying.
+        assertEquals(0.26f, widthOf("creature_dragonfly"), 0.01f)
         assertTrue(widthOf("creature_ladybug") in 0.06f..0.08f)
     }
 

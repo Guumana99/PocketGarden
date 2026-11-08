@@ -14,9 +14,11 @@ class GroundArtTest {
     private val manifest = AtlasManifest.parse(File(main, "assets/atlas/assets_manifest.json").readText())
 
     @Test
-    fun `the apk's assets hold the atlas only - received pictures stay in tools`() {
-        val loose = File(main, "assets").listFiles()!!.filter { it.name != "atlas" }.map { it.name }
+    fun `the apk's assets hold the atlas and the licence texts only - received pictures stay in tools`() {
+        val loose = File(main, "assets").listFiles()!!.filter { it.name != "atlas" && it.name != "licenses" }.map { it.name }
         assertEquals(emptyList<String>(), loose)
+        // The open-source licences shown in the settings (4efa162): their texts, nothing else.
+        assertTrue(File(main, "assets/licenses").listFiles()!!.all { it.isFile && it.name.endsWith(".txt") })
         // #57: the lawn's slab, and the crops and icons as they came (cut out into raw_assets and res).
         for (name in listOf("tile_grass_iso.png", "tile_soil_flat.png", "pond.png", "crop_corn_stage1.png", "icon_corn.png")) {
             assertTrue(name, File(tools, "source_art/$name").isFile)

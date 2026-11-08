@@ -601,6 +601,36 @@ class CreatureMotionTest {
         assertNull(PlantTops.topOf(IntArray(w * h), w, h))
     }
 
+    @Test
+    fun `with two flowers side by side the top is on the wider one, not in the air between them`() {
+        // 40 x 20: a flower 4 wide at columns 2 to 5 and one 10 wide at 26 to 35, tops level at row 3.
+        val w = 40
+        val h = 20
+        val px = IntArray(w * h)
+        for (y in 3 until 20) {
+            for (x in 2..5) px[y * w + x] = 0xFF00FF00.toInt()
+            for (x in 26..35) px[y * w + x] = 0xFF00FF00.toInt()
+        }
+        val (fx, _) = PlantTops.topOf(px, w, h)!!
+        assertEquals(31f / w, fx, 0.6f / w)
+        // The old middle of them all (column 22 or so) is bare.
+        assertTrue(fx * w > 26f)
+    }
+
+    @Test
+    fun `a ladybird settled on a plant is drawn over the plants in front of it, and nothing else is`() {
+        fun pose(onPlant: Boolean) = CreaturePose(4.5f, 4.5f, 0.3f, Facing.LEFT, CreatureAction.STAND, 0L, 1_000L, GridCell(4, 4), onPlant = onPlant)
+        // The cells in front ((5, 4), (4, 5), (5, 5)) are at depth 9 and 10: it comes after them.
+        assertTrue(CreatureRoutes.drawDepth(pose(true)) > 10f)
+        assertEquals(8.6f, CreatureRoutes.drawDepth(pose(false)), 1e-4f)
+        // On a real route: settled on a crop's leaves, not while it flies in or pops up.
+        val tulip = objects.first { it.objectId == "plant_tulip" }
+        val v = visit(VisitRule.LADYBUG_CROPS, GridCell(tulip.gridX, tulip.gridY), tulip)
+        val poses = (v.arrivesAt until v.leavesAt step 500L).mapNotNull { CreatureRoutes.plan(v, grid).poseAt(it) }
+        assertTrue(poses.any { it.onPlant })
+        assertTrue(poses.filter { it.action == CreatureAction.APPEAR || it.action == CreatureAction.VANISH || it.action == CreatureAction.FLY }.none { it.onPlant })
+    }
+
     // --- Turning round ---
 
     @Test

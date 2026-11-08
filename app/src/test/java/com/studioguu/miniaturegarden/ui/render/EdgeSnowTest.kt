@@ -70,10 +70,12 @@ class EdgeSnowTest {
     @Test
     fun `the debug menu has the button, and the screen draws the snow on roofs and rails`() {
         val main: File = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
-        val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
+        // Read with LF line ends: a Windows checkout has CRLF.
+        fun read(path: String) = File(main, path).readText().replace("\r\n", "\n")
+        val canvas = read("java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt")
         assertTrue(canvas.contains("drawEdgeSnow(base, unit, lines, ambience.edgeSnow)"))
         assertTrue(canvas.contains("EdgeSnow.railTop(run)"))
-        val model = File(main, "java/com/studioguu/miniaturegarden/ui/GardenViewModel.kt").readText()
+        val model = read("java/com/studioguu/miniaturegarden/ui/GardenViewModel.kt")
         assertTrue(model.contains("fun debugSnowLying() {\n        if (!BuildConfig.DEBUG) return"))
         assertTrue(File(main, "res/values/strings.xml").readText().contains("debug_snow_lying"))
     }
