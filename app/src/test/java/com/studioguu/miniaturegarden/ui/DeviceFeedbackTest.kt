@@ -118,7 +118,8 @@ class DeviceFeedbackTest {
         val soil = File(tools, "crop_soil.py").readText()
         assertTrue(soil.contains("def _strip_clumps("))
         // A crop in its bed has no crumbs of earth drawn round its foot either.
-        assertTrue(source("ui/components/GardenCanvas.kt").contains("if (!isGroundCover && structure == null && !obj.isPlant && "))
+        // The conditions only, not the whole line: more may be put in front of them (#portrait) without it mattering.
+        assertTrue(Regex("!isGroundCover\\s*&&\\s*structure == null\\s*&&\\s*!obj\\.isPlant").containsMatchIn(source("ui/components/GardenCanvas.kt")))
     }
 
     // --- 2.2 Fences ---

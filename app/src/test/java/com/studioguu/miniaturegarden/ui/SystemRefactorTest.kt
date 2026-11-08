@@ -110,11 +110,14 @@ class SystemRefactorTest {
         assertEquals(11, GardenMap.DEFAULT.size)
         assertEquals(5, PracticeGarden.PLOT.x)
         assertEquals(5, PracticeGarden.PLOT.y)
-        // It grows once, to the largest size; gardens saved at 9 x 9 still grow from there.
+        // It grows a ring at a time, 13, 15 and 17 (#97); gardens saved at 9 x 9 still grow from there.
         assertEquals(13, GardenExpansion.nextStage(GridObject.GRID_SIZE)?.size)
+        assertEquals(15, GardenExpansion.nextStage(13)?.size)
+        assertEquals(17, GardenExpansion.nextStage(15)?.size)
+        assertEquals(null, GardenExpansion.nextStage(17))
         assertEquals(11, GardenExpansion.nextStage(GridObject.LEGACY_GRID_SIZE)?.size)
         assertEquals(GridObject.LEGACY_GRID_SIZE, GardenProgress.EXISTING_GARDEN.gardenSize)
-        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(13, 99, 0L))
+        assertEquals(ExpansionCheck.AT_MAX_SIZE, GardenExpansion.check(17, 99, 0L))
     }
 
     // --- 5. Fewer frames ---
