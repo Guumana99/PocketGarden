@@ -72,6 +72,15 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+// No instrumented tests yet: they come before the first update, for the migrations (2026-11-08).
+// Until src/androidTest exists no androidTest variant is made, so connectedAndroidTest has nothing
+// to run, rather than failing on finding none.
+androidComponents {
+    beforeVariants { variant ->
+        if (!file("src/androidTest").exists()) variant.androidTest.enable = false
+    }
+}
+
 dependencies {
     // Core / Lifecycle
     implementation(libs.androidx.core.ktx)
