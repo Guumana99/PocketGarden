@@ -195,7 +195,7 @@ private fun SampleGarden(atlas: SpriteAtlas, terrain: TerrainTextures, modifier:
     val beat by produceState(0) {
         while (true) {
             delay(SAMPLE_BEAT_MILLIS)
-            value++
+            value = value + 1
         }
     }
     val sample = remember(beat) { TitleSampleGarden.objects(beat) }

@@ -755,7 +755,6 @@ internal fun flavorText(entry: CollectionEntry, colour: String?): Int = when {
     else -> R.string.flavor_tulip
 }
 
-@StringRes
 /**
  * A page's text written on as prose, for anywhere but the book (the shop's card): the book's
  * breaks, 12 characters a line, are taken out but for those after a sentence, and the rest wraps
@@ -763,6 +762,7 @@ internal fun flavorText(entry: CollectionEntry, colour: String?): Int = when {
  */
 fun asProse(text: String): String = text.replace(Regex("(?<![。！？])\n"), "")
 
+@StringRes
 internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.TULIP -> R.string.flavor_tulip
     CollectionEntry.SUNFLOWER -> R.string.flavor_sunflower

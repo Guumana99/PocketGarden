@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- local.properties is each machine's own (the SDK path); it is not the project's to fix. -->
+    <issue id="PropertyEscape">
+        <ignore regexp="local\.properties" />
+    </issue>
+</lint>

@@ -2,9 +2,9 @@ package com.studioguu.miniaturegarden.debug
 
 import android.content.Context
 import android.graphics.text.LineBreakConfig
+import android.graphics.text.LineBreaker
 import android.icu.util.ULocale
 import android.os.Build
-import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import com.studioguu.miniaturegarden.R
@@ -79,7 +79,8 @@ object TextAudit {
         }
         val builder = StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
         if (way == "plain") return builder.build()
-        builder.setBreakStrategy(Layout.BREAK_STRATEGY_BALANCED)
+        // The builder takes LineBreaker's constants (API 29); below that it keeps its own default.
+        if (Build.VERSION.SDK_INT >= 29) builder.setBreakStrategy(LineBreaker.BREAK_STRATEGY_BALANCED)
         if (Build.VERSION.SDK_INT >= 33) {
             builder.setLineBreakConfig(
                 LineBreakConfig.Builder()
