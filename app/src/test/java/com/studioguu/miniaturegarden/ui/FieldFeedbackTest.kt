@@ -84,7 +84,8 @@ class FieldFeedbackTest {
 
     @Test
     fun `the first steps' last words are broken where they were asked to be`() {
-        assertEquals("ここから先は、あなただけのお庭づくり。\\nお庭に「はじめてのおくりもの」\\nをおいたよ。開けてみてね。", string("tutorial_done_text"))
+        // No line starts with a particle (2026-11-08): "を" goes with the gift's name.
+        assertEquals("ここから先は、あなただけのお庭づくり。\\nお庭に「はじめてのおくりもの」を\\nおいたよ。開けてみてね。", string("tutorial_done_text"))
     }
 
     @Test

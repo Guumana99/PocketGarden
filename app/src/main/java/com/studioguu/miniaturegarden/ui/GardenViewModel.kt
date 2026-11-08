@@ -1289,9 +1289,10 @@ class GardenViewModel @Inject constructor(
         val composts = RemoveObjectUseCase.leavesCompost(obj) &&
             GardenGrid(gardenMap.value, gridObjects.value).isTilled(obj.gridX, obj.gridY)
         val takesTime = takesTimeToRemove(obj)
+        // As when it goes into the bag: the panel closes at once.
+        clearSelection()
         act(
             onSuccess = {
-                clearSelection()
                 if (composts) _messages.trySend(R.string.msg_composted)
                 if (takesTime) _messages.trySend(R.string.work_started_demolition)
             }
@@ -1332,9 +1333,11 @@ class GardenViewModel @Inject constructor(
     fun storeSelected() = withSelectedObject { obj ->
         if (refused(GardenLayout.check(LayoutAction.STORE, obj, _editMode.value))) return@withSelectedObject
         val takesTime = takesTimeToRemove(obj)
+        // The panel closes as soon as it is chosen, not once the garden has been written: on a
+        // slow device it stood for seconds over a thing already gone (2026-11-08).
+        clearSelection()
         act(
             onSuccess = {
-                clearSelection()
                 audio.play(SoundEffect.PLANT)
                 _messages.trySend(if (takesTime) R.string.work_started_demolition else R.string.msg_stored)
             }
