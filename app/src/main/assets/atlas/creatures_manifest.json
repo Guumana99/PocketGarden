@@ -4,8 +4,8 @@
   "pages": [
     {
       "file": "creatures_0.png",
-      "width": 988,
-      "height": 743
+      "width": 1017,
+      "height": 796
     }
   ],
   "assets": [
@@ -17,8 +17,8 @@
       "height": 175,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 392,
-      "atlasY": 275
+      "atlasX": 2,
+      "atlasY": 472
     },
     {
       "assetId": "creature_bird_fly_body",
@@ -28,8 +28,8 @@
       "height": 120,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 2,
-      "atlasY": 621
+      "atlasX": 351,
+      "atlasY": 649
     },
     {
       "assetId": "creature_bird_fly_wing_left",
@@ -39,8 +39,8 @@
       "height": 59,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 330,
-      "atlasY": 621,
+      "atlasX": 679,
+      "atlasY": 649,
       "attachX": 1.0682,
       "attachY": 0.2367
     },
@@ -52,8 +52,8 @@
       "height": 109,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 172,
-      "atlasY": 621,
+      "atlasX": 521,
+      "atlasY": 649,
       "attachX": -0.0271,
       "attachY": 1.0462
     },
@@ -65,8 +65,8 @@
       "height": 175,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 586,
-      "atlasY": 275
+      "atlasX": 196,
+      "atlasY": 472
     },
     {
       "assetId": "creature_bird_peck",
@@ -76,8 +76,8 @@
       "height": 170,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 688,
-      "atlasY": 275
+      "atlasX": 298,
+      "atlasY": 472
     },
     {
       "assetId": "creature_butterfly",
@@ -87,7 +87,7 @@
       "height": 186,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 2,
+      "atlasX": 521,
       "atlasY": 275
     },
     {
@@ -98,8 +98,8 @@
       "height": 61,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 317,
-      "atlasY": 621
+      "atlasX": 666,
+      "atlasY": 649
     },
     {
       "assetId": "creature_butterfly_wing_left",
@@ -109,7 +109,7 @@
       "height": 186,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 196,
+      "atlasX": 715,
       "atlasY": 275,
       "attachX": 0.998,
       "attachY": 0.4648
@@ -122,56 +122,56 @@
       "height": 186,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 294,
+      "atlasX": 813,
       "atlasY": 275,
       "attachX": 0.0,
       "attachY": 0.4648
     },
     {
       "assetId": "creature_dragonfly",
-      "anchorX": 0.4994,
-      "anchorY": 0.2309,
-      "width": 192,
-      "height": 156,
+      "anchorX": 0.4986,
+      "anchorY": 0.2318,
+      "width": 250,
+      "height": 202,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 2,
-      "atlasY": 463
+      "atlasX": 696,
+      "atlasY": 2
     },
     {
       "assetId": "creature_dragonfly_body",
-      "anchorX": 0.4998,
-      "anchorY": 0.2309,
-      "width": 51,
-      "height": 156,
+      "anchorX": 0.4946,
+      "anchorY": 0.2318,
+      "width": 67,
+      "height": 202,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 196,
-      "atlasY": 463
+      "atlasX": 948,
+      "atlasY": 2
     },
     {
       "assetId": "creature_dragonfly_wing_left",
-      "anchorX": 0.9988,
+      "anchorX": 0.9972,
       "anchorY": 0.2011,
-      "width": 96,
-      "height": 150,
+      "width": 125,
+      "height": 195,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 249,
-      "atlasY": 463,
-      "attachX": 0.9988,
+      "atlasX": 2,
+      "atlasY": 275,
+      "attachX": 0.9972,
       "attachY": 0.2011
     },
     {
       "assetId": "creature_dragonfly_wing_right",
       "anchorX": 0.0,
       "anchorY": 0.2027,
-      "width": 96,
-      "height": 150,
+      "width": 125,
+      "height": 195,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 347,
-      "atlasY": 463,
+      "atlasX": 129,
+      "atlasY": 275,
       "attachX": 0.0,
       "attachY": 0.2027
     },
@@ -183,8 +183,8 @@
       "height": 150,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 445,
-      "atlasY": 463
+      "atlasX": 482,
+      "atlasY": 472
     },
     {
       "assetId": "creature_frog_jump",
@@ -205,8 +205,8 @@
       "height": 46,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 519,
-      "atlasY": 621
+      "atlasX": 868,
+      "atlasY": 649
     },
     {
       "assetId": "creature_squirrel",
@@ -216,8 +216,8 @@
       "height": 192,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 696,
-      "atlasY": 2
+      "atlasX": 256,
+      "atlasY": 275
     },
     {
       "assetId": "creature_squirrel_front",
@@ -227,8 +227,8 @@
       "height": 192,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 872,
-      "atlasY": 2
+      "atlasX": 432,
+      "atlasY": 275
     },
     {
       "assetId": "creature_squirrel_run",
@@ -238,8 +238,8 @@
       "height": 145,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 639,
-      "atlasY": 463
+      "atlasX": 2,
+      "atlasY": 649
     },
     {
       "assetId": "creature_squirrel_run2",

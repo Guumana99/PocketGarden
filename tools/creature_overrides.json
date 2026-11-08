@@ -76,17 +76,17 @@
     "attachY": 0.4648
   },
   "creature_dragonfly": {
-    "anchorX": 0.4994,
-    "anchorY": 0.2309
+    "anchorX": 0.4986,
+    "anchorY": 0.2318
   },
   "creature_dragonfly_body": {
-    "anchorX": 0.4998,
-    "anchorY": 0.2309
+    "anchorX": 0.4946,
+    "anchorY": 0.2318
   },
   "creature_dragonfly_wing_left": {
-    "anchorX": 0.9988,
+    "anchorX": 0.9972,
     "anchorY": 0.2011,
-    "attachX": 0.9988,
+    "attachX": 0.9972,
     "attachY": 0.2011
   },
   "creature_dragonfly_wing_right": {

@@ -150,7 +150,7 @@
 | 生き物 | assetId | 出所・メモ | 状態 |
 |---|---|---|---|
 | ちょうちょ | `creature_butterfly` | Recraft（#71）。真上から見た姿。胴（`_body`）と左右の羽（`_wing_left` `_wing_right`）に切り分けて羽ばたかせる | ✅ |
-| てんとうむし | `creature_ladybug` | Recraft（#71）。0.075 マス | ✅ |
+| てんとうむし | `creature_ladybug` | Recraft（#71）。0.075 マス。2026-11-08 から、葉の緑の上でくっきり見えるよう取り込むときに赤を少し鮮やかに（彩度 1.3 倍・明るさ 1.08 倍）し、外周 1px を濃く（`clearer_ladybug`）。元の絵は `tools/source_art` のまま | ✅ |
 | ことり | `creature_bird` | Recraft（#71）。立つ姿と飛ぶ姿（`creature_bird_fly.png` を胴 `_fly_body` と左右の翼 `_fly_wing_left` `_fly_wing_right` に切り分け）。白い尾・頬・お腹を残すため、白の抜き方を弱くした | ✅ |
 | りす | `creature_squirrel` | Recraft（#71）。座る姿と走る姿（`creature_squirrel_run`）。しっぽの毛先は白いもやが残らないよう深めに白と分けた。走る姿のお腹の白っぽい毛は、白いギザギザが残らないよう、お腹の下だけ柔らかく消した | ✅ |
 | かえる | `creature_frog` | Recraft（#71） | ✅ |
@@ -159,7 +159,7 @@
 | りす（正面） | `creature_squirrel_front` | Recraft で作成・採用（2026-11-07）。振り向きの途中に約 0.09 秒だけ出す。横向きと高さをそろえ、両足の間を接地点にした。しっぽの毛先は横向きと同じく深めに白と分けた | ✅ |
 | りす（縮んだ走り） | `creature_squirrel_run2` | Recraft で作成・採用（2026-11-02）。接地点は足元。移動中、跳ねの地面側で `creature_squirrel_run` と入れ替わる | ✅ |
 | かえる（跳ぶ） | `creature_frog_jump` | Recraft で作成・採用（2026-11-02）。原画のかえるが小さいので 1.8 倍にして目をそろえた。跳ぶ間だけ出す | ✅ |
-| とんぼ | `creature_dragonfly` | Recraft（#71）。真上から見た姿。透明な羽は半透明（不透明度 0.3〜）で残し、脈と縁は不透明。胴と左右の羽に切り分け | ✅ |
+| とんぼ | `creature_dragonfly` | Recraft（#71）。真上から見た姿。2026-11-08 から 0.26 マス（前は 0.2 マス、1.3 倍）。透明な羽は半透明（不透明度 0.3〜）で残し、脈と縁は不透明。胴と左右の羽に切り分け | ✅ |
 
 図鑑の「いきもの」の章（影絵・ページの絵）は、各種の 1 枚目（`creature_<id>`）を静止して出す。
 

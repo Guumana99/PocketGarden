@@ -68,7 +68,8 @@ SIZES: dict[str, tuple[str, float]] = {
     "frog": ("w", 0.2),
     "ladybug": ("w", 0.075),
     "butterfly": ("w", 0.2),
-    "dragonfly": ("w", 0.2),
+    # 1.3 times what it was (2026-11-08): at the usual zooms it was too small to tell it was flying.
+    "dragonfly": ("w", 0.26),
 }
 
 #: Pictures brought to the scale of another: (that one, how much larger its head is there). The
@@ -210,6 +211,28 @@ def cut(name: str) -> np.ndarray:
     return cut_out(rgb)
 
 
+def clearer_ladybug(rgba: np.ndarray, saturation: float = 1.3, value: float = 1.08, rim: float = 0.3) -> np.ndarray:
+    """The ladybird made to stand out on leaves, still as photographed: the red of its wing cases
+    more saturated and a touch brighter, and its outermost pixel all round darkened to [rim] of
+    itself, a thin dark edge. Nothing else of the picture changes."""
+    out = rgba.astype(float)
+    rgb = out[:, :, :3] / 255.0
+    mx, mn = rgb.max(axis=2), rgb.min(axis=2)
+    r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
+    red = (r >= mx - 1e-6) & (sat > 0.35) & (g < r * 0.75) & (b < r * 0.75) & (rgba[:, :, 3] > 0)
+    # Scale the colour away from its grey (the min) and lift it a little.
+    grey = mn[..., None]
+    vivid = grey + (rgb - grey) * saturation
+    vivid = np.clip(vivid * value, 0, 1)
+    rgb = np.where(red[..., None], vivid, rgb)
+    solid = rgba[:, :, 3] > 128
+    edge = solid & ~erode(solid, 1)
+    rgb = np.where(edge[..., None], rgb * rim, rgb)
+    out[:, :, :3] = rgb * 255.0
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
 # --- Parts -------------------------------------------------------------------------------------
 
 def polygon_mask(shape, points) -> np.ndarray:
@@ -342,6 +365,9 @@ def prepare() -> tuple[dict[str, np.ndarray], dict[str, dict]]:
     # The ladybird's legs reach out behind it: it stands on the middle of itself.
     ys, xs = np.where(cuts["ladybug"][:, :, 3] > 128)
     add("creature_ladybug", cuts["ladybug"], scales["ladybug"], (float(xs.mean()), float(ys.max() + 1)))
+    # Clearer against green leaves (2026-11-08): its red a little brighter, and a thin dark rim
+    # round it at the size it is packed at. Its size is as it was.
+    pictures["creature_ladybug"] = clearer_ladybug(pictures["creature_ladybug"])
     add("creature_squirrel_run", cuts["squirrel_run"], scales["squirrel_run"], run_belly(cuts["squirrel_run"]))
     # The gathered squirrel touches the ground: it stands on its feet.
     add("creature_squirrel_run2", cuts["squirrel_run2"], scales["squirrel_run2"], feet(cuts["squirrel_run2"]))

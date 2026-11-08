@@ -82,6 +82,8 @@ data class CreaturePose(
     val grounded: Boolean = false,
     val turn: Float = 1f,
     val turnPassed: Boolean = false,
+    /** Settled on a plant (the ladybird on its leaves or flowers): drawn over the plants in front, never hidden by them. */
+    val onPlant: Boolean = false,
 ) {
     /** How far through [action] it is, 0 to 1. */
     val progress: Float get() = if (duration <= 0L) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
@@ -110,6 +112,8 @@ class CreatureRoute internal constructor(
     private val surface: Float = 0f,
     /** Whether it is on its feet on the ground ([CreaturePose.grounded]). */
     private val grounded: Boolean = false,
+    /** Whether it settles on a plant ([CreaturePose.onPlant]). */
+    private val onPlant: Boolean = false,
     /**
      * Whether it found nowhere to settle and only passes over: in and straight out again, and
      * then gone ([passingOver]). A route with no [opening] at all is never seen.
@@ -213,6 +217,7 @@ class CreatureRoute internal constructor(
             stops = leg.stops,
             surface = surface,
             grounded = grounded && leg.action != CreatureAction.FLY,
+            onPlant = onPlant && leg.action != CreatureAction.FLY && leg.action != CreatureAction.APPEAR && leg.action != CreatureAction.VANISH,
             turn = abs(turnOf(leg, elapsed)),
             turnPassed = turnOf(leg, elapsed) >= 0f,
         )
@@ -365,6 +370,7 @@ object CreatureRoutes {
      */
     fun drawDepth(pose: CreaturePose): Float {
         val cell = (pose.cell.x + pose.cell.y).toFloat()
+        if (pose.onPlant) return cell + ABOVE_CELL_DEPTH + PLANT_PERCH_LIFT
         if (!pose.grounded) return cell + ABOVE_CELL_DEPTH
         return (pose.x + pose.y - 1f - GROUND_DEPTH_BIAS).coerceIn(cell - CELL_DEPTH_SPREAD, cell + CELL_DEPTH_SPREAD)
     }
@@ -557,7 +563,9 @@ object CreatureRoutes {
         }
         if (cyclic) plan.stepTo(homeX, homeY, manner.hostStepMillis)
         plan.standUntil(span)
-        return arriving(visit, plan, landing, homeX, homeY, size, depthCell = spot.cell, ponds = emptySet(), surface = spot.height)
+        // A ladybird on a plant stays in sight: over the plants in front of it too (2026-11-08).
+        val onPlant = visit.creature == Creature.LADYBUG && (spot.kind == PerchKind.FLOWER || spot.kind == PerchKind.LEAF)
+        return arriving(visit, plan, landing, homeX, homeY, size, depthCell = spot.cell, ponds = emptySet(), surface = spot.height, onPlant = onPlant)
     }
 
     /**
@@ -586,20 +594,21 @@ object CreatureRoutes {
         ponds: Set<GridCell>,
         surface: Float = 0f,
         grounded: Boolean = false,
+        onPlant: Boolean = false,
     ): CreatureRoute {
         val span = maxOf(plan.span, plan.t)
         landing?.turnOut = plan.legs.firstOrNull()?.turnIn == true
         if (landing != null) {
             val cameFrom = atan2((landing.fromY - landing.toY).toDouble(), (landing.fromX - landing.toX).toDouble())
             val closing = flightOut(size, landing.duration, cameFrom, plan.random.nextDouble() * 1.2 - 0.6)
-            return CreatureRoute(visit, landing, plan.legs, span, plan.cyclic, landing.duration, closing, depthCell, ponds, surface, grounded)
+            return CreatureRoute(visit, landing, plan.legs, span, plan.cyclic, landing.duration, closing, depthCell, ponds, surface, grounded, onPlant = onPlant)
         }
         val opening = Leg(0L, POP_MILLIS, CreatureAction.APPEAR, homeX, homeY, 0f, facing = plan.firstFacing)
         opening.turnOut = plan.legs.firstOrNull()?.turnIn == true
         return CreatureRoute(
             visit, opening, plan.legs, span, plan.cyclic, POP_MILLIS,
             closing = { from -> Leg(0L, POP_MILLIS, CreatureAction.VANISH, from.x, from.y, 0f, facing = from.facing) },
-            depthCell = depthCell, ponds = ponds, surface = surface, grounded = grounded,
+            depthCell = depthCell, ponds = ponds, surface = surface, grounded = grounded, onPlant = onPlant,
         )
     }
 
@@ -795,6 +804,9 @@ object CreatureRoutes {
 
     /** Depth over its cell for one up on something or in the air: after what stands there. */
     private const val ABOVE_CELL_DEPTH = 0.6f
+
+    /** How much later still one settled on a plant is drawn: after the next two rows of cells in front of it. */
+    private const val PLANT_PERCH_LIFT = 2f
 
     /** How far a visitor on the ground stays within its own cell's depth. */
     private const val CELL_DEPTH_SPREAD = 0.95f

@@ -489,7 +489,7 @@ private val SHADOW_WIDTH: Map<Creature, Float> = mapOf(
     Creature.BIRD to 0.13f,
     Creature.SQUIRREL to 0.16f,
     Creature.FROG to 0.17f,
-    Creature.DRAGONFLY to 0.12f,
+    Creature.DRAGONFLY to 0.156f,
 )
 
 /** A small soft shadow under a creature on the ground. */
