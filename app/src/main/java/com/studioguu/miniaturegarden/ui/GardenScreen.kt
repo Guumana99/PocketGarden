@@ -218,6 +218,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
     // The bag's tab is kept while the app is open; its sort order is kept in the settings.
     var inventoryFilter by rememberSaveable { mutableStateOf(InventoryFilter.ALL) }
     var showShop by rememberSaveable { mutableStateOf(false) }
+    /** The shop was opened from the coins at the top: its coin counter is pointed out. */
+    var shopAtCoins by rememberSaveable { mutableStateOf(false) }
     var showDebugMenu by rememberSaveable { mutableStateOf(false) }
     // The garden's zoom as it is now, for the debug read-out; 0 until the garden is laid out.
     var debugZoom by remember { mutableFloatStateOf(0f) }
@@ -429,6 +431,10 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 // Never both at once: one bubble closes as the other opens.
                 onWeatherTap = { showLevel = false; showWeather = true },
                 onLevelTap = { showWeather = false; showLevel = true },
+                // The way to more coins: the shop, at its counter. Nothing plays until its button is pressed.
+                onCoinTap = if (tutorialStep?.isGuiding == true) null else {
+                    { showWeather = false; showLevel = false; shopAtCoins = true; showShop = true }
+                },
             ) }
 
             Column(
@@ -686,7 +692,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             enter = fadeIn(tween(SHOP_SWITCH_MILLIS)) + slideInHorizontally(tween(SHOP_SWITCH_MILLIS)) { it / 8 },
             exit = fadeOut(tween(SHOP_SWITCH_MILLIS)) + slideOutHorizontally(tween(SHOP_SWITCH_MILLIS)) { it / 8 },
         ) {
-            ShopStageScreen(onLeave = { showShop = false })
+            ShopStageScreen(onLeave = { showShop = false; shopAtCoins = false }, pointToCoins = shopAtCoins)
         }
 
         // The first steps can be left at any moment in the garden; the shop keeps to its one seed.
