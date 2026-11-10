@@ -15,13 +15,17 @@ camera: { zoom: fit }
 timeline:
   - { at: 0.0,  day_label: "1日目" }
   - { at: 0.3,  till: { area: [2,2,8,8], over: 2.2 } }            # 中央の 7×7
-  - { at: 2.6,  plant: { crops: [cosmos, tulip, lavender, sunflower], area: [2,2,8,8], over: 2.0,
-                         colours: { tulip: [red, pink, yellow] } } }   # 4 種類が混ざる並び（隣どうしは別の花）
+  - { at: 2.6,  plant: { crops: [cosmos, tulip, snowdrop, sunflower], area: [2,2,8,8], over: 2.0,
+                         colours: { tulip: [red, pink, yellow] } } }
+    # 4 種類が混ざる並び（隣どうしは別の花）。ラベンダーは引きで暗い丸に見えるのでスノードロップに
   - { at: 4.7,  water: { area: [2,2,8,8], over: 1.6 } }
   - { at: 6.5,  day_label: "3日目" }
-  - { at: 6.5,  grow: { area: [2,2,8,8], to_stage: 2, over: 1.5 } }
-  - { at: 8.2,  grow: { area: [2,2,8,8], to_stage: 3, over: 1.6 } }   # 咲く（音なし）
-  - { at: 10.0, camera: { zoom: 2.2, center: [5.5,4.5], over: 1.2 } }
-  # at は止まる秒。ちょうちょはその約 7 秒前に庭の外の空を出て、画面に入るのは 1〜2 秒前
-  - { at: 11.5, creature: { kind: butterfly, count: 2, from: outside_left, land_on: [[6,5],[5,4]], stay: 3.0 } }   # コスモスとチューリップ
-  - { at: 14.0, end: true }                                       # 2 匹目が止まって 2 秒
+  - { at: 6.5,  grow: { area: [2,2,8,8], to_stage: 2, over: 1.2 } }
+  # 寄りの中心は 2 匹の止まる点の真ん中の少し手前：左右対称で、庭の左右の切れが同じ
+  - { at: 7.0,  camera: { zoom: 2.2, center: [7.5,7.5], over: 1.2 } }
+  - { at: 8.0,  grow: { area: [2,2,8,8], to_stage: 3, over: 1.6 } }   # 寄った画面で咲く（音なし）
+  # ちょうちょは画面の外（左右）の 7 マス先を出て（約 4.4 秒）、花畑を横切り、
+  # 手前の端の花に交差して止まる。at は止まる秒
+  - { at: 12.8, creature: { kind: butterfly, count: 1, from: outside_left,  from_distance: 7, land_on: [[8,5]], stay: 3.0 } }  # 右手前のスノードロップ
+  - { at: 13.3, creature: { kind: butterfly, count: 1, from: outside_right, from_distance: 7, land_on: [[5,8]], stay: 3.0 } }  # 左手前のチューリップ
+  - { at: 15.3, end: true }                                       # 2 匹目が止まって 2 秒

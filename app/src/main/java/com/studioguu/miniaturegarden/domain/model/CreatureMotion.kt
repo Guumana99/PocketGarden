@@ -642,9 +642,10 @@ object CreatureRoutes {
         val homeY = told.firstOrNull()?.y ?: host?.let { it.gridY + it.footprint.height / 2f } ?: (visit.cell.y + 0.5f)
         val cruise = cruiseAltitude(creature)
         val size = grid.map.size
-        val opening = flightIn(homeX, homeY, cruise, size, manner.flySpeed, random, direction?.fromAngle)
+        val opening = flightIn(homeX, homeY, cruise, size, manner.flySpeed, random, direction?.fromAngle, direction?.fromCells)
         val inMillis = opening.duration
-        val outMillis = inMillis
+        // Coming in from nearer than usual, it still goes the usual way out, at its own speed.
+        val outMillis = if (direction?.fromCells != null) flightMillis(creature, size) else inMillis
         val (span, cyclic) = spanOf(length - inMillis - outMillis)
         val plan = Planner(random, manner, span, cyclic, homeX, homeY, cruise, opening.facing, heading = opening.heading)
         val perches = if (told.isNotEmpty()) told else perchesAround(visit, homeX, homeY, spots)
@@ -704,7 +705,8 @@ object CreatureRoutes {
     }
 
     /** How long [creature] takes to fly in from outside a garden [size] cells across, or out of it. */
-    fun flightMillis(creature: Creature, size: Int): Long = (awayFrom(size) / Manner.of(creature).flySpeed * 1000).toLong()
+    fun flightMillis(creature: Creature, size: Int, fromCells: Float? = null): Long =
+        ((fromCells ?: awayFrom(size)) / Manner.of(creature).flySpeed * 1000).toLong()
 
     /** How far outside a garden [size] cells across a flier comes from and goes to, in cells. */
     private fun awayFrom(size: Int): Float = size * 0.8f + 3f
@@ -713,8 +715,17 @@ object CreatureRoutes {
      * Coming in: from a point well outside the garden on the side nearest (homeX, homeY), high up
      * in the sky, down to there at [toAlt], at [speed] cells a second.
      */
-    private fun flightIn(homeX: Float, homeY: Float, toAlt: Float, size: Int, speed: Float, random: Random, fromAngle: Double? = null): Leg {
-        val away = awayFrom(size)
+    private fun flightIn(
+        homeX: Float,
+        homeY: Float,
+        toAlt: Float,
+        size: Int,
+        speed: Float,
+        random: Random,
+        fromAngle: Double? = null,
+        fromCells: Float? = null,
+    ): Leg {
+        val away = fromCells ?: awayFrom(size)
         val angle = fromAngle ?: (outwards(homeX, homeY, size, otherwise = random.nextDouble() * 2 * PI) + random.nextDouble() * 1.2 - 0.6)
         val startX = homeX + cos(angle).toFloat() * away
         val startY = homeY + sin(angle).toFloat() * away
@@ -1042,9 +1053,12 @@ private class Planner(
  * @property fromAngle the direction it comes in from, in radians on the ground from where it is
  *   going (as atan2(dy, dx)); null for the way it would come anyway.
  * @property stayMillis how long it stays on each point; null for as long as the creature would.
+ * @property fromCells how far away it sets off, in cells (a flier only); null for the usual
+ *   [CreatureRoutes.flightMillis] distance, well outside the garden. It still flies at its own speed.
  */
 data class CreatureDirection(
     val perches: List<GridCell> = emptyList(),
     val fromAngle: Double? = null,
     val stayMillis: Long? = null,
+    val fromCells: Float? = null,
 )
