@@ -1,7 +1,7 @@
 # 締めの画面（tools/promo_render.py）。文言はここで変える
 seconds: 2.0
-title: ポケ庭
-lines:
-  - ポケット庭園
+title: ポケット庭園        # 大きく（画面の幅に収まる大きさに自動で縮める）
+lines:                    # その下に小さく、上から順に
+  - （ポケ庭）
   - Androidで年内配信予定
 blur: 18

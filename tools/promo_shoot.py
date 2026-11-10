@@ -52,6 +52,9 @@ def main():
     if args.install:
         adb(args.serial, "install", "-r", str(APK))
     adb(args.serial, "shell", "am", "force-stop", PACKAGE)
+    # The last recording goes first, its `done` above all: seen before the app has cleared it, it
+    # would have the frames pulled while the new ones are still being made.
+    adb(args.serial, "shell", "rm", "-rf", f"{REMOTE}/out/{data['id']}", f"{REMOTE}/error.txt", check=False)
     # The script goes in the intent: a file pushed into the app's folder would belong to the shell,
     # and the app could not always read it (nor write next to it). The app clears its own output.
     encoded = base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode("ascii")

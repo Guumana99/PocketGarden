@@ -7,7 +7,7 @@ In:  build/promo/<id>/frame_*.png and cues.json (tools/promo_shoot.py),
 Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
      docs/promo/tiktok/<id>_sheet.jpg (one frame a second, with the time under each).
 
-1. The last [hook_from_end] seconds go first too, the finished garden before how it was made.
+1. The last [hook_from_end] seconds go first too, if asked (0, none, unless the script says).
 2. The frames become the video.
 3. Captions are burnt in (Noto Sans JP Bold, white with a dark edge), at most 15 characters a line
    and 2 lines, kept out of TikTok's top edge, its bottom fifth and its right-hand buttons.
@@ -72,11 +72,17 @@ def caption_png(text, path):
             print(f"  warning: caption line over {MAX_CHARS} characters: {line}")
     if len(lines) > MAX_LINES:
         print(f"  warning: caption over {MAX_LINES} lines: {text!r}")
-    size = 74
-    f = font(size)
-    stroke = 9
     image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(image)
+    # 74 px, smaller if a line would not fit between the safe edges.
+    size = 74
+    while True:
+        f = font(size)
+        stroke = max(5, size // 8)
+        widest = max(draw.textbbox((0, 0), line, font=f, stroke_width=stroke)[2] - draw.textbbox((0, 0), line, font=f, stroke_width=stroke)[0] for line in lines)
+        if widest <= SAFE_RIGHT - SAFE_LEFT or size <= 40:
+            break
+        size -= 2
     gap = int(size * 0.28)
     boxes = [draw.textbbox((0, 0), line, font=f, stroke_width=stroke) for line in lines]
     heights = [b[3] - b[1] for b in boxes]
@@ -98,9 +104,15 @@ def outro_png(last_frame, outro, path):
     base = ImageEnhance.Brightness(base).enhance(0.78)
     draw = ImageDraw.Draw(base)
     centre = (SAFE_LEFT + SAFE_RIGHT) // 2
-    title = font(210)
-    stroke = 12
-    box = draw.textbbox((0, 0), outro["title"], font=title, stroke_width=stroke)
+    # The name as large as fits between the safe edges, up to 210 px.
+    size = 210
+    while True:
+        title = font(size)
+        stroke = max(6, size // 17)
+        box = draw.textbbox((0, 0), outro["title"], font=title, stroke_width=stroke)
+        if box[2] - box[0] <= SAFE_RIGHT - SAFE_LEFT - 20 or size <= 60:
+            break
+        size -= 4
     y = int(H * 0.36)
     draw.text((centre - (box[2] - box[0]) // 2 - box[0], y - box[1]), outro["title"], font=title, fill="white", stroke_width=stroke, stroke_fill=(52, 36, 20))
     y += box[3] - box[1] + 70
@@ -154,7 +166,7 @@ def contact_sheet(frames, fps, hook, path, columns=6):
         im = Image.open(frames[index]).convert("RGB").resize((thumb_w, thumb_h), Image.LANCZOS)
         x, y = (n % columns) * thumb_w, (n // columns) * (thumb_h + 30)
         sheet.paste(im, (x, y))
-        draw.text((x + 6, y + thumb_h + 2), f"{index / fps:.0f}秒（動画 {index / fps + hook:.0f}秒）", font=label, fill="black")
+        draw.text((x + 6, y + thumb_h + 2), (f"{index / fps:.0f}秒（動画 {index / fps + hook:.0f}秒）" if hook else f"{index / fps:.0f}秒"), font=label, fill="black")
     sheet.save(path, quality=88)
 
 
@@ -175,7 +187,7 @@ def main():
     frames = sorted(recorded.glob("frame_*.png"))
     if len(frames) != cues["frames"]:
         sys.exit(f"{len(frames)} frames found, cues.json says {cues['frames']}")
-    hook_frames = min(len(frames), round(float(script.get("hook_from_end", cues.get("hook_from_end", 1.0))) * fps))
+    hook_frames = min(len(frames), round(float(script.get("hook_from_end", cues.get("hook_from_end", 0.0))) * fps))
     hook = hook_frames / fps
     body = len(frames) / fps
     outro_seconds = float(outro.get("seconds", 2.0))

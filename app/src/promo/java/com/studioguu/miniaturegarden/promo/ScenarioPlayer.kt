@@ -13,6 +13,9 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherType
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.PI
 import kotlin.math.roundToLong
 
@@ -40,7 +43,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
     private data class Strike(override val at: Double, val cell: GridCell) : Step
     private data class Bed(override val at: Double, val cell: GridCell, val ridged: Boolean) : Step
     private data class Sow(override val at: Double, val cell: GridCell, val species: PlantSpecies, val colour: String?) : Step
-    private data class Grow(override val at: Double, val cell: GridCell, val stage: Int) : Step
+    private data class Grow(override val at: Double, val cell: GridCell, val stage: Int, val bloomSound: String?) : Step
     private data class Reap(override val at: Double, val cell: GridCell) : Step
     private data class Place(override val at: Double, val cell: GridCell, val objectId: String, val flipped: Boolean) : Step
     private data class Remove(override val at: Double, val cell: GridCell) : Step
@@ -91,13 +94,21 @@ class ScenarioPlayer(private val scenario: Scenario) {
                 }
             }
             "plant" -> {
-                val species = speciesOf(cue.string("crop")) ?: return warn("unknown crop in $cue")
-                val colours = (cue.element("colours") as? kotlinx.serialization.json.JsonArray)?.map { it.toString().trim('"') }
-                    ?: listOfNotNull(cue.string("colour"))
+                // One crop (`crop`), or several mixed over the cells (`crops`: the crop of cell
+                // (x, y) is crops[(x + 2y) % n], so that no two neighbours are alike).
+                val mixed = (cue.element("crops") as? JsonArray)?.mapNotNull { speciesOf(it.jsonPrimitive.content) }.orEmpty()
+                val single = speciesOf(cue.string("crop"))
+                if (mixed.isEmpty() && single == null) return warn("unknown crop in $cue")
+                // Colours: a list for the one crop, or by crop (`colours: { tulip: [red, pink] }`), taken in turn.
+                val colourList = (cue.element("colours") as? JsonArray)?.map { it.jsonPrimitive.content } ?: listOfNotNull(cue.string("colour"))
+                val colourMap = (cue.element("colours") as? JsonObject)?.mapValues { (_, v) -> (v as? JsonArray)?.map { it.jsonPrimitive.content }.orEmpty() }.orEmpty()
+                val used = HashMap<PlantSpecies, Int>()
                 val cells = cue.cells()
-                for ((i, pair) in spread(cells, cue.overOr(minOf(cells.size * 0.08, 1.0))).withIndex()) {
-                    val (t, cell) = pair
-                    steps += Sow(t, cell, species, colours.getOrNull(i % maxOf(colours.size, 1)))
+                for ((t, cell) in spread(cells, cue.overOr(minOf(cells.size * 0.08, 1.0)))) {
+                    val species = if (mixed.isNotEmpty()) mixed[Math.floorMod(cell.x + 2 * cell.y, mixed.size)] else single!!
+                    val colours = colourMap[species.objectId.removePrefix("plant_")] ?: colourList
+                    val n = used.merge(species, 1, Int::plus)!! - 1
+                    steps += Sow(t, cell, species, colours.getOrNull(n % maxOf(colours.size, 1)))
                     taps += t to cell
                     sound("se_plant", t)
                 }
@@ -108,8 +119,10 @@ class ScenarioPlayer(private val scenario: Scenario) {
             }
             "grow" -> {
                 val stage = cue.int("to_stage") ?: 99
+                // No sound of its own: none of the game's fits a flower opening (`sound:` gives one).
+                val bloom = cue.string("sound")?.takeIf { it != "none" }
                 for ((t, cell) in spread(cue.cells(), cue.overOr(0.0))) {
-                    steps += Grow(t, cell, stage)
+                    steps += Grow(t, cell, stage, bloom)
                 }
             }
             "harvest" -> for ((t, cell) in spread(cue.cells(), cue.overOr(0.0))) {
@@ -141,7 +154,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
             "tap_marker" -> steps += SetMarker(at, cue.plain?.toBooleanStrictOrNull() ?: true)
             "sparkle" -> {
                 glints += at to cue.overOr(GLINT_SECONDS)
-                sound("se_coin", at)
+                sound(null, at)
             }
             "sound" -> (cue.plain ?: cue.string("name"))?.let { rawSounds += Sound(at, it, "sound") }
             "creature" -> creatures(cue)
@@ -238,7 +251,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
                 val progress = if (stages <= 1) 1f else (stage - 1).toFloat() / (stages - 1)
                 if (progress > plant.growthProgress) {
                     put(plant.copy(growthProgress = progress))
-                    if (stage == stages && stages > 1) rawSoundsLate += Sound(step.at, "se_coin", "bloom")
+                    if (stage == stages && stages > 1 && step.bloomSound != null) rawSoundsLate += Sound(step.at, step.bloomSound, "bloom")
                 }
             }
             is Reap -> plantAt(step.cell)?.let { objects.remove(it.instanceId) }

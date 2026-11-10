@@ -52,7 +52,7 @@ name: flower_garden      # 出来上がりのファイル名 T-001_flower_garden
 title: 花の庭（荒れ地から完成まで）
 fps: 30
 seed: 42                 # 同じ seed なら毎回同じ動き（生き物の飛び方など）
-hook_from_end: 1.0       # 最後の何秒を頭にも付けるか（0 で付けない）
+hook_from_end: 0         # 最後の何秒を頭にも付けるか（初期値 0 ＝付けない）
 start:
   garden: new_game       # 新規ゲームの庭（11×11 の荒れ地）。今はこれだけ
   season: spring_early   # spring / summer / autumn / winter（_early などは付けてよいが、絵は季節だけで決まる）
@@ -71,9 +71,9 @@ timeline:                # at は録画の秒（頭に付ける完成形は含�
 | 動き | 書き方 | 備考 |
 |---|---|---|
 | 耕す | `till: { area, over, ridged: false }` | 打ったマスの土が跳ね、0.25 秒後に耕した土（`ridged: true` で畝） |
-| 植える | `plant: { crop: cosmos, cells/area, over, colour / colours: [...] }` | 土が無ければ作る（花は耕した土、ほかは畝） |
+| 植える | `plant: { crop: cosmos, cells/area, over, colour / colours: [...] }` または `plant: { crops: [cosmos, tulip, lavender, sunflower], area, colours: { tulip: [red, pink, yellow] } }` | 土が無ければ作る（花は耕した土、ほかは畝）。`crops` は混ぜて植える：マス (x, y) は crops[(x + 2y) % 種類数]（隣どうしが別の花になる）。色は順に使う |
 | 水やり | `water: { area, over }` | タップの丸と音だけ（ゲームでも水やりに絵の動きは無い） |
-| 育てる | `grow: { area, to_stage: 2, over }` | 段階は 1 から。最後の段階が咲いた・実った姿 |
+| 育てる | `grow: { area, to_stage: 2, over }` | 段階は 1 から。最後の段階が咲いた・実った姿。咲いても音は鳴らない（`sound: se_xxx` で付けられる） |
 | 収穫 | `harvest: { cells/area, over }` | 株が浮いて消える（ゲームと同じ） |
 | 置く | `place: { item: deco_bench, at: [x,y], flip: false }` | 物の id は `GardenItem` のもの |
 | 取り除く | `remove: { cells/area, over }` | 土以外 |
@@ -101,7 +101,20 @@ timeline:                # at は録画の秒（頭に付ける完成形は含�
 | 植える・置く | `se_plant` |
 | 水やり・雨になる | `se_water` |
 | 収穫 | `se_harvest` |
-| 咲く（最後の段階になる）・きらっ | `se_coin` |
+| 咲く（最後の段階になる）・きらっ | なし（アプリの音に合うものが無い） |
+
+アプリの効果音（`app/src/main/res/raw`、ゲームで鳴る場面）：
+
+| ファイル | ゲームで鳴る場面 |
+|---|---|
+| `se_tap` | クワで固い地面を打つ・スプリンクラーを止める・おくりものの箱を開ける |
+| `se_water` | 水やり・スプリンクラーを動かす・枯れた株を生き返らせる・恵みの雨 |
+| `se_fertilize` | 肥料 |
+| `se_plant` | 種をまく・物を置く・動かす・向きを変える・持ち物に戻す |
+| `se_harvest` | 収穫 |
+| `se_coin` | ショップで買う・ごほうびのコイン・設定の音量の試し聞き |
+| `se_level_up` | レベルアップ・季節が変わる・建物のお披露目・庭が広がる・チュートリアルの区切り |
+| `se_error` | できない操作 |
 
 ## 字幕（`promo/captions/<id>.yaml`）
 
@@ -111,12 +124,13 @@ captions:
   - { from: 12.2, to: 16.8, text: "ちょうちょが\n遊びに来た！" }   # \n で改行
 ```
 
-秒は台本の秒（頭に付ける完成形の分は編集でずらす）。1 行 15 字・2 行まで（超えると警告）。
+秒は本編の秒（頭に完成形を付けるときは、その分を編集でずらす）。1 行 15 字・2 行まで（超えると警告）。
+字の大きさは 74px。1 行が安全な幅（約 820px）に収まらないときは自動で小さくする。
 白い文字に濃い茶の縁取り。画面の上の 12%・下の 20%・右の 190px には置かない。
 
 ## 締めの画面（`promo/outro.yaml`）
 
-2 秒。最後の場面をぼかして暗くした上に、大きく「ポケ庭」、下に小さく 2 行。文言・秒数・ぼかしはこのファイルで変える。
+2 秒。最後の場面をぼかして暗くした上に、大きく「ポケット庭園」（画面の幅に収まる大きさ）、下に小さく「（ポケ庭）」「Androidで年内配信予定」。文言・秒数・ぼかしはこのファイルで変える。
 本編から 0.4 秒かけて切り替わる。
 
 ## 出来上がり
