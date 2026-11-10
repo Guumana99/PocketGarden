@@ -173,16 +173,20 @@ class ScenarioPlayer(private val scenario: Scenario) {
         val stayMillis = ((cue.double("stay") ?: 3.0) * 1000).roundToLong()
         val angle = angleOf(cue.element("from"))
         val flies = creature == Creature.BUTTERFLY || creature == Creature.DRAGONFLY || creature == Creature.BIRD
-        val travel = if (flies) CreatureRoutes.flightMillis(creature, map.size) else POP_MILLIS
+        // `from_distance`: how many cells away it sets off (a flier), nearer than the game's usual.
+        // Butterflies and dragonflies only: the bird comes down its own way.
+        val fromCells = cue.double("from_distance")?.toFloat()?.takeIf { creature != Creature.BIRD }
+        val travelIn = if (flies) CreatureRoutes.flightMillis(creature, map.size, fromCells) else POP_MILLIS
+        val travelOut = if (flies) CreatureRoutes.flightMillis(creature, map.size) else POP_MILLIS
         for (i in 0 until count) {
             val cell = landOn.getOrNull(i % maxOf(landOn.size, 1)) ?: GridCell(map.size / 2, map.size / 2)
             // [Scenario.Cue.at] is when it comes down on its point: one that flies sets off from
             // the sky outside the garden that much earlier (a butterfly about 7 seconds), at the
             // game's own speed.
-            val arrives = baseMillis + ((cue.at + i * STAGGER_SECONDS) * 1000).roundToLong() - (if (flies) travel else 0L)
-            val visit = CreatureVisit(rule, cell, host = null, arrivesAt = arrives, leavesAt = arrives + 2 * travel + stayMillis + SETTLE_MILLIS)
+            val arrives = baseMillis + ((cue.at + i * STAGGER_SECONDS) * 1000).roundToLong() - (if (flies) travelIn else 0L)
+            val visit = CreatureVisit(rule, cell, host = null, arrivesAt = arrives, leavesAt = arrives + travelIn + travelOut + stayMillis + SETTLE_MILLIS)
             visits += visit
-            directions[visit] = CreatureDirection(perches = if (landOn.isEmpty()) emptyList() else listOf(cell), fromAngle = angle, stayMillis = stayMillis)
+            directions[visit] = CreatureDirection(perches = if (landOn.isEmpty()) emptyList() else listOf(cell), fromAngle = angle, stayMillis = stayMillis, fromCells = fromCells)
         }
     }
 
