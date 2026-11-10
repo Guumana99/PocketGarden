@@ -38,3 +38,6 @@ Desktop.ini
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Source audio (Suno WAVs with C2PA, kept on the user's PC only as proof of commercial use)
+tools/source_audio/

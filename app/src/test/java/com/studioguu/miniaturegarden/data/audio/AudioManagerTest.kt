@@ -412,16 +412,104 @@ class AudioManagerTest {
     }
 
     @Test
-    fun `all five tunes are in the app, one file each`() {
+    fun `all five tunes are in the app as an ogg intro and an ogg loop each`() {
         val raw = listOf(File("src/main/res/raw"), File("app/src/main/res/raw")).first { it.isDirectory }
         val files = raw.listFiles()!!.filter { it.name.startsWith("bgm_") }
         val tunes = files.map { it.nameWithoutExtension }
         for (track in BgmTrack.entries) {
             assertTrue("missing ${track.resourceName}", track.resourceName in tunes)
+            assertTrue("missing ${track.introResourceName}", track.introResourceName in tunes)
         }
-        // Exactly the five, no stray or duplicate (an .mp3 and an .ogg of the same name would clash).
-        assertEquals(BgmTrack.entries.map { it.resourceName }.sorted(), tunes.sorted())
-        assertTrue(files.all { it.extension == "mp3" && it.length() > 0 })
+        // Exactly the ten, no stray or duplicate (an .mp3 and an .ogg of the same name would clash).
+        val expected = BgmTrack.entries.flatMap { listOf(it.resourceName, it.introResourceName) }
+        assertEquals(expected.sorted(), tunes.sorted())
+        // Ogg Vorbis: mp3 leaves a silent gap at the joins.
+        assertTrue(files.all { it.extension == "ogg" && it.length() > 0 })
+    }
+
+    // --- Intro then loop ---
+
+    @Test
+    fun `each track's intro is its loop's name with _intro`() {
+        assertEquals(
+            listOf("bgm_title_intro", "bgm_spring_intro", "bgm_summer_intro", "bgm_autumn_intro", "bgm_winter_intro"),
+            BgmTrack.entries.map { it.introResourceName },
+        )
+    }
+
+    @Test
+    fun `a tune with an intro file hands both to the engine`() {
+        rawFiles["bgm_title"] = 52
+        rawFiles["bgm_title_intro"] = 152
+
+        audio.playBgm(BgmTrack.TITLE)
+
+        assertEquals(listOf(52 to AudioManager.DEFAULT_BGM_VOLUME), engine.bgmStarts)
+        assertEquals(listOf(152), engine.bgmIntros)
+    }
+
+    @Test
+    fun `a tune without an intro file just loops, as before`() {
+        rawFiles["bgm_title"] = 52
+
+        audio.playBgm(BgmTrack.TITLE)
+
+        assertEquals(listOf(52 to AudioManager.DEFAULT_BGM_VOLUME), engine.bgmStarts)
+        assertEquals(listOf(0), engine.bgmIntros)
+    }
+
+    @Test
+    fun `a track falling back on spring plays spring's intro, not its own`() {
+        rawFiles["bgm_spring"] = 50
+        rawFiles["bgm_spring_intro"] = 150
+        rawFiles["bgm_winter_intro"] = 153 // an intro with no loop of its own is not used
+
+        audio.playBgm(BgmTrack.WINTER)
+
+        assertEquals(listOf(50), engine.bgmStarts.map { it.first })
+        assertEquals(listOf(150), engine.bgmIntros)
+    }
+
+    @Test
+    fun `with intros, the year going round crossfades every tune from its start`() {
+        BgmTrack.entries.forEachIndexed { i, track ->
+            rawFiles[track.resourceName] = 60 + i
+            rawFiles[track.introResourceName] = 160 + i
+        }
+
+        audio.playBgm(BgmTrack.TITLE)
+        Season.entries.forEach { audio.playBgm(BgmTrack.forSeason(it)) }
+        audio.playBgm(BgmTrack.WINTER) // asking again does not restart it
+
+        assertEquals(listOf(60, 61, 62, 63, 64), engine.bgmStarts.map { it.first })
+        assertEquals(listOf(160, 161, 162, 163, 164), engine.bgmIntros)
+        assertFalse("stop" in engine.bgmCalls)
+    }
+
+    @Test
+    fun `pausing during the intro and resuming continues it rather than starting over`() {
+        rawFiles["bgm_spring"] = 50
+        rawFiles["bgm_spring_intro"] = 150
+        rawFiles["se_tap"] = 1
+        audio.playBgm(BgmTrack.SPRING)
+
+        audio.play(SoundEffect.TAP) // ducks whichever part is sounding
+        audio.pauseBgm()
+        audio.resumeBgm()
+
+        assertEquals(1, engine.bgmStarts.size)
+        assertEquals(listOf("pause", "resume"), engine.bgmCalls)
+        assertEquals(1, engine.ducks.size)
+    }
+
+    @Test
+    fun `the engine chains the intro to the loop and hands the music over when it ends`() {
+        val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+        val audioSource = main.resolve("java/com/studioguu/miniaturegarden/data/audio/AudioManager.kt").readText()
+        assertTrue(audioSource.contains("intro.setNextMediaPlayer(tune.loop)"))
+        assertTrue(audioSource.contains("newPlayer(resId, looping = true)"))
+        assertTrue(audioSource.contains("newPlayer(introResId, looping = false)"))
+        assertTrue(audioSource.contains("intro?.setOnCompletionListener"))
     }
 
     @Test
@@ -590,8 +678,12 @@ private class FakeAudioEngine : AudioEngine {
         played += handle to volume
     }
 
-    override fun startBgm(resId: Int, volume: Float): Boolean {
+    /** The intro handed over with each start, 0 for none; parallel to [bgmStarts]. */
+    val bgmIntros = ArrayList<Int>()
+
+    override fun startBgm(resId: Int, introResId: Int, volume: Float): Boolean {
         bgmStarts += resId to volume
+        bgmIntros += introResId
         return bgmStartSucceeds
     }
 

@@ -590,7 +590,14 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
   - 「はじめる」：セーブが無ければそのまま庭へ。あれば確認のうえ `deleteSavedGarden()` で全部消してから庭へ。
   - 「つづきから」：セーブがあるときだけ押せる。セーブの有無は `hasSavedGarden()`（プロフィールの行があるか）。
 - **BGM は 5 つ**（#35、`BgmTrack`）：`TITLE`（`bgm_title`）と、季節ごとの `SPRING` `SUMMER` `AUTUMN` `WINTER`（`bgm_spring` ほか）。
-  - **5 曲すべてのファイルがそろっている**（#37）：`bgm_title.mp3` `bgm_spring.mp3`（以前の `bgm_garden.mp3` を改名）`bgm_summer.mp3`（#36）`bgm_autumn.mp3` `bgm_winter.mp3`（#37）。
+  - **5 曲すべてのファイルがそろっている**（2026-11-10 に Suno Pro 版へ差し替え）：1 曲が 2 ファイルの ogg（Ogg Vorbis）。
+    `bgm_x_intro.ogg`（元の曲の 0 秒目〜ループ始点。1 回だけ鳴らす）と `bgm_x.ogg`（ループ始点〜終点。くり返す）。名前の決まりは `BgmTrack.introResourceName`（`resourceName + "_intro"`）。
+  - **イントロ → ループの鳴らし方**：`AudioManager` が鳴らすファイル名（自分の曲か、代替の春の曲）に `_intro` を付けて探し、`AudioEngine.startBgm(loop, intro, volume)` に渡す（無ければ 0）。
+    エンジンはイントロ用 `MediaPlayer`（`isLooping = false`）とループ用（`isLooping = true`）を両方 `prepareAsync` し、そろったら `intro.setNextMediaPlayer(loop)` でつないでイントロから鳴らす（`Tune`）。
+    イントロが終わる（`OnCompletion`）とイントロを解放し、以後の一時停止・音量・ダッキング・フェード・解放はループだけが相手になる。つなぎが断られた端末ではこのときループを自分で `start` する（わずかなすき間が出る）。
+    イントロ中の一時停止はイントロを止め、再開でイントロの続きから鳴ってそのままループへ続く。音量は 2 つの `MediaPlayer` に同じ値を入れるので、切り替わっても段差は無い。
+    イントロのファイルが無い・読めないときは、ループだけを最初から鳴らす（以前と同じ）。mp3 は継ぎ目に無音が入るので使わない。
+    logcat のタグ `AudioManager` に `BGM started (intro=true)`、イントロが終わると `BGM intro finished, loop playing (chained=true)` が出る。
     どの曲も自分のファイルで鳴り、曲が変わるたびにクロスフェードする（タイトル→庭、季節の変わり目）。春の曲への代替は、ファイルが欠けたときの保険として残してある。
     **自分のファイルが無い曲は春の曲で鳴る**（`BgmTrack.FALLBACK_RESOURCE`、`AudioManager.resourceFor`）。
     新しい曲は `res/raw` に同じ名前で置くだけでよい（コードの変更は不要）。
