@@ -26,6 +26,9 @@ timeline:
   - { at: 8.0,  grow: { area: [2,2,8,8], to_stage: 3, over: 1.6 } }   # 寄った画面で咲く（音なし）
   # ちょうちょは画面の外（左右）の 7 マス先を出て（約 4.4 秒）、花畑を横切り、
   # 手前の端の花に交差して止まる。at は止まる秒
-  - { at: 12.8, creature: { kind: butterfly, count: 1, from: outside_left,  from_distance: 7, land_on: [[8,5]], stay: 3.0 } }  # 右手前のスノードロップ
-  - { at: 13.3, creature: { kind: butterfly, count: 1, from: outside_right, from_distance: 7, land_on: [[5,8]], stay: 3.0 } }  # 左手前のチューリップ
-  - { at: 15.3, end: true }                                       # 2 匹目が止まって 2 秒
+  - { at: 12.8, creature: { kind: butterfly, count: 1, from: outside_left,  from_distance: 7, land_on: [[8,5]], stay: 4.0 } }  # 右手前のスノードロップ
+  - { at: 13.3, creature: { kind: butterfly, count: 1, from: outside_right, from_distance: 7, land_on: [[5,8]], stay: 4.0 } }  # 左手前のチューリップ
+  # 左手前のチューリップに止まったちょうちょへ、ゲームで寄れる最大の倍率までゆっくり寄る
+  # （center の 3 つ目は地面からの高さ（タイル幅）：止まっている点は花の上 0.6）
+  - { at: 13.4, camera: { zoom: max, center: [5,8,0.6], over: 2.4 } }
+  - { at: 16.3, end: true }

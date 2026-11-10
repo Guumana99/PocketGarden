@@ -16,6 +16,7 @@ import com.studioguu.miniaturegarden.domain.model.WeatherType
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import kotlin.math.PI
 import kotlin.math.roundToLong
 
@@ -205,7 +206,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
     fun sceneAt(seconds: Double): Scene {
         while (next < steps.size && steps[next].at <= seconds + 1e-9) apply(steps[next++])
         val now = baseMillis + (seconds * 1000).roundToLong()
-        val (zoom, center) = cameraAt(seconds)
+        val camera = cameraAt(seconds)
         val shownVisits = visits.filter { now >= it.arrivesAt - VISIT_LEAD_MILLIS && now < it.leavesAt + VISIT_LEAD_MILLIS }
         val rings = if (!marker) emptyList() else taps.mapNotNull { (t, cell) ->
             val p = (seconds - t) / RING_SECONDS
@@ -221,8 +222,9 @@ class ScenarioPlayer(private val scenario: Scenario) {
             weather = weather,
             season = season,
             hour = hourAt(seconds),
-            zoom = zoom,
-            center = center,
+            zoom = camera.zoom,
+            center = camera.center,
+            lift = camera.lift,
             visitors = shownVisits,
             glint = glint,
             rings = rings,
@@ -307,19 +309,32 @@ class ScenarioPlayer(private val scenario: Scenario) {
         return hour
     }
 
-    private fun cameraAt(seconds: Double): Pair<Double, Pair<Double, Double>> {
+    private class CameraAt(val zoom: Double, val center: Pair<Double, Double>, val lift: Double)
+
+    /** `zoom: max` as a multiple of the fitting zoom: the game's closest ([GardenCamera.MAX_SCALE]) on a 1080 x 1920 frame. */
+    private val maxZoom: Double = run {
+        val tile = PromoCamera.TILE_WIDTH_DP * PromoActivity.DENSITY
+        val fit = minOf(PromoActivity.WIDTH / (map.size * tile), PromoActivity.HEIGHT / (map.size * tile / 2)) * GardenCamera.FIT_MARGIN
+        (GardenCamera.MAX_SCALE / fit.coerceAtMost(1f)).toDouble()
+    }
+
+    private fun zoomOf(move: Scenario.CameraMove) = if (move.zoom == Scenario.MAX_ZOOM) maxZoom else move.zoom
+
+    private fun cameraAt(seconds: Double): CameraAt {
         val middle = map.size / 2.0
-        var zoom = scenario.camera.zoom
+        var zoom = zoomOf(scenario.camera)
         var center = scenario.camera.center?.let { it.first + 0.5 to it.second + 0.5 } ?: (middle to middle)
+        var lift = scenario.camera.lift
         for ((at, move) in cameras) {
             if (seconds < at) break
             val p = smooth(if (move.over <= 0.0) 1.0 else ((seconds - at) / move.over).coerceIn(0.0, 1.0))
             val toCenter = move.center?.let { it.first + 0.5 to it.second + 0.5 } ?: (middle to middle)
             // Zoom goes evenly in ratio, so that coming in and going out feel the same speed.
-            zoom *= Math.pow(move.zoom / zoom, p)
+            zoom *= Math.pow(zoomOf(move) / zoom, p)
             center = (center.first + (toCenter.first - center.first) * p) to (center.second + (toCenter.second - center.second) * p)
+            lift += (move.lift - lift) * p
         }
-        return zoom to center
+        return CameraAt(zoom, center, lift)
     }
 
     private fun warn(message: String) {
@@ -406,6 +421,8 @@ class Scene(
     val hour: Float,
     val zoom: Double,
     val center: Pair<Double, Double>,
+    /** How far above the ground at [center] the camera looks, in tile widths. */
+    val lift: Double,
     val visitors: List<CreatureVisit>,
     val glint: Float,
     /** Tap rings: the cell, and how far on its ring is (0 to 1). */

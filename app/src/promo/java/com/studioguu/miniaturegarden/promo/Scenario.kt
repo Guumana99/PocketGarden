@@ -71,11 +71,18 @@ class Scenario(
         }
     }
 
-    /** Where the camera looks: [zoom] times the zoom that fits the whole garden, at [center] (a cell; null for the middle). */
-    class CameraMove(val zoom: Double, val center: Pair<Double, Double>?, val over: Double)
+    /**
+     * Where the camera looks: [zoom] times the zoom that fits the whole garden ([MAX_ZOOM] for as
+     * close as the game lets the player come), at [center] (a cell; null for the middle), [lift]
+     * tile widths above the ground there (a third number in `center`: to look at what sits on a flower).
+     */
+    class CameraMove(val zoom: Double, val center: Pair<Double, Double>?, val over: Double, val lift: Double = 0.0)
 
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
+
+        /** `zoom: max`: as close as the game's camera comes ([com.studioguu.miniaturegarden.ui.render.GardenCamera.MAX_SCALE]). */
+        const val MAX_ZOOM = -1.0
 
         fun parse(text: String): Scenario {
             val root = json.parseToJsonElement(text) as JsonObject
@@ -110,13 +117,18 @@ class Scenario(
         fun cameraOf(element: JsonElement?): CameraMove? {
             val obj = element as? JsonObject ?: return null
             val zoomValue = obj["zoom"] as? JsonPrimitive
-            val zoom = if (zoomValue == null || zoomValue.content == "fit") 1.0 else zoomValue.doubleOrNull ?: 1.0
+            val zoom = when {
+                zoomValue == null || zoomValue.content == "fit" -> 1.0
+                zoomValue.content == "max" -> MAX_ZOOM
+                else -> zoomValue.doubleOrNull ?: 1.0
+            }
             val center = (obj["center"] as? JsonArray)?.let { c ->
                 val x = c.getOrNull(0)?.jsonPrimitive?.doubleOrNull
                 val y = c.getOrNull(1)?.jsonPrimitive?.doubleOrNull
                 if (x != null && y != null) x to y else null
             }
-            return CameraMove(zoom, center, (obj["over"] as? JsonPrimitive)?.doubleOrNull ?: 0.0)
+            val lift = (obj["center"] as? JsonArray)?.getOrNull(2)?.jsonPrimitive?.doubleOrNull ?: 0.0
+            return CameraMove(zoom, center, (obj["over"] as? JsonPrimitive)?.doubleOrNull ?: 0.0, lift)
         }
 
         fun cellList(element: JsonElement): List<GridCell> = (element as? JsonArray).orEmpty().mapNotNull { pair ->

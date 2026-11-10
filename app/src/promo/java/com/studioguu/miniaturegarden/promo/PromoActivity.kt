@@ -221,7 +221,7 @@ class PromoActivity : ComponentActivity() {
         const val HEIGHT = 1920
 
         /** 420 dpi: a 1080 x 1920 phone of the usual kind, so the garden is the size a player sees. */
-        private const val DENSITY = 2.625f
+        const val DENSITY = 2.625f
 
         /** Frames drawn and thrown away first, while the pictures settle and the camera takes its place. */
         private const val WARM_UP_FRAMES = 20
