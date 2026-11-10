@@ -771,7 +771,8 @@ class CreatureMotionTest {
 
     private companion object {
         val GOLDEN_PRINTS: List<Long> = listOf(
-            5070473628252489798L, -2732014716764251317L, -5048540562903024760L, -7566325524328723953L,
+            7835538569491737339L, 9184390232171254900L, // squirrel, frog: re-taken for the moods (#fb-1110)
+            -5048540562903024760L, -7566325524328723953L,
             -408090663045976775L, 4581749925029504915L, -8119653952837104962L,
         )
     }

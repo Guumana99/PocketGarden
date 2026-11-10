@@ -424,12 +424,25 @@ object CreatureRoutes {
         val landing = landingOf(visit.creature, home.x + 0.5f, home.y + 0.5f, grid.map.size, random, fromAngle)
         val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
         val plan = planner(random, manner, span, cyclic, home.x + 0.5f, home.y + 0.5f, landing)
-        val reserve = if (cyclic) (manner.stepMillis * MAX_PACE * manner.roam * 2).toLong() + manner.rest.first else 0L
+        val reserve = if (cyclic) (manner.stepMillis * MAX_WALK_PACE * manner.roam * 2).toLong() + manner.rest.first else 0L
         plan.standFor(plan.between(manner.firstRest))
+        var last: Mood? = null
         while (true) {
-            val to = pointNearby(plan, region, manner, random) ?: break
-            val millis = plan.pace(hypot(to.first - plan.x, to.second - plan.y) * manner.stepMillis)
-            val rest = plan.between(manner.rest)
+            // What it does next (#fb-1110): a usual move, a little shuffle, a longer way, or just
+            // staying put a while; never the same twice running, so the next is hard to guess.
+            val mood = Mood.next(random, last)
+            last = mood
+            if (mood == Mood.STILL) {
+                val stay = (plan.between(manner.rest) * mood.restScale(random)).toLong()
+                // Room left after it for one more stop: it never turns round just as it goes.
+                if (plan.t + stay + reserve + manner.rest.first > span) break
+                plan.standFor(stay)
+                continue
+            }
+            val to = pointNearby(plan, region, manner, random, mood.strideScale(random))
+                ?: pointNearby(plan, region, manner, random) ?: break
+            val millis = plan.pace(hypot(to.first - plan.x, to.second - plan.y) * manner.stepMillis, wide = true)
+            val rest = (plan.between(manner.rest) * mood.restScale(random)).toLong()
             if (plan.t + millis + rest + reserve > span) break
             plan.stepTo(to.first, to.second, millis)
             plan.standFor(rest)
@@ -443,10 +456,10 @@ object CreatureRoutes {
      * A point a short way from where [plan] has got to, anywhere inside a cell of [region] rather
      * than in its middle, with the way there inside [region] too; null if a few tries find none.
      */
-    private fun pointNearby(plan: Planner, region: Set<GridCell>, manner: Manner, random: Random): Pair<Float, Float>? {
+    private fun pointNearby(plan: Planner, region: Set<GridCell>, manner: Manner, random: Random, scale: Float = 1f): Pair<Float, Float>? {
         repeat(NEARBY_TRIES) {
             val angle = random.nextDouble() * 2 * PI
-            val reach = manner.stride.start + random.nextFloat() * (manner.stride.endInclusive - manner.stride.start)
+            val reach = scale * (manner.stride.start + random.nextFloat() * (manner.stride.endInclusive - manner.stride.start))
             val x = plan.x + cos(angle).toFloat() * reach
             val y = plan.y + sin(angle).toFloat() * reach
             if (isClearWay(plan.x, plan.y, x, y, region)) return x to y
@@ -933,6 +946,42 @@ internal class Manner(
 private const val MIN_PACE = 0.8f
 private const val MAX_PACE = 1.25f
 
+/** On the ground it varies more (#fb-1110); a flier keeps the narrower spread, to fly smoothly. */
+private const val MIN_WALK_PACE = 0.7f
+private const val MAX_WALK_PACE = 1.45f
+
+/**
+ * The kinds of thing a visitor on the ground does next (#fb-1110), so that its comings and goings
+ * do not settle into a beat: a move of its usual length, a little shuffle with a short stop, a
+ * longer way with the usual stop, or staying where it is for a good while.
+ */
+internal enum class Mood(
+    private val weight: Float,
+    private val stride: ClosedFloatingPointRange<Float>,
+    private val rest: ClosedFloatingPointRange<Float>,
+) {
+    USUAL(0.4f, 0.8f..1.2f, 0.7f..1.3f),
+    SHUFFLE(0.25f, 0.25f..0.55f, 0.3f..0.7f),
+    WANDER(0.2f, 1.3f..1.9f, 0.6f..1.2f),
+    STILL(0.15f, 0f..0f, 1.6f..2.8f);
+
+    fun strideScale(random: Random): Float = stride.start + random.nextFloat() * (stride.endInclusive - stride.start)
+    fun restScale(random: Random): Float = rest.start + random.nextFloat() * (rest.endInclusive - rest.start)
+
+    companion object {
+        /** A mood by the weights, never [last] again (that one is drawn afresh). */
+        fun next(random: Random, last: Mood?): Mood {
+            val choices = entries.filter { it != last }
+            var roll = random.nextFloat() * choices.sumOf { it.weight.toDouble() }.toFloat()
+            for (mood in choices) {
+                roll -= mood.weight
+                if (roll <= 0f) return mood
+            }
+            return choices.last()
+        }
+    }
+}
+
 /** Lays the legs of a route one after another, from (x, y). */
 private class Planner(
     val random: Random,
@@ -990,7 +1039,10 @@ private class Planner(
     }
 
     /** [millis], a little quicker or slower than the last time: no two moves are alike. */
-    fun pace(millis: Float): Long = (millis * (MIN_PACE + random.nextFloat() * (MAX_PACE - MIN_PACE))).toLong().coerceAtLeast(1L)
+    fun pace(millis: Float, wide: Boolean = false): Long {
+        val (low, high) = if (wide) MIN_WALK_PACE to MAX_WALK_PACE else MIN_PACE to MAX_PACE
+        return (millis * (low + random.nextFloat() * (high - low))).toLong().coerceAtLeast(1L)
+    }
 
     fun stepTo(toX: Float, toY: Float, millis: Long) {
         facing = facingFor(toX - x, toY - y)
