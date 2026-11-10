@@ -477,6 +477,10 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 すべて `ui/components/GardenCanvas.kt` の Canvas 1 枚。
 
+- 時刻は `LocalGardenClock`（`ui/components/GardenClock.kt`）から読む（生き物の位置・工事の進み）。ゲームでは端末の時計（`SystemGardenClock`）。
+  撮影用ビルド `promo`（`promo/README.md`、コードは `app/src/promo/`）は 1 コマずつ進める時計を渡し、`throttles = false` で風のコマの間引き（`delay`）もしない。
+  生き物の行き先は `CreatureRoutes.plan` の `direction`（`CreatureDirection`）で外から渡せる。ゲームは渡さない（`CreatureMotionTest` が前と同じ経路であることを確かめる）。
+
 - `IsometricTransform`: タイル 128×64dp、高さ 1 段 16dp。`worldToScreen(x, y, z)`。
 - `GardenCamera`: ピンチとドラッグ。ピンチアウトの限界は全体が入る倍率（`FIT_MARGIN = 0.86`、木枠の分を空けている）。
   既定の倍率 `GardenCamera.starting` は **`START_SCALE = 0.55` で固定**（#59。1 マス約 70dp）。庭の大きさに左右されないので、新しい庭も続きの庭も広がった直後の庭も同じ倍率・中央で開く（#51 では `max(0.375, 13×13 が入る倍率)` だった）。

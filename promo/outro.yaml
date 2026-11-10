@@ -1,0 +1,7 @@
+# 締めの画面（tools/promo_render.py）。文言はここで変える
+seconds: 2.0
+title: ポケ庭
+lines:
+  - ポケット庭園
+  - Androidで年内配信予定
+blur: 18

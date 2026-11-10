@@ -62,6 +62,7 @@ import com.studioguu.miniaturegarden.data.asset.AssetManifest
 import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.CreaturePerches
 import com.studioguu.miniaturegarden.domain.model.CreaturePose
+import com.studioguu.miniaturegarden.domain.model.CreatureDirection
 import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.RunKind
@@ -211,6 +212,10 @@ const val GROUND_OBJECT_ID_PREFIX = "ground_"
  *   building jobs are.
  * @param pulledIds plants that have just been pulled up: when they leave the garden their leaves
  *   crumble into the bed ([drawCrumbling]) instead of lifting off like a harvest.
+ * @param visitorDirections where a visitor is sent, from outside the game (the promo build's
+ *   scripts, [CreatureDirection]); the game sends none.
+ *
+ * The time it is drawn at comes from [LocalGardenClock].
  */
 @Composable
 fun GardenCanvas(
@@ -253,7 +258,9 @@ fun GardenCanvas(
     pulledIds: Set<String> = emptySet(),
     /** How much snow lies along the roofs and the fences, 0 to 1 ([EdgeSnow.depthAt]). */
     edgeSnow: Float = 0f,
+    visitorDirections: (CreatureVisit) -> CreatureDirection? = { null },
 ) {
+    val clock = LocalGardenClock.current
     val currentPulled by rememberUpdatedState(pulledIds)
     val density = LocalDensity.current
     // As large as the garden is: it can grow.
@@ -327,7 +334,7 @@ fun GardenCanvas(
             plantTops.topOf(plant, glass * weak)
         }
     }
-    val routes = remember(visitors, grid, perches) { visitors.map { CreatureRoutes.plan(it, grid, perches) } }
+    val routes = remember(visitors, grid, perches) { visitors.map { CreatureRoutes.plan(it, grid, perches, visitorDirections(it)) } }
     val currentRoutes by rememberUpdatedState(routes)
     val creatureImage = remember(atlas) { AtlasPages.of(atlas.creatures) }
     val currentAtlas by rememberUpdatedState(atlas)
@@ -342,10 +349,12 @@ fun GardenCanvas(
     // frames to itself.
     // While a visitor is about, the frames come faster: something moving across the garden shows
     // every missed frame, where a swaying leaf does not.
-    val windMillis by produceState(0L, paused) {
+    // A clock stepped frame by frame (the promo build's) has every frame drawn: no waiting.
+    val windMillis by produceState(0L, paused, clock) {
         while (!paused) {
             withFrameMillis { value = it }
-            val now = System.currentTimeMillis()
+            if (!clock.throttles) continue
+            val now = clock.nowMillis()
             delay(if (currentRoutes.any { it.visit.isPresentAt(now) }) VISITOR_FRAME_MILLIS else WIND_FRAME_MILLIS)
         }
     }
@@ -436,7 +445,7 @@ fun GardenCanvas(
                     val transform = camera?.toTransform(metrics, size.toSize()) ?: return@detectTapGestures
                     // A visitor can come before what it stands on, but never while a cell is being
                     // looked for.
-                    val visitor = if (currentEditing) null else visitorAt(position, currentRoutes, transform, System.currentTimeMillis(), VISITOR_MIN_REACH.toPx())
+                    val visitor = if (currentEditing) null else visitorAt(position, currentRoutes, transform, clock.nowMillis(), VISITOR_MIN_REACH.toPx())
                     if (visitor != null && currentOnVisitorTapped(visitor)) return@detectTapGestures
                     // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
                     val sprites = currentAtlas
@@ -455,7 +464,7 @@ fun GardenCanvas(
         val transform = camera?.toTransform(metrics, size) ?: return@Canvas
         val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
         val hour = hourOfDay ?: clockHourOfDay
-        val wallMillis = System.currentTimeMillis()
+        val wallMillis = clock.nowMillis()
         val ambience = Ambience(
             Daylight.at(hour, weather), weather, windMillis, epochMillis = wallMillis, gameMillis = wallMillis + clockOffset, season = season,
             edgeSnow = edgeSnow,
