@@ -136,10 +136,19 @@ object BookUnlocks {
      * The kinds that count: the pages filled in ([CollectionProgress.revealed]), and the creatures
      * met whose page in the nature notes has been looked at, as a page is filled in with a tap.
      */
-    fun kinds(records: List<CollectionRecord>, notes: List<NatureNote>): Int {
-        val met = NatureNotes(notes)
-        return CollectionProgress(records).revealed + Creature.entries.count { met.hasMet(it) && !met.isNew(it) }
-    }
+    fun kinds(records: List<CollectionRecord>, notes: List<NatureNote>): Int =
+        kinds(CollectionProgress(records), NatureNotes(notes))
+
+    /** [kinds] from what the book already has loaded; no notes yet counts no creatures. */
+    fun kinds(progress: CollectionProgress, notes: NatureNotes?): Int =
+        progress.revealed + (notes?.let { met -> Creature.entries.count { met.hasMet(it) && !met.isNew(it) } } ?: 0)
+
+    /**
+     * Every kind the book holds, as its cover counts them (#fb-1110): a page for each crop, ground
+     * and thing to stand (all [CollectionEntry]) and each creature of the nature notes. A tulip's
+     * colours are noted on its one page; what is not on sale yet has no page.
+     */
+    val TOTAL_KINDS: Int get() = CollectionEntry.entries.size + Creature.entries.size
 }
 
 /** The encyclopedia as a whole. */

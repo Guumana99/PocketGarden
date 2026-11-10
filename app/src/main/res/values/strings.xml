@@ -9,7 +9,7 @@
     <string name="level_info_xp">経験値 %1$d / %2$d（%3$d％）</string>
     <string name="level_info_next_one">次の Lv で %1$s が手に入ります</string>
     <string name="level_info_next_two">次の Lv で %1$s と %2$s が手に入ります</string>
-    <string name="level_info_next_many">次の Lv で %1$s や %2$s など</string>
+    <string name="level_info_next_many">次の Lv で %1$s や %2$s などが手に入ります</string>
     <string name="level_info_max">最大レベル</string>
     <string name="weather_today">今日</string>
     <string name="weather_tomorrow">明日</string>
@@ -45,12 +45,12 @@
     <string name="hint_ridged_soil">どの作物も植えられます</string>
     <string name="label_vitality">元気</string>
     <string name="hint_overripe">満開です。\n収穫しないまま置いておくと、やがて枯れてしまいます</string>
-    <string name="hint_withered">枯れています。\nコインで復活させるか、抜くとたい肥になって、土の栄養になります</string>
-    <string name="hint_withered_log">枯れています。\nコインで復活させるか、抜いて片づけます（原木はたい肥になりません）</string>
+    <string name="hint_withered">枯れています。\nコインで復活させるか、抜くとたい⁠肥になって、土の栄養になります</string>
+    <string name="hint_withered_log">枯れています。\nコインで復活させるか、抜いて片づけます（原木はたい⁠肥になりません）</string>
     <string name="hint_repeatable">🔁 収穫しても株は残り、また実ります（2回目からの収穫は少なめ）</string>
     <string name="action_revive">🌱 復活 (🪙%1$d)</string>
     <string name="msg_revived">🌱 元気になりました</string>
-    <string name="msg_composted">🍂 たい肥になりました</string>
+    <string name="msg_composted">🍂 たい⁠肥になりました</string>
     <string name="msg_not_withered">この作物は枯れていません</string>
     <string name="label_percent">%1$d%%</string>
     <string name="status_healthy">元気</string>
@@ -134,8 +134,8 @@
     <string name="remove_title_withered">枯れた%1$sを抜きますか？</string>
     <string name="remove_title_soil">%1$sを戻しますか？</string>
     <string name="remove_text_returnable">持ち物に戻すと、後でまた置けます。\n撤去すると元に戻せません。</string>
-    <string name="remove_text_withered">抜いた株はたい肥になって、土の栄養になります</string>
-    <string name="remove_text_withered_log">原木はたい肥にはなりません。</string>
+    <string name="remove_text_withered">抜いた株はたい⁠肥になって、土の栄養になります</string>
+    <string name="remove_text_withered_log">原木はたい⁠肥にはなりません。</string>
     <string name="remove_text_soil">1 つ前の地面に戻します。</string>
     <string name="remove_store">🎒 持ち物に戻す</string>
     <string name="remove_discard">撤去する</string>
@@ -170,7 +170,7 @@
     <string name="msg_bridge_ends_taken">橋のたもとを空けると置けます</string>
     <string name="msg_bridge_tap_again">色の付いたマスをもう一度タップすると置けます</string>
     <string name="placing_flip">↔ 向き</string>
-    <string name="placing_flip_description">置く向きを左右で切り替える（現在：%1$s）</string>
+    <string name="placing_flip_description">置く向きを左右で切り⁠替える（現在：%1$s）</string>
     <string name="facing_normal">通常</string>
     <string name="facing_flipped">反対</string>
     <string name="msg_busy">作業中です。\n終わるまでお待ちください</string>
@@ -307,7 +307,7 @@
 春にも秋にも、気軽に育てられる。</string>
     <string name="flavor_eggplant">夏の畑に、つややかな紫が下がる。
 ひとつ採っても、また次の実がつく。</string>
-    <string name="flavor_wheat">ひと畝いっぱいに、穂が揃って揺れる。
+    <string name="flavor_wheat">ひと⁠畝いっぱいに、穂が揃って揺れる。
 乾いた日にも、よく耐える。</string>
     <string name="flavor_corn">背の高い茎に、黄色い粒がぎっしり。
 実るまでは、少し気長に。</string>
@@ -430,16 +430,16 @@
     <string name="debug_menu_hint">時間を進める・天気を変える</string>
     <string name="debug_skip_hour">+1 時間</string>
     <string name="debug_skip_day">+1 日</string>
-    <string name="debug_cycle_weather">天気を切り替え</string>
+    <string name="debug_cycle_weather">天気を切り⁠替え</string>
     <string name="debug_snow_lying">雪を降らせて積もらせる</string>
     <string name="debug_boost">+500 コイン・Lv+1</string>
     <string name="debug_next_season">次の季節へ</string>
-    <string name="debug_cycle_time">時間帯を切り替える（%1$s）</string>
+    <string name="debug_cycle_time">時間帯を切り⁠替える（%1$s）</string>
     <string name="debug_time_clock">端末の時計</string>
     <string name="debug_forecast">天気予報：今日 %1$s　明日 %2$s</string>
     <string name="debug_zoom">マップ倍率 %1$s（標準 %2$s）</string>
     <string name="debug_book_all">図鑑をすべて登録</string>
-    <string name="debug_book_all_hint">表示だけの切り替えです。保存された記録は変わりません</string>
+    <string name="debug_book_all_hint">表示だけの切り⁠替えです。保存された記録は変わりません</string>
     <string name="debug_perches">生き物の止まる点を表示</string>
     <string name="debug_perches_hint">赤：屋根　青：井戸の縁　茶：柵
 橙：ベンチ　紫：風見鶏　桃：花
@@ -561,7 +561,7 @@
     <string name="msg_out_of_season">🌱 今は育てるのに適さない季節です。\n旬が来るまで、持ち物に取っておきましょう</string>
     <string name="msg_in_use">中で育っている作物を、先に収穫するか片づけてください</string>
     <string name="msg_season_arrived">%1$s %2$sがやってきました。\nポストにお便りが届いています</string>
-    <string name="shop_season_caption">季節が変わると入れ替わります</string>
+    <string name="shop_season_caption">季節が変わると入れ⁠替わります</string>
     <string name="post_title">ポスト</string>
     <string name="post_empty">まだお便りはありません</string>
     <string name="post_new">NEW</string>
@@ -579,8 +579,8 @@
     <string name="letter_tip_watering_body">作物がしおれて見えたら、水が足りていないのかもしれません。じょうろで水をあげると、また元気に育ち始めます。</string>
     <string name="letter_tip_rain_title">☔ 雨の日のこと</string>
     <string name="letter_tip_rain_body">雨の日は、空が代わりにお庭じゅうに水をまいてくれます。のんびり雨音を楽しんでくださいね。</string>
-    <string name="letter_tip_compost_title">🍂 たい肥のこと</string>
-    <string name="letter_tip_compost_body">作物を抜くと、株はたい肥になって土の栄養になります。収穫を重ねた土には肥料をまいて、栄養を満たしてあげましょう。</string>
+    <string name="letter_tip_compost_title">🍂 たい⁠肥のこと</string>
+    <string name="letter_tip_compost_body">作物を抜くと、株はたい⁠肥になって土の栄養になります。収穫を重ねた土には肥料をまいて、栄養を満たしてあげましょう。</string>
     <string name="letter_tip_store_title">📦 模様替えのこと</string>
     <string name="letter_tip_store_body">置いた家具や建物は、「持ち物に戻す」でしまって、好きな場所に置き直せます。気分に合わせて、お庭の模様替えをしてみませんか。</string>
     <string name="letter_tip_creatures_title">🐦 小さなお客さまのこと</string>

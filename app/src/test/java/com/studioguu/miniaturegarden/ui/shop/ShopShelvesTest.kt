@@ -117,7 +117,7 @@ class ShopShelvesTest {
     fun `the shop's words are short - no season named on the shelf note, and the river is a cosy kit`() {
         val main = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
         val strings = java.io.File(main, "res/values/strings.xml").readText()
-        fun string(name: String) = Regex("<string name=\"$name\">(.*?)</string>").find(strings)?.groupValues?.get(1)
+        fun string(name: String) = Regex("<string name=\"$name\">(.*?)</string>").find(strings)?.groupValues?.get(1)?.replace("⁠", "")
         assertEquals("季節が変わると入れ替わります", string("shop_season_caption"))
         assertEquals(null, string("shop_card_seasons"))
         assertEquals("小川", string("item_tile_river"))

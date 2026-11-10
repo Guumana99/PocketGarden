@@ -84,7 +84,7 @@ class LevelDialogTest {
             val expected = when (items.size) {
                 1 -> "次の Lv で ${names[0]} が手に入ります"
                 2 -> "次の Lv で ${names[0]} と ${names[1]} が手に入ります"
-                else -> "次の Lv で ${names[0]} や ${names[1]} など"
+                else -> "次の Lv で ${names[0]} や ${names[1]} などが手に入ります"
             }
             compose.onNodeWithText(expected).assertIsDisplayed()
             seen += items.size.coerceAtMost(3)
