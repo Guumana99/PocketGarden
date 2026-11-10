@@ -1,5 +1,8 @@
 package com.studioguu.miniaturegarden.ui.post
 
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import com.studioguu.miniaturegarden.domain.model.SeasonYears
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -70,6 +73,15 @@ private val StampRed = Color(0xFFD8442F)
  */
 @Composable
 fun PostDialog(letters: List<Letter>, onRead: (letterId: String) -> Unit, onDismiss: () -> Unit) {
+    val years = remember(letters) { SeasonYears.of(letters) }
+    CompositionLocalProvider(LocalLetterYears provides years) { PostDialogContent(letters, onRead, onDismiss) }
+}
+
+/** Which year each season's letter came in ([SeasonYears]), for its title and words. */
+private val LocalLetterYears = compositionLocalOf<Map<String, Int>> { emptyMap() }
+
+@Composable
+private fun PostDialogContent(letters: List<Letter>, onRead: (letterId: String) -> Unit, onDismiss: () -> Unit) {
     var openedId by rememberSaveable { mutableStateOf<String?>(null) }
     val opened = letters.firstOrNull { it.letterId == openedId }
     Dialog(onDismissRequest = { if (opened != null) openedId = null else onDismiss() }) {
@@ -247,7 +259,14 @@ private fun sentDate(letter: Letter): String = DATE.format(Instant.ofEpochMilli(
 private fun letterTitle(letter: Letter): String {
     val name = stringResource(seasonLabel(letter.season))
     return when (letter.kind) {
-        LetterKind.SEASON_ARRIVED -> stringResource(R.string.letter_arrived_title, seasonEmoji(letter.season), name)
+        LetterKind.SEASON_ARRIVED -> {
+            val year = LocalLetterYears.current[letter.letterId] ?: 1
+            if (year >= 2) {
+                stringResource(R.string.letter_arrived_title_year, seasonEmoji(letter.season), year, name)
+            } else {
+                stringResource(R.string.letter_arrived_title, seasonEmoji(letter.season), name)
+            }
+        }
         LetterKind.SEASON_COMING -> stringResource(R.string.letter_coming_title, seasonEmoji(letter.season), name)
         LetterKind.TIP -> letter.tip?.let { stringResource(tipText(it).first) } ?: stringResource(R.string.letter_tip_footer)
         LetterKind.NEW_STOCK -> stringResource(R.string.letter_stock_title)
@@ -260,7 +279,7 @@ private fun letterBody(letter: Letter): String {
     val name = stringResource(seasonLabel(letter.season))
     return when (letter.kind) {
         LetterKind.SEASON_ARRIVED -> listOfNotNull(
-            stringResource(seasonScene(letter.season)),
+            yearScene(letter.season, LocalLetterYears.current[letter.letterId] ?: 1),
             inSeasonLine(letter.season, name),
             endingLine(letter),
         ).joinToString("\n")
@@ -333,6 +352,45 @@ private fun tipText(tip: LetterTip): Pair<Int, Int> = when (tip) {
     LetterTip.CREATURES -> R.string.letter_tip_creatures_title to R.string.letter_tip_creatures_body
     LetterTip.GREENHOUSE -> R.string.letter_tip_greenhouse_title to R.string.letter_tip_greenhouse_body
     LetterTip.FERTILIZER -> R.string.letter_tip_fertilizer_title to R.string.letter_tip_fertilizer_body
+}
+
+/**
+ * The opening line of a season's letter: the first year's look of the garden, and from the second
+ * year words of that year's own (#fb-1110), from the sixth those of the fifth with its number.
+ */
+@Composable
+private fun yearScene(season: Season, year: Int): String {
+    if (year < 2) return stringResource(seasonScene(season))
+    val written = year.coerceAtMost(SeasonYears.LAST_WRITTEN_YEAR)
+    return stringResource(yearSceneText(season, written), year)
+}
+
+@StringRes
+internal fun yearSceneText(season: Season, year: Int): Int = when (year) {
+    2 -> when (season) {
+        Season.SPRING -> R.string.letter_year2_spring
+        Season.SUMMER -> R.string.letter_year2_summer
+        Season.AUTUMN -> R.string.letter_year2_autumn
+        Season.WINTER -> R.string.letter_year2_winter
+    }
+    3 -> when (season) {
+        Season.SPRING -> R.string.letter_year3_spring
+        Season.SUMMER -> R.string.letter_year3_summer
+        Season.AUTUMN -> R.string.letter_year3_autumn
+        Season.WINTER -> R.string.letter_year3_winter
+    }
+    4 -> when (season) {
+        Season.SPRING -> R.string.letter_year4_spring
+        Season.SUMMER -> R.string.letter_year4_summer
+        Season.AUTUMN -> R.string.letter_year4_autumn
+        Season.WINTER -> R.string.letter_year4_winter
+    }
+    else -> when (season) {
+        Season.SPRING -> R.string.letter_year5_spring
+        Season.SUMMER -> R.string.letter_year5_summer
+        Season.AUTUMN -> R.string.letter_year5_autumn
+        Season.WINTER -> R.string.letter_year5_winter
+    }
 }
 
 /** A line about how the garden looks as [season] comes. */

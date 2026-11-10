@@ -151,3 +151,24 @@ data class Letter(
             Letter("stock:$toLevel", LetterKind.NEW_STOCK, season, at, topic = "$fromLevel-$toLevel")
     }
 }
+
+/**
+ * Which year of the garden each season's letter came in (#fb-1110): the first is year 1, and a
+ * year turns at spring. Worked out from the letters alone: the garden's first letter welcomed
+ * the season it started in, and every season's letter is sent when that season began, a whole
+ * number of seasons ([SeasonClock.SEASON_MILLIS]) after the first.
+ */
+object SeasonYears {
+    /** The year of each [LetterKind.SEASON_ARRIVED] letter in [letters], by its id. */
+    fun of(letters: List<Letter>): Map<String, Int> {
+        val arrived = letters.filter { it.kind == LetterKind.SEASON_ARRIVED }
+        val first = arrived.minByOrNull { it.sentAt } ?: return emptyMap()
+        return arrived.associate { letter ->
+            val seasons = Math.round((letter.sentAt - first.sentAt).toDouble() / SeasonClock.SEASON_MILLIS).toInt().coerceAtLeast(0)
+            letter.letterId to (first.season.ordinal + seasons) / Season.entries.size + 1
+        }
+    }
+
+    /** The last year with words of its own; later years use its words, with their own number. */
+    const val LAST_WRITTEN_YEAR = 5
+}
