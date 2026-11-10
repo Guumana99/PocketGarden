@@ -131,6 +131,7 @@ dependencies {
     // Rewarded ads
     implementation(libs.play.services.ads)
     implementation(libs.play.review)
+    implementation(libs.androidx.media3.exoplayer)
 
     // Notifications posted while the app is away
     implementation(libs.androidx.work.runtime)

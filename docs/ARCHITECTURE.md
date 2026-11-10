@@ -592,12 +592,14 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 - **BGM は 5 つ**（#35、`BgmTrack`）：`TITLE`（`bgm_title`）と、季節ごとの `SPRING` `SUMMER` `AUTUMN` `WINTER`（`bgm_spring` ほか）。
   - **5 曲すべてのファイルがそろっている**（2026-11-10 に Suno Pro 版へ差し替え）：1 曲が 2 ファイルの ogg（Ogg Vorbis）。
     `bgm_x_intro.ogg`（元の曲の 0 秒目〜ループ始点。1 回だけ鳴らす）と `bgm_x.ogg`（ループ始点〜終点。くり返す）。名前の決まりは `BgmTrack.introResourceName`（`resourceName + "_intro"`）。
-  - **イントロ → ループの鳴らし方**：`AudioManager` が鳴らすファイル名（自分の曲か、代替の春の曲）に `_intro` を付けて探し、`AudioEngine.startBgm(loop, intro, volume)` に渡す（無ければ 0）。
-    エンジンはイントロ用 `MediaPlayer`（`isLooping = false`）とループ用（`isLooping = true`）を両方 `prepareAsync` し、そろったら `intro.setNextMediaPlayer(loop)` でつないでイントロから鳴らす（`Tune`）。
-    イントロが終わる（`OnCompletion`）とイントロを解放し、以後の一時停止・音量・ダッキング・フェード・解放はループだけが相手になる。つなぎが断られた端末ではこのときループを自分で `start` する（わずかなすき間が出る）。
-    イントロ中の一時停止はイントロを止め、再開でイントロの続きから鳴ってそのままループへ続く。音量は 2 つの `MediaPlayer` に同じ値を入れるので、切り替わっても段差は無い。
-    イントロのファイルが無い・読めないときは、ループだけを最初から鳴らす（以前と同じ）。mp3 は継ぎ目に無音が入るので使わない。
-    logcat のタグ `AudioManager` に `BGM started (intro=true)`、イントロが終わると `BGM intro finished, loop playing (chained=true)` が出る。
+  - **イントロ → ループの鳴らし方**（2026-11-10 に Media3 ExoPlayer へ）：`AudioManager` が鳴らすファイル名（自分の曲か、代替の春の曲）に `_intro` を付けて探し、`AudioEngine.startBgm(loop, intro, volume)` に渡す（無ければ 0）。
+    エンジンは 1 曲を 1 つの `ExoPlayer` で鳴らす（`Tune`）。プレイリストは「イントロ → ループ」の 2 つで、最初はくり返さない（`REPEAT_MODE_OFF`）。
+    ループに移った（`onMediaItemTransition`）ところで `REPEAT_MODE_ONE` にして、以後はループだけをくり返す。イントロが無ければ最初からループ 1 つを `REPEAT_MODE_ONE`。
+    一時停止・音量・ダッキング・クロスフェード（曲ごとに別の `ExoPlayer`）・解放は、その `ExoPlayer` 1 つが相手。イントロ中の一時停止は、再開でイントロの続きから鳴ってループへ続く。
+    **MediaPlayer をやめた理由**：実機で春・夏のループの 2 周目に入るところで一瞬音が止まった。ogg の先頭・末尾に無音や欠けは無い（全 10 ファイルを調べた）ので、
+    `MediaPlayer` の `isLooping`（末尾で 0 秒へ巻き戻し、デコーダを準備し直す）による切れ目と判断した。ExoPlayer はプレイリストのつなぎもくり返しもサンプル単位で続けて鳴らす。
+    ライブラリは `androidx.media3:media3-exoplayer`（1.5.1。APK が約 1.5MB 増える）。音声フォーカスは扱わない（以前と同じ）。
+    logcat のタグ `AudioManager` に `BGM started (intro=true)`、ループへ移ると `BGM intro finished, loop playing` が出る。
     どの曲も自分のファイルで鳴り、曲が変わるたびにクロスフェードする（タイトル→庭、季節の変わり目）。春の曲への代替は、ファイルが欠けたときの保険として残してある。
     **自分のファイルが無い曲は春の曲で鳴る**（`BgmTrack.FALLBACK_RESOURCE`、`AudioManager.resourceFor`）。
     新しい曲は `res/raw` に同じ名前で置くだけでよい（コードの変更は不要）。
@@ -931,7 +933,7 @@ Play In-App Review（`StoreReviewManager`）。前置きの質問は出さない
 
 ## 起動と省電力（#56）
 
-- 起動時、メインスレッドでは重い読み込みをしない。設定は `Dispatchers.IO` で読み、届くまで音は鳴らさない（`AudioManager.holdUntilSettings`）。BGM は `MediaPlayer.prepareAsync` で準備し、できしだいフェードイン。効果音の長さ（ダッキング用）は別スレッドで読む。アトラス・地面の絵は従来どおり `AssetRepository.prefetch` が裏で読む。
+- 起動時、メインスレッドでは重い読み込みをしない。設定は `Dispatchers.IO` で読み、届くまで音は鳴らさない（`AudioManager.holdUntilSettings`）。BGM は `ExoPlayer.prepare`（読み込みは ExoPlayer の別スレッド）で準備し、できしだいフェードイン。効果音の長さ（ダッキング用）は別スレッドで読む。アトラス・地面の絵は従来どおり `AssetRepository.prefetch` が裏で読む。
 - ウィンドウの背景はタイトルの空と草原のグラデーション（`window_background`、Android 12+ はスプラッシュの背景色も同じ空色で、アイコンは出さない＝`splash_blank`）。絵が読み終わるまでは空だけを見せ、読み終わったら見本の庭・庭そのものがふわっとフェードインする（#59：以前は中央に芽のマーク `LoadingSprout` が一瞬出て、仮置きのように見えた）。
 - 経験値は数字で出さない。上部バーは「Lv.5」とその下の細いゲージ（`LevelTable.progressInLevel`）。レベルアップでいったん満タン→0 から残りを伸ばす。収穫の札はコインだけ（`GardenEffect.Harvest(coins)`）、水やり・肥料・設置の「+XP」は廃止（`GardenEffect.Xp` 削除）。
 - 描き直しを減らす：雨は 30fps（`RAIN_FRAME_MILLIS`）、図鑑の「？」の鼓動とレベルのゲージは描画フェーズだけで読む（再コンポーズしない）、タイトルの見本の庭の拍は見本の中だけで持つ。

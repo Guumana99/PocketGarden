@@ -503,13 +503,16 @@ class AudioManagerTest {
     }
 
     @Test
-    fun `the engine chains the intro to the loop and hands the music over when it ends`() {
+    fun `the engine plays intro then loop as one ExoPlayer playlist and repeats only the loop`() {
         val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
         val audioSource = main.resolve("java/com/studioguu/miniaturegarden/data/audio/AudioManager.kt").readText()
-        assertTrue(audioSource.contains("intro.setNextMediaPlayer(tune.loop)"))
-        assertTrue(audioSource.contains("newPlayer(resId, looping = true)"))
-        assertTrue(audioSource.contains("newPlayer(introResId, looping = false)"))
-        assertTrue(audioSource.contains("intro?.setOnCompletionListener"))
+        // MediaPlayer's own looping leaves a gap at each repeat on some phones; it is not used for music.
+        assertFalse(audioSource.contains("isLooping"))
+        assertFalse(audioSource.contains("import android.media.MediaPlayer"))
+        assertTrue(audioSource.contains("listOf(itemFor(introResId), itemFor(resId))"))
+        // No intro: the loop repeats from the start. With one: only after the hand-over.
+        assertTrue(audioSource.contains("repeatMode = if (hasIntro) Player.REPEAT_MODE_OFF else Player.REPEAT_MODE_ONE"))
+        assertTrue(audioSource.contains("tune.player.repeatMode = Player.REPEAT_MODE_ONE"))
     }
 
     @Test
