@@ -102,7 +102,7 @@ class Scenario(
                 ),
                 camera = cameraOf(root["camera"]) ?: CameraMove(1.0, null, 0.0),
                 timeline = cues,
-                hookFromEnd = (root["hook_from_end"] as? JsonPrimitive)?.doubleOrNull ?: 1.0,
+                hookFromEnd = (root["hook_from_end"] as? JsonPrimitive)?.doubleOrNull ?: 0.0,
             )
         }
 
