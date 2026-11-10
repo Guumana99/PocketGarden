@@ -81,7 +81,7 @@ timeline:                # at は録画の秒（頭に付ける完成形は含�
 | 天気 | `weather: rainy` | |
 | 時間帯 | `time_of_day: evening` または `time_of_day: { to: evening, over: 2.0 }` | |
 | 季節 | `season: autumn` | |
-| カメラ | `camera: { zoom: 1.6, center: [5,5], over: 1.0 }` | center を省くと庭の真ん中 |
+| カメラ | `camera: { zoom: 1.6, center: [5,5], over: 1.0 }` | zoom は fit（庭全体）・倍率・`max`（ゲームで寄れる最大＝`GardenCamera.MAX_SCALE`、1080×1920 では fit の約 10 倍）。center を省くと庭の真ん中。center の 3 つ目は地面からの高さ（タイル幅。花に止まったちょうちょは約 0.6） |
 | 「◯日目」 | `day_label: "3日目"`（`day_label: ""` で消す） | 左上（上の端は避けている）に 0.25 秒で出る |
 | タップの丸 | `tap_marker: false` | |
 | きらっ | `sparkle: { over: 1.2 }` | 雨のあとのきらめき（全部の作物） |

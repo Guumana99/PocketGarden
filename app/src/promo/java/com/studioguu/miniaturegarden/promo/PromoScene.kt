@@ -47,7 +47,7 @@ fun PromoScene(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
-    val view = PromoCamera.view(scene.zoom, scene.center, map.size, viewport, density)
+    val view = PromoCamera.view(scene.zoom, scene.center, map.size, viewport, density, scene.lift)
     Box(modifier.fillMaxSize()) {
         GardenBackdrop(scene.weather, Modifier.fillMaxSize(), season = scene.season, hourOfDay = scene.hour)
         GardenCanvas(
@@ -103,7 +103,7 @@ fun PromoScene(
 
 /** The camera of a script, as the garden's own ([GardenCamera]) takes it. */
 object PromoCamera {
-    private const val TILE_WIDTH_DP = 128f
+    const val TILE_WIDTH_DP = 128f
     private const val TILE_HEIGHT_DP = 64f
     private const val HEIGHT_STEP_DP = 16f
 
@@ -111,13 +111,16 @@ object PromoCamera {
         IsometricMetrics(TILE_WIDTH_DP.dp.toPx(), TILE_HEIGHT_DP.dp.toPx(), HEIGHT_STEP_DP.dp.toPx(), size)
     }
 
-    /** [zoom] times the zoom that fits the whole garden, with the point [center] (in cells) in the middle. */
-    fun view(zoom: Double, center: Pair<Double, Double>, size: Int, viewport: Size, density: Density): GardenView {
+    /**
+     * [zoom] times the zoom that fits the whole garden (no closer than the game's own camera comes),
+     * with the point [center] (in cells), [lift] tile widths up, in the middle.
+     */
+    fun view(zoom: Double, center: Pair<Double, Double>, size: Int, viewport: Size, density: Density, lift: Double = 0.0): GardenView {
         val metrics = metrics(size, density)
-        val scale = (GardenCamera.fitting(viewport, metrics).scale * zoom).toFloat()
+        val scale = (GardenCamera.fitting(viewport, metrics).scale * zoom).toFloat().coerceAtMost(GardenCamera.MAX_SCALE)
         val (cx, cy) = center
         val panX = -((cx - cy) * metrics.tileWidth * scale / 2).toFloat()
-        val panY = -(((cx + cy) - size) * metrics.tileHeight * scale / 2).toFloat()
+        val panY = (-(((cx + cy) - size) * metrics.tileHeight * scale / 2) + lift * metrics.tileWidth * scale).toFloat()
         return GardenView(scale, panX, panY)
     }
 
