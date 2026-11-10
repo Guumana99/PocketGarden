@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -48,12 +49,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -119,6 +122,8 @@ import com.studioguu.miniaturegarden.ui.theme.GardenColors
 fun ShopStageScreen(
     onLeave: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Opened from the coins at the top of the garden: the coin counter glows for a moment. */
+    pointToCoins: Boolean = false,
     viewModel: ShopViewModel = hiltViewModel(),
 ) {
     val stage by viewModel.stage.collectAsStateWithLifecycle()
@@ -175,6 +180,7 @@ fun ShopStageScreen(
     val inHand = inspecting?.let { item -> (shelves.flatten() + rockKinds + fenceKinds).firstOrNull { it.item == item } }
 
     ShopStageContent(
+        pointToCoins = pointToCoins,
         stage = stage,
         shelves = shelves,
         coins = coins,
@@ -376,6 +382,7 @@ fun ShopStageContent(
     expansion: ExpansionOffer? = null,
     onExpand: () -> Unit = {},
     onExpandResting: (ExpansionCheck) -> Unit = {},
+    pointToCoins: Boolean = false,
 ) {
     // The shop's own type size, one step up (ShopText); the dialogs it opens are windows of their
     // own, drawn at the game's.
@@ -422,7 +429,12 @@ fun ShopStageContent(
                         }
                     }
                 }
-                if (!guiding) Counter(message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, onBonusResting, Modifier.padding(bottom = 8.dp))
+                if (!guiding) {
+                    Counter(
+                        message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, onBonusResting,
+                        Modifier.padding(bottom = 8.dp).coinGlow(pointToCoins),
+                    )
+                }
             }
             // The card of the thing in hand rises onto the counter, over everything below the shelves.
             var lastInHand by remember { mutableStateOf<ShelfItem?>(null) }
@@ -738,6 +750,42 @@ private fun lockedText(item: GardenItem): String = when (item.unlock) {
     is UnlockCondition.CollectionPages -> stringResource(R.string.shop_locked_pages)
     else -> stringResource(R.string.shop_locked, item.unlockLevel)
 }
+
+/**
+ * Draws the eye to the coin counter when the shop was opened from the coins at the top: a soft
+ * gold outline that breathes [COIN_GLOW_PULSES] times and goes. Only a look: nothing is pressed.
+ */
+@Composable
+private fun Modifier.coinGlow(on: Boolean): Modifier {
+    if (!on) return this
+    val glow = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        repeat(COIN_GLOW_PULSES) {
+            glow.animateTo(1f, tween(COIN_GLOW_MILLIS / 2))
+            glow.animateTo(0f, tween(COIN_GLOW_MILLIS / 2))
+        }
+    }
+    return this
+        .testTag(COIN_GLOW_TAG)
+        .drawBehind {
+            val a = glow.value
+            if (a > 0f) {
+                drawRoundRect(
+                    color = GardenColors.Gold.copy(alpha = 0.85f * a),
+                    cornerRadius = CornerRadius(10.dp.toPx()),
+                    style = Stroke(width = 3.dp.toPx() * (0.6f + 0.4f * a)),
+                    topLeft = Offset(-4.dp.toPx(), -4.dp.toPx()),
+                    size = Size(size.width + 8.dp.toPx(), size.height + 8.dp.toPx()),
+                )
+            }
+        }
+}
+
+private const val COIN_GLOW_PULSES = 3
+private const val COIN_GLOW_MILLIS = 900
+
+/** Test tag of the counter while it is pointed out. */
+const val COIN_GLOW_TAG = "shop_coin_glow"
 
 /** The counter along the bottom: the day's coin bonus, and what was last said at it. */
 @Composable

@@ -29,6 +29,9 @@ enum class SoilGrade(val nutritionPerHarvest: Float, val dryOutFactor: Float, va
     }
 }
 
+/** The state of a cell's food, as the line under the food bar tells it ([Soil.foodNote]). */
+enum class FoodNote { FILLING, PLENTY, LOW, EMPTY }
+
 /**
  * The soil of a cell: a tilled cell, a ridged one or a greenhouse bed ([GridObject.isSoil]).
  *
@@ -115,6 +118,17 @@ object Soil {
         if (since < -CLOCK_SLACK_MILLIS) return obj.nutritionLevel
         val risen = (since - SOAK_MILLIS).coerceAtLeast(0L).toFloat() / MILLIS_PER_PERCENT / 100f
         return (obj.fedFrom + risen).coerceAtMost(obj.nutritionLevel)
+    }
+
+    /**
+     * What the line under the food bar says about [level] (the food now, 0..1) in soil of [grade]:
+     * still filling from fertilizer comes first, then none left, then a harvest's worth or less.
+     */
+    fun foodNote(level: Float, filling: Boolean, grade: SoilGrade): FoodNote = when {
+        filling -> FoodNote.FILLING
+        isEmpty(level) -> FoodNote.EMPTY
+        level <= grade.nutritionPerHarvest / SERVINGS + EMPTY -> FoodNote.LOW
+        else -> FoodNote.PLENTY
     }
 
     /** Whether fertilizer given to [obj] is still falling, soaking in or filling at [now] (or about to). */
@@ -208,8 +222,17 @@ object Soil {
         xp = (reward.xp * BOUNTY_MULTIPLIER).roundToInt(),
     )
 
-    /** What fertilizer costs a player at [level]. */
-    fun fertilizerCost(level: Int): Int = 10 + 5 * level
+    /**
+     * What fertilizer costs a player at [level], for one cell, once: [FERTILIZER_BASE_COST] plus
+     * [FERTILIZER_COST_PER_LEVEL] a level, no more than [FERTILIZER_MAX_COST] (reached at Lv.20).
+     * The tutorial's first feeding is free (decided by the caller). Change the price here only.
+     */
+    fun fertilizerCost(level: Int): Int =
+        (FERTILIZER_BASE_COST + FERTILIZER_COST_PER_LEVEL * level.coerceAtLeast(1)).coerceAtMost(FERTILIZER_MAX_COST)
+
+    const val FERTILIZER_BASE_COST = 10
+    const val FERTILIZER_COST_PER_LEVEL = 3
+    const val FERTILIZER_MAX_COST = 70
 
     /**
      * What a cell's ground goes back to from [soil] ("1 つ前の地面"): ridges to tilled earth, tilled

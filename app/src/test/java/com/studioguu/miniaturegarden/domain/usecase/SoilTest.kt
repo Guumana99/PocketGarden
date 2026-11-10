@@ -261,9 +261,9 @@ class SoilTest {
     }
 
     @Test
-    fun `fertilizer fills the cell and costs 10 plus 5 a level`() = runBlocking {
-        assertEquals(15, Soil.fertilizerCost(1))
-        assertEquals(60, Soil.fertilizerCost(10))
+    fun `fertilizer fills the cell and costs 10 plus 3 a level`() = runBlocking {
+        assertEquals(13, Soil.fertilizerCost(1))
+        assertEquals(40, Soil.fertilizerCost(10))
         repo.profile = UserProfile(coins = 100, playerLevel = 4)
         repo.put(soil(food = 0f))
         repo.put(plant(PlantSpecies.CARROT, growth = 0.5f, food = 0f, status = PlantStatus.UNNOURISHED))
@@ -274,16 +274,22 @@ class SoilTest {
         // Full is where it is going: the food itself comes over the next seconds (fertilizer fills slowly).
         assertEquals(1f, Soil.levelAt(stored, t0 + Soil.feedingMillis(stored)), 0f)
         assertEquals(PlantStatus.HEALTHY, calc(repo.objects.getValue("p"), t0 + Soil.feedingMillis(stored), sunny).status)
-        assertEquals(70L, repo.profile?.coins)
+        assertEquals(78L, repo.profile?.coins) // Lv.4: 22
         assertEquals(CareForPlantUseCase.FERTILIZE_XP.toLong(), repo.profile?.currentXp)
 
         // Full: no more to take. And the bed can be fed with nothing on it.
         assertEquals(ActionResult.ALREADY_FED, care.fertilize("p", t0 + Soil.feedingMillis(stored), sunny))
-        assertEquals(70L, repo.profile?.coins)
+        assertEquals(78L, repo.profile?.coins)
         repo.objects.remove("p")
         repo.put(stored.copy(nutritionLevel = 0.5f, fedAt = 0L))
         assertEquals(ActionResult.SUCCESS, care.fertilize("soil", t0, sunny))
         assertEquals(1f, stored.nutritionLevel, 0f)
+    }
+
+    @Test
+    fun `fertilizer price follows the table and stops at 70 from Lv 20`() {
+        val table = mapOf(1 to 13, 4 to 22, 5 to 25, 7 to 31, 10 to 40, 15 to 55, 20 to 70, 21 to 70, 40 to 70)
+        for ((level, price) in table) assertEquals("Lv.$level", price, Soil.fertilizerCost(level))
     }
 
     @Test
@@ -446,7 +452,7 @@ class SoilTest {
         repo.put(plant(PlantSpecies.SHIITAKE, id = "log"))
         assertEquals(ActionResult.NO_SOIL, care.fertilize("log", t0, sunny))
         repo.objects.remove("log")
-        repo.profile = UserProfile(coins = 14)
+        repo.profile = UserProfile(coins = 12) // one short of Lv.1 fertilizer (13)
         repo.put(soil(food = 0.5f))
         assertEquals(ActionResult.NOT_ENOUGH_COINS, care.fertilize("soil", t0, sunny))
         assertEquals(0.5f, stored.nutritionLevel, 0f)

@@ -37,7 +37,7 @@ class SystemRefactorTest {
         val audio = source("data/audio/AudioManager.kt")
         // The music is prepared in the background, and the effects' lengths are read off the main thread.
         assertFalse(audio.contains("MediaPlayer.create("))
-        assertTrue(audio.contains("prepareAsync()"))
+        assertTrue(audio.contains("tune.player.prepare()"))
         assertTrue(audio.contains("durationReader.execute"))
     }
 

@@ -194,7 +194,7 @@ class StoreObjectTest {
         listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }.resolve("res/values/strings.xml").readText()
 
     private fun string(name: String): String =
-        Regex("<string name=\"$name\"[^>]*>(.*?)</string>", RegexOption.DOT_MATCHES_ALL).find(strings)!!.groupValues[1]
+        Regex("<string name=\"$name\"[^>]*>(.*?)</string>", RegexOption.DOT_MATCHES_ALL).find(strings)!!.groupValues[1].replace("⁠", "")
 
     @Test
     fun `the rain reward goes by its new name everywhere`() {

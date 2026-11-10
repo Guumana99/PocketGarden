@@ -106,7 +106,7 @@ class FieldFeedbackTest {
     fun `showing the whole book changes the pages only, and writes nothing`() {
         val book = source("ui/collection/CollectionDialog.kt")
         // The cover, the bookmarks' dots and where the book opens go by the saved records.
-        assertTrue(book.contains("Cover(loaded)"))
+        assertTrue(book.contains("Cover(loaded, natureNotes)"))
         assertTrue(book.contains("progress = loaded,\n                    natureNew"))
         assertTrue(book.contains("progress = pages,"))
         val preview = source("ui/debug/Showcase.kt").substringAfter("object BookPreview").substringBefore("/** Where the showcase")

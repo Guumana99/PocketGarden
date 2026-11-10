@@ -966,7 +966,7 @@ private fun submitObjects(
                     submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.RAIL_DEPTH) {
                         drawRunPiece(atlasImage, rail, base, next, spriteScale, mirrored)
                         // Snow along the top of the rail, from post to post.
-                        if (railTop != null) with(EdgeSnow) { drawBand(listOf(base, next).map { it - Offset(0f, railTop * unit) }, unit, ambience.edgeSnow) }
+                        if (railTop != null) with(EdgeSnow) { drawBand(listOf(base, next).map { it - Offset(0f, railTop * unit) }, unit, ambience.edgeSnow, seed = obj.gridX * 3 + obj.gridY * 11) }
                     }
                 }
             }
@@ -986,7 +986,8 @@ private fun submitObjects(
                         drawBand(listOf(base + Offset(-half * unit, -top * unit), base + Offset(half * unit, -top * unit)), unit, ambience.edgeSnow)
                     } else if (!alone && post != null) {
                         val cap = base - Offset(0f, EdgeSnow.POST_TOP * unit)
-                        drawBand(listOf(cap - Offset(unit * 0.012f, 0f), cap + Offset(unit * 0.012f, 0f)), unit, ambience.edgeSnow)
+                        // A small mound on the post's head, wider than the post is, as snow sits.
+                        drawBand(listOf(cap - Offset(unit * POST_CAP_HALF, 0f), cap + Offset(unit * POST_CAP_HALF, 0f)), unit, ambience.edgeSnow, seed = obj.gridX * 5 + obj.gridY)
                     }
                 }
                 // Grass at its foot on open lawn, and on a lawn sown under it (#55).
@@ -1036,6 +1037,8 @@ private fun submitObjects(
                 }
                 // And a little along the roofs while it lies (#fb-1107).
                 if (ambience.edgeSnow > 0f && !obj.isWorking) {
+                    // Over the whole of the roof (#fb-1110), then heaped along its ridge, verges and eaves.
+                    EdgeSnow.facesOf(obj.objectId, obj.isFlipped)?.let { faces -> with(EdgeSnow) { drawRoofSnow(base, unit, faces, ambience.edgeSnow) } }
                     EdgeSnow.linesOf(obj.objectId, obj.isFlipped)?.let { lines -> with(EdgeSnow) { drawEdgeSnow(base, unit, lines, ambience.edgeSnow) } }
                 }
                 if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {
@@ -3373,3 +3376,6 @@ private fun DrawScope.drawLightPool(center: Offset, radius: Float, strength: Flo
         )
     }
 }
+
+/** Half the width of the little mound of snow on a fence post's head, in tile widths (#fb-1110). */
+private const val POST_CAP_HALF = 0.04f

@@ -265,6 +265,9 @@ class GardenViewModel @Inject constructor(
         viewModelScope.launch { readLetters.markRead(letterId) }
     }
 
+    /** Debug menu: the players' levels, to tune by ear (null in release builds). */
+    val audioForDebug: AudioManager? get() = audio.takeIf { BuildConfig.DEBUG }
+
     /** Debug menu: the rest of this season goes by at once, and the next one comes. */
     fun debugNextSeason() {
         viewModelScope.launch {
@@ -948,6 +951,8 @@ class GardenViewModel @Inject constructor(
      */
     private suspend fun announceGrowthIfDue(now: Long) {
         postLetters.gardenCanGrowIfDue(now)
+        // Advice that a level brings (fertilizer at Lv.3) comes the same way.
+        postLetters.levelTipIfDue(now)
     }
 
     /** Advances every plant to the current time. Called on resume and on a timer while visible. */

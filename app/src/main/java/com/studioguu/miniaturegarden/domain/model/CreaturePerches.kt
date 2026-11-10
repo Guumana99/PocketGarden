@@ -141,7 +141,12 @@ object CreaturePerches {
                 BENCH_OBJECT_ID -> PerchKind.BENCH
                 else -> PerchKind.WEATHERVANE
             }
-            return points.map { (dx, dy, h) -> Perch(obj.gridX + dx, obj.gridY + dy, h, kind, front, obj) }
+            // A building turned round is its picture mirrored: across the screen is x - y, so on a
+            // square footprint the mirror swaps the two (#fb-1110, the well).
+            return points.map { (dx, dy, h) ->
+                val (x, y) = if (obj.isFlipped) dy to dx else dx to dy
+                Perch(obj.gridX + x, obj.gridY + y, h, kind, front, obj)
+            }
         }
         if (obj.isFence) return listOf(Perch(obj.gridX + 0.5f, obj.gridY + 0.5f, FENCE_TOP_HEIGHT, PerchKind.FENCE, front, obj))
         if (obj.objectId == WILD_FLOWERS_OBJECT_ID) return listOf(Perch(obj.gridX + 0.5f, obj.gridY + 0.5f, WILD_FLOWER_HEIGHT, PerchKind.FLOWER, front, obj))

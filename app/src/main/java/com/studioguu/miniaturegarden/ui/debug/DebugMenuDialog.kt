@@ -1,5 +1,15 @@
 package com.studioguu.miniaturegarden.ui.debug
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.key
+import androidx.compose.material3.TextButton
+import com.studioguu.miniaturegarden.domain.model.AppSettings
+import com.studioguu.miniaturegarden.data.audio.SoundEffect
+import com.studioguu.miniaturegarden.data.audio.BgmTrack
+import com.studioguu.miniaturegarden.data.audio.AudioManager
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -80,6 +90,7 @@ fun DebugMenuDialog(
     onSnowLying: () -> Unit = {},
     perchesShown: Boolean = false,
     onPerchesShown: (Boolean) -> Unit = {},
+    audio: AudioManager? = null,
 ) {
     ParchmentDialog(
         onDismissRequest = onDismiss,
@@ -132,6 +143,8 @@ fun DebugMenuDialog(
                     Text(stringResource(R.string.debug_ask_review))
                 }
                 Text(stringResource(R.string.debug_ask_review_hint), fontSize = 12.sp)
+                // At the end, so that the buttons above keep their places.
+                if (audio != null) AudioTuningSection(audio)
             }
         }
     }
@@ -156,6 +169,49 @@ private fun CreatureCallSection(call: CreatureCall, onChange: (CreatureCall) -> 
         }
     }
 }
+
+/**
+ * The music's and the effects' levels as numbers (#fb-1110): the sliders' starting values, each
+ * tune's gain and each effect's. A tune's gain is heard at once if it is the one playing; an
+ * effect has a button to hear it. Kept until the app closes; the defaults live in [BgmTrack.gain]
+ * and [SoundEffect.gain].
+ */
+@Composable
+fun AudioTuningSection(audio: AudioManager) {
+    var version by remember { mutableIntStateOf(0) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.testTag(AUDIO_TUNING_TAG)) {
+        Text("音量（数字）", fontWeight = FontWeight.Bold)
+        Text(
+            "スライドバーの初期値：BGM ${volumeText(AppSettings.DEFAULT_BGM_VOLUME)}・効果音 ${volumeText(AppSettings.DEFAULT_SOUND_EFFECT_VOLUME)}" +
+                "　今：BGM ${volumeText(audio.bgmVolume)}・効果音 ${volumeText(audio.soundEffectVolume)}",
+        )
+        key(version) {
+            for (track in BgmTrack.entries) {
+                StepRow("曲 ${track.resourceName}", audio.trackGain(track)) { audio.setTrackGain(track, it); version++ }
+            }
+            for (effect in SoundEffect.entries) {
+                StepRow("効果音 ${effect.resourceName}", audio.effectGain(effect), onPlay = { audio.play(effect) }) {
+                    audio.setEffectGain(effect, it); version++
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepRow(label: String, value: Float, onPlay: (() -> Unit)? = null, onChange: (Float) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("$label ×${volumeText(value)}", fontSize = 12.sp, modifier = Modifier.weight(1f))
+        TextButton(onClick = { onChange(value - GAIN_STEP) }) { Text("−") }
+        TextButton(onClick = { onChange(value + GAIN_STEP) }) { Text("＋") }
+        if (onPlay != null) TextButton(onClick = onPlay) { Text("▶") }
+    }
+}
+
+private fun volumeText(value: Float): String = String.format(Locale.US, "%.2f", value)
+
+private const val GAIN_STEP = 0.05f
+const val AUDIO_TUNING_TAG = "debug_audio_tuning"
 
 /** A heading with its switch. */
 @Composable

@@ -75,6 +75,7 @@ import com.studioguu.miniaturegarden.domain.model.BloomRarity
 import com.studioguu.miniaturegarden.domain.model.CollectionCategory
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionProgress
+import com.studioguu.miniaturegarden.domain.model.BookUnlocks
 import com.studioguu.miniaturegarden.domain.model.CollectionTrigger
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.NatureNotes
@@ -138,7 +139,7 @@ fun CollectionDialog(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             val loaded = progress
-            Cover(loaded)
+            Cover(loaded, natureNotes)
             if (loaded == null) {
                 Spacer(Modifier.height(SPREAD_HEIGHT))
             } else {
@@ -184,7 +185,7 @@ fun CollectionDialog(
 
 /** Title and progress, stamped on the cover in gold. */
 @Composable
-private fun Cover(progress: CollectionProgress?) {
+private fun Cover(progress: CollectionProgress?, notes: NatureNotes?) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = stringResource(R.string.collection_title),
@@ -193,10 +194,11 @@ private fun Cover(progress: CollectionProgress?) {
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.titleLarge,
         )
-        val revealed = progress?.revealed ?: 0
-        val total = progress?.total ?: CollectionEntry.entries.size
+        // Pages filled in and creatures met, out of everything in the book, the nature notes too.
+        val revealed = progress?.let { BookUnlocks.kinds(it, notes) } ?: 0
+        val total = BookUnlocks.TOTAL_KINDS
         Text(
-            text = stringResource(R.string.collection_progress, revealed, total, progress?.percent ?: 0),
+            text = stringResource(R.string.collection_progress, revealed, total, revealed * 100 / total),
             color = GoldLeaf,
             fontFamily = BookFont,
             style = MaterialTheme.typography.bodyMedium,

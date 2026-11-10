@@ -6,7 +6,10 @@ package com.studioguu.miniaturegarden.domain.model
  *
  * New tips go at the end, so that a garden which has had some carries on with the next.
  */
-enum class LetterTip {
+enum class LetterTip(
+    /** Sent once the player reaches this level, rather than in turn with the others; null for those. */
+    val atLevel: Int? = null,
+) {
     /** A thirsty crop wants water. */
     WATERING,
 
@@ -23,9 +26,15 @@ enum class LetterTip {
     CREATURES,
 
     /** The glass greenhouse grows crops out of season, even in winter. */
-    GREENHOUSE;
+    GREENHOUSE,
+
+    /** When to give fertilizer and what it does (#fb-1110): comes at Lv.3, not in turn. */
+    FERTILIZER(atLevel = 3);
 
     companion object {
+        /** The tips that come one after another, an interval apart. */
+        val inTurn: List<LetterTip> get() = entries.filter { it.atLevel == null }
+
         fun fromName(name: String): LetterTip? = entries.firstOrNull { it.name == name }
     }
 }
@@ -46,9 +55,18 @@ object PostOffice {
     fun nextTip(letters: List<Letter>, season: Season, now: Long): Letter? {
         if (letters.isEmpty()) return null
         val sent = letters.filter { it.kind == LetterKind.TIP }
-        val tip = LetterTip.entries.firstOrNull { tip -> sent.none { it.topic == tip.name } } ?: return null
+        val tip = LetterTip.inTurn.firstOrNull { tip -> sent.none { it.topic == tip.name } } ?: return null
         val since = sent.maxOfOrNull { it.sentAt } ?: letters.minOf { it.sentAt }
         return if (now - since >= TIP_INTERVAL_MILLIS) Letter.tip(tip, season, now) else null
+    }
+
+    /** The advice due at [playerLevel] ([LetterTip.atLevel]) that has not been sent yet, or null. */
+    fun levelTip(playerLevel: Int, letters: List<Letter>, season: Season, now: Long): Letter? {
+        val tip = LetterTip.entries.firstOrNull { tip ->
+            val level = tip.atLevel ?: return@firstOrNull false
+            playerLevel >= level && letters.none { it.kind == LetterKind.TIP && it.topic == tip.name }
+        } ?: return null
+        return Letter.tip(tip, season, now)
     }
 
     /**
