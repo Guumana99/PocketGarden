@@ -168,6 +168,8 @@ data class GridObject(
          */
         val FLIPPABLE_OBJECT_IDS: List<String> = listOf(
             "struct_cottage", "struct_windmill", "deco_bench",
+            // #fb-1110: the well too; its rim points, roof snow and shadow turn with its picture.
+            "struct_well",
             "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles",
             "struct_bridge_taiko",
         )

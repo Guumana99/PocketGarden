@@ -201,10 +201,10 @@ class BuildingArtTest {
     private val flip = FlipObjectUseCase(repo, GardenMap.DEFAULT)
 
     @Test
-    fun `the cottage, the windmill, the bench, the rocks and the bridge can face either way, nothing else`() {
+    fun `the cottage, the windmill, the bench, the well, the rocks and the bridge can face either way, nothing else`() {
         assertEquals(
             listOf(
-                "struct_cottage", "struct_windmill", "deco_bench",
+                "struct_cottage", "struct_windmill", "deco_bench", "struct_well",
                 "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles", "struct_bridge_taiko",
             ),
             GridObject.FLIPPABLE_OBJECT_IDS,
