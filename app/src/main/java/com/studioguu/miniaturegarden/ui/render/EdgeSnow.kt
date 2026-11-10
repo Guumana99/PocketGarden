@@ -1,6 +1,7 @@
 package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -45,18 +46,38 @@ object EdgeSnow {
             line(0.70f to 1.42f, 0.15f to 0.66f),
             line(0.74f to 1.43f, 1.215f to 0.99f),
         ),
-        // The one-sloped roof: its high back edge and the two verges running down from it.
+        // The one-sloped roof: its high back edge and the two verges running down from it, and
+        // its low eave at the front (#fb-1110).
         StructureData.HUT.objectId to listOf(
             line(-0.81f to 1.34f, -0.06f to 1.635f),
             line(-0.81f to 1.33f, -0.005f to 0.66f),
             line(-0.05f to 1.635f, 0.81f to 0.96f),
+            line(-0.01f to 0.663f, 0.819f to 0.957f),
         ),
-        // The little roof over the well: its ridge, the far verge, and the eave at the left.
+        // The little roof over the well: its ridge, the far verge, and the eave at the left; and
+        // the near eave along the bottom of the face (#fb-1110), where the snow hangs over.
         StructureData.WELL.objectId to listOf(
             line(-0.404f to 0.597f, -0.279f to 0.675f, 0.112f to 0.83f),
             line(0.119f to 0.823f, 0.258f to 0.627f),
+            line(-0.2125f to 0.494f, 0.26f to 0.629f),
         ),
     )
+
+    /**
+     * The roof faces the viewer sees, as outlines measured on each picture (#fb-1110): snow lies
+     * over the whole of them, not only along their edges. Same offsets as the lines.
+     */
+    private val FACES: Map<String, List<Line>> = mapOf(
+        StructureData.COTTAGE.objectId to listOf(line(-0.648f to 1.963f, 0.704f to 1.505f, 0.149f to 0.656f, -1.099f to 1.012f)),
+        StructureData.HUT.objectId to listOf(line(-0.814f to 1.341f, -0.059f to 1.638f, 0.819f to 0.957f, -0.01f to 0.663f)),
+        StructureData.WELL.objectId to listOf(line(-0.4f to 0.597f, 0.107f to 0.831f, 0.26f to 0.629f, -0.2125f to 0.494f)),
+    )
+
+    /** The roof faces of a building of [objectId], turned as it is; null for anything without. */
+    fun facesOf(objectId: String, flipped: Boolean): List<Line>? {
+        val faces = FACES[objectId] ?: return null
+        return if (!flipped) faces else faces.map { Line(it.points.map { (across, up) -> -across to up }) }
+    }
 
     /** The lines on a building of [objectId], turned as it is; null for anything without. */
     fun linesOf(objectId: String, flipped: Boolean): List<Line>? {
@@ -116,30 +137,124 @@ object EdgeSnow {
     /** The snow's white, a touch blue. */
     private val SNOW = Color(0xFFF6F9FF)
 
-    /** How wide the band is at its fullest, in tile widths: thin. */
-    private const val BAND_WIDTH = 0.03f
+    /** The shade under a heap of snow and on its lower side: blue-grey, as snow's shadows are. */
+    private val SNOW_SHADE = Color(0xFF8FA3C2)
+
+    /** The lit top of a heap. */
+    private val SNOW_LIGHT = Color(0xFFFFFFFF)
+
+    /**
+     * How thick a heap of snow is at its fullest, in tile widths (#fb-1110: it read as a thin white
+     * line before; now it has body, a lumpy top, rounded ends and a shadow under it).
+     */
+    private const val BAND_WIDTH = 0.05f
+
+    /** How far apart the lumps along a heap are, in tile widths. */
+    private const val LUMP_SPACING = 0.045f
 
     /** Draws [lines] about [base] as [depth] of snow, [unit] being a tile's width on screen. */
     fun DrawScope.drawEdgeSnow(base: Offset, unit: Float, lines: List<Line>, depth: Float) {
         if (depth <= 0f) return
-        for (line in lines) {
-            drawBand(line.points.map { (across, up) -> base + Offset(across * unit, -up * unit) }, unit, depth)
+        lines.forEachIndexed { i, line ->
+            drawBand(line.points.map { (across, up) -> base + Offset(across * unit, -up * unit) }, unit, depth, seed = i * 7)
         }
     }
 
-    /** Draws a band of [depth] of snow along [points] on screen. */
-    fun DrawScope.drawBand(points: List<Offset>, unit: Float, depth: Float) {
+    /**
+     * Snow over the whole of each roof face in [faces] (#fb-1110: the well's near face had none):
+     * a soft white cover, lighter at the top and blue-grey towards the eave, thicker as it lies.
+     */
+    fun DrawScope.drawRoofSnow(base: Offset, unit: Float, faces: List<Line>, depth: Float) {
+        if (depth <= 0f) return
+        for (face in faces) {
+            if (face.points.size < 3) continue
+            val points = face.points.map { (across, up) -> base + Offset(across * unit, -up * unit) }
+            val path = Path().apply {
+                moveTo(points[0].x, points[0].y)
+                for (p in points.drop(1)) lineTo(p.x, p.y)
+                close()
+            }
+            val top = points.minOf { it.y }
+            val bottom = points.maxOf { it.y }
+            drawPath(
+                path,
+                Brush.verticalGradient(
+                    0f to SNOW.copy(alpha = 0.92f * depth),
+                    0.7f to SNOW.copy(alpha = 0.86f * depth),
+                    1f to SNOW_SHADE.copy(alpha = 0.55f * depth),
+                    startY = top, endY = bottom,
+                ),
+            )
+        }
+    }
+
+    /**
+     * Draws a heap of [depth] of snow lying along [points] on screen: a body with a lumpy top and
+     * rounded ends, a blue-grey shadow just under it and a lit line along its top. One path for
+     * the body (the shadow is the same path, lower), so it costs about what the old band did.
+     */
+    fun DrawScope.drawBand(points: List<Offset>, unit: Float, depth: Float, seed: Int = 0) {
         if (depth <= 0f || points.size < 2) return
-        val path = Path().apply {
-            moveTo(points[0].x, points[0].y)
-            for (p in points.drop(1)) lineTo(p.x, p.y)
+        val thick = unit * BAND_WIDTH * (0.4f + 0.6f * depth)
+        val samples = sample(points, unit * LUMP_SPACING)
+        val total = samples.last().second
+        val tops = ArrayList<Offset>(samples.size)
+        val bottoms = ArrayList<Offset>(samples.size)
+        samples.forEachIndexed { i, (p, along) ->
+            // Rounded ends: the heap thins to nothing over about its own thickness at each end.
+            val fromEnd = minOf(along, total - along)
+            val end = kotlin.math.sqrt((fromEnd / (thick * 1.3f)).coerceIn(0f, 1f))
+            val lump = 0.78f + 0.44f * noise(i + seed)
+            tops += p - Offset(0f, thick * lump * end)
+            bottoms += p + Offset(0f, thick * 0.28f * end)
         }
-        val width = unit * BAND_WIDTH * (0.45f + 0.55f * depth)
-        // A soft edge, then the white; lifted by half its width, to lie on the edge, not across it.
-        withLift(width * 0.4f) {
-            drawPath(path, SNOW.copy(alpha = 0.35f * depth), style = Stroke(width * 1.7f, cap = StrokeCap.Round, join = StrokeJoin.Round))
-            drawPath(path, SNOW.copy(alpha = 0.92f * depth), style = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        val body = Path().apply {
+            moveTo(tops[0].x, tops[0].y)
+            // Soft lumps: through the middles, bending at each sample.
+            for (i in 1 until tops.size) {
+                val mid = (tops[i - 1] + tops[i]) / 2f
+                quadraticTo(tops[i - 1].x, tops[i - 1].y, mid.x, mid.y)
+            }
+            lineTo(tops.last().x, tops.last().y)
+            for (i in bottoms.indices.reversed()) lineTo(bottoms[i].x, bottoms[i].y)
+            close()
         }
+        // The shadow it throws on what it lies on, then the snow, then the light on its top.
+        withLift(-thick * 0.45f) { drawPath(body, SNOW_SHADE.copy(alpha = 0.5f * depth)) }
+        drawPath(body, SNOW.copy(alpha = 0.96f * depth))
+        drawPath(body, SNOW_SHADE.copy(alpha = 0.18f * depth), style = Stroke(thick * 0.22f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        val ridge = Path().apply {
+            moveTo(tops[0].x, tops[0].y)
+            for (i in 1 until tops.size) lineTo(tops[i].x, tops[i].y + thick * 0.18f)
+        }
+        drawPath(ridge, SNOW_LIGHT.copy(alpha = 0.75f * depth), style = Stroke(thick * 0.3f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+
+    /** Points along [line] about [step] apart (at least a few), each with how far along it is. */
+    private fun sample(line: List<Offset>, step: Float): List<Pair<Offset, Float>> {
+        val out = ArrayList<Pair<Offset, Float>>()
+        var along = 0f
+        out += line[0] to 0f
+        for (i in 1 until line.size) {
+            val a = line[i - 1]
+            val b = line[i]
+            val length = (b - a).getDistance()
+            val count = maxOf(MIN_SAMPLES_PER_PIECE, (length / step).toInt())
+            for (k in 1..count) {
+                val t = k.toFloat() / count
+                out += (a + (b - a) * t) to (along + length * t)
+            }
+            along += length
+        }
+        return out
+    }
+
+    private const val MIN_SAMPLES_PER_PIECE = 4
+
+    /** A steady 0..1 for [i], the same every frame, so the lumps hold still. */
+    private fun noise(i: Int): Float {
+        val x = kotlin.math.sin(i * 12.9898f + 4.1414f) * 43758.547f
+        return x - kotlin.math.floor(x)
     }
 
     private inline fun DrawScope.withLift(by: Float, block: DrawScope.() -> Unit) {

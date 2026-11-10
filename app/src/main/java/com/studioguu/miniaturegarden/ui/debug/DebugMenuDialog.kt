@@ -100,7 +100,6 @@ fun DebugMenuDialog(
         CompositionLocalProvider(LocalContentColor provides GardenColors.Ink) {
             Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (zoomScale != null) Text(zoomLabel(zoomScale))
-                if (audio != null) AudioTuningSection(audio)
                 Text(stringResource(R.string.debug_menu_hint))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FilledTonalButton(onClick = { onSkipTime(HOUR_MILLIS) }) {
@@ -144,6 +143,8 @@ fun DebugMenuDialog(
                     Text(stringResource(R.string.debug_ask_review))
                 }
                 Text(stringResource(R.string.debug_ask_review_hint), fontSize = 12.sp)
+                // At the end, so that the buttons above keep their places.
+                if (audio != null) AudioTuningSection(audio)
             }
         }
     }

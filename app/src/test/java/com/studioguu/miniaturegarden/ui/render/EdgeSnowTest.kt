@@ -57,6 +57,22 @@ class EdgeSnowTest {
     }
 
     @Test
+    fun `snow covers the whole of each roof face, mirrored when turned, under the heaped edges`() {
+        for (structure in listOf(StructureData.COTTAGE, StructureData.HUT, StructureData.WELL)) {
+            val faces = EdgeSnow.facesOf(structure.objectId, flipped = false)!!
+            assertTrue(structure.name, faces.isNotEmpty() && faces.all { it.points.size >= 3 })
+            assertTrue(structure.name, faces.flatMap { it.points }.all { (_, up) -> up > 0.3f && up < 2.2f })
+            val turned = EdgeSnow.facesOf(structure.objectId, flipped = true)!!
+            assertEquals(faces.map { f -> f.points.map { (a, u) -> -a to u } }, turned.map { it.points })
+        }
+        // The well's near eave, where it had none (device feedback 11/09).
+        assertEquals(3, EdgeSnow.linesOf(StructureData.WELL.objectId, false)!!.size)
+        assertNull(EdgeSnow.facesOf(StructureData.WINDMILL.objectId, false))
+        val canvas = File(listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
+        assertTrue(canvas.contains("drawRoofSnow(base, unit, faces, ambience.edgeSnow)"))
+    }
+
+    @Test
     fun `every fence has the top of its rail, under its posts, and the kerb has none`() {
         for (kind in RunKind.entries.filter { it.isFence }) {
             val top = EdgeSnow.railTop(kind)!!
