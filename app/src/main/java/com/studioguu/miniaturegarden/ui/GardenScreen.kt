@@ -871,6 +871,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             onBookAllRegistered = BookPreview::set,
             perchesShown = PerchPreview.shown.collectAsStateWithLifecycle().value,
             onPerchesShown = PerchPreview::set,
+            audio = viewModel.audioForDebug,
             onAskForReview = { context.findActivity()?.let(viewModel::debugAskForReview) },
             onDismiss = { showDebugMenu = false },
         )

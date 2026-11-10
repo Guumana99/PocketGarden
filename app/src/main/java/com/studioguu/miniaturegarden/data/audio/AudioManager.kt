@@ -59,8 +59,17 @@ enum class SoundEffect(val resourceName: String, val gain: Float = 1f) {
  * to change. Two tracks that come down to the same file are one piece of music: moving between
  * them does not restart it.
  */
-enum class BgmTrack(val resourceName: String) {
-    TITLE("bgm_title"),
+enum class BgmTrack(
+    val resourceName: String,
+    /**
+     * This tune's own level, on top of the music volume (#fb-1110): the five are mastered to about
+     * -15 LUFS, but the title's peaks were held to -1 dBFS and it sounds a little quieter. Applies
+     * to the file actually played (a track falling back on spring plays at spring's gain).
+     */
+    val gain: Float = 1f,
+) {
+    /** +1.5 dB (device feedback 11/10: the title sounded a little quiet); the player decides by ear. */
+    TITLE("bgm_title", gain = 1.19f),
     SPRING("bgm_spring"),
     SUMMER("bgm_summer"),
     AUTUMN("bgm_autumn"),
@@ -124,7 +133,36 @@ class AudioManager internal constructor(
 
     /** The raw resource [playingTrack] is playing, which another track may share. */
     private var playingResId = 0
+
+    /** The file [playingResId] is, by name: its gain applies to the music volume. */
+    private var playingResourceName: String? = null
     private var bgmPaused = false
+
+    // Each tune's and each effect's own level. Fixed in release builds; the debug menu tunes them
+    // by ear ([setTrackGain], [setEffectGain]) without a rebuild.
+    private val trackGains = BgmTrack.entries.associateWith { it.gain }.toMutableMap()
+    private val effectGains = SoundEffect.entries.associateWith { it.gain }.toMutableMap()
+
+    fun trackGain(track: BgmTrack): Float = trackGains.getValue(track)
+    fun effectGain(effect: SoundEffect): Float = effectGains.getValue(effect)
+
+    /** Sets [track]'s gain; the music playing from its file changes at once. */
+    fun setTrackGain(track: BgmTrack, gain: Float) {
+        trackGains[track] = gain.coerceIn(0f, MAX_TRACK_GAIN)
+        if (playingResourceName == track.resourceName) engine.setBgmVolume(soundingBgmVolume())
+    }
+
+    /** Sets [effect]'s gain; the next time it plays it is at the new level. */
+    fun setEffectGain(effect: SoundEffect, gain: Float) {
+        effectGains[effect] = gain.coerceIn(0f, 1f)
+    }
+
+    private fun gainOfFile(resourceName: String?): Float =
+        BgmTrack.entries.firstOrNull { it.resourceName == resourceName }?.let(trackGains::getValue) ?: 1f
+
+    /** What the player hears the music at: the volume setting times the playing file's gain, at most full. */
+    private fun soundingBgmVolume(resourceName: String? = playingResourceName): Float =
+        (bgmVolume * gainOfFile(resourceName)).coerceAtMost(1f)
 
     var soundEffectsEnabled: Boolean = true
 
@@ -149,7 +187,7 @@ class AudioManager internal constructor(
     var bgmVolume: Float = DEFAULT_BGM_VOLUME
         set(value) {
             field = value.coerceIn(0f, 1f)
-            engine.setBgmVolume(field)
+            engine.setBgmVolume(soundingBgmVolume())
         }
 
     /**
@@ -184,11 +222,11 @@ class AudioManager internal constructor(
     fun play(effect: SoundEffect) {
         if (!soundEffectsEnabled) return
         val loaded = loadedEffectFor(effect) ?: return
-        engine.playEffect(loaded.handle, soundEffectVolume * effect.gain)
+        engine.playEffect(loaded.handle, soundEffectVolume * effectGain(effect))
         if (playingTrack != null && !bgmPaused && bgmEnabled) {
             engine.duckBgm(
-                duckedVolume = bgmVolume * BGM_DUCK_FACTOR,
-                restoreVolume = bgmVolume,
+                duckedVolume = soundingBgmVolume() * BGM_DUCK_FACTOR,
+                restoreVolume = soundingBgmVolume(),
                 holdMillis = min(loaded.durationMillis, MAX_DUCK_MILLIS),
             )
         }
@@ -218,6 +256,7 @@ class AudioManager internal constructor(
         wantedTrack = null
         playingTrack = null
         playingResId = 0
+        playingResourceName = null
         engine.stopBgm()
     }
 
@@ -227,6 +266,7 @@ class AudioManager internal constructor(
         loadedEffects.clear()
         playingTrack = null
         playingResId = 0
+        playingResourceName = null
     }
 
     private fun loadedEffectFor(effect: SoundEffect): LoadedEffect? {
@@ -267,9 +307,10 @@ class AudioManager internal constructor(
         }
         // The intro that belongs to the file actually played (the fallback's, for a track without one).
         val introId = resourceName?.let { resolveRawId(BgmTrack.introOf(it)) } ?: 0
-        val started = resId != 0 && engine.startBgm(resId, introId, bgmVolume)
+        val started = resId != 0 && engine.startBgm(resId, introId, soundingBgmVolume(resourceName))
         playingTrack = if (started) track else null
         playingResId = if (started) resId else 0
+        playingResourceName = if (started) resourceName else null
     }
 
     companion object {
@@ -284,6 +325,9 @@ class AudioManager internal constructor(
 
         /** While an effect sounds, the music plays at this fraction of its volume (about -6 dB). */
         const val BGM_DUCK_FACTOR = 0.5f
+
+        /** The most a tune's gain can be set to in the debug menu (+6 dB). */
+        const val MAX_TRACK_GAIN = 2f
 
         /** Long effects only hold the music down for their opening, not their whole tail. */
         const val MAX_DUCK_MILLIS = 2_500L

@@ -265,6 +265,9 @@ class GardenViewModel @Inject constructor(
         viewModelScope.launch { readLetters.markRead(letterId) }
     }
 
+    /** Debug menu: the players' levels, to tune by ear (null in release builds). */
+    val audioForDebug: AudioManager? get() = audio.takeIf { BuildConfig.DEBUG }
+
     /** Debug menu: the rest of this season goes by at once, and the next one comes. */
     fun debugNextSeason() {
         viewModelScope.launch {

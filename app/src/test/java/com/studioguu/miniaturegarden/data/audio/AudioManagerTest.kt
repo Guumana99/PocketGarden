@@ -444,7 +444,7 @@ class AudioManagerTest {
 
         audio.playBgm(BgmTrack.TITLE)
 
-        assertEquals(listOf(52 to AudioManager.DEFAULT_BGM_VOLUME), engine.bgmStarts)
+        assertEquals(listOf(52), engine.bgmStarts.map { it.first })
         assertEquals(listOf(152), engine.bgmIntros)
     }
 
@@ -454,7 +454,7 @@ class AudioManagerTest {
 
         audio.playBgm(BgmTrack.TITLE)
 
-        assertEquals(listOf(52 to AudioManager.DEFAULT_BGM_VOLUME), engine.bgmStarts)
+        assertEquals(listOf(52), engine.bgmStarts.map { it.first })
         assertEquals(listOf(0), engine.bgmIntros)
     }
 
@@ -650,6 +650,58 @@ class AudioManagerTest {
         assertTrue(garden.contains("musicSeason?.let { audio.playBgm(BgmTrack.forSeason(it)) }"))
         val title = main.resolve("java/com/studioguu/miniaturegarden/ui/title/TitleViewModel.kt").readText()
         assertTrue(title.contains("audio.playBgm(BgmTrack.TITLE)"))
+    }
+
+    // --- Each tune's own level (#fb-1110) ---
+
+    @Test
+    fun `the title plays a little louder than the volume setting, the seasons at it`() {
+        assertEquals(1.19f, BgmTrack.TITLE.gain, 0f)
+        assertTrue(BgmTrack.entries.filter { it != BgmTrack.TITLE }.all { it.gain == 1f })
+        rawFiles["bgm_title"] = 52
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.TITLE)
+        audio.playBgm(BgmTrack.SPRING)
+        val v = AudioManager.DEFAULT_BGM_VOLUME
+        assertEquals(listOf(v * 1.19f, v), engine.bgmStarts.map { it.second })
+    }
+
+    @Test
+    fun `a track falling back on spring plays at spring's level`() {
+        rawFiles["bgm_spring"] = 50
+        audio.playBgm(BgmTrack.TITLE)
+        assertEquals(AudioManager.DEFAULT_BGM_VOLUME, engine.bgmStarts.single().second, 0f)
+    }
+
+    @Test
+    fun `the volume, the ducking and a tuned gain all follow the playing tune's level`() {
+        rawFiles["bgm_title"] = 52
+        rawFiles["se_tap"] = 1
+        audio.playBgm(BgmTrack.TITLE)
+        audio.bgmVolume = 0.5f
+        assertEquals(0.5f * 1.19f, engine.bgmVolumes.last(), 1e-6f)
+        audio.play(SoundEffect.TAP)
+        assertEquals(0.5f * 1.19f, engine.ducks.single().restoreVolume, 1e-6f)
+        // Tuned in the debug menu: heard at once, never above full.
+        audio.setTrackGain(BgmTrack.TITLE, 1.5f)
+        assertEquals(0.75f, engine.bgmVolumes.last(), 1e-6f)
+        audio.bgmVolume = 1f
+        assertEquals(1f, engine.bgmVolumes.last(), 0f)
+        // Another tune's gain does not touch what is playing.
+        val calls = engine.bgmVolumes.size
+        audio.setTrackGain(BgmTrack.WINTER, 0.5f)
+        assertEquals(calls, engine.bgmVolumes.size)
+    }
+
+    @Test
+    fun `an effect's tuned gain is used the next time it plays`() {
+        rawFiles["se_coin"] = 2
+        audio.soundEffectVolume = 1f
+        audio.setEffectGain(SoundEffect.COIN, 0.6f)
+        audio.play(SoundEffect.COIN)
+        assertEquals(0.6f, engine.played.single().second, 1e-6f)
+        audio.setEffectGain(SoundEffect.COIN, 3f)
+        assertEquals(1f, audio.effectGain(SoundEffect.COIN), 0f)
     }
 }
 
