@@ -170,7 +170,7 @@ class AssetLedgerTest {
             .flatMap { File(main, it).listFiles().orEmpty().toList() }
             .filter { it.extension == "png" && !it.name.startsWith("icon_") }
         for (file in pictures) assertTrue("${file.name} is not in the ledger", ledger.contains(file.name))
-        val sounds = File(main, "res/raw").listFiles().orEmpty().filter { it.extension == "mp3" }
+        val sounds = File(main, "res/raw").listFiles().orEmpty().filter { it.extension == "mp3" || it.extension == "ogg" }
         assertTrue(sounds.isNotEmpty())
         for (file in sounds) assertTrue("${file.nameWithoutExtension} is not in the ledger", ledger.contains("`${file.nameWithoutExtension}`"))
     }

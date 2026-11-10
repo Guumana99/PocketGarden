@@ -8,6 +8,7 @@ import android.media.SoundPool
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import java.util.concurrent.Executors
 import com.studioguu.miniaturegarden.domain.model.AppSettings
 import com.studioguu.miniaturegarden.domain.model.Season
@@ -43,6 +44,11 @@ enum class SoundEffect(val resourceName: String, val gain: Float = 1f) {
  * Looping background music: the title's, and one for each season in the garden.
  * [resourceName] works like [SoundEffect.resourceName].
  *
+ * Each tune is two files: [introResourceName] (`bgm_x_intro`, the opening, played once) and
+ * [resourceName] (`bgm_x`, the part that repeats). The intro ends exactly where the loop begins,
+ * so playing them back to back sounds like the original piece from its very start. A tune
+ * without an intro file simply loops [resourceName] from its start.
+ *
  * A track whose own file is not there yet plays [FALLBACK_RESOURCE] (the spring tune) instead,
  * so new tunes can be dropped into `res/raw` under these names one at a time, with nothing else
  * to change. Two tracks that come down to the same file are one piece of music: moving between
@@ -55,7 +61,15 @@ enum class BgmTrack(val resourceName: String) {
     AUTUMN("bgm_autumn"),
     WINTER("bgm_winter");
 
+    /** The opening played once before [resourceName] starts repeating. */
+    val introResourceName: String get() = introOf(resourceName)
+
     companion object {
+        const val INTRO_SUFFIX = "_intro"
+
+        /** The intro file belonging to the loop file [loopResourceName]. */
+        fun introOf(loopResourceName: String): String = loopResourceName + INTRO_SUFFIX
+
         /** What plays for a track that has no file of its own. */
         const val FALLBACK_RESOURCE = "bgm_spring"
 
@@ -222,8 +236,14 @@ class AudioManager internal constructor(
     val currentTrack: BgmTrack? get() = wantedTrack
 
     /** The file [track] plays: its own, or the fallback; 0 when neither is there. */
-    internal fun resourceFor(track: BgmTrack): Int =
-        resolveRawId(track.resourceName).takeIf { it != 0 } ?: resolveRawId(BgmTrack.FALLBACK_RESOURCE)
+    internal fun resourceFor(track: BgmTrack): Int = resourceNameFor(track)?.let(resolveRawId) ?: 0
+
+    /** The name of the file [track] plays: its own, or the fallback; null when neither is there. */
+    private fun resourceNameFor(track: BgmTrack): String? = when {
+        resolveRawId(track.resourceName) != 0 -> track.resourceName
+        resolveRawId(BgmTrack.FALLBACK_RESOURCE) != 0 -> BgmTrack.FALLBACK_RESOURCE
+        else -> null
+    }
 
     private fun startBgmIfPossible() {
         val track = wantedTrack ?: return
@@ -232,14 +252,17 @@ class AudioManager internal constructor(
             engine.resumeBgm()
             return
         }
-        val resId = resourceFor(track)
+        val resourceName = resourceNameFor(track)
+        val resId = resourceName?.let(resolveRawId) ?: 0
         if (resId != 0 && resId == playingResId) {
             // Another name for the music already playing: it simply carries on.
             playingTrack = track
             engine.resumeBgm()
             return
         }
-        val started = resId != 0 && engine.startBgm(resId, bgmVolume)
+        // The intro that belongs to the file actually played (the fallback's, for a track without one).
+        val introId = resourceName?.let { resolveRawId(BgmTrack.introOf(it)) } ?: 0
+        val started = resId != 0 && engine.startBgm(resId, introId, bgmVolume)
         playingTrack = if (started) track else null
         playingResId = if (started) resId else 0
     }
@@ -277,9 +300,11 @@ internal interface AudioEngine {
 
     /**
      * Replaces any current music with a looping [resId], crossfading: what was sounding fades
-     * out while the new tune fades in to [volume]. False if it could not be started.
+     * out while the new tune fades in to [volume]. When [introResId] is not 0 that file plays
+     * once first and [resId] follows it seamlessly, then repeats; pausing, volume, ducking and
+     * fades apply to whichever of the two is sounding. False if it could not be started.
      */
-    fun startBgm(resId: Int, volume: Float): Boolean
+    fun startBgm(resId: Int, introResId: Int, volume: Float): Boolean
     fun pauseBgm()
     fun resumeBgm()
     fun stopBgm()
@@ -291,6 +316,27 @@ internal interface AudioEngine {
      */
     fun duckBgm(duckedVolume: Float, restoreVolume: Float, holdMillis: Long)
     fun release()
+}
+
+/**
+ * One piece of music: an optional [intro] played once, chained ([MediaPlayer.setNextMediaPlayer])
+ * to the [loop] that then repeats. Once the intro has finished it is released and dropped, and
+ * everything that acts on the music acts on the loop alone.
+ */
+private class Tune(var intro: MediaPlayer?, val loop: MediaPlayer) {
+    /** Players whose preparation has not finished yet; the tune can start when this is empty. */
+    val unprepared = HashSet<MediaPlayer>().apply { add(loop); intro?.let(::add) }
+
+    /** The player that is sounding (or will sound first). */
+    val head: MediaPlayer get() = intro ?: loop
+
+    val players: List<MediaPlayer> get() = listOfNotNull(intro, loop)
+
+    val isPlaying: Boolean get() = runCatching { head.isPlaying }.getOrDefault(false)
+
+    fun setVolume(volume: Float) {
+        players.forEach { runCatching { it.setVolume(volume, volume) } }
+    }
 }
 
 /**
@@ -306,19 +352,19 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     private var soundPool: SoundPool? = null
 
     /** The tune that is playing, or the one being prepared to play next ([bgmPrepared] false). */
-    private var bgmPlayer: MediaPlayer? = null
+    private var bgmTune: Tune? = null
 
-    /** Whether [bgmPlayer] has been prepared; until then it is not touched, only released. */
+    /** Whether [bgmTune] has been prepared; until then it is not touched, only released. */
     private var bgmPrepared = false
 
-    /** The music was paused while [bgmPlayer] was still being prepared: it waits for [resumeBgm]. */
+    /** The music was paused while [bgmTune] was still being prepared: it waits for [resumeBgm]. */
     private var startHeld = false
 
     /** The tune still playing while the one replacing it is prepared; it fades out once that starts. */
-    private var waitingPrevious: MediaPlayer? = null
+    private var waitingPrevious: Tune? = null
 
     /** The tune being faded out after another took its place; released when the fade ends. */
-    private var fadingPlayer: MediaPlayer? = null
+    private var fadingTune: Tune? = null
     private val fadeToken = Any()
 
     /** The music's volume as last asked for; fades work towards it. */
@@ -368,95 +414,144 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
         runCatching { pool().play(handle, volume, volume, 1, 0, 1f) }
     }
 
-    override fun startBgm(resId: Int, volume: Float): Boolean {
+    private fun newPlayer(resId: Int, looping: Boolean): MediaPlayer? = runCatching {
+        MediaPlayer().apply {
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
+            context.resources.openRawResourceFd(resId).use { fd -> setDataSource(fd.fileDescriptor, fd.startOffset, fd.length) }
+            isLooping = looping
+        }
+    }.getOrNull()
+
+    override fun startBgm(resId: Int, introResId: Int, volume: Float): Boolean {
         // What is sounding now fades out over the same time the new tune fades in; a paused
         // or broken player simply goes. A tune still being prepared is dropped for this one, and
         // what was playing before it is the one that fades out.
         val previous = if (bgmPrepared) {
-            bgmPlayer?.takeIf { runCatching { it.isPlaying }.getOrDefault(false) }
+            bgmTune?.takeIf { it.isPlaying }
         } else {
-            bgmPlayer?.let(::releasePlayer)
-            bgmPlayer = null
+            bgmTune?.let(::releaseTune)
+            bgmTune = null
             waitingPrevious.also { waitingPrevious = null }
         }
         if (previous == null) {
             stopBgm()
         } else {
-            bgmPlayer = null
+            bgmTune = null
             bgmPrepared = false
             cancelDuck()
             endFade()
         }
         startHeld = false
-        val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_GAME)
-            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-            .build()
-        val player = runCatching {
-            MediaPlayer().apply {
-                setAudioAttributes(attributes)
-                context.resources.openRawResourceFd(resId).use { fd -> setDataSource(fd.fileDescriptor, fd.startOffset, fd.length) }
-                isLooping = true
-            }
-        }.getOrNull() ?: run {
-            previous?.let(::releasePlayer)
+        val loop = newPlayer(resId, looping = true) ?: run {
+            previous?.let(::releaseTune)
             return false
         }
+        // An intro that cannot be opened is left out: the loop then plays from its own start.
+        val intro = if (introResId != 0) newPlayer(introResId, looping = false) else null
+        val tune = Tune(intro, loop)
         bgmVolume = volume
-        bgmPlayer = player
+        bgmTune = tune
         bgmPrepared = false
         waitingPrevious = previous
-        player.setOnPreparedListener { ready -> onBgmPrepared(ready, volume) }
-        player.setOnErrorListener { failed, _, _ ->
-            if (bgmPlayer === failed) {
-                // The tune that was playing, if any, carries on in its place.
-                bgmPlayer = waitingPrevious
-                bgmPrepared = waitingPrevious != null
-                waitingPrevious = null
+        for (player in tune.players) {
+            player.setOnPreparedListener { ready -> onPlayerPrepared(tune, ready) }
+            player.setOnErrorListener { failed, what, extra ->
+                Log.w(TAG, "BGM player error what=$what extra=$extra")
+                onPlayerError(tune, failed)
+                true
             }
-            releasePlayer(failed)
-            true
         }
-        return runCatching { player.prepareAsync() }.onFailure {
-            bgmPlayer = null
+        intro?.setOnCompletionListener { finished -> onIntroFinished(tune, finished) }
+        return runCatching { tune.players.forEach { it.prepareAsync() } }.onFailure {
+            bgmTune = null
             waitingPrevious = null
-            releasePlayer(player)
-            previous?.let(::releasePlayer)
+            releaseTune(tune)
+            previous?.let(::releaseTune)
         }.isSuccess
     }
 
-    /** [player] is ready: it starts quietly and fades in while what played before fades out. */
-    private fun onBgmPrepared(player: MediaPlayer, volume: Float) {
+    private fun onPlayerPrepared(tune: Tune, player: MediaPlayer) {
         // Replaced or stopped while it was being prepared: it has been released already.
-        if (bgmPlayer !== player) return
+        if (bgmTune !== tune || bgmPrepared) return
+        tune.unprepared.remove(player)
+        if (tune.unprepared.isEmpty()) onBgmPrepared(tune)
+    }
+
+    private fun onPlayerError(tune: Tune, failed: MediaPlayer) {
+        if (failed === tune.intro && bgmTune === tune && !bgmPrepared) {
+            // The intro could not be read: the loop plays on its own, from its start.
+            tune.intro = null
+            tune.unprepared.remove(failed)
+            releasePlayer(failed)
+            if (tune.unprepared.isEmpty()) onBgmPrepared(tune)
+            return
+        }
+        if (bgmTune === tune) {
+            // The tune that was playing, if any, carries on in its place.
+            bgmTune = waitingPrevious
+            bgmPrepared = waitingPrevious != null
+            waitingPrevious = null
+        }
+        releaseTune(tune)
+    }
+
+    /**
+     * The intro has played to its end. The loop normally took over by itself, without a gap
+     * ([MediaPlayer.setNextMediaPlayer]); if that chaining was refused it is started here instead.
+     * From now on the loop is the whole tune.
+     */
+    private fun onIntroFinished(tune: Tune, intro: MediaPlayer) {
+        if (tune.intro !== intro) return
+        tune.intro = null
+        val handedOver = runCatching { tune.loop.isPlaying }.getOrDefault(false)
+        if (!handedOver) runCatching { tune.loop.start() }
+        Log.d(TAG, "BGM intro finished, loop playing (chained=$handedOver)")
+        releasePlayer(intro)
+    }
+
+    /** [tune] is ready: it starts quietly and fades in while what played before fades out. */
+    private fun onBgmPrepared(tune: Tune) {
         bgmPrepared = true
+        tune.intro?.let { intro ->
+            // Both are prepared, as setNextMediaPlayer requires.
+            if (runCatching { intro.setNextMediaPlayer(tune.loop) }.isFailure) {
+                Log.w(TAG, "BGM could not chain intro to loop; it will start on completion")
+            }
+        }
         val previous = waitingPrevious
         waitingPrevious = null
         if (startHeld) {
             // Paused meanwhile: it starts, at its full volume, when the music resumes.
-            previous?.let(::releasePlayer)
+            previous?.let(::releaseTune)
             applyBgmVolume(bgmVolume)
             return
         }
         val started = runCatching {
-            player.setVolume(0f, 0f)
-            player.start()
+            tune.setVolume(0f)
+            tune.head.start()
         }.isSuccess
         if (!started) {
-            bgmPlayer = null
+            bgmTune = null
             bgmPrepared = false
-            releasePlayer(player)
-            previous?.let(::releasePlayer)
+            releaseTune(tune)
+            previous?.let(::releaseTune)
             return
         }
-        fadingPlayer = previous
+        Log.d(TAG, "BGM started (intro=${tune.intro != null})")
+        fadingTune = previous
+        val volume = bgmVolume
         val start = SystemClock.uptimeMillis()
         for (step in 1..FADE_STEPS) {
             handler.postAtTime(
                 {
                     val t = step.toFloat() / FADE_STEPS
                     applyBgmVolume(bgmVolume * t)
-                    fadingPlayer?.let { old -> runCatching { old.setVolume(volume * (1f - t), volume * (1f - t)) } }
+                    fadingTune?.setVolume(volume * (1f - t))
                     if (step == FADE_STEPS) endFade()
                 },
                 fadeToken,
@@ -468,9 +563,13 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     /** Ends any fade where it is: the old tune goes, the new one is set to its full volume. */
     private fun endFade() {
         handler.removeCallbacksAndMessages(fadeToken)
-        fadingPlayer?.let(::releasePlayer)
-        fadingPlayer = null
+        fadingTune?.let(::releaseTune)
+        fadingTune = null
         applyBgmVolume(bgmVolume)
+    }
+
+    private fun releaseTune(tune: Tune) {
+        tune.players.forEach(::releasePlayer)
     }
 
     private fun releasePlayer(player: MediaPlayer) {
@@ -483,33 +582,34 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
         endFade()
         if (!bgmPrepared) {
             // Not ready yet: it waits, and the old tune it was to replace goes now.
-            if (bgmPlayer != null) startHeld = true
-            waitingPrevious?.let(::releasePlayer)
+            if (bgmTune != null) startHeld = true
+            waitingPrevious?.let(::releaseTune)
             waitingPrevious = null
             return
         }
-        runCatching { bgmPlayer?.takeIf { it.isPlaying }?.pause() }
+        // During the intro this pauses the intro; the loop stays chained behind it.
+        runCatching { bgmTune?.head?.takeIf { it.isPlaying }?.pause() }
     }
 
     override fun resumeBgm() {
         startHeld = false
         // A tune still being prepared starts by itself once it is ready.
         if (!bgmPrepared) return
-        runCatching { bgmPlayer?.takeIf { !it.isPlaying }?.start() }
+        runCatching { bgmTune?.head?.takeIf { !it.isPlaying }?.start() }
     }
 
     override fun stopBgm() {
         cancelDuck()
         handler.removeCallbacksAndMessages(fadeToken)
-        fadingPlayer?.let(::releasePlayer)
-        fadingPlayer = null
-        waitingPrevious?.let(::releasePlayer)
+        fadingTune?.let(::releaseTune)
+        fadingTune = null
+        waitingPrevious?.let(::releaseTune)
         waitingPrevious = null
         startHeld = false
-        val player = bgmPlayer ?: return
-        bgmPlayer = null
+        val tune = bgmTune ?: return
+        bgmTune = null
         bgmPrepared = false
-        releasePlayer(player)
+        releaseTune(tune)
     }
 
     override fun setBgmVolume(volume: Float) {
@@ -521,7 +621,7 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     }
 
     override fun duckBgm(duckedVolume: Float, restoreVolume: Float, holdMillis: Long) {
-        if (bgmPlayer == null || !bgmPrepared) return
+        if (bgmTune == null || !bgmPrepared) return
         handler.removeCallbacksAndMessages(duckToken)
         applyBgmVolume(duckedVolume)
         duckEndUptime = max(duckEndUptime, SystemClock.uptimeMillis() + holdMillis)
@@ -542,9 +642,10 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     }
 
     private fun applyBgmVolume(volume: Float) {
-        // A player still being prepared may not be touched; it gets its volume once ready.
+        // A tune still being prepared may not be touched; it gets its volume once ready. Both the
+        // intro and the loop waiting behind it are set, so the hand-over keeps the level.
         if (!bgmPrepared) return
-        runCatching { bgmPlayer?.setVolume(volume, volume) }
+        bgmTune?.setVolume(volume)
     }
 
     override fun release() {
@@ -554,6 +655,8 @@ private class AndroidAudioEngine(private val context: Context) : AudioEngine {
     }
 
     private companion object {
+        const val TAG = "AudioManager"
+
         /** How many effects may overlap before the oldest is cut off. */
         const val MAX_STREAMS = 6
 

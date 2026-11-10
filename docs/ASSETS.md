@@ -19,7 +19,7 @@
 | `app/src/main/res/drawable/soil_revived.png` | 耕した土（#78。畝の無い、ほぐれた土）の板（#57。#61 から荒れ地と畑の**あいだの段階**。#57〜#60 はたい肥入りの畑に使っていた） | 受け取ったまま（1024×1024、白背景）。`GroundSlab.REVIVED`、`TerrainTextures.broken` |
 | `app/src/main/res/drawable-nodpi/icon_<作物>.png`（作物 20 種すべて） | 持ち物・ショップのアイコン（#57、ミントは #62、コスモスは #63、スイカは #65、スノードロップは #66、ラベンダーは #67、しいたけは #68、ポインセチアは #69、チューリップ・ひまわり・バラ・パプリカ・大根は #72） | `tools/prepare_drawable_art.py` が原画から切り抜き、256×256 に |
 | `app/src/main/res/drawable/pond.png` | 池（`deco_pond`） | `tools/source_art/pond.png` をそのままコピー（1536×768）。上面の位置は `GroundSlab.POND` |
-| `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）、効果音 8 個（mp3） | 外部で用意されたもの |
+| `app/src/main/res/raw/` | BGM 5 曲（タイトル・春・夏・秋・冬）。1 曲がイントロ `bgm_x_intro.ogg` とループ `bgm_x.ogg` の 2 ファイル（Ogg Vorbis）。効果音 8 個（mp3） | BGM は Suno Pro（下の「音」）。効果音は外部で用意されたもの |
 
 ### スプライトの内訳
 
@@ -354,20 +354,34 @@ python tools/prepare_water_art.py --preview <確認用フォルダ>
 
 ## 音
 
-- `bgm_title.mp3`・`bgm_summer.mp3`（#36 で追加）、`bgm_autumn.mp3`・`bgm_winter.mp3`（#37 で追加）、`bgm_spring.mp3`（#35 で `bgm_garden.mp3` から改名）、`se_{water,fertilize,plant,harvest,coin,level_up,error,tap}.mp3`。
-- BGM の名前は `bgm_title` `bgm_spring` `bgm_summer` `bgm_autumn` `bgm_winter` の 5 つ（`BgmTrack`）。5 曲ともそろっている（#37）。どれかが欠けたときは春の曲で鳴る。
-  ループ再生なので、曲の頭と終わりが継ぎ目なくつながるように書き出すこと。音量は春の曲に揃える（`tools/measure_audio.py`）。
-  実測（#37、`tools/measure_audio.py`。すべて 48kHz ステレオの mp3）：
+- BGM（2026-11-10 に Suno Pro 版へ差し替え）：`bgm_{title,spring,summer,autumn,winter}_intro.ogg`（イントロ）と `bgm_{title,spring,summer,autumn,winter}.ogg`（ループ）の 10 ファイル。
+  効果音：`se_{water,fertilize,plant,harvest,coin,level_up,error,tap}.mp3`。
+- BGM の名前は `bgm_title` `bgm_spring` `bgm_summer` `bgm_autumn` `bgm_winter` の 5 つ（`BgmTrack`）、イントロはそれぞれに `_intro` を付けた名前。どれかが欠けたときは春の曲で鳴る。
+  **曲は必ず元の曲の頭（WAV の 0 秒目）から始まり、ループ終点まで進んだらループ始点に戻ってくり返す**：
 
-  | 曲 | 長さ | ピーク | 全体の RMS | いちばん大きい 400ms |
+  ```
+  [ bgm_x_intro.ogg ]→[ bgm_x.ogg ]→[ bgm_x.ogg ]→ …
+    WAV 0 s 〜 始点       始点 〜 終点（くり返し）
+  ```
+
+  - イントロの最後のサンプルの次が、ループの最初のサンプルにそのままつながるように切ってある（すき間・重なり無し）。
+  - ループの最後の 1.0 秒は、元の曲の「終点直前」と「始点直前」を等パワーでクロスフェードしてある。ループの末尾から先頭へ戻っても音がそのまま続く。
+  - 終盤の「収束していく部分」は使わない。ループ位置は拍と和音（クロマ）がそろう所を自動で探した。
+  - 音量は 2 ファイルを同じ倍率で調整（イントロとループで段差なし）。5 曲とも約 -15 LUFS（タイトルはピーク -1 dBFS に抑えた）。以前の mp3（約 -14.3 LUFS、ピークが 0 dBFS を超えて割れていた）より 0.5〜1 dB 小さい。
+  - 形式は Ogg Vorbis（品質 5、48 kHz ステレオ）。mp3 は継ぎ目に無音のすき間が入るため使わない。タグ・C2PA は入っていない。
+  - 加工はチャット側の Claude が行った（2026-11-10）。
+
+  | 曲 | 元の長さ | イントロ（0 s〜始点） | ループ（始点〜終点） | ループの長さ |
   |---|---|---|---|---|
-  | タイトル `bgm_title` | 3:08 | -0.9 | -17.1 | -13.2 |
-  | 春 `bgm_spring` | 3:05 | -0.1 | -17.9 | -14.6 |
-  | 夏 `bgm_summer` | 3:07 | -0.2 | -16.8 | -13.5 |
-  | 秋 `bgm_autumn` | 2:40 | -0.1 | -16.9 | -13.6 |
-  | 冬 `bgm_winter` | 2:45 | -0.4 | -16.9 | -13.3 |
+  | タイトル | 2:40 | 0〜12.14 s | 12.14〜129.65 s | 1:57.5 |
+  | 春 | 2:31.6 | 0〜20.13 s | 20.13〜125.12 s | 1:45.0 |
+  | 夏 | 2:15.9 | 0〜19.06 s | 19.06〜108.27 s | 1:29.2 |
+  | 秋 | 2:12.0 | 0〜3.99 s | 3.99〜115.44 s | 1:51.4 |
+  | 冬 | 1:30.0 | 0〜7.15 s | 7.15〜72.47 s | 1:05.3 |
 
-  （単位は dBFS。）全体の RMS の差は最大 1.1 dB（春がいちばん静か）で、曲ごとの音量補正はしていない。秋・冬はほかより 20〜30 秒短いが、ループ再生なので問題ない。
+- **元の WAV** は `tools/source_audio/bgm/bgm_*.wav`（5 曲、約 130MB）。Suno の C2PA 記録（作成日時・Suno の ID）が入っており、**商用利用の根拠なので加工せず・消さずに残す**。
+  `tools/source_audio/` は `.gitignore` に入れてあり、コミットしない（ユーザーの PC にだけある。同じフォルダの ogg は `res/raw` にコピーした控え）。
+- 鳴らし方（イントロ → ループのつなぎ）は `ARCHITECTURE.md` の BGM の節。
 - 名前で実行時に探す（`AudioManager`）。無くても落ちない。`res/raw/keep.xml` で削除を防いでいる。
 - 効果音は実測の音量差をもとに個別のゲインを掛けている（`tools/measure_audio.py`）。
 - `se_tap` はマスのタップ音としては使っていない（うるさいため外した）。
@@ -382,7 +396,8 @@ python tools/prepare_water_art.py --preview <確認用フォルダ>
 |---|---|---|
 | Recraft AI | 受け取った画像はすべて Recraft から書き出したもの（2026-10-24 に全画像の C2PA の来歴情報で確認。`ASSET_LEDGER.md` の「出所」） | 未記入 |
 | Google の生成 AI | 風車の本体と羽根（`building_windmill_*.jpg`）だけ、C2PA に Google の生成記録（SynthID）もある。Google で作り Recraft で書き出したもの | 未記入 |
-| その他 | 音（BGM・効果音）の出所は記録が無い。ファイルのタグから分かる手がかりは下の表（2026-11-06 に調べた） | 未記入 |
+| Suno Pro | BGM 5 曲（2026-11-10 作成。Pro 期間 2026-11-10〜2026-12-10 中に作ったので商用利用できる。クレジット表記は不要なので設定のクレジットには載せない） | 元の WAV（C2PA 付き）は `tools/source_audio/bgm/` |
+| その他 | 効果音の出所は記録が無い。ファイルのタグから分かる手がかりは下の表（2026-11-06 に調べた） | 未記入 |
 
 #### 音のファイルのタグに残っていた手がかり
 
@@ -393,7 +408,8 @@ python tools/prepare_water_art.py --preview <確認用フォルダ>
 | `se_fertilize.mp3` | アーティスト「My Recording」、題「190707_016」 | 不明（録音アプリの既定の名前。`se_plant` と同じ日の連番） |
 | `se_plant.mp3` | アーティスト「My Recording」、題「190707_017」 | 不明（同上） |
 | `se_error.mp3` `se_harvest.mp3` `se_tap.mp3` `se_water.mp3` | タグ無し。LAME 3.100 で書き出し | 不明 |
-| `bgm_*.mp3`（5 曲） | アーティスト「mocchi7」、コメント「made with suno」、suno.com の曲の URL、C2PA の記録 | Suno（AI 作曲）。曲名はタイトル Garden Peace・春 Pastoral Game Theme・夏 Summer Breeze・秋 Golden Autumn・冬 Cozy Winter Melody |
+| `bgm_*.mp3`（5 曲。2026-11-10 に削除） | アーティスト「mocchi7」、コメント「made with suno」、suno.com の曲の URL、C2PA の記録 | Suno（AI 作曲）。曲名はタイトル Garden Peace・春 Pastoral Game Theme・夏 Summer Breeze・秋 Golden Autumn・冬 Cozy Winter Melody |
+| `bgm_*.ogg` `bgm_*_intro.ogg`（いまの 10 ファイル） | タグ・C2PA なし | Suno Pro（2026-11-10 作成）。イントロ＋ループに加工済み。元の WAV は `tools/source_audio/bgm/` |
 
 リポジトリの中（コミット・docs・コード）には、どの音もどこから来たかの記録は無い（2026-10-11 の 2227e38 でまとめて追加）。
 

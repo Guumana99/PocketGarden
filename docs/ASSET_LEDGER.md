@@ -176,11 +176,11 @@
 
 ## 音
 
-すべてゲームで使っている（✅）。**出所は記録が無い**（`ASSETS.md` では「外部で用意されたもの」）。分かれば下の表に書く。
+すべてゲームで使っている（✅）。BGM は Suno Pro（2026-11-10 作り直し）。効果音の**出所は記録が無い**（`ASSETS.md` では「外部で用意されたもの」）。分かれば下の表に書く。
 
 | 種類 | ファイル | 状態 | 出所 |
 |---|---|---|---|
-| BGM | `bgm_title` `bgm_spring` `bgm_summer` `bgm_autumn` `bgm_winter`（5 曲） | ✅ | 未記録 |
+| BGM | `bgm_title` `bgm_spring` `bgm_summer` `bgm_autumn` `bgm_winter`（5 曲のループ部分）と、イントロ `bgm_title_intro` `bgm_spring_intro` `bgm_summer_intro` `bgm_autumn_intro` `bgm_winter_intro`（ogg） | ✅ | Suno Pro（2026-11-10 作成）。イントロ＋ループに加工済み。元の WAV は `tools/source_audio/bgm/`（コミットしない） |
 | 効果音 | `se_water` `se_fertilize` `se_plant` `se_harvest` `se_coin` `se_level_up` `se_error` `se_tap`（8 個。`se_tap` はマスのタップには使っていない） | ✅ | 未記録 |
 
 ## ストア掲載用
