@@ -35,7 +35,11 @@
     <string name="soil_grade_plain">🌱 ふつうの土</string>
     <string name="soil_grade_good">🌱 よい土</string>
     <string name="soil_grade_fluffy">🌱 ふかふかの土</string>
-    <string name="hint_weak">栄養がありません。ふつうの収穫はできます。\n肥料をまくと、栄養が満タンになります</string>
+    <string name="hint_weak">栄養がありません。ふつうの収穫はできます</string>
+    <!-- The line under the food bar (#fb-1110); while fertilizer fills the cell, msg_feeding instead. -->
+    <string name="food_note_plenty">栄養があると、よい実りが出やすくなります</string>
+    <string name="food_note_low">そろそろ肥料のまきどきです</string>
+    <string name="food_note_empty">肥料をまくと、また元気になります</string>
     <string name="hint_season_over">旬が過ぎました。\n次の収穫でおしまいです</string>
     <string name="hint_loose_soil">花を植えられます。\nもう一度クワを入れると畝になり、野菜も植えられます</string>
     <string name="hint_ridged_soil">どの作物も植えられます</string>
@@ -503,9 +507,9 @@
     <string name="tutorial_shop_take">もらう</string>
     <string name="tutorial_hint_plant_seed">持ち物から苗を選んで、光っている畝に植えてみよう</string>
     <string name="tutorial_hint_water">水をあげると、すくすく育つよ。\n苗をタップして、水をあげよう</string>
-    <string name="tutorial_hint_feed">肥料をまくと、土に栄養がたまって作物が元気になるよ。\nタップしてまいてみよう</string>
+    <string name="tutorial_hint_feed">肥料をまくと、土に栄養がたまるよ。\n栄養は、収穫 3 回分もつんだ。\n育つ早さは変わらないけれど、\n作物が元気でいられるよ。\nタップしてまいてみよう</string>
     <string name="tutorial_grow_title">元気になったね！</string>
-    <string name="tutorial_grow_text">肥料で土に栄養がたまって、ミントが元気になったね。\n栄養があると、ときどき「よい実り」がつくよ。\nいつもはのんびり待つところだけど、\n今回は特別に時間を進めるね。</string>
+    <string name="tutorial_grow_text">栄養がたまって、ミントが元気になったね。\n栄養があると「よい実り」が出やすくなって、\n土もだんだん、よくなっていくよ。\n栄養が減ってきたら、またまいてあげてね。\nいつもはのんびり待つところだけど、\n今回は特別に時間を進めるね。</string>
     <string name="tutorial_grow_ok">時間を進める</string>
     <string name="tutorial_hint_harvest">ミントが育ったよ！\nタップして、収穫してみよう</string>
     <string name="tutorial_thanks_title">おつかれさま！</string>
@@ -583,6 +587,8 @@
     <string name="letter_tip_creatures_body">お庭に置いたものの組み合わせや季節に誘われて、生き物たちが遊びに来ます。会えた生き物は、図鑑の「いきもの」に書き留められます。</string>
     <string name="letter_tip_greenhouse_title">🏡 温室のこと</string>
     <string name="letter_tip_greenhouse_body">温室を使うと、冬でも作物が育ちます。季節外れの種も、温室の中ならぽかぽか。レベル18になると、ショップに並びます。</string>
+    <string name="letter_tip_fertilizer_title">🌱 肥料のこつ</string>
+    <string name="letter_tip_fertilizer_body">肥料をまくと、土に栄養がたまります。栄養は、収穫 3 回分ほどもちます。収穫のときに栄養があると「よい実り」が出やすく、土も少しずつよくなっていきます。作物の育つ早さは変わらないので、あわてなくて大丈夫。栄養の棒が少なくなってきたら、それがまきどきの合図です。</string>
     <string name="letter_tip_footer">― お庭のひとくちメモ ―</string>
     <string name="letter_stock_title">🛒 ショップに新しい品が入荷しました</string>
     <string name="letter_stock_body">レベル%1$dになったお祝いに、ショップに新しい品が並びました。</string>

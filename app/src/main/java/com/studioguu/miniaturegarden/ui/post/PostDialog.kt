@@ -332,6 +332,7 @@ private fun tipText(tip: LetterTip): Pair<Int, Int> = when (tip) {
     LetterTip.STORE -> R.string.letter_tip_store_title to R.string.letter_tip_store_body
     LetterTip.CREATURES -> R.string.letter_tip_creatures_title to R.string.letter_tip_creatures_body
     LetterTip.GREENHOUSE -> R.string.letter_tip_greenhouse_title to R.string.letter_tip_greenhouse_body
+    LetterTip.FERTILIZER -> R.string.letter_tip_fertilizer_title to R.string.letter_tip_fertilizer_body
 }
 
 /** A line about how the garden looks as [season] comes. */

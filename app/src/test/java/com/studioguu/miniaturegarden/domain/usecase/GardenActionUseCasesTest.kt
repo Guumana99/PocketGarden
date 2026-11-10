@@ -225,7 +225,7 @@ class GardenActionUseCasesTest {
 
     @Test
     fun `fertilizer costs coins and is refused without them`() = runBlocking {
-        repo.profile = UserProfile(coins = 15)
+        repo.profile = UserProfile(coins = 13) // Lv.1 fertilizer: 13
         repo.put(bed(0, nutrition = 0.3f))
         repo.put(bed(1, nutrition = 0.3f))
         repo.put(tulip(growth = 0.2f, nutrition = 0.3f))

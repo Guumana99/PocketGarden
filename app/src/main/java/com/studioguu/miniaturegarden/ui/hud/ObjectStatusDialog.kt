@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.domain.model.BuildingPaint
+import com.studioguu.miniaturegarden.domain.model.FoodNote
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
@@ -141,11 +142,13 @@ fun ObjectStatusDialog(
                 // The food in its soil; a log takes none.
                 if (PlantSpecies.forObjectId(gridObject.objectId).ground.usesSoil) {
                     LevelRow(stringResource(R.string.label_nutrition), food)
+                    FoodNoteLine(gridObject, soil, food)
                 }
                 // What is left before it withers.
                 LevelRow(stringResource(R.string.label_vitality), 1f - gridObject.stressRate)
             } else if (gridObject.isSoil) {
                 LevelRow(stringResource(R.string.label_nutrition), food)
+                FoodNoteLine(gridObject, gridObject, food)
             }
             val hint = when {
                 // A log (#68) only lay on the soil: cleared away, it leaves no compost.
@@ -280,6 +283,27 @@ private fun StatusTag(status: PlantStatus) {
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
     }
+}
+
+/** The line under the food bar: what the food now means, and when fertilizer is worth giving. */
+@Composable
+private fun FoodNoteLine(gridObject: GridObject, soil: GridObject?, food: Float) {
+    // Still rising towards what the fertilizer filled it to.
+    val filling = gridObject.fedAt != 0L && food < gridObject.nutritionLevel
+    val note = Soil.foodNote(food, filling, SoilGrade.of(soil?.soilQuality ?: 0))
+    Text(
+        text = stringResource(foodNoteText(note)),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@StringRes
+internal fun foodNoteText(note: FoodNote): Int = when (note) {
+    FoodNote.FILLING -> R.string.msg_feeding
+    FoodNote.PLENTY -> R.string.food_note_plenty
+    FoodNote.LOW -> R.string.food_note_low
+    FoodNote.EMPTY -> R.string.food_note_empty
 }
 
 /**

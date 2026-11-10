@@ -948,6 +948,8 @@ class GardenViewModel @Inject constructor(
      */
     private suspend fun announceGrowthIfDue(now: Long) {
         postLetters.gardenCanGrowIfDue(now)
+        // Advice that a level brings (fertilizer at Lv.3) comes the same way.
+        postLetters.levelTipIfDue(now)
     }
 
     /** Advances every plant to the current time. Called on resume and on a timer while visible. */

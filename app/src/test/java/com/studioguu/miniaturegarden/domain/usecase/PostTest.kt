@@ -53,14 +53,14 @@ class PostTest {
         val letters = mutableListOf(welcome)
         var now = t0
         val sent = mutableListOf<LetterTip>()
-        repeat(LetterTip.entries.size + 2) {
+        repeat(LetterTip.inTurn.size + 2) {
             now += interval
             PostOffice.nextTip(letters, Season.WINTER, now)?.let {
                 letters += it
                 sent += it.tip!!
             }
         }
-        assertEquals(LetterTip.entries, sent)
+        assertEquals(LetterTip.inTurn, sent)
         // Everything has been said: nothing more comes.
         assertNull(PostOffice.nextTip(letters, Season.WINTER, now + 10 * interval))
         // Not before the interval since the last one.
