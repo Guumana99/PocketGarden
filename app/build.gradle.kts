@@ -41,6 +41,16 @@ android {
                 "proguard-rules.pro"
             )
         }
+        // The promo recorder (src/promo, promo/README.md): plays a script and writes the garden
+        // out frame by frame. Never published: only the release build goes to the store, and none
+        // of src/promo is in it. Its own id, so it sits beside the game on the same device with
+        // its own storage.
+        create("promo") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".promo"
+            versionNameSuffix = "-promo"
+            matchingFallbacks += "debug"
+        }
     }
 
     compileOptions {

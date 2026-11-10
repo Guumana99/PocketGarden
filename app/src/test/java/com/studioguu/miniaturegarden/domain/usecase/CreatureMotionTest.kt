@@ -741,4 +741,38 @@ class CreatureMotionTest {
             }
         }
     }
+
+    // --- Without a direction from outside, nothing changes (the promo build's land_on, 2026-11-08) ---
+
+    /**
+     * A fingerprint of every pose of each visit (from its text: an enum's hash code changes from
+     * run to run), taken from the routes as they were before [CreatureRoutes.plan] took a direction. The same visits planned without one must come out
+     * exactly the same.
+     */
+    @Test
+    fun `routes planned without a direction are exactly as before`() {
+        val visits = listOf(
+            visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 4)),
+            visit(VisitRule.FROG_RAIN, GridCell(5, 8)),
+            visit(VisitRule.BUTTERFLY_BLOOMS, GridCell(6, 6), host = objects.first { it.objectId == "plant_sunflower" }),
+            visit(VisitRule.DRAGONFLY_AUTUMN, GridCell(2, 1), host = objects.first { it.objectId == GridObject.RIVER_OBJECT_ID }),
+            visit(VisitRule.LADYBUG_CROPS, GridCell(8, 8), host = objects.first { it.objectId == "plant_tulip" }),
+            visit(VisitRule.BIRD_COTTAGE, GridCell(10, 3), host = objects.first { it.objectId == StructureData.COTTAGE.objectId }),
+            visit(VisitRule.BIRD_WELL, GridCell(5, 8), host = well),
+        )
+        val prints = visits.map { v ->
+            val route = CreatureRoutes.plan(v, grid)
+            var h = 17L
+            for (now in v.arrivesAt until v.leavesAt step 37L) h = h * 31 + route.poseAt(now).toString().hashCode()
+            h
+        }
+        assertEquals(GOLDEN_PRINTS, prints)
+    }
+
+    private companion object {
+        val GOLDEN_PRINTS: List<Long> = listOf(
+            5070473628252489798L, -2732014716764251317L, -5048540562903024760L, -7566325524328723953L,
+            -408090663045976775L, 4581749925029504915L, -8119653952837104962L,
+        )
+    }
 }

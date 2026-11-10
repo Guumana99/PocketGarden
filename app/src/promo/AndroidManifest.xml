@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- Promo build only (promo/README.md): records a script frame by frame. Exported so
+             that adb can start it; this build is never published. -->
+        <activity
+            android:name=".promo.PromoActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+    </application>
+
+</manifest>
