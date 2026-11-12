@@ -136,7 +136,7 @@ object GroundGarden {
 
     /** The cottage beside the windmill (`--es garden millcottage`, #fb-1111): how tall the one stands by the other. */
     fun millCottage(now: Long): List<GridObject> =
-        place(now, "struct_cottage", listOf(GridCell(3, 5))) + place(now, "struct_windmill", listOf(GridCell(6, 3)))
+        place(now, "struct_cottage", listOf(GridCell(3, 5))) + place(now, "struct_windmill", listOf(GridCell(5, 3)))
 
     /** Crops with nothing left in their soil (`--es garden feed`), to give fertilizer and watch it soak in. */
     fun hungry(now: Long): List<GridObject> {
