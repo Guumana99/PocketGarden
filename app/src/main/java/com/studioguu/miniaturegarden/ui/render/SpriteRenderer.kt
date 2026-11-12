@@ -126,6 +126,53 @@ fun DrawScope.drawTurningSprite(
     rotate(degrees, pivot) { drawSprite(atlasImage, asset, pivot, scale, flipped) }
 }
 
+/**
+ * Draws a sprite turned [degrees] clockwise about its anchor, then laid onto a wall that faces the
+ * viewer's right ([wallMatrix]): the windmill's sails, which turn in the plane of the mill's front
+ * wall rather than flat to the screen (device feedback 11/11). A turned mill's wall faces the other
+ * way, so the whole of it is mirrored, sails turning the other way round as well.
+ */
+fun DrawScope.drawSpriteOnWall(
+    pages: AtlasPages,
+    asset: AssetManifest,
+    pivot: Offset,
+    scale: Float,
+    degrees: Float,
+    flipped: Boolean = false,
+) {
+    val image = pages[asset]
+    withTransform({ transform(wallMatrix(pivot, flipped)) }) {
+        rotate(degrees, pivot) { drawSprite(image, asset, pivot, scale) }
+    }
+}
+
+/**
+ * How much narrower a thing standing flat on a wall looks than it is tall: the garden is seen from
+ * 30 degrees up and 45 degrees round, so a length along the ground shows 0.707 of itself across the
+ * screen and a height 0.866 of itself.
+ */
+const val WALL_SQUEEZE = 0.816f
+
+/** How far a line along a wall drops for each step across the screen: the ground's 2 to 1. */
+const val WALL_SLOPE = 0.5f
+
+/**
+ * The matrix that lays the picture plane onto a wall facing the viewer's right, about [pivot]:
+ * across the screen squeezed by [WALL_SQUEEZE], and rising [WALL_SLOPE] for every step to the
+ * right, as the wall's own courses do; mirrored for a wall facing left ([flipped]). Heights are kept.
+ */
+fun wallMatrix(pivot: Offset, flipped: Boolean): Matrix {
+    val across = if (flipped) -WALL_SQUEEZE else WALL_SQUEEZE
+    val drop = -WALL_SLOPE * WALL_SQUEEZE
+    return Matrix().apply {
+        // x' = across * x, y' = drop * x + y, about the pivot.
+        this[0, 0] = across
+        this[0, 1] = drop
+        this[3, 0] = pivot.x - across * pivot.x
+        this[3, 1] = -drop * pivot.x
+    }
+}
+
 // Reused between draws; all drawing happens on the main thread.
 private val shearMatrix = Matrix()
 

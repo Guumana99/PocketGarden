@@ -96,7 +96,8 @@ import com.studioguu.miniaturegarden.ui.render.RainGlint
 import com.studioguu.miniaturegarden.ui.render.GreenhouseRoof
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseGlass
 import com.studioguu.miniaturegarden.ui.render.drawGreenhouseRoof
-import com.studioguu.miniaturegarden.ui.render.drawTurningSprite
+import com.studioguu.miniaturegarden.ui.render.drawSpriteOnWall
+import com.studioguu.miniaturegarden.ui.render.wallMatrix
 import com.studioguu.miniaturegarden.ui.render.WindmillSails
 import com.studioguu.miniaturegarden.ui.render.GustAxis
 import com.studioguu.miniaturegarden.ui.render.GustFront
@@ -1045,12 +1046,10 @@ private fun submitObjects(
                     val sails = atlas[WindmillSails.SAILS_ASSET_ID]
                     val hub = sprite.attachmentAt(base.x, base.y, spriteScale, obj.isFlipped)
                     if (sails != null && hub != null) {
-                        // Mirrored with the mill, the sails turn the other way, as seen from its other side.
+                        // Turning in the plane of the mill's front wall (device feedback 11/11); mirrored
+                        // with the mill, they turn the other way, as seen from its other side.
                         val angle = WindmillSails.angleAt(ambience.windMillis, ambience.weather, obj.gridX, obj.gridY)
-                        drawTurningSprite(
-                            atlasImage, sails, Offset(hub.first, hub.second), spriteScale,
-                            if (obj.isFlipped) -angle else angle, flipped = obj.isFlipped,
-                        )
+                        drawSpriteOnWall(atlasImage, sails, Offset(hub.first, hub.second), spriteScale, angle, flipped = obj.isFlipped)
                     }
                 }
             } else if (structure != null) {
@@ -1803,9 +1802,11 @@ internal data class PreviewExtent(val left: Float, val top: Float, val right: Fl
                 val sails = if (obj.objectId == WindmillSails.MILL_OBJECT_ID) sprites(WindmillSails.SAILS_ASSET_ID) else null
                 val hub = sprite.attachmentAt(base.x, base.y, scale, obj.isFlipped)
                 if (sails != null && hub != null) {
-                    // At rest, as they stand in a preview.
+                    // At rest, as they stand in a preview, laid on the mill's front wall.
                     val sailsLeft = sails.drawLeft(hub.first, scale)
-                    reach(sailsLeft, sails.drawTop(hub.second, scale), sailsLeft + sails.drawnWidth(scale))
+                    val flat = Rect(sailsLeft, sails.drawTop(hub.second, scale), sailsLeft + sails.drawnWidth(scale), sails.drawTop(hub.second, scale) + sails.drawnHeight(scale))
+                    val onWall = wallMatrix(Offset(hub.first, hub.second), obj.isFlipped).map(flat)
+                    reach(onWall.left, onWall.top, onWall.right)
                 }
                 if (light != null && light.alpha > 0f) {
                     // The shadow: the picture above its foot laid down on the ground, sheared by the

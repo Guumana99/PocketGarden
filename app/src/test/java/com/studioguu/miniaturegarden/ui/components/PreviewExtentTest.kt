@@ -75,7 +75,7 @@ class PreviewExtentTest {
         // The hub is right of the middle; the sails sweep round it, past the patch's right corner.
         val hub = mill.attachmentAt(0f, baseY, scale, flipped = false)!!
         val reach = maxOf(sails.drawnWidth(scale), sails.drawnHeight(scale)) / 2f
-        assertTrue("sails cut off: ${extent.right}", extent.right >= hub.first + reach)
+        assertTrue("sails cut off: ${extent.right}", extent.right >= hub.first + reach * com.studioguu.miniaturegarden.ui.render.WALL_SQUEEZE)
         assertTrue("sails cut off: ${extent.top}", extent.top <= hub.second - reach)
         assertTrue(extent.right > 1f)
         // Far taller than the fixed headroom every building used to be given.
