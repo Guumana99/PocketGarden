@@ -30,7 +30,7 @@ The originals are the eleven Recraft pictures in tools/source_art/ (creature_*.p
     the middle of the body of the flying bird; the middle of the thorax of the butterfly and the
     dragonfly (the point they fly about by);
   * writes them to tools/raw_creatures/ with their anchors in tools/creature_overrides.json, and
-    packs them (asset_packer.py) into app/src/main/assets/atlas/creatures_<n>.png and
+    packs them (asset_packer.py) into art/png/assets/atlas/creatures_<n>.png and
     creatures_manifest.json: not into the crops' atlas, which is as large as an image may be.
 
 Usage:
@@ -55,7 +55,8 @@ from prepare_drawable_art import cut_out, erode
 
 RAW = TOOLS / "raw_creatures"
 OVERRIDES = TOOLS / "creature_overrides.json"
-ATLAS_DIR = TOOLS.parent / "app" / "src" / "main" / "assets" / "atlas"
+# PNG masters; tools/webp_art.py makes the app's WebP from them (#fb-1111).
+ATLAS_DIR = TOOLS.parent / "art" / "png" / "assets" / "atlas"
 
 #: Atlas pixels to the tile: a tile is 128 dp wide, 336 px on a 420 dpi screen, and the closest
 #: zoom (GardenCamera.MAX_SCALE) is 2.5 times that, about 840 px.

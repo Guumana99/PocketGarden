@@ -90,10 +90,21 @@ class CropScaleTest {
     fun `every stage of the wheat field is laid one cell wide, rows and all (#60)`() {
         val wheat = crops.getValue("plant_wheat") + "plant_wheat_withered"
         for (id in wheat) {
-            // As it was made: one cell (0.92) wide, not shrunk under the next stage's height.
-            assertEquals(id, raw.assets.first { it.assetId == id }.drawScale, drawn(id).drawScale, 1e-6f)
-            assertEquals(id, 0.92f, width(id), 0.02f)
+            // As it was made, one cell (0.92) wide, not shrunk under the next stage's height; then
+            // brought to 0.75 of that, so that it sits inside its bed (device feedback 11/11).
+            assertEquals(id, raw.assets.first { it.assetId == id }.drawScale * 0.75f, drawn(id).drawScale, 1e-6f)
+            assertEquals(id, 0.69f, width(id), 0.02f)
         }
+    }
+
+    @Test
+    fun `the daikon stands at four fifths of the size its caps leave it`() {
+        assertEquals(0.8f, CropScale.SHRINKS.getValue("plant_daikon"), 0f)
+        for (id in crops.getValue("plant_daikon") + "plant_daikon_withered") {
+            val cap = CropScale.WIDTH_CAPS.getValue("plant_daikon")
+            assertTrue(id, width(id) <= cap * 0.8f + 1e-4f)
+        }
+        assertEquals(0.8f * 0.76f, width("plant_daikon_stage3"), 0.03f)
     }
 
     @Test

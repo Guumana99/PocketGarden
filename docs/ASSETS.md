@@ -4,6 +4,22 @@
 > このファイルは、素材の置き場所・加工の手順・絵の決まりごとをまとめたもの。
 > 生成の設定とプロンプトは未記入の欄がある（[追記してほしいこと](#追記してほしいこと)）。
 
+## アプリに入る絵は WebP（#fb-1111）
+
+- アプリ（`app/src/main/res`・`app/src/main/assets/atlas`）の絵は**ロスレス WebP**。PNG は入れない（`WebpArtTest`）。
+- 元の PNG は作業用の**原本**として `art/png/` に、`app/src/main/` と同じ並びで置いてある（例：`art/png/res/drawable-nodpi/icon_mint.png`、`art/png/assets/atlas/crops_0.png`）。`art/` はアプリの外なので APK には入らない。
+- 加工の道具（`prepare_*.py`、`asset_packer.py`）は**原本（`art/png/`）に書く**。そのあと必ず次を流す：
+
+```bash
+python tools/webp_art.py           # 原本から WebP を作り直し、全部の絵を 1 画素ずつ（RGBA）原本と比べる
+python tools/webp_art.py --check   # 何も書かずに確かめるだけ
+```
+
+- `webp_art.py` は `cwebp -lossless -exact -z 9` と同じ設定（Pillow の `lossless=True, exact=True, method=6`）。`exact` で、透明な所の色も残す（縮めたときに縁ににじみが出ないように）。1 枚でも画素が違えば止まる。原本の無い WebP は消す。アトラスのマニフェストは、ページのファイル名を `.webp` にして写す（アプリ側のマニフェストを直接直さない。直すのは原本側か `atlas_overrides.json`）。
+- 全部作り直すと 15 分ほどかかる（2048px のアトラスのページが重い）。変わった原本だけ作り直す。
+- アプリは `R.drawable.*` と、マニフェストのページ名で絵を読む（拡張子を書いている所は無い）。単体テストは WebP を読めないので、絵の画素を見るテストは原本の PNG を読む（`PngMasters`）。
+- 下の表と手順に出てくる `app/src/main/.../*.png` は、いまは原本 `art/png/.../*.png` と、アプリの同名の `.webp` のこと。
+
 ## いま同梱されているもの
 
 | 置き場所 | 中身 | 作り方 |
@@ -165,7 +181,7 @@
 とんぼだけは左右反転せず、真上から見た絵を進む向きへ回す（`CreaturePose.heading`）。
 
 - **別の画像にまとめる**：作物・建物のアトラスには入れない（描く縮尺 `tileWidth` が 960px と別のため）。
-  `app/src/main/assets/atlas/creatures_0.png` と `creatures_manifest.json`（形は `assets_manifest.json` と同じ）。
+  `art/png/assets/atlas/creatures_0.png` と `creatures_manifest.json`（アプリへは `webp_art.py` で WebP に）（形は `assets_manifest.json` と同じ）。
   読み込みは `AssetRepository.readAtlas(CREATURE_MANIFEST_FILE)` → `SpriteAtlas.creatures`。名前の一覧は `TileSetDefinition.expectedCreatureSpriteIds`（アトラスと食い違うと `CodeArtTest` が落ちる）。
 - **作り方**：`python tools/prepare_creature_art.py --preview <フォルダ>`。原画（`tools/source_art/creature_*.png`）を切り抜いて `tools/raw_creatures/` に書き、
   接地点を `tools/creature_overrides.json` に書き、`asset_packer.py`（`--page-size 1024 --sheet creatures --manifest-name creatures_manifest.json`）で詰める。
@@ -220,7 +236,8 @@ Python 3.12（Pillow、numpy）。パスは `AI_WORKFLOW.md` を参照。
 
 ```bash
 # スプライトをアトラスに詰め直す（この引数の組み合わせを変えないこと）
-python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --strip-crop-soil
+python tools/asset_packer.py tools/raw_assets art/png/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --strip-crop-soil
+python tools/webp_art.py
 ```
 
 - 原画は **1 タイル 720px** の縮尺で描かれている。アトラスは 512px に縮めて軽くしている。
@@ -237,7 +254,8 @@ python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-w
 ```bash
 python tools/prepare_drawable_art.py --preview <確認用フォルダ>
 python tools/prepare_building_art.py
-python tools/asset_packer.py tools/raw_assets app/src/main/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --strip-crop-soil
+python tools/asset_packer.py tools/raw_assets art/png/assets/atlas --tile-width 512 --source-tile-width 720 --alpha-threshold 8 --overrides tools/atlas_overrides.json --strip-crop-soil
+python tools/webp_art.py
 ```
 
 - 白の切り抜き（`cut_out`）：絵の外周につながる白と薄い灰色（影）を消し、葉に囲まれた大きな真っ白のすき間も消す。輪郭の画素は白との混ざりを戻して白いふちを残さない。

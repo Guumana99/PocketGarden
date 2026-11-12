@@ -218,7 +218,7 @@ class GroundsAndRocksTest {
         val grid = GardenGrid(map, listOf(at(3, 3, LawnGrowth.OBJECT_ID), at(3, 3, "deco_bench"), at(4, 3, LawnGrowth.OBJECT_ID)))
         assertFalse(CreatureRoutes.canWalk(Creature.SQUIRREL, grid, 3, 3))
         assertTrue(CreatureRoutes.canWalk(Creature.SQUIRREL, grid, 4, 3))
-        assertEquals(ActionResult.TILE_OCCUPIED, grid.fits(PlantSpecies.TULIP.objectId, 3, 3))
+        assertEquals(ActionResult.NO_ROOM_TO_PLANT, grid.fits(PlantSpecies.TULIP.objectId, 3, 3))
     }
 
     @Test

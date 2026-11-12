@@ -143,6 +143,15 @@ object EdgeSnow {
     /** The lit top of a heap. */
     private val SNOW_LIGHT = Color(0xFFFFFFFF)
 
+    /** How much of the roof a solid cover hides: the rows of tiles only just show through (device feedback 11/11). */
+    const val SOLID_ALPHA = 0.95f
+
+    /** A solid cover's eave: white going a little blue-grey in its own shade, not the see-through grey. */
+    private val SOLID_EAVE = Color(0xFFDCE4F0)
+
+    /** The roofs whose snow lies as a solid cover. */
+    val SOLID_ROOFS = setOf(StructureData.COTTAGE.objectId)
+
     /**
      * How thick a heap of snow is at its fullest, in tile widths (#fb-1110: it read as a thin white
      * line before; now it has body, a lumpy top, rounded ends and a shadow under it).
@@ -163,8 +172,11 @@ object EdgeSnow {
     /**
      * Snow over the whole of each roof face in [faces] (#fb-1110: the well's near face had none):
      * a soft white cover, lighter at the top and blue-grey towards the eave, thicker as it lies.
+     * A [solid] cover (the cottage's, device feedback 11/11: its red tiles showed through pink, like a
+     * sheet laid over them) lets only a trace of the roof under it through, enough to make out the
+     * rows of tiles; the others stay as they were.
      */
-    fun DrawScope.drawRoofSnow(base: Offset, unit: Float, faces: List<Line>, depth: Float) {
+    fun DrawScope.drawRoofSnow(base: Offset, unit: Float, faces: List<Line>, depth: Float, solid: Boolean = false) {
         if (depth <= 0f) return
         for (face in faces) {
             if (face.points.size < 3) continue
@@ -178,12 +190,21 @@ object EdgeSnow {
             val bottom = points.maxOf { it.y }
             drawPath(
                 path,
-                Brush.verticalGradient(
-                    0f to SNOW.copy(alpha = 0.92f * depth),
-                    0.7f to SNOW.copy(alpha = 0.86f * depth),
-                    1f to SNOW_SHADE.copy(alpha = 0.55f * depth),
-                    startY = top, endY = bottom,
-                ),
+                if (solid) {
+                    Brush.verticalGradient(
+                        0f to SNOW.copy(alpha = SOLID_ALPHA * depth),
+                        0.7f to SNOW.copy(alpha = SOLID_ALPHA * depth),
+                        1f to SOLID_EAVE.copy(alpha = SOLID_ALPHA * depth),
+                        startY = top, endY = bottom,
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        0f to SNOW.copy(alpha = 0.92f * depth),
+                        0.7f to SNOW.copy(alpha = 0.86f * depth),
+                        1f to SNOW_SHADE.copy(alpha = 0.55f * depth),
+                        startY = top, endY = bottom,
+                    )
+                },
             )
         }
     }

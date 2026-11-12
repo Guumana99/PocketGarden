@@ -18,7 +18,7 @@ import org.junit.Test
 class FertilizerAdviceTest {
 
     private val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
-    private val strings = File(main, "res/values/strings.xml").readText()
+    private val strings = File(main, "res/values/strings.xml").readText().replace("\u2060", "")
     private fun string(name: String) = Regex("<string name=\"$name\">(.*?)</string>").find(strings)!!.groupValues[1]
 
     @Test
@@ -59,7 +59,7 @@ class FertilizerAdviceTest {
         val tutorial = string("tutorial_hint_feed") + string("tutorial_grow_text")
         val letter = string("letter_tip_fertilizer_body")
         for (said in listOf(tutorial, letter)) {
-            assertTrue(said, said.contains("収穫 3 回分"))
+            assertTrue(said, said.contains("収穫\u00A03\u00A0回分"))
             assertTrue(said, said.contains("よい実り"))
             assertTrue(said, said.contains("土も"))
             assertTrue(said, said.contains("早さは変わらない"))

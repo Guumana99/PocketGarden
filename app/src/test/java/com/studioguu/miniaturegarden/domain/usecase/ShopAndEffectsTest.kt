@@ -133,7 +133,7 @@ class ShopAndEffectsTest {
         assertEquals(ActionResult.TILE_OCCUPIED, place(0, 2, 2, t0))       // no second deck under it
         assertEquals(ActionResult.SUCCESS, place(0, 3, 2, t0))
         assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(2, 3, 2, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, HoeUseCase(repo, GardenMap.DEFAULT)(3, 2, t0))
+        assertEquals(ActionResult.CANNOT_TILL, HoeUseCase(repo, GardenMap.DEFAULT)(3, 2, t0))
     }
 
     // --- Prices and unlocks ---

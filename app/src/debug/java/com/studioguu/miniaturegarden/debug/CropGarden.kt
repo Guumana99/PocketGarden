@@ -63,3 +63,33 @@ object RoseGarden {
         return beds + plants
     }
 }
+
+/**
+ * Every crop fully grown, side by side on its own ground (`--es garden lineup`, #fb-1111): flowers
+ * on tilled earth, vegetables on ridges, the shiitake's log on the bare ground; a bench and the
+ * cottage at the same scale, to see how big each crop stands next to them.
+ *
+ *     y\x 0 1 2 3 4 5 6 7 8 9 10
+ *      1  . . . . C C . . . . .      the cottage (2 by 2), behind the crops
+ *      2  . B . . C C . . . . .      a bench
+ *      5  . c c c c c c c c c c      the first ten crops, in their order
+ *      6  . c c c c c c c c c c      the rest
+ */
+object CropLineup {
+    fun objects(now: Long): List<GridObject> {
+        fun at(x: Int, y: Int, objectId: String) = GridObject(
+            instanceId = "cl_${objectId}_${x}_$y", gridX = x, gridY = y, objectId = objectId, lastUpdatedTimestamp = now,
+        )
+        val plants = PlantSpecies.entries.mapIndexed { i, species ->
+            at(1 + i % 10, 5 + i / 10, species.objectId).copy(growthProgress = 1f)
+        }
+        val beds = plants.mapNotNull {
+            when (PlantSpecies.forObjectId(it.objectId).ground) {
+                PlantGround.FLOWER_BED -> at(it.gridX, it.gridY, GridObject.LOOSE_SOIL_OBJECT_ID)
+                PlantGround.LOG -> null
+                else -> at(it.gridX, it.gridY, GridObject.TILLED_SOIL_OBJECT_ID)
+            }
+        }
+        return beds + plants + at(1, 2, "deco_bench") + at(4, 1, "struct_cottage")
+    }
+}

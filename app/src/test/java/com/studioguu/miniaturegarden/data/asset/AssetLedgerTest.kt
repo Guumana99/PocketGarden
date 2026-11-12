@@ -117,7 +117,7 @@ class AssetLedgerTest {
             val hasPicture = labels.contains("GardenItem.${seed.name} -> R.drawable.icon_")
             val mark = markOf(iconCell(cropRows.getValue(species.objectId)))
             assertEquals("${species.objectId} icon", if (hasPicture) ADOPTED else CODE, mark)
-            val file = File(main, "res/drawable-nodpi/icon_${species.objectId.removePrefix("plant_")}.png")
+            val file = File(main, "res/drawable-nodpi/icon_${species.objectId.removePrefix("plant_")}.webp")
             if (hasPicture) assertTrue("${file.name} is missing", file.isFile)
         }
     }

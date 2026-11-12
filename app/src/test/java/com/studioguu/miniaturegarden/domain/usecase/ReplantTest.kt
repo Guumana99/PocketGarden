@@ -91,8 +91,8 @@ class ReplantTest {
 
         assertEquals(ActionResult.NEEDS_RIDGE, replant(2, 2)) // A vegetable on tilled earth.
         assertEquals(ActionResult.NEEDS_RIDGE, replant(3, 3)) // On bare ground.
-        assertEquals(ActionResult.TILE_OCCUPIED, replant(4, 4))
-        assertEquals(ActionResult.TILE_OCCUPIED, replant(5, 5))
+        assertEquals(ActionResult.NO_ROOM_TO_PLANT, replant(4, 4))
+        assertEquals(ActionResult.NO_ROOM_TO_PLANT, replant(5, 5))
         assertEquals(ActionResult.OUT_OF_BOUNDS, replant(-1, 0))
         assertEquals(GridCell(1, 1), repo.objects.getValue("plant").let { GridCell(it.gridX, it.gridY) })
 

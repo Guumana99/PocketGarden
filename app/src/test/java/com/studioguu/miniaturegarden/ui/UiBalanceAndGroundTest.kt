@@ -91,7 +91,7 @@ class UiBalanceAndGroundTest {
     @Test
     fun `hard ground makes no sound`() {
         val act = source("ui/GardenViewModel.kt").substringAfter("private fun act(").substringBefore("actionResultMessage(result)")
-        assertTrue(act.contains("ActionResult.HOE_STRUCK -> Unit"))
+        assertTrue(act.contains("ActionResult.HOE_STRUCK, ActionResult.ALREADY_TILLED -> Unit"))
         assertFalse(act.contains("HOE_STRUCK -> audio.play"))
     }
 
@@ -230,7 +230,7 @@ class UiBalanceAndGroundTest {
     @Test
     fun `a bed is turned earth, darker than the wasteland round it`() {
         fun faceLuminance(name: String, slab: GroundSlab): Double {
-            val image = TestPng.read(File(main, "res/drawable/$name.png"))
+            val image = TestPng.read(File(main, "res/drawable/$name.webp"))
             val cx = (slab.anchorX * image.width).toInt()
             val cy = (slab.anchorY * image.height).toInt()
             var sum = 0.0

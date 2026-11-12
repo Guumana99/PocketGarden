@@ -79,8 +79,9 @@ from prepare_building_art import (
 )
 
 ROOT = SOURCE.parent.parent
-ICONS = ROOT / "app" / "src" / "main" / "res" / "drawable-nodpi"
-GROUND = ROOT / "app" / "src" / "main" / "res" / "drawable"
+# PNG masters; tools/webp_art.py makes the app's WebP from them (#fb-1111).
+ICONS = ROOT / "art" / "png" / "res" / "drawable-nodpi"
+GROUND = ROOT / "art" / "png" / "res" / "drawable"
 
 #: Pixels a side of an icon in the bag: about three times its size on a phone.
 ICON_SIZE = 256

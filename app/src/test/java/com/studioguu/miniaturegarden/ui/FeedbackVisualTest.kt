@@ -161,7 +161,7 @@ class FeedbackVisualTest {
         for (item in GardenItem.entries.filter { it.inShop }) {
             val line = Regex("GardenItem\\.${item.name} -> R\\.drawable\\.(icon_[a-z_]+)").find(labels)
             assertTrue("${item.name} has no picture", line != null)
-            assertTrue(line!!.groupValues[1], File(main, "res/drawable-nodpi/${line.groupValues[1]}.png").isFile)
+            assertTrue(line!!.groupValues[1], File(main, "res/drawable-nodpi/${line.groupValues[1]}.webp").isFile)
         }
     }
 

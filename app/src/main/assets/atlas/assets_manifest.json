@@ -3,27 +3,27 @@
   "tileWidth": 512,
   "pages": [
     {
-      "file": "crops_0.png",
+      "file": "crops_0.webp",
       "width": 2021,
       "height": 2047
     },
     {
-      "file": "crops_1.png",
+      "file": "crops_1.webp",
       "width": 2040,
       "height": 2015
     },
     {
-      "file": "crops_2.png",
+      "file": "crops_2.webp",
       "width": 1973,
       "height": 761
     },
     {
-      "file": "world_0.png",
+      "file": "world_0.webp",
       "width": 2040,
       "height": 2018
     },
     {
-      "file": "world_1.png",
+      "file": "world_1.webp",
       "width": 2001,
       "height": 742
     }

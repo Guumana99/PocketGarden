@@ -381,7 +381,7 @@ class GardenActionUseCasesTest {
         repo.putSlot(InventorySlot(1))
         repo.putSlot(InventorySlot(2, "mystery_item", 5))
 
-        assertEquals(ActionResult.TILE_OCCUPIED, place(0, 4, 4, t0))
+        assertEquals(ActionResult.NO_ROOM_TO_PLANT, place(0, 4, 4, t0))
         assertEquals(ActionResult.OUT_OF_BOUNDS, place(0, GridObject.GRID_SIZE, 0, t0))
         assertEquals(ActionResult.OUT_OF_BOUNDS, place(0, 0, -1, t0))
         assertEquals(ActionResult.SLOT_EMPTY, place(1, 0, 0, t0))
@@ -502,7 +502,7 @@ class GardenActionUseCasesTest {
         place(0, 4, 4, t0)
 
         for ((x, y) in listOf(4 to 4, 5 to 4, 4 to 5, 5 to 5)) {
-            assertEquals(ActionResult.TILE_OCCUPIED, place(1, x, y, t0))
+            assertEquals(ActionResult.NO_ROOM_TO_PLANT, place(1, x, y, t0))
         }
         repo.till(6, 4)
         assertEquals(ActionResult.SUCCESS, place(1, 6, 4, t0))

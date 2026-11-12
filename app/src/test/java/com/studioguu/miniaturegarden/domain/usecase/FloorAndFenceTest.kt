@@ -121,7 +121,7 @@ class FloorAndFenceTest {
         assertEquals(ActionResult.SUCCESS, place(1, 0, 4, t0)) // fence on the first stone
         // A seed needs tilled soil, and a paved cell cannot be tilled.
         assertEquals(ActionResult.NEEDS_TILLED_SOIL, place(2, 2, 4, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, HoeUseCase(repo, GardenMap.DEFAULT)(2, 4, t0))
+        assertEquals(ActionResult.CANNOT_TILL, HoeUseCase(repo, GardenMap.DEFAULT)(2, 4, t0))
 
         val grid = GardenGrid(GardenMap.DEFAULT, repo.getGridObjects())
         assertEquals(4, repo.objects.size)

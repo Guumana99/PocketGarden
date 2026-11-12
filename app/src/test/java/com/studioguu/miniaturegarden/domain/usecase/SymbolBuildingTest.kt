@@ -176,7 +176,7 @@ class SymbolBuildingTest {
         val hoe = HoeUseCase(repo, storedMap)
         assertEquals(ActionResult.SUCCESS, hoe.till(0, 10, t0))
         assertEquals(ActionResult.SUCCESS, hoe.till(10, 0, t0))
-        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(11, 0, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(11, 0, t0))
     }
 
     @Test

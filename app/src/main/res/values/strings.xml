@@ -6,7 +6,7 @@
     <string name="status_level">Lv.%1$d</string>
     <string name="status_level_max">Lv.%1$d　MAX</string>
     <string name="weather_title">お天気</string>
-    <string name="level_info_xp">経験値 %1$d / %2$d（%3$d％）</string>
+    <string name="level_info_xp">経験値 %1$d / %2$d（%3$d％）</string>
     <string name="level_info_next_one">次の Lv で %1$s が手に入ります</string>
     <string name="level_info_next_two">次の Lv で %1$s と %2$s が手に入ります</string>
     <string name="level_info_next_many">次の Lv で %1$s や %2$s などが手に入ります</string>
@@ -136,7 +136,7 @@
     <string name="remove_text_returnable">持ち物に戻すと、後でまた置けます。\n撤去すると元に戻せません。</string>
     <string name="remove_text_withered">抜いた株はたい⁠肥になって、土の栄養になります</string>
     <string name="remove_text_withered_log">原木はたい⁠肥にはなりません。</string>
-    <string name="remove_text_soil">1 つ前の地面に戻します。</string>
+    <string name="remove_text_soil">1 つ前の地面に戻します。</string>
     <string name="remove_store">🎒 持ち物に戻す</string>
     <string name="remove_discard">撤去する</string>
     <string name="remove_pull">抜く</string>
@@ -165,7 +165,7 @@
     <string name="msg_bridge_above">橋がかかっています。\n先に橋を片づけてください</string>
     <string name="msg_not_paintable">これは色を変えられません</string>
     <string name="msg_needs_river_across">太鼓橋は、川をまたぐように置けます</string>
-    <string name="msg_river_too_wide">川の幅は 2 マスまでです</string>
+    <string name="msg_river_too_wide">川の幅は 2 マスまでです</string>
     <string name="msg_bridge_off_the_edge">岸から岸まで届きません</string>
     <string name="msg_bridge_ends_taken">橋のたもとを空けると置けます</string>
     <string name="msg_bridge_tap_again">色の付いたマスをもう一度タップすると置けます</string>
@@ -240,12 +240,12 @@
     <!-- Shop -->
     <string name="shop_title">ショップ</string>
     <string name="shop_coins">所持コイン: %1$d</string>
-    <string name="shop_buy">%1$d で買う</string>
+    <string name="shop_buy">%1$d で買う</string>
     <string name="shop_tab_seeds">作物</string>
     <string name="shop_tab_structures">構造物</string>
     <string name="shop_tab_decorations">装飾</string>
     <string name="shop_bought">%1$s を買いました</string>
-    <string name="shop_locked">🔒 Lv.%1$d で解放</string>
+    <string name="shop_locked">🔒 Lv.%1$d で解放</string>
     <string name="shop_locked_pages">🔒 図鑑で解放</string>
 
     <!-- Action results -->
@@ -259,6 +259,8 @@
     <string name="msg_already_moist">まだ十分に潤っています（水分80%未満で水やりできます）</string>
     <string name="msg_tile_occupied">他の物があるため置けません</string>
     <string name="msg_needs_ridge">野菜は畝に植えられます。\n耕した土にもう一度クワを入れると畝になります</string>
+    <string name="msg_cannot_till">ここは耕せません</string>
+    <string name="msg_no_room_to_plant">他の物があるため植えられません</string>
     <string name="msg_no_soil">ここには肥料をまけません</string>
     <string name="msg_plant_in_spring">春になったら植えられます</string>
     <string name="msg_plant_in_summer">夏になったら植えられます</string>
@@ -366,7 +368,7 @@
     <string name="msg_bonus_used">また明日、ボーナスがもらえます</string>
     <string name="reward_bonus_confirm">臨時ボーナスを受け取りますか？\n（コインを獲得します）</string>
     <string name="reward_bonus_confirm_ok">💰 受け取る</string>
-    <string name="shop_short_by">あと %1$d コイン足りません。</string>
+    <string name="shop_short_by">あと %1$d コイン足りません。</string>
     <string name="msg_reward_cancelled">途中で終了したため、特典は付与されませんでした</string>
     <string name="msg_reward_unavailable">ただいま準備中です。\n少し待ってからお試しください</string>
     <string name="msg_reward_loading">もう少しだけお待ちください</string>
@@ -428,11 +430,11 @@
     <!-- Debug menu (debug builds only) -->
     <string name="debug_menu_title">開発者メニュー</string>
     <string name="debug_menu_hint">時間を進める・天気を変える</string>
-    <string name="debug_skip_hour">+1 時間</string>
-    <string name="debug_skip_day">+1 日</string>
+    <string name="debug_skip_hour">+1 時間</string>
+    <string name="debug_skip_day">+1 日</string>
     <string name="debug_cycle_weather">天気を切り⁠替え</string>
     <string name="debug_snow_lying">雪を降らせて積もらせる</string>
-    <string name="debug_boost">+500 コイン・Lv+1</string>
+    <string name="debug_boost">+500 コイン・Lv+1</string>
     <string name="debug_next_season">次の季節へ</string>
     <string name="debug_cycle_time">時間帯を切り⁠替える（%1$s）</string>
     <string name="debug_time_clock">端末の時計</string>
@@ -450,7 +452,7 @@
     <string name="debug_review_requested">レビューの流れを受け取りました（出すかどうかは Play が決めます）</string>
     <string name="debug_review_failed">レビューの流れを受け取れませんでした</string>
     <string name="debug_call_title">生き物を呼ぶ</string>
-    <string name="debug_call_hint">2 種まで選べます。ON の間は、季節・時間帯・天気・確率を無視して来ます。止まれる物（ことり：井戸、とんぼ・かえる：池、てんとうむし：柵、ちょうちょ：チューリップ、りす：岩）が無ければ、庭の真ん中近くに置きます</string>
+    <string name="debug_call_hint">2 種まで選べます。ON の間は、季節・時間帯・天気・確率を無視して来ます。止まれる物（ことり：井戸、とんぼ・かえる：池、てんとうむし：柵、ちょうちょ：チューリップ、りす：岩）が無ければ、庭の真ん中近くに置きます</string>
 
     <!-- Title screen -->
     <string name="title_subtitle">Pocket Garden</string>
@@ -499,29 +501,29 @@
     <string name="tutorial_welcome_title">ようこそ、ポケット庭園へ！</string>
     <string name="tutorial_welcome_text">ここは、あなただけの小さなお庭。\nまずは練習用の畑で、いっしょにミントを育ててみよう！</string>
     <string name="tutorial_welcome_ok">やってみる</string>
-    <string name="tutorial_hint_till">クワを選んで、光っているマスをトントンと 2 回たたいてみよう</string>
-    <string name="tutorial_hint_ridge">いい感じにほぐれたね！\nもう 2 回たたくと、畝ができるよ</string>
-    <string name="tutorial_hint_shop">りっぱな畝ができたね！\nお店へ行って、ミントの苗をもらってこよう。\n今回はお代はいらないよ</string>
+    <string name="tutorial_hint_till">クワを選んで、光っているマスをトントンと 2 回​たたいてみよう</string>
+    <string name="tutorial_hint_ridge">ほぐれたね！あと 2 回たたくと、畝ができるよ</string>
+    <string name="tutorial_hint_shop">りっぱな畝ができたね！お店へ行って、ミントの苗をもらってこよう。今回はお代はいらないよ</string>
     <string name="tutorial_shop_note">今回は特別に、ミントの苗をプレゼント！\n棚からどうぞ</string>
     <string name="tutorial_shop_free">無料</string>
     <string name="tutorial_shop_take">もらう</string>
     <string name="tutorial_hint_plant_seed">持ち物から苗を選んで、光っている畝に植えてみよう</string>
-    <string name="tutorial_hint_water">水をあげると、すくすく育つよ。\n苗をタップして、水をあげよう</string>
-    <string name="tutorial_hint_feed">肥料をまくと、土に栄養がたまるよ。\n栄養は、収穫 3 回分もつんだ。\n育つ早さは変わらないけれど、\n作物が元気でいられるよ。\nタップしてまいてみよう</string>
+    <string name="tutorial_hint_water">苗をタップして、水をあげよう。すくすく育つよ</string>
+    <string name="tutorial_hint_feed">肥料をまくと、土に栄養がたまるよ。栄養は、収穫 3 回分もつんだ。育つ早さは変わらないけれど、作物が元気でいられるよ。タップしてまいてみよう</string>
     <string name="tutorial_grow_title">元気になったね！</string>
-    <string name="tutorial_grow_text">栄養がたまって、ミントが元気になったね。\n栄養があると「よい実り」が出やすくなって、\n土もだんだん、よくなっていくよ。\n栄養が減ってきたら、また、まいてあげてね。\nいつもはのんびり待つところだけど、\n今回は特別に時間を進めるね。</string>
+    <string name="tutorial_grow_text">栄養がたまって、ミントが元気になったね。\n栄養があると「⁠よ⁠い⁠実⁠り⁠」が出やすくなって、\n土もだんだん、よくなっていくよ。\n栄養が減ってきたら、また、まいてあげてね。\nいつもはのんびり待つところだけど、\n今回は特別に時間を進めるね。</string>
     <string name="tutorial_grow_ok">時間を進める</string>
-    <string name="tutorial_hint_harvest">ミントが育ったよ！\nタップして、収穫してみよう</string>
+    <string name="tutorial_hint_harvest">ミントが育ったよ！タップして、収穫してみよう</string>
     <string name="tutorial_thanks_title">おつかれさま！</string>
     <string name="tutorial_thanks_text">はじめての収穫、おめでとう！\nとっても上手だったよ。\nここまでは練習だから\nお庭はもとどおりにしておくね。</string>
     <string name="tutorial_thanks_ok">お庭へ</string>
-    <string name="tip_no_food">土の栄養がなくなると、作物は少し元気をなくすよ。\n肥料をまくと元気になるよ</string>
-    <string name="tip_withered">枯れてしまった株は、編集モードで抜けるよ。\n抜くと、土の栄養になるんだ</string>
-    <string name="tip_new_page">図鑑に新しいページができたよ。\n開いて、タップしてみてね</string>
-    <string name="tip_visitor">お客さんが来ているよ！\nタップすると、自然メモに書き留められるよ</string>
+    <string name="tip_no_food">土の栄養がなくなると、作物は少し元気をなくすよ。肥料をまくと元気になるよ</string>
+    <string name="tip_withered">枯れてしまった株は、編集モードで抜けるよ。抜くと、土の栄養になるんだ</string>
+    <string name="tip_new_page">図鑑に新しいページができたよ。開いて、タップしてみてね</string>
+    <string name="tip_visitor">お客さんが来ているよ！タップすると、自然メモに書き留められるよ</string>
     <!-- The closing board. Lines are broken by hand so that no phrase is split. -->
     <string name="tutorial_done_title">🎉 いよいよ本番！</string>
-    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\nお庭に「はじめてのおくりもの」を\nおいたよ。開けてみてね。</string>
+    <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\nお庭に「⁠は⁠じ⁠め⁠て⁠の⁠お⁠く⁠り⁠も⁠の⁠」を\nおいたよ。開けてみてね。</string>
     <string name="tutorial_done_ok">お庭づくりを始める</string>
     <!-- Features handed over one by one after the first steps. -->
     <string name="reveal_title">新しい機能が使えるようになりました</string>
@@ -550,7 +552,7 @@
     <string name="shop_rocks">石</string>
     <string name="shop_fences">柵</string>
     <string name="shop_rocks_choose">えらぶ</string>
-    <string name="shop_rocks_locked">Lv.%1$d で置けます</string>
+    <string name="shop_rocks_locked">Lv.%1$d で置けます</string>
     <string name="msg_only_one_symbol">🏡 シンボル建物はお庭に一つだけです</string>
     <string name="msg_expansion_locked">まだお庭を広げられません</string>
     <string name="msg_garden_at_max_size">お庭はめいっぱいに広がっています</string>
@@ -566,7 +568,7 @@
     <string name="post_empty">まだお便りはありません</string>
     <string name="post_new">NEW</string>
     <string name="post_back">一覧へ戻る</string>
-    <string name="post_unread_count">未読のお便り：%1$d 通</string>
+    <string name="post_unread_count">未読のお便り：%1$d 通</string>
     <string name="post_all_read">お便りはすべて読みました</string>
     <string name="post_button">ポスト</string>
     <string name="letter_ending_crops">%1$sは旬が過ぎたので、次の収穫でおしまいです。</string>
@@ -582,13 +584,13 @@
     <string name="letter_tip_compost_title">🍂 たい⁠肥のこと</string>
     <string name="letter_tip_compost_body">作物を抜くと、株はたい⁠肥になって土の栄養になります。収穫を重ねた土には肥料をまいて、栄養を満たしてあげましょう。</string>
     <string name="letter_tip_store_title">📦 模様替えのこと</string>
-    <string name="letter_tip_store_body">置いた家具や建物は、「持ち物に戻す」でしまって、好きな場所に置き直せます。気分に合わせて、お庭の模様替えをしてみませんか。</string>
+    <string name="letter_tip_store_body">置いた家具や建物は、「⁠持⁠ち⁠物⁠に⁠戻⁠す⁠」でしまって、好きな場所に置き直せます。気分に合わせて、お庭の模様替えをしてみませんか。</string>
     <string name="letter_tip_creatures_title">🐦 小さなお客さまのこと</string>
-    <string name="letter_tip_creatures_body">お庭に置いたものの組み合わせや季節に誘われて、生き物たちが遊びに来ます。会えた生き物は、図鑑の「いきもの」に書き留められます。</string>
+    <string name="letter_tip_creatures_body">お庭に置いたものの組み合わせや季節に誘われて、生き物たちが遊びに来ます。会えた生き物は、図鑑の「⁠い⁠き⁠も⁠の⁠」に書き留められます。</string>
     <string name="letter_tip_greenhouse_title">🏡 温室のこと</string>
     <string name="letter_tip_greenhouse_body">温室を使うと、冬でも作物が育ちます。季節外れの種も、温室の中ならぽかぽか。レベル18になると、ショップに並びます。</string>
     <string name="letter_tip_fertilizer_title">🌱 肥料のこつ</string>
-    <string name="letter_tip_fertilizer_body">肥料をまくと、土に栄養がたまります。栄養は、収穫 3 回分ほどもちます。収穫のときに栄養があると「よい実り」が出やすく、土も少し⁠ずつよくなっていきます。作物の育つ早さは変わらないので、あわてなくて大丈夫。栄養の棒が少なくなってきたら、それがまきどきの合図です。</string>
+    <string name="letter_tip_fertilizer_body">肥料をまくと、土に栄養がたまります。栄養は、収穫 3 回分ほどもちます。収穫のときに栄養があると「⁠よ⁠い⁠実⁠り⁠」が出やすく、土も少し⁠ずつよくなっていきます。作物の育つ早さは変わらないので、あわてなくて大丈夫。栄養の棒が少なくなってきたら、それがまきどきの合図です。</string>
     <string name="letter_tip_footer">― お庭のひとくちメモ ―</string>
     <string name="letter_stock_title">🛒 ショップに新しい品が入荷しました</string>
     <string name="letter_stock_body">レベル%1$dになったお祝いに、ショップに新しい品が並びました。</string>
@@ -596,23 +598,23 @@
     <string name="letter_stock_all_year">通年</string>
     <string name="letter_stock_footer">ぜひ、のぞいてみてくださいね。</string>
     <!-- The season's letter from the second year (#fb-1110): year 5 is used, with its number, from then on. -->
-    <string name="letter_arrived_title_year">%1$s %2$d 年目の%3$sになりました</string>
-    <string name="letter_year2_spring">お庭で迎える、2 度目の春です。去年の春に咲いた花を覚えていますか。今年はどんな色が咲くでしょう。</string>
-    <string name="letter_year2_summer">2 度目の夏がやってきました。遊びに来る生き物たちとも、すっかり顔なじみになったでしょうか。</string>
-    <string name="letter_year2_autumn">2 度目の秋です。実りの季節に、図鑑のページもまた少し増えそうですね。</string>
-    <string name="letter_year2_winter">2 度目の冬を迎えました。雪の日は、屋根や柵に積もる雪をのんびり眺めてみてください。</string>
-    <string name="letter_year3_spring">3 年目の春です。お庭も少しずつ、にぎやかになってきましたね。新しい花壇を作ってみるのもいいかもしれません。</string>
-    <string name="letter_year3_summer">3 年目の夏です。井戸や風車のそばの畑は、暑い日でも土が乾き⁠に⁠くくなります。</string>
-    <string name="letter_year3_autumn">3 年目の秋です。収穫を重ねたり、ちがう作物を植えたりすると、土が少し⁠ずつふか⁠ふかに育っていきます。</string>
-    <string name="letter_year3_winter">3 年目の冬です。温室があれば、冬のあいだも作物を育てられます。ぽか⁠ぽかの温室で、春を待ちましょう。</string>
-    <string name="letter_year4_spring">4 年目の春です。いつもの花たちが、今年もお庭に戻ってきました。</string>
-    <string name="letter_year4_summer">4 年目の夏です。池や小川のまわりに、夏の生き物が遊びに来ているかもしれません。</string>
-    <string name="letter_year4_autumn">4 年目の秋です。めずらしい色のチューリップは、ふか⁠ふかの土でまれに咲くそうですよ。</string>
-    <string name="letter_year4_winter">4 年目の冬です。静かな雪の日は、お庭の模様替えにもぴったりです。</string>
-    <string name="letter_year5_spring">%1$d 年目の春です。長く手をかけてきたお庭に、今年もやさしい春が来ました。</string>
-    <string name="letter_year5_summer">%1$d 年目の夏です。お庭の緑が、これまででいちばん濃く見えます。</string>
-    <string name="letter_year5_autumn">%1$d 年目の秋です。今年も、たくさんの実りがありますように。</string>
-    <string name="letter_year5_winter">%1$d 年目の冬です。雪の下で、お庭も次の春の支度をしています。</string>
+    <string name="letter_arrived_title_year">%1$s %2$d 年目の%3$sになりました</string>
+    <string name="letter_year2_spring">お庭で迎える、2 度目の春です。去年の春に咲いた花を覚えていますか。今年はどんな色が咲くでしょう。</string>
+    <string name="letter_year2_summer">2 度目の夏がやってきました。遊びに来る生き物たちとも、すっかり顔なじみになったでしょうか。</string>
+    <string name="letter_year2_autumn">2 度目の秋です。実りの季節に、図鑑のページもまた少し増えそうですね。</string>
+    <string name="letter_year2_winter">2 度目の冬を迎えました。雪の日は、屋根や柵に積もる雪をのんびり眺めてみてください。</string>
+    <string name="letter_year3_spring">3 年目の春です。お庭も少しずつ、にぎやかになってきましたね。新しい花壇を作ってみるのもいいかもしれません。</string>
+    <string name="letter_year3_summer">3 年目の夏です。井戸や風車のそばの畑は、暑い日でも土が乾き⁠に⁠くくなります。</string>
+    <string name="letter_year3_autumn">3 年目の秋です。収穫を重ねたり、ちがう作物を植えたりすると、土が少し⁠ずつふか⁠ふかに育っていきます。</string>
+    <string name="letter_year3_winter">3 年目の冬です。温室があれば、冬のあいだも作物を育てられます。ぽか⁠ぽかの温室で、春を待ちましょう。</string>
+    <string name="letter_year4_spring">4 年目の春です。いつもの花たちが、今年もお庭に戻ってきました。</string>
+    <string name="letter_year4_summer">4 年目の夏です。池や小川のまわりに、夏の生き物が遊びに来ているかもしれません。</string>
+    <string name="letter_year4_autumn">4 年目の秋です。めずらしい色のチューリップは、ふか⁠ふかの土でまれに咲くそうですよ。</string>
+    <string name="letter_year4_winter">4 年目の冬です。静かな雪の日は、お庭の模様替えにもぴったりです。</string>
+    <string name="letter_year5_spring">%1$d 年目の春です。長く手をかけてきたお庭に、今年もやさしい春が来ました。</string>
+    <string name="letter_year5_summer">%1$d 年目の夏です。お庭の緑が、これまででいちばん濃く見えます。</string>
+    <string name="letter_year5_autumn">%1$d 年目の秋です。今年も、たくさんの実りがありますように。</string>
+    <string name="letter_year5_winter">%1$d 年目の冬です。雪の下で、お庭も次の春の支度をしています。</string>
     <string name="letter_scene_spring">柔らかな日差しに、つぼみがほころび始めました。</string>
     <string name="letter_scene_summer">まぶしい日差しに、お庭の緑がいっそう濃くなりました。</string>
     <string name="letter_scene_autumn">風が涼しくなって、葉っぱが色づき始めました。</string>
@@ -620,7 +622,7 @@
     <string name="reveal_post_name">📮 ポスト</string>
     <string name="reveal_post_text">あなたのお庭に届いたお便りが読めます。</string>
     <string name="expand_button">お庭を広げる</string>
-    <string name="expand_needs_level">Lv.%1$d で広げられます</string>
+    <string name="expand_needs_level">Lv.%1$d で広げられます</string>
     <string name="expand_confirm_title">お庭を一回り広げますか？</string>
     <string name="expand_confirm_text">🪙 %1$d\nまわりに新しい土地が加わります。\n広げたお庭は元に戻せません。</string>
     <string name="expand_price">🪙 %1$d</string>
@@ -628,7 +630,7 @@
     <string name="expand_max">✔ めいっぱい</string>
     <string name="letter_grow_title">🏡 お庭を広げられるようになりました</string>
     <string name="letter_grow_body">お庭を広げられるようになりました。
-大工の工房で「お庭を広げる」を選んでください。広げるかどうかは、お好きなときに決めて大丈夫です。
+大工の工房で「⁠お⁠庭⁠を⁠広⁠げ⁠る⁠」を選んでください。広げるかどうかは、お好きなときに決めて大丈夫です。
 広がったまわりは、芝生になります。</string>
     <string name="shop_held">所持数: %1$d個</string>
     <string name="shop_card_pages">📖 図鑑に%1$d種類登録すると、買えるようになります</string>
@@ -637,16 +639,16 @@
     <string name="notification_channel_name">お庭のようす</string>
     <string name="notification_channel_description">作物や建物のようすを、そっとお知らせします</string>
     <string name="notification_harvest">お庭の%1$sが収穫できます</string>
-    <string name="notification_harvest_many">お庭の%1$sなど %2$d つの作物が収穫できます</string>
+    <string name="notification_harvest_many">お庭の%1$sなど %2$d つの作物が収穫できます</string>
     <string name="notification_water">%1$sの土が乾いてきました。水やりができます</string>
-    <string name="notification_water_many">%1$sなど %2$d つの作物の土が乾いてきました。水やりができます</string>
+    <string name="notification_water_many">%1$sなど %2$d つの作物の土が乾いてきました。水やりができます</string>
     <string name="notification_building">%1$sが完成しました。お披露目できます</string>
-    <string name="notification_building_many">%1$sなど %2$d つの建物が完成しました。お披露目できます</string>
+    <string name="notification_building_many">%1$sなど %2$d つの建物が完成しました。お披露目できます</string>
     <string name="notification_invite_title">お庭からのお知らせ</string>
     <string name="notification_invite_text">作物が実ったときなどにお知らせしてもいい？</string>
     <string name="notification_invite_ok">はい</string>
     <string name="notification_invite_later">あとで</string>
-    <string name="notification_invite_later_note">設定の「通知」から変えられます</string>
+    <string name="notification_invite_later_note">設定の「⁠通⁠知⁠」から変えられます</string>
 
     <!-- Visitors and the nature notes -->
     <string name="creature_butterfly">ちょうちょ</string>
@@ -724,7 +726,7 @@
 
     <!-- Level-up board -->
     <string name="level_up_title">🎉 レベルが上がりました！</string>
-    <string name="level_up_level">Lv.%1$d になりました</string>
+    <string name="level_up_level">Lv.%1$d になりました</string>
     <string name="level_up_unlocked">新しいアイテムが解放されました</string>
     <string name="level_up_no_unlock">これからも、のんびりお庭を育てていきましょう</string>
     <string name="level_up_ok">OK</string>

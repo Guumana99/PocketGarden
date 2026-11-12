@@ -201,10 +201,10 @@ class BuildingArtTest {
     private val flip = FlipObjectUseCase(repo, GardenMap.DEFAULT)
 
     @Test
-    fun `the cottage, the windmill, the bench, the well, the rocks and the bridge can face either way, nothing else`() {
+    fun `the cottage, the windmill, the bench, the well, the hut, the rocks and the bridge can face either way, nothing else`() {
         assertEquals(
             listOf(
-                "struct_cottage", "struct_windmill", "deco_bench", "struct_well",
+                "struct_cottage", "struct_windmill", "deco_bench", "struct_well", "struct_hut",
                 "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles", "struct_bridge_taiko",
             ),
             GridObject.FLIPPABLE_OBJECT_IDS,
@@ -215,7 +215,7 @@ class BuildingArtTest {
             val footprint = StructureData.fromObjectId(id)?.footprint
             if (footprint != null && id != StructureData.BRIDGE.objectId) assertEquals(id, footprint.width, footprint.height)
         }
-        assertFalse(GridObject.canFaceEitherWay(StructureData.HUT.objectId))
+        assertTrue(GridObject.canFaceEitherWay(StructureData.HUT.objectId))
         assertFalse(GridObject.canFaceEitherWay("plant_tulip"))
         assertFalse(GridObject.canFaceEitherWay(GridObject.TILLED_SOIL_OBJECT_ID))
     }
@@ -249,7 +249,7 @@ class BuildingArtTest {
 
     @Test
     fun `what cannot turn round is left as it is`() = runBlocking {
-        repo.put(GridObject("h", 0, 0, objectId = StructureData.HUT.objectId, lastUpdatedTimestamp = 0L))
+        repo.put(GridObject("h", 0, 0, objectId = "deco_lantern", lastUpdatedTimestamp = 0L))
         repo.put(GridObject("p", 4, 4, objectId = "plant_tulip", lastUpdatedTimestamp = 0L))
 
         assertEquals(ActionResult.NOT_FLIPPABLE, flip("h"))

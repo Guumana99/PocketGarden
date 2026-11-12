@@ -1,0 +1,256 @@
+{
+  "version": 2,
+  "tileWidth": 960,
+  "pages": [
+    {
+      "file": "creatures_0.png",
+      "width": 1017,
+      "height": 796
+    }
+  ],
+  "assets": [
+    {
+      "assetId": "creature_bird",
+      "anchorX": 0.2937,
+      "anchorY": 1.0,
+      "width": 192,
+      "height": 175,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 2,
+      "atlasY": 472
+    },
+    {
+      "assetId": "creature_bird_fly_body",
+      "anchorX": 0.3579,
+      "anchorY": 0.4137,
+      "width": 168,
+      "height": 120,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 351,
+      "atlasY": 649
+    },
+    {
+      "assetId": "creature_bird_fly_wing_left",
+      "anchorX": 0.923,
+      "anchorY": 0.3353,
+      "width": 187,
+      "height": 59,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 679,
+      "atlasY": 649,
+      "attachX": 1.0682,
+      "attachY": 0.2367
+    },
+    {
+      "assetId": "creature_bird_fly_wing_right",
+      "anchorX": 0.1221,
+      "anchorY": 0.8327,
+      "width": 143,
+      "height": 109,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 521,
+      "atlasY": 649,
+      "attachX": -0.0271,
+      "attachY": 1.0462
+    },
+    {
+      "assetId": "creature_bird_front",
+      "anchorX": 0.4999,
+      "anchorY": 1.0,
+      "width": 100,
+      "height": 175,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 196,
+      "atlasY": 472
+    },
+    {
+      "assetId": "creature_bird_peck",
+      "anchorX": 0.3889,
+      "anchorY": 0.9819,
+      "width": 182,
+      "height": 170,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 298,
+      "atlasY": 472
+    },
+    {
+      "assetId": "creature_butterfly",
+      "anchorX": 0.499,
+      "anchorY": 0.4648,
+      "width": 192,
+      "height": 186,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 521,
+      "atlasY": 275
+    },
+    {
+      "assetId": "creature_butterfly_body",
+      "anchorX": 0.4957,
+      "anchorY": 0.2362,
+      "width": 11,
+      "height": 61,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 666,
+      "atlasY": 649
+    },
+    {
+      "assetId": "creature_butterfly_wing_left",
+      "anchorX": 0.998,
+      "anchorY": 0.4648,
+      "width": 96,
+      "height": 186,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 715,
+      "atlasY": 275,
+      "attachX": 0.998,
+      "attachY": 0.4648
+    },
+    {
+      "assetId": "creature_butterfly_wing_right",
+      "anchorX": 0.0,
+      "anchorY": 0.4648,
+      "width": 96,
+      "height": 186,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 813,
+      "atlasY": 275,
+      "attachX": 0.0,
+      "attachY": 0.4648
+    },
+    {
+      "assetId": "creature_dragonfly",
+      "anchorX": 0.4986,
+      "anchorY": 0.2318,
+      "width": 250,
+      "height": 202,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 696,
+      "atlasY": 2
+    },
+    {
+      "assetId": "creature_dragonfly_body",
+      "anchorX": 0.4946,
+      "anchorY": 0.2318,
+      "width": 67,
+      "height": 202,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 948,
+      "atlasY": 2
+    },
+    {
+      "assetId": "creature_dragonfly_wing_left",
+      "anchorX": 0.9972,
+      "anchorY": 0.2011,
+      "width": 125,
+      "height": 195,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 2,
+      "atlasY": 275,
+      "attachX": 0.9972,
+      "attachY": 0.2011
+    },
+    {
+      "assetId": "creature_dragonfly_wing_right",
+      "anchorX": 0.0,
+      "anchorY": 0.2027,
+      "width": 125,
+      "height": 195,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 129,
+      "atlasY": 275,
+      "attachX": 0.0,
+      "attachY": 0.2027
+    },
+    {
+      "assetId": "creature_frog",
+      "anchorX": 0.3978,
+      "anchorY": 0.9977,
+      "width": 192,
+      "height": 150,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 482,
+      "atlasY": 472
+    },
+    {
+      "assetId": "creature_frog_jump",
+      "anchorX": 0.2744,
+      "anchorY": 0.8603,
+      "width": 435,
+      "height": 271,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 2,
+      "atlasY": 2
+    },
+    {
+      "assetId": "creature_ladybug",
+      "anchorX": 0.4933,
+      "anchorY": 0.9999,
+      "width": 72,
+      "height": 46,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 868,
+      "atlasY": 649
+    },
+    {
+      "assetId": "creature_squirrel",
+      "anchorX": 0.1951,
+      "anchorY": 1.0,
+      "width": 174,
+      "height": 192,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 256,
+      "atlasY": 275
+    },
+    {
+      "assetId": "creature_squirrel_front",
+      "anchorX": 0.4913,
+      "anchorY": 1.0,
+      "width": 87,
+      "height": 192,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 432,
+      "atlasY": 275
+    },
+    {
+      "assetId": "creature_squirrel_run",
+      "anchorX": 0.2995,
+      "anchorY": 0.756,
+      "width": 347,
+      "height": 145,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 2,
+      "atlasY": 649
+    },
+    {
+      "assetId": "creature_squirrel_run2",
+      "anchorX": 0.4188,
+      "anchorY": 0.9986,
+      "width": 255,
+      "height": 240,
+      "isFlippedAllowed": true,
+      "page": 0,
+      "atlasX": 439,
+      "atlasY": 2
+    }
+  ]
+}

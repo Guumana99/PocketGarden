@@ -72,7 +72,7 @@ class NewArtTest {
         for (item in GardenItem.entries) {
             val line = Regex("GardenItem\\.${item.name} -> R\\.drawable\\.(\\w+)").find(pictures)
             assertNotNull("${item.name} has no picture", line)
-            assertTrue(line!!.groupValues[1], File(icons, "${line.groupValues[1]}.png").isFile)
+            assertTrue(line!!.groupValues[1], File(icons, "${line.groupValues[1]}.webp").isFile)
         }
     }
 
@@ -80,8 +80,8 @@ class NewArtTest {
     fun `the launcher icon is the box garden on the sky, in every density and both old shapes`() {
         val res = File(main, "res")
         for (density in listOf("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi")) {
-            for (name in listOf("foreground", "background", "monochrome")) assertTrue(File(res, "mipmap-$density/ic_launcher_$name.png").isFile)
-            for (name in listOf("ic_launcher", "ic_launcher_round")) assertTrue(File(res, "mipmap-$density/$name.png").isFile)
+            for (name in listOf("foreground", "background", "monochrome")) assertTrue(File(res, "mipmap-$density/ic_launcher_$name.webp").isFile)
+            for (name in listOf("ic_launcher", "ic_launcher_round")) assertTrue(File(res, "mipmap-$density/$name.webp").isFile)
         }
         for (name in listOf("ic_launcher", "ic_launcher_round")) {
             val adaptive = File(res, "mipmap-anydpi-v26/$name.xml").readText()

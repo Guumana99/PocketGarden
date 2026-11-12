@@ -117,7 +117,7 @@ class BridgeWayTest {
     fun `the words for it are short and look forward`() {
         val strings = File(main, "res/values/strings.xml").readText()
         assertTrue(strings.contains("<string name=\"msg_bridge_off_the_edge\">岸から岸まで届きません</string>"))
-        assertTrue(strings.contains("<string name=\"msg_river_too_wide\">川の幅は 2 マスまでです</string>"))
+        assertTrue(strings.contains("<string name=\"msg_river_too_wide\">川の幅は\u00A02\u00A0マスまでです</string>"))
     }
 
     @Test

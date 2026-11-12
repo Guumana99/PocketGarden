@@ -52,7 +52,7 @@ class PondAndWastelandTest {
 
     @Test
     fun `both pictures are in res drawable and are read through R drawable`() {
-        for (name in listOf("soil_wasteland", "pond")) assertTrue(name, File(main, "res/drawable/$name.png").isFile)
+        for (name in listOf("soil_wasteland", "pond")) assertTrue(name, File(main, "res/drawable/$name.webp").isFile)
         val repository = source("data/asset/AssetRepository.kt")
         // Decoded side by side (#54), each in its own job.
         assertTrue(repository.contains("decodeUnscaled(R.drawable.soil_wasteland)"))
@@ -61,7 +61,7 @@ class PondAndWastelandTest {
 
     /** The middle and width of the top face, measured off the picture's solid pixels. */
     private fun measure(name: String, darkOnly: Boolean, atCorners: Boolean = false): GroundSlab {
-        val image = TestPng.read(File(main, "res/drawable/$name.png"))
+        val image = TestPng.read(File(main, "res/drawable/$name.webp"))
         var left = Int.MAX_VALUE
         var right = -1
         val leftYs = ArrayList<Int>()
@@ -183,7 +183,7 @@ class PondAndWastelandTest {
         repo.putSlot(InventorySlot(2, GardenItem.DECO_BENCH.itemId, 1))
         assertEquals(ActionResult.TILE_OCCUPIED, place(1, 5, 5, t0))
         assertEquals(ActionResult.TILE_OCCUPIED, place(2, 5, 5, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(5, 5, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(5, 5, t0))
     }
 
     @Test

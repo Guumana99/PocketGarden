@@ -34,12 +34,12 @@ class BundledArtTest {
     @Test
     fun `the ground pictures are bundled where the code looks for them, one cell square (#74)`() {
         for (name in listOf("floor_cobblestone", "floor_wood", "ground_pebble", "ground_flowers")) {
-            val picture = Picture.read(File(main, "res/drawable-nodpi/$name.png"))
+            val picture = Picture.read(File(main, "res/drawable-nodpi/$name.webp"))
             assertEquals(name, 512, picture.width)
             assertEquals(name, 512, picture.height)
         }
         // The illustrated paving it replaced is no longer bundled.
-        assertFalse(File(main, "res/drawable-nodpi/tile_path_cobblestone.png").exists())
+        assertFalse(File(main, "res/drawable-nodpi/tile_path_cobblestone.webp").exists())
         // The old location is gone: nothing reads from assets/tiles any more.
         assertFalse(File(main, "assets/tiles").exists())
     }
@@ -90,7 +90,7 @@ class BundledArtTest {
         }
         val creatures = AtlasManifest.parse(File(main, "assets/atlas/creatures_manifest.json").readText())
         val listed = (manifest.pages + creatures.pages).map { it.file }.toSet()
-        val bundled = File(main, "assets/atlas").listFiles()!!.filter { it.extension == "png" }.map { it.name }.toSet()
+        val bundled = File(main, "assets/atlas").listFiles()!!.filter { it.extension == "webp" }.map { it.name }.toSet()
         assertEquals(listed, bundled)
     }
 
@@ -116,13 +116,13 @@ class BundledArtTest {
         assertFalse(manifest.assets.any { it.assetId == "plant_poinsettia_stage4" })
         val stages = ids.dropLast(1).map { id -> manifest.assets.single { it.assetId == id } }
         stages.zipWithNext { a, b -> assertTrue("${a.assetId} -> ${b.assetId}", a.width < b.width && a.height < b.height) }
-        assertTrue(File(main, "res/drawable-nodpi/icon_poinsettia.png").isFile)
+        assertTrue(File(main, "res/drawable-nodpi/icon_poinsettia.webp").isFile)
     }
 
     @Test
     fun `every crop has an icon picture, cut out of its background (#72)`() {
         for (species in PlantSpecies.entries.filter(::onSale)) {
-            val file = File(main, "res/drawable-nodpi/icon_${species.objectId.removePrefix("plant_")}.png")
+            val file = File(main, "res/drawable-nodpi/icon_${species.objectId.removePrefix("plant_")}.webp")
             assertTrue("${file.name} is missing", file.isFile)
             val icon = TestPng.read(file)
             assertEquals(file.name, 256, icon.width)
@@ -130,7 +130,7 @@ class BundledArtTest {
             for ((x, y) in listOf(0 to 0, 255 to 0, 0 to 255, 255 to 255)) assertEquals("${file.name} corner", 0, icon.alpha(x, y))
         }
         // The daikon's white root survives the cut (#72: the usual cut left about 470 of these).
-        val daikon = TestPng.read(File(main, "res/drawable-nodpi/icon_daikon.png"))
+        val daikon = TestPng.read(File(main, "res/drawable-nodpi/icon_daikon.webp"))
         val white = (0 until 256).sumOf { y -> (0 until 256).count { x -> daikon.alpha(x, y) > 200 && daikon.luminance(x, y) > 200 } }
         assertTrue("$white", white > 1200)
     }
@@ -142,7 +142,7 @@ class BundledArtTest {
             "struct_hut", "struct_well", "deco_rock", "deco_bench", "deco_lantern", "deco_sprinkler",
             "ground_pebble", "ground_flowers", "floor_wood", "floor_cobblestone",
         )) {
-            val file = File(main, "res/drawable-nodpi/icon_$id.png")
+            val file = File(main, "res/drawable-nodpi/icon_$id.webp")
             assertTrue("${file.name} is missing", file.isFile)
             val icon = TestPng.read(file)
             assertEquals(file.name, 256, icon.width)
@@ -162,7 +162,7 @@ class BundledArtTest {
         for (w in widths) assertTrue("$w", w in 0.49f..0.55f)
         assertTrue("$widths", widths.max() - widths.min() < 0.02f)
         for (id in ids) assertTrue(id, manifest.assets.single { it.assetId == id }.anchorY >= 0.99f)
-        assertTrue(File(main, "res/drawable-nodpi/icon_shiitake.png").isFile)
+        assertTrue(File(main, "res/drawable-nodpi/icon_shiitake.webp").isFile)
     }
 
     @Test
@@ -174,7 +174,7 @@ class BundledArtTest {
         assertFalse(manifest.assets.any { it.assetId == "plant_lavender_stage4" })
         val stages = ids.dropLast(1).map { id -> manifest.assets.single { it.assetId == id } }
         stages.zipWithNext { a, b -> assertTrue("${a.assetId} -> ${b.assetId}", a.width < b.width && a.height < b.height) }
-        assertTrue(File(main, "res/drawable-nodpi/icon_lavender.png").isFile)
+        assertTrue(File(main, "res/drawable-nodpi/icon_lavender.webp").isFile)
     }
 
     @Test
@@ -190,7 +190,7 @@ class BundledArtTest {
         for (sprite in sprites.takeLast(2)) {
             assertTrue(sprite.assetId, sprite.width * sprite.drawScale <= manifest.tileWidth * 0.86f)
         }
-        assertTrue(File(main, "res/drawable-nodpi/icon_watermelon.png").isFile)
+        assertTrue(File(main, "res/drawable-nodpi/icon_watermelon.webp").isFile)
     }
 
     @Test
@@ -203,7 +203,7 @@ class BundledArtTest {
         val stages = ids.dropLast(1).map { id -> manifest.assets.single { it.assetId == id } }
         stages.zipWithNext { a, b -> assertTrue("${a.assetId} -> ${b.assetId}", a.width < b.width && a.height < b.height) }
         // #66: its icon, which first came as a copy of the withered picture, is the right one now.
-        assertTrue(File(main, "res/drawable-nodpi/icon_snowdrop.png").isFile)
+        assertTrue(File(main, "res/drawable-nodpi/icon_snowdrop.webp").isFile)
     }
 
     @Test
@@ -217,7 +217,7 @@ class BundledArtTest {
             GridObject("c", 1, 1, objectId = PlantSpecies.COSMOS.objectId, growthProgress = progress, lastUpdatedTimestamp = 0L)
         assertEquals("plant_cosmos_stage2", TileSetDefinition.assetIdFor(cosmos(0.9f)))
         assertEquals("plant_cosmos_stage3", TileSetDefinition.assetIdFor(cosmos(1f)))
-        assertTrue(File(main, "res/drawable-nodpi/icon_cosmos.png").isFile)
+        assertTrue(File(main, "res/drawable-nodpi/icon_cosmos.webp").isFile)
         // Each stage stands taller and wider than the one before (#62: mint's second was wider than its third).
         val stages = ids.dropLast(1).map { id -> manifest.assets.single { it.assetId == id } }
         stages.zipWithNext { a, b ->
@@ -242,7 +242,7 @@ class BundledArtTest {
         assertEquals("plant_mint_stage3", TileSetDefinition.assetIdFor(mint(1f)))
         assertEquals("plant_mint_stage3", TileSetDefinition.assetIdFor(mint(1.3f)))
         assertEquals("plant_mint_withered", TileSetDefinition.assetIdFor(mint(0.9f, PlantStatus.WITHERED)))
-        assertTrue(File(main, "res/drawable-nodpi/icon_mint.png").isFile)
+        assertTrue(File(main, "res/drawable-nodpi/icon_mint.webp").isFile)
     }
 
     @Test
@@ -323,7 +323,9 @@ private class Picture(private val image: Any) {
     }
 
     companion object {
-        fun read(file: File): Picture {
+        fun read(picture: File): Picture {
+            // The app's pictures are WebP (#fb-1111): read from their PNG masters.
+            val file = PngMasters.of(picture)
             require(file.isFile) { "$file is missing" }
             val image = Class.forName("javax.imageio.ImageIO").getMethod("read", File::class.java).invoke(null, file)
             return Picture(requireNotNull(image) { "$file could not be decoded" })

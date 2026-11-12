@@ -69,7 +69,7 @@ class EdgeSnowTest {
         assertEquals(3, EdgeSnow.linesOf(StructureData.WELL.objectId, false)!!.size)
         assertNull(EdgeSnow.facesOf(StructureData.WINDMILL.objectId, false))
         val canvas = File(listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
-        assertTrue(canvas.contains("drawRoofSnow(base, unit, faces, ambience.edgeSnow)"))
+        assertTrue(canvas.contains("drawRoofSnow(base, unit, faces, ambience.edgeSnow, solid = "))
     }
 
     @Test
@@ -94,5 +94,14 @@ class EdgeSnowTest {
         val model = read("java/com/studioguu/miniaturegarden/ui/GardenViewModel.kt")
         assertTrue(model.contains("fun debugSnowLying() {\n        if (!BuildConfig.DEBUG) return"))
         assertTrue(File(main, "res/values/strings.xml").readText().contains("debug_snow_lying"))
+    }
+
+    @Test
+    fun `only the cottage's roof wears its snow as a solid cover`() {
+        assertEquals(setOf(com.studioguu.miniaturegarden.domain.model.StructureData.COTTAGE.objectId), EdgeSnow.SOLID_ROOFS)
+        assertTrue(EdgeSnow.SOLID_ALPHA >= 0.93f && EdgeSnow.SOLID_ALPHA < 1f)
+        val main: File = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+        val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
+        assertTrue(canvas.contains("solid = obj.objectId in EdgeSnow.SOLID_ROOFS"))
     }
 }

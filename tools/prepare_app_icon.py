@@ -36,7 +36,8 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 from prepare_building_art import SOURCE, border, components, crop, dilate, reconstruct
 
 ROOT = SOURCE.parent.parent
-RES = ROOT / "app" / "src" / "main" / "res"
+# PNG masters; tools/webp_art.py makes the app's WebP from them (#fb-1111).
+RES = ROOT / "art" / "png" / "res"
 STORE = ROOT / "docs" / "store" / "icon_512.png"
 
 #: Each density's canvas sides: the adaptive layers' 108 dp and the plain icon's 48 dp.
