@@ -80,6 +80,13 @@ object CropScale {
      */
     val SIZE_SHARES = mapOf("plant_rose" to 0.8f)
 
+    /**
+     * Shares of the size each crop has after everything above, every stage, colour and the withered
+     * one alike (device feedback 11/11): the wheat filled its bed edge to edge and seemed to spill
+     * over it, the grown daikon stood large beside the bench and the cottage's door.
+     */
+    val SHRINKS = mapOf("plant_wheat" to 0.75f, "plant_daikon" to 0.8f)
+
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")
     private val WITHERED = Regex("""^plant_[a-z_]+_withered$""")
 
@@ -120,6 +127,9 @@ object CropScale {
         manifest.assets.forEach { asset ->
             val stage = COLOUR.find(asset.assetId)?.groupValues?.get(1) ?: return@forEach
             scales[asset.assetId] = scales[stage] ?: capped(asset, MAX_HEIGHT * tile, MAX_WIDTH * tile)
+        }
+        for ((plant, share) in SHRINKS) {
+            for (id in scales.keys.filter { it.startsWith(plant + "_") }) scales[id] = scales.getValue(id) * share
         }
         if (scales.isEmpty()) return manifest
         return manifest.copy(assets = manifest.assets.map { asset -> scales[asset.assetId]?.let { asset.copy(drawScale = it) } ?: asset })
