@@ -154,8 +154,9 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val wellAlone = garden == "wellalone"
         val hungry = garden == "feed"
         val hutAlone = garden == "hut"
+        val hutPair = garden == "hutpair"
         val flowerBeds = garden == "flowers"
-        val feedback = garden == "fb" || banks || perches || birdWell || wellAlone || hungry || hutAlone || flowerBeds || art || fences || bridges || crops || roses || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val feedback = garden == "fb" || banks || perches || birdWell || wellAlone || hungry || hutAlone || hutPair || flowerBeds || art || fences || bridges || crops || roses || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -175,6 +176,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     wellAlone -> GroundGarden.birdWell(now, crops = false)
                     hungry -> GroundGarden.hungry(now)
                     hutAlone -> GroundGarden.hutAlone(now)
+                    hutPair -> GroundGarden.hutPair(now)
                     flowerBeds -> GroundGarden.flowerBeds(now)
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)
