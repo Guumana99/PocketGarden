@@ -311,7 +311,7 @@ class NotificationsTest {
     @Test
     fun `"later" says where to change it, and the yes alone asks the device`() {
         val main = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
-        val strings = File(main, "res/values/strings.xml").readText()
+        val strings = File(main, "res/values/strings.xml").readText().replace("\u2060", "")
         assertTrue(strings.contains("<string name=\"notification_invite_ok\">はい</string>"))
         assertTrue(strings.contains("<string name=\"notification_invite_later\">あとで</string>"))
         assertTrue(strings.contains("<string name=\"notification_invite_later_note\">設定の「通知」から変えられます</string>"))

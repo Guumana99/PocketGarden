@@ -85,7 +85,7 @@ class SoilTest {
         assertTrue(repo.objects.values.single().isTilledSoil)
         assertEquals(tilled.instanceId, repo.objects.values.single().instanceId)
         // Nothing more to be done with the hoe: it does not go back either.
-        assertEquals(ActionResult.TILE_OCCUPIED, strike(2, 2, 1))
+        assertEquals(ActionResult.ALREADY_TILLED, strike(2, 2, 1))
         assertTrue(repo.objects.values.single().isTilledSoil)
     }
 
@@ -99,7 +99,7 @@ class SoilTest {
 
         repo.put(stored.copy(objectId = GridObject.LOOSE_SOIL_OBJECT_ID))
         repo.put(plant(PlantSpecies.TULIP, growth = 0.2f))
-        assertEquals(ActionResult.TILE_OCCUPIED, strike(2, 2, 1))
+        assertEquals(ActionResult.ALREADY_TILLED, strike(2, 2, 1))
         assertTrue(stored.isLooseSoil)
     }
 

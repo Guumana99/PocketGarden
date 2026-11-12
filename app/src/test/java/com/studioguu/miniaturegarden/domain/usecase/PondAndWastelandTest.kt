@@ -183,7 +183,7 @@ class PondAndWastelandTest {
         repo.putSlot(InventorySlot(2, GardenItem.DECO_BENCH.itemId, 1))
         assertEquals(ActionResult.TILE_OCCUPIED, place(1, 5, 5, t0))
         assertEquals(ActionResult.TILE_OCCUPIED, place(2, 5, 5, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(5, 5, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(5, 5, t0))
     }
 
     @Test

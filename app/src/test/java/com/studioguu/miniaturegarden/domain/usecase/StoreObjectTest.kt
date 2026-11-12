@@ -247,7 +247,7 @@ class StoreObjectTest {
         assertEquals("やめる", string("remove_cancel"))
         assertEquals("枯れた%1\$sを抜きますか？", string("remove_title_withered"))
         assertEquals("抜いた株はたい肥になって、土の栄養になります", string("remove_text_withered"))
-        assertEquals("1 つ前の地面に戻します。", string("remove_text_soil"))
+        assertEquals("1\u00A0つ前の地面に戻します。", string("remove_text_soil"))
         assertTrue(string("hint_withered").contains("抜くとたい肥になって、土の栄養になります"))
         // The word for throwing away is used nowhere in the app.
         assertFalse(strings.contains("破棄"))

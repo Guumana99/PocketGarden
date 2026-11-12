@@ -344,6 +344,10 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.IN_USE -> R.string.msg_in_use
     // Hard ground giving a little is told by the earth itself, in patches.
     ActionResult.HOE_STRUCK -> null
+    // The hoe on soil already worked: nothing went wrong, so nothing is said (device feedback 11/11).
+    ActionResult.ALREADY_TILLED -> null
+    ActionResult.CANNOT_TILL -> R.string.msg_cannot_till
+    ActionResult.NO_ROOM_TO_PLANT -> R.string.msg_no_room_to_plant
     ActionResult.NOT_SWITCHABLE -> R.string.msg_not_switchable
 }
 

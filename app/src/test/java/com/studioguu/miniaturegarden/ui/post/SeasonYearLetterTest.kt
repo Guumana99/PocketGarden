@@ -35,10 +35,10 @@ class SeasonYearLetterTest {
         for (year in 2..5) for (s in listOf("spring", "summer", "autumn", "winter")) {
             val text = string("letter_year${year}_$s")
             all += text
-            if (year == 5) assertTrue(text, text.startsWith("%1\$d 年目の"))
+            if (year == 5) assertTrue(text, text.startsWith("%1\$d\u00A0年目の"))
         }
         assertEquals("no two years say the same", 16, all.size)
-        assertEquals("%1\$s %2\$d 年目の%3\$sになりました", string("letter_arrived_title_year"))
+        assertEquals("%1\$s %2\$d\u00A0年目の%3\$sになりました", string("letter_arrived_title_year"))
         assertEquals(5, SeasonYears.LAST_WRITTEN_YEAR)
     }
 }

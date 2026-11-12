@@ -139,7 +139,7 @@ class ShiitakeTest {
         // Outside the garden is still outside the garden; something standing there is still in the way.
         assertEquals(ActionResult.OUT_OF_BOUNDS, lay(GardenItem.SEED_SHIITAKE, -1, 0))
         repo.put(at("b", 4, 4, "deco_bench"))
-        assertEquals(ActionResult.TILE_OCCUPIED, lay(GardenItem.SEED_SHIITAKE, 4, 4))
+        assertEquals(ActionResult.NO_ROOM_TO_PLANT, lay(GardenItem.SEED_SHIITAKE, 4, 4))
     }
 
     @Test

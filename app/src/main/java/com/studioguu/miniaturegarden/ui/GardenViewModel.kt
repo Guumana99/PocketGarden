@@ -1528,7 +1528,7 @@ class GardenViewModel @Inject constructor(
                 ActionResult.SUCCESS -> onSuccess()
                 // Hard ground giving a little is not a mistake: no sound and no words, the earth
                 // coming through in patches says it.
-                ActionResult.HOE_STRUCK -> Unit
+                ActionResult.HOE_STRUCK, ActionResult.ALREADY_TILLED -> Unit
                 else -> audio.play(SoundEffect.ERROR)
             }
             actionResultMessage(result)?.let { _messages.send(it) }

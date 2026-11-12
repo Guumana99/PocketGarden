@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
+import com.studioguu.miniaturegarden.ui.theme.filledLines
 import kotlinx.coroutines.delay
 
 /** How long a toast of the given length stays up: a base time, plus reading time per character. */
@@ -129,7 +130,7 @@ fun GardenToastHost(state: GardenToastState, modifier: Modifier = Modifier) {
                 fontSize = 15.sp,
                 letterSpacing = 0.4.sp,
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium.filledLines(),
                 modifier = Modifier
                     .widthIn(max = 320.dp)
                     .shadow(elevation = 10.dp, shape = shape, ambientColor = GardenColors.WoodDark, spotColor = GardenColors.WoodDark)

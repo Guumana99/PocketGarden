@@ -76,12 +76,12 @@ class HoeTest {
         repo.put(obj("hut", 5, 5, "struct_hut"))
         val before = repo.objects.size
 
-        assertEquals(ActionResult.TILE_NOT_BUILDABLE, hoe.till(1, 1, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(2, 2, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(3, 3, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(6, 6, t0)) // any cell of the hut
-        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(GridObject.GRID_SIZE, 0, t0))
-        assertEquals(ActionResult.OUT_OF_BOUNDS, hoe.till(0, -1, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(1, 1, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(2, 2, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(3, 3, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(6, 6, t0)) // any cell of the hut
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(GridObject.GRID_SIZE, 0, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoe.till(0, -1, t0))
 
         assertEquals(before, repo.objects.size)
     }
@@ -90,7 +90,7 @@ class HoeTest {
     fun `past ridges the hoe changes nothing`() = runBlocking {
         assertEquals(ActionResult.SUCCESS, hoe.till(4, 4, t0))
         assertEquals(ActionResult.SUCCESS, hoe.till(4, 4, t0))
-        assertEquals(ActionResult.TILE_OCCUPIED, hoe.till(4, 4, t0 + 1))
+        assertEquals(ActionResult.ALREADY_TILLED, hoe.till(4, 4, t0 + 1))
         assertEquals(1, repo.objects.size)
     }
 
@@ -99,7 +99,7 @@ class HoeTest {
         val riverMap = GardenMap.parse(*Array(9) { "......~.." })
         val hoeOnRiverMap = HoeUseCase(repo, riverMap)
 
-        assertEquals(ActionResult.TILE_NOT_BUILDABLE, hoeOnRiverMap(6, 2, t0))
+        assertEquals(ActionResult.CANNOT_TILL, hoeOnRiverMap(6, 2, t0))
         assertEquals(ActionResult.SUCCESS, hoeOnRiverMap.till(5, 2, t0))
     }
 
@@ -138,7 +138,7 @@ class HoeTest {
         assertEquals(PlantSpecies.TULIP.objectId, grid().objectAt(2, 2)?.objectId)
         assertTrue(grid().isTilled(2, 2))
         // One plant per bed.
-        assertEquals(ActionResult.TILE_OCCUPIED, place(0, 2, 2, t0))
+        assertEquals(ActionResult.NO_ROOM_TO_PLANT, place(0, 2, 2, t0))
         assertEquals(1, repo.plants.size)
     }
 

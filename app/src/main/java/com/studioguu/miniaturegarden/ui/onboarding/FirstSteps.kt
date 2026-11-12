@@ -53,6 +53,7 @@ import com.studioguu.miniaturegarden.ui.components.popIn
 import com.studioguu.miniaturegarden.ui.itemDisplayName
 import com.studioguu.miniaturegarden.ui.ItemIcon
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
+import com.studioguu.miniaturegarden.ui.theme.filledLines
 
 /**
  * The popup a gift box opens into: a wooden board with a parchment inset, what it holds, and a
@@ -186,7 +187,7 @@ fun GardenTipSign(tip: GardenTip, onClose: () -> Unit, modifier: Modifier = Modi
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("\uD83D\uDCA1", fontSize = 18.sp)
-            Text(stringResource(gardenTipText(tip)), color = GardenColors.Ink, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f, fill = false))
+            Text(stringResource(gardenTipText(tip)), color = GardenColors.Ink, style = MaterialTheme.typography.bodyMedium.filledLines(), modifier = Modifier.weight(1f, fill = false))
             Text("\u00D7", color = GardenColors.InkSoft, fontSize = 18.sp)
         }
     }
@@ -348,7 +349,7 @@ fun TutorialHint(@StringRes text: Int, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("✨", fontSize = 18.sp)
-            Text(stringResource(text), color = GardenColors.Ink, style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(text), color = GardenColors.Ink, style = MaterialTheme.typography.bodyMedium.filledLines())
         }
     }
 }

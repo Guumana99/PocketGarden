@@ -84,6 +84,17 @@ private val Japanese = LocaleList("ja")
 
 private fun TextStyle.inPhrases() = copy(lineBreak = PhraseLineBreak, localeList = Japanese)
 
+/**
+ * How the text of a balloon wraps (the first steps' sign, a tip, a toast; device feedback 11/11):
+ * still at the seams between phrases, but each line filled out to the balloon's edge rather than
+ * evened out with the others, which left a wide empty strip at the right. A short last line this
+ * may leave is kept away by the wording itself (`TextAudit`'s "balloon" rows).
+ */
+val BalloonLineBreak = LineBreak(LineBreak.Strategy.HighQuality, LineBreak.Strictness.Strict, LineBreak.WordBreak.Phrase)
+
+/** [this] style, wrapped as a balloon's text is ([BalloonLineBreak]). */
+fun TextStyle.filledLines(): TextStyle = copy(lineBreak = BalloonLineBreak, localeList = Japanese)
+
 internal val GardenTypography = Typography().run {
     copy(
         displayLarge = displayLarge.inPhrases(),

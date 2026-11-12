@@ -105,6 +105,15 @@ enum class ActionResult {
     /** The garden is as large as it gets. */
     GARDEN_AT_MAX_SIZE,
 
+    /** A crop was to be planted where something else already stands. */
+    NO_ROOM_TO_PLANT,
+
+    /** The hoe went on soil already worked (ridges, or loose soil with a crop in it): said nothing of. */
+    ALREADY_TILLED,
+
+    /** The hoe went on something that is not bare ground: paving, a building, water, the edge. */
+    CANNOT_TILL,
+
     /** The first steps ask for something else just now (one cell is tilled, then the seed is sown). */
     NOT_THIS_STEP,
 
@@ -279,11 +288,13 @@ internal fun GardenGrid.fits(objectId: String, x: Int, y: Int, flipped: Boolean 
     // Something standing in the way is in the way. What only lies on the ground (a lawn,
     // pebbles, flowers, a pond) is the ground, and a crop is told where it can go instead.
     val inTheWay = check == PlacementCheck.OCCUPIED && occupantAt(x, y)?.let { it.isGroundCover || it.isPond } != true
-    if (inTheWay) return ActionResult.TILE_OCCUPIED
-    // A crop goes only on the ground it grows on ([PlantGround]).
     val species = if (objectId.startsWith(GridObject.PLANT_ID_PREFIX)) PlantSpecies.forObjectId(objectId) else null
+    // A crop is planted, not put: its refusal says so (device feedback 11/11).
+    val taken = if (species != null) ActionResult.NO_ROOM_TO_PLANT else ActionResult.TILE_OCCUPIED
+    if (inTheWay) return taken
+    // A crop goes only on the ground it grows on ([PlantGround]).
     if (species != null && !species.ground.allows(groundAt(x, y))) return wrongGround(species.ground)
-    return if (check == PlacementCheck.OCCUPIED) ActionResult.TILE_OCCUPIED else ActionResult.SUCCESS
+    return if (check == PlacementCheck.OCCUPIED) taken else ActionResult.SUCCESS
 }
 
 /** What to tell the player whose bridge was refused for [problem]. */
@@ -421,12 +432,13 @@ class HoeUseCase @Inject constructor(
             val grid = GardenGrid(gardenMap.current(), gardenRepository.getGridObjects())
             val loose = grid.floorAt(gridX, gridY)?.takeIf { it.isLooseSoil && grid.occupantAt(gridX, gridY) == null }
             if (loose == null) {
-                // Checked like terrain, which needs the whole cell to itself.
-                when (grid.checkPlacement(Footprint.SINGLE, gridX, gridY, PlacementKind.TERRAIN)) {
-                    PlacementCheck.OUT_OF_BOUNDS -> return@runInTransaction ActionResult.OUT_OF_BOUNDS
-                    PlacementCheck.NOT_BUILDABLE -> return@runInTransaction ActionResult.TILE_NOT_BUILDABLE
-                    PlacementCheck.OCCUPIED -> return@runInTransaction ActionResult.TILE_OCCUPIED
-                    PlacementCheck.OK -> Unit
+                // Soil already worked (ridges, or loose soil with a crop in it): nothing to do, and
+                // nothing to say about it (device feedback 11/11: "他の物があるため置けません" was shown).
+                val floor = grid.floorAt(gridX, gridY)
+                if (floor != null && (floor.isTilledSoil || floor.isLooseSoil)) return@runInTransaction ActionResult.ALREADY_TILLED
+                // Otherwise checked like terrain, which needs the whole cell to itself.
+                if (grid.checkPlacement(Footprint.SINGLE, gridX, gridY, PlacementKind.TERRAIN) != PlacementCheck.OK) {
+                    return@runInTransaction ActionResult.CANNOT_TILL
                 }
             }
             if (strikes + 1 < Soil.HOE_STRIKES) return@runInTransaction ActionResult.HOE_STRUCK

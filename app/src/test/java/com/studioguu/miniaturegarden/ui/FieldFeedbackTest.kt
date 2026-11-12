@@ -23,7 +23,7 @@ class FieldFeedbackTest {
     private val main: File = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
     private fun source(path: String) = File(main, "java/com/studioguu/miniaturegarden/$path").readText().replace("\r\n", "\n")
     private fun string(name: String): String? {
-        val strings = File(main, "res/values/strings.xml").readText()
+        val strings = File(main, "res/values/strings.xml").readText().replace("\u2060", "")
         return Regex("<string name=\"$name\">(.*?)</string>").find(strings)?.groupValues?.get(1)
     }
 
