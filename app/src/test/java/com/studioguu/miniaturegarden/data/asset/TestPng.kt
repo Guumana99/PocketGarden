@@ -25,7 +25,9 @@ class TestPng private constructor(val width: Int, val height: Int, private val r
     }
 
     companion object {
-        fun read(file: File): TestPng {
+        /** Reads [picture]; one of the app's (WebP since #fb-1111) is read from its PNG master ([PngMasters]). */
+        fun read(picture: File): TestPng {
+            val file = PngMasters.of(picture)
             val input = DataInputStream(file.inputStream().buffered())
             input.use {
                 val signature = ByteArray(8).also(input::readFully)

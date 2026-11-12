@@ -54,7 +54,8 @@ CROP_SCALE = 0.65
 #: What grows in the icon, cell by cell from the back: as in the book's picture.
 CROPS = {(0, 0): "plant_sunflower_stage3", (1, 0): "plant_tomato_stage3", (0, 1): "plant_tulip_stage3", (1, 1): "plant_tomato_stage3"}
 
-ATLAS = Path(__file__).resolve().parent.parent / "app/src/main/assets/atlas"
+# PNG masters; tools/webp_art.py makes the app's WebP from them (#fb-1111).
+ATLAS = Path(__file__).resolve().parent.parent / "art/png/assets/atlas"
 
 
 def fitted(cut: np.ndarray, width: int, height: int) -> np.ndarray:

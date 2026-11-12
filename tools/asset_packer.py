@@ -7,11 +7,12 @@ Takes a folder of PNGs with transparent margins (e.g. exported from Recraft.ai) 
   <out>/assets_manifest.json  every page, and where each sprite sits on which page, plus its anchor
 
 The manifest is what the app's AssetManifest.kt / AtlasManifest reads; the app finds a sprite by
-its assetId whatever page it is on. Write straight into app/src/main/assets/atlas/: page files of
-the previous manifest that are no longer written are deleted.
+its assetId whatever page it is on. Write into art/png/assets/atlas/, the PNG masters: page files of
+the previous manifest that are no longer written are deleted. Then run tools/webp_art.py, which
+puts them into the app as lossless WebP (#fb-1111).
 
 Usage:
-  python tools/asset_packer.py raw_assets/ app/src/main/assets/atlas/
+  python tools/asset_packer.py raw_assets/ art/png/assets/atlas/ && python tools/webp_art.py
   python tools/asset_packer.py raw_assets/ out/ --tile-width 256 --overrides raw_assets/overrides.json
 
 The file name (without .png) becomes the assetId, e.g. plant_tulip_stage3.png -> "plant_tulip_stage3".

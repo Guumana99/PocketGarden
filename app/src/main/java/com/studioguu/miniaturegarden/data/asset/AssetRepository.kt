@@ -3,7 +3,11 @@ package com.studioguu.miniaturegarden.data.asset
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Process
+import android.os.SystemClock
+import android.util.Log
 import androidx.annotation.DrawableRes
+import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.ui.render.WaterArt
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -163,13 +167,24 @@ class AssetRepository @Inject constructor(
      */
     suspend fun loadAtlas(): SpriteAtlas = atlasMutex.withLock {
         cached ?: withContext(Dispatchers.IO) {
+            val started = SystemClock.elapsedRealtime()
             coroutineScope {
                 val creatures = async { readAtlas(CREATURE_MANIFEST_FILE) }
                 // The crops' stages are brought to a natural size next to one another (CropScale).
                 val main = readAtlas(MANIFEST_FILE, CropScale::normalized)
                 if (main === SpriteAtlas.EMPTY) main else SpriteAtlas(main.manifest, main.pages, creatureAtlas = creatures.await())
-            }
+            }.also { logTiming("atlas", started) }
         }.also { cached = it }
+    }
+
+    /**
+     * Debug builds write how long a load took, and how long since the process started, to the log
+     * (tag [TIMING_TAG]): the start-up before and after the pictures became WebP (#fb-1111).
+     */
+    private fun logTiming(what: String, started: Long) {
+        if (!BuildConfig.DEBUG) return
+        val now = SystemClock.elapsedRealtime()
+        Log.i(TIMING_TAG, "$what took=${now - started} sinceStart=${now - Process.getStartElapsedRealtime()}")
     }
 
     private var cachedTerrain: TerrainTextures? = null
@@ -189,6 +204,7 @@ class AssetRepository @Inject constructor(
         val wasteland = if (withWasteland) async { loadWasteland() } else null
         val rest = terrainMutex.withLock {
             cachedTerrain ?: withContext(Dispatchers.IO) {
+                val started = SystemClock.elapsedRealtime()
                 coroutineScope {
                     val water = async { decodeWater() }
                     val cobblestone = async { decodeGround(R.drawable.floor_cobblestone) }
@@ -209,7 +225,7 @@ class AssetRepository @Inject constructor(
                         flowers = flowers.await(),
                         woodDeck = woodDeck.await(),
                     )
-                }
+                }.also { logTiming("ground", started) }
             }.also { cachedTerrain = it }
         }
         val ground = wasteland?.await() ?: return@coroutineScope rest
@@ -337,6 +353,9 @@ class AssetRepository @Inject constructor(
     }
 
     companion object {
+        /** The log tag of [logTiming]. */
+        const val TIMING_TAG = "GardenTiming"
+
         /** The open water taken from `pond_center.png`'s face: all of it but its rim (shares of the face). */
         const val POND_WATER_FROM = 0.08f
         const val POND_WATER_TO = 0.92f

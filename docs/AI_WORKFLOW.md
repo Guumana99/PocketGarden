@@ -65,10 +65,10 @@
 | 雨・雨乞いの粒 | `RainFieldTest` |
 | 作物の絵の土の山の除去・アトラスの組み立て | `python -m unittest discover tools`（`test_asset_packer.py`） |
 | カメラ・座標変換 | `IsometricEngineTest` `CameraModeTest` |
-| 画像・アトラス・`tools/` | `BundledArtTest` `AssetPipelineTest`（＋台帳 `AssetLedgerTest`） |
+| 画像・アトラス・`tools/` | `BundledArtTest` `AssetPipelineTest` `WebpArtTest`（＋台帳 `AssetLedgerTest`）。絵は原本 `art/png/` に作り、`python tools/webp_art.py` でアプリの WebP に（`ASSETS.md`） |
 | アセット台帳（`docs/ASSET_LEDGER.md`）、作物・ショップの品・生き物・アイコン・音の増減 | `AssetLedgerTest` |
 | 上部の札（1 行に収める・文字の上限） | `TopStatusBarTest` |
-| 文言・レイアウト・トースト | `PolishTest`（＋文言を見る `StoreObjectTest` `BundledArtTest`、文節の折り返し `PhraseLineBreakTest`）。文をまとめて直したら、エミュレータで `--ez audit_text true`（`TextAudit`）を流して `files/text_audit.tsv` を見る |
+| 文言・レイアウト・トースト | `PolishTest`（＋文言を見る `StoreObjectTest` `BundledArtTest`、文節の折り返し `PhraseLineBreakTest`、「」と吹き出し `WordingFb1111Test`）。文をまとめて直したら、エミュレータで `--ez audit_text true`（`TextAudit`）を流して `files/text_audit.tsv` を見る |
 | 設定・音・BGM の曲の選び方と切り替え | `SettingsRepositoryTest` `AudioManagerTest`（時計の改ざん検出は #75 で廃止、`TimeTamperDetectionTest` も削除） |
 | 設定画面・メニューの部品（Compose UI テスト、Robolectric） | `SettingsContentTest` `CozyComponentsTest` |
 | タイトル・スターターガーデン・チュートリアル・機能の段階解放・季節・導きの間の道具の制限 | `OnboardingTest`（＋おくりもののダイアログ `GiftDialogTest`） |

@@ -34,7 +34,8 @@ from PIL import Image, ImageFilter
 
 TOOLS = Path(__file__).resolve().parent
 SOURCE = TOOLS / "source_art"
-RES = TOOLS.parent / "app" / "src" / "main" / "res"
+# PNG masters; tools/webp_art.py makes the app's WebP from them (#fb-1111).
+RES = TOOLS.parent / "art" / "png" / "res"
 OUT = RES / "drawable-nodpi"
 
 #: Pixels to a cell in the bank's pictures.

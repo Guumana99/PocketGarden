@@ -46,7 +46,7 @@ class FeedbackBatchTest {
 
     @Test
     fun `the flat texture is taken from inside the face, where there are no tufts or rim`() {
-        val image = TestPng.read(File(main, "res/drawable/soil_wasteland.png"))
+        val image = TestPng.read(File(main, "res/drawable/soil_wasteland.webp"))
         val m = FlatGround.textureToImage(image.width, image.height, GroundSlab.WASTELAND, FlatGround.SIZE)
         var bright = 0
         var seen = 0
