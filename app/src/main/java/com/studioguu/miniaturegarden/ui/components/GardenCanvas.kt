@@ -1038,7 +1038,7 @@ private fun submitObjects(
                 // And a little along the roofs while it lies (#fb-1107).
                 if (ambience.edgeSnow > 0f && !obj.isWorking) {
                     // Over the whole of the roof (#fb-1110), then heaped along its ridge, verges and eaves.
-                    EdgeSnow.facesOf(obj.objectId, obj.isFlipped)?.let { faces -> with(EdgeSnow) { drawRoofSnow(base, unit, faces, ambience.edgeSnow) } }
+                    EdgeSnow.facesOf(obj.objectId, obj.isFlipped)?.let { faces -> with(EdgeSnow) { drawRoofSnow(base, unit, faces, ambience.edgeSnow, solid = obj.objectId in EdgeSnow.SOLID_ROOFS) } }
                     EdgeSnow.linesOf(obj.objectId, obj.isFlipped)?.let { lines -> with(EdgeSnow) { drawEdgeSnow(base, unit, lines, ambience.edgeSnow) } }
                 }
                 if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {
