@@ -163,10 +163,9 @@ class AudioManagerTest {
     }
 
     @Test
-    fun `default music volume sits well below the effects`() {
-        assertEquals(0.9f, audio.soundEffectVolume, 0f)
-        assertEquals(0.35f, audio.bgmVolume, 0f)
-        assertTrue(audio.bgmVolume < audio.soundEffectVolume * SoundEffect.entries.minOf { it.gain })
+    fun `default volumes are the new player's sliders`() {
+        assertEquals(0.45f, audio.soundEffectVolume, 0f)
+        assertEquals(0.6f, audio.bgmVolume, 0f)
     }
 
     // --- Settings ---
@@ -210,12 +209,12 @@ class AudioManagerTest {
         rawFiles["bgm_spring"] = 50
         audio.playBgm(BgmTrack.SPRING)
 
-        audio.apply(AppSettings(bgmEnabled = false, bgmVolume = 0.6f))
+        audio.apply(AppSettings(bgmEnabled = false, bgmVolume = 0.7f))
         assertEquals(listOf("pause"), engine.bgmCalls)
 
-        audio.apply(AppSettings(bgmEnabled = true, bgmVolume = 0.6f))
+        audio.apply(AppSettings(bgmEnabled = true, bgmVolume = 0.7f))
         assertEquals(listOf("pause", "resume"), engine.bgmCalls)
-        assertEquals(listOf(0.6f), engine.bgmVolumes)
+        assertEquals(listOf(0.7f), engine.bgmVolumes)
         assertEquals(1, engine.bgmStarts.size)
     }
 
@@ -615,9 +614,9 @@ class AudioManagerTest {
         audio.playBgm(BgmTrack.SPRING)
         val settings = AppSettings()
 
-        audio.apply(settings.copy(bgmVolume = 0.6f))
+        audio.apply(settings.copy(bgmVolume = 0.7f))
         audio.apply(settings.copy(bgmVolume = 0.1f))
-        assertEquals(listOf(0.6f, 0.1f), engine.bgmVolumes)
+        assertEquals(listOf(0.7f, 0.1f), engine.bgmVolumes)
 
         audio.apply(settings.copy(bgmVolume = 0.1f, bgmEnabled = false))
         assertEquals("pause", engine.bgmCalls.last())

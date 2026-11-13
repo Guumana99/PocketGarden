@@ -51,10 +51,10 @@ class SettingsRepositoryTest {
     // --- Model ---
 
     @Test
-    fun `a new player starts with music at 35 percent, effects at 90 percent and everything on`() {
+    fun `a new player starts with music at 60 percent, effects at 45 percent and everything on`() {
         val defaults = AppSettings()
-        assertEquals(0.35f, defaults.bgmVolume, 0f)
-        assertEquals(0.9f, defaults.soundEffectVolume, 0f)
+        assertEquals(0.6f, defaults.bgmVolume, 0f)
+        assertEquals(0.45f, defaults.soundEffectVolume, 0f)
         assertTrue(defaults.bgmEnabled)
         assertTrue(defaults.soundEffectsEnabled)
         assertTrue(defaults.notificationsEnabled)
@@ -135,6 +135,20 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `a player who has played keeps the volumes saved under the old defaults`() = runBlocking {
+        val (first, job) = openRepository()
+        // Opening the garden once saves the day, and with it every setting (#fb-1113 14).
+        first.update { it.copy(bgmVolume = 0.35f, soundEffectVolume = 0.9f) }
+        first.update { it.onDay(3L) }
+        job.cancelAndJoin()
+
+        val (again, _) = openRepository()
+        val settings = again.settings.first()
+        assertEquals(0.35f, settings.bgmVolume, 0f)
+        assertEquals(0.9f, settings.soundEffectVolume, 0f)
+    }
+
+    @Test
     fun `many quick updates all land`() = runBlocking {
         val (repository, _) = openRepository()
 
@@ -169,8 +183,8 @@ class SettingsRepositoryTest {
         // goes back to an older one.
         assertEquals(0.1f, watcher.await(), 0f)
         val values = synchronized(seen) { seen.toList() }
-        assertEquals(0.9f, values.first(), 0f)
-        val order = listOf(0.9f, 0.4f, 0.1f)
+        assertEquals(0.45f, values.first(), 0f)
+        val order = listOf(0.45f, 0.4f, 0.1f)
         val places = values.map { order.indexOf(it) }
         assertTrue("seen out of order: $values", places.all { it >= 0 } && places.zipWithNext().all { (a, b) -> a <= b })
     }
