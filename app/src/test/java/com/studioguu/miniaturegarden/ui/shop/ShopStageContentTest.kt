@@ -51,9 +51,10 @@ class ShopStageContentTest {
         var rested = false
         var waitedFor: ExpansionCheck? = null
         var offer: ExpansionOffer? = null
+        var purseTaps = 0
     }
 
-    private fun open(visit: Visit, coins: Long = 500, ownsSymbol: Boolean = false, held: Map<GardenItem, Int> = emptyMap()) {
+    private fun open(visit: Visit, coins: Long = 500, ownsSymbol: Boolean = false, held: Map<GardenItem, Int> = emptyMap(), guiding: Boolean = false) {
         compose.setContent {
             val stock = ShopShelves.stock(visit.stage, Season.SPRING, stats, coins, ownsSymbol, held)
             GardenTheme {
@@ -75,6 +76,8 @@ class ShopStageContentTest {
                     expansion = visit.offer,
                     onExpandResting = { visit.waitedFor = it },
                     onLeave = { visit.left = true },
+                    guiding = guiding,
+                    onCoinTap = { visit.purseTaps++ },
                 )
             }
         }
@@ -105,6 +108,22 @@ class ShopStageContentTest {
         compose.waitForIdle()
         assertEquals(null, visit.inHand)
         compose.onNodeWithTag(ITEM_CARD_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the purse at the top right offers the coin bonus`() {
+        val visit = Visit()
+        open(visit)
+        compose.onNodeWithTag(COIN_PILL_TAG).performClick()
+        assertEquals(1, visit.purseTaps)
+    }
+
+    @Test
+    fun `during the first steps the purse does nothing`() {
+        val visit = Visit()
+        open(visit, guiding = true)
+        compose.onNodeWithTag(COIN_PILL_TAG).performClick()
+        assertEquals(0, visit.purseTaps)
     }
 
     @Test
