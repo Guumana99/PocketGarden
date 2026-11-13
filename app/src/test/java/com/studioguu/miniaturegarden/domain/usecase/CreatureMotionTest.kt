@@ -825,4 +825,32 @@ class CreatureMotionTest {
         assertTrue(beats > 0)
         assertTrue(stillSpells > 0)
     }
+
+    @Test
+    fun `a walker stops clear of the edge of a building's footing`() {
+        val footings = CreatureRoutes.footingsOf(grid)
+        assertTrue(footings.isNotEmpty())
+        val walkers = listOf(
+            visit(VisitRule.SQUIRREL_SUNFLOWER, GridCell(5, 4)),
+            visit(VisitRule.FROG_RAIN, GridCell(5, 8)),
+            visit(VisitRule.BIRD_WELL, GridCell(5, 8), host = well),
+            visit(VisitRule.BIRD_COTTAGE, GridCell(10, 3), host = objects.first { it.objectId == StructureData.COTTAGE.objectId }),
+        )
+        val m = CreatureRoutes.EDGE_MARGIN
+        var stops = 0
+        for (v in walkers) {
+            val route = CreatureRoutes.plan(v, grid)
+            for (now in v.arrivesAt until v.leavesAt step 250L) {
+                val pose = route.poseAt(now) ?: continue
+                if (!pose.grounded || pose.action != CreatureAction.STAND || pose.restsOnSomething) continue
+                stops++
+                for (dx in listOf(-m, m)) for (dy in listOf(-m, m)) {
+                    val x = floor(pose.x + dx).toInt()
+                    val y = floor(pose.y + dy).toInt()
+                    assertFalse("${v.rule} at ${pose.x},${pose.y}", GridCell(x, y) in footings)
+                }
+            }
+        }
+        assertTrue(stops > 0)
+    }
 }

@@ -426,6 +426,7 @@ object CreatureRoutes {
         }
         val manner = Manner.of(visit.creature)
         val region = regionAround(visit.creature, grid, home, manner.roam)
+        val footings = footingsOf(grid)
         val ponds = region.filterTo(HashSet()) { cell -> grid.occupantAt(cell.x, cell.y)?.let { it.isPond || it.isTerrain } == true }
         val landing = landingOf(visit.creature, home.x + 0.5f, home.y + 0.5f, grid.map.size, random, fromAngle)
         val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
@@ -445,8 +446,8 @@ object CreatureRoutes {
                 plan.standFor(stay)
                 continue
             }
-            val to = pointNearby(plan, region, manner, random, mood.strideScale(random))
-                ?: pointNearby(plan, region, manner, random) ?: break
+            val to = pointNearby(plan, region, footings, manner, random, mood.strideScale(random))
+                ?: pointNearby(plan, region, footings, manner, random) ?: break
             val millis = plan.pace(hypot(to.first - plan.x, to.second - plan.y) * manner.stepMillis, wide = true)
             val rest = (plan.between(manner.rest) * mood.restScale(random)).toLong()
             if (plan.t + millis + rest + reserve > span) break
@@ -462,16 +463,41 @@ object CreatureRoutes {
      * A point a short way from where [plan] has got to, anywhere inside a cell of [region] rather
      * than in its middle, with the way there inside [region] too; null if a few tries find none.
      */
-    private fun pointNearby(plan: Planner, region: Set<GridCell>, manner: Manner, random: Random, scale: Float = 1f): Pair<Float, Float>? {
+    private fun pointNearby(
+        plan: Planner,
+        region: Set<GridCell>,
+        footings: Set<GridCell>,
+        manner: Manner,
+        random: Random,
+        scale: Float = 1f,
+    ): Pair<Float, Float>? {
         repeat(NEARBY_TRIES) {
             val angle = random.nextDouble() * 2 * PI
             val reach = scale * (manner.stride.start + random.nextFloat() * (manner.stride.endInclusive - manner.stride.start))
             val x = plan.x + cos(angle).toFloat() * reach
             val y = plan.y + sin(angle).toFloat() * reach
-            if (isClearWay(plan.x, plan.y, x, y, region)) return x to y
+            if (isClearWay(plan.x, plan.y, x, y, region) && isClearOf(x, y, footings)) return x to y
         }
         return null
     }
+
+    /**
+     * Whether a walker stopping at (x, y) keeps [EDGE_MARGIN] of a cell clear of the [footings] of
+     * the buildings (#fb-1113 1): right at a cell's edge, its body reached into the stones of the
+     * building next door (the frog wedged into the corner of the hut's footing). Crops and the like
+     * it may still brush past, or it would hardly move between them.
+     */
+    internal fun isClearOf(x: Float, y: Float, footings: Set<GridCell>): Boolean {
+        if (footings.isEmpty()) return true
+        for (dx in EDGE_OFFSETS) for (dy in EDGE_OFFSETS) {
+            if (cellOf(x + dx, y + dy) in footings) return false
+        }
+        return true
+    }
+
+    /** The cells the buildings stand on: the hut, the cottage, the windmill, the well and the like. */
+    internal fun footingsOf(grid: GardenGrid): Set<GridCell> =
+        grid.objects.filter { StructureData.fromObjectId(it.objectId).let { s -> s != null && s != StructureData.BRIDGE } }.flatMapTo(HashSet()) { it.occupiedCells() }
 
     /** Whether a straight line stays in [region], also where it cuts past the corner of a cell. */
     private fun isClearWay(fromX: Float, fromY: Float, toX: Float, toY: Float, region: Set<GridCell>): Boolean {
@@ -903,6 +929,10 @@ object CreatureRoutes {
 
     /** How many points are tried for the next short move before staying put. */
     private const val NEARBY_TRIES = 6
+
+    /** How far a walker keeps from the edge of a cell it may not walk on, in cells. */
+    internal const val EDGE_MARGIN = 0.22f
+    private val EDGE_OFFSETS = floatArrayOf(-EDGE_MARGIN, 0f, EDGE_MARGIN)
 
     /** How many points along a short move are looked at, to see that its way is clear. */
     private const val WAY_SAMPLES = 16

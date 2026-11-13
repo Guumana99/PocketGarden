@@ -51,7 +51,7 @@ import kotlinx.coroutines.launch
  *         --es garden birdcrops               # ... [ShowcaseGarden.birdCrops], a well among tomatoes, with load
  *         --es garden fences                  # ... or with [FenceGarden] (or bridges), with load
  *         --es garden roses                   # ... or with [RoseGarden], the rose beside crops of its size (lineup: [CropLineup], every crop grown)
- *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks, perches, birdwell, wellalone, feed, hut, hutpair, millpair, millcottage, flowers), with load
+ *         --es garden ground                  # ... or with [GroundGarden] (or fencelook, lawnthings, greenhouse, hakusai, banks, perches, birdwell, wellalone, feed, hut, hutpair, millpair, millcottage, ring_cottage, ring_hut, ring_mill, ring_glass, flowers), with load
  *         --es tutorial REVEAL_RAIN           # ... at this step of the first steps, with load
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
@@ -159,7 +159,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val millPair = garden == "millpair"
         val millCottage = garden == "millcottage"
         val flowerBeds = garden == "flowers"
-        val feedback = garden == "fb" || banks || perches || birdWell || wellAlone || hungry || hutAlone || hutPair || millPair || millCottage || flowerBeds || art || fences || bridges || crops || roses || lineup || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val ring = garden?.startsWith("ring_") == true
+        val feedback = garden == "fb" || banks || perches || birdWell || wellAlone || hungry || hutAlone || hutPair || millPair || millCottage || ring || flowerBeds || art || fences || bridges || crops || roses || lineup || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -183,6 +184,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     hutPair -> GroundGarden.hutPair(now)
                     millPair -> GroundGarden.millPair(now)
                     millCottage -> GroundGarden.millCottage(now)
+                    ring -> GroundGarden.ring(now, garden!!.removePrefix("ring_"))
                     flowerBeds -> GroundGarden.flowerBeds(now)
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)

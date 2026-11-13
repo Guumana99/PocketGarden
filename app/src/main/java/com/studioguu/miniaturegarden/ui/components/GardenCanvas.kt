@@ -104,6 +104,7 @@ import com.studioguu.miniaturegarden.ui.render.GustFront
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
 import com.studioguu.miniaturegarden.ui.render.GardenClip
+import com.studioguu.miniaturegarden.ui.render.FootprintOrder
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
 import com.studioguu.miniaturegarden.ui.render.RenderCommand
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
@@ -550,14 +551,19 @@ fun GardenCanvas(
                 vanish = ghost.progress.value, crumbles = ghost.crumbles, lawn = lawn,
             )
         }
+        val boxes = FootprintOrder.boxesOf(grid.objects)
         for (route in routes) {
             val now = ambience.epochMillis
             val pose = route.poseAt(now) ?: continue
             val visit = route.visit
             val look = VisitorLook.of(visit.creature, pose, now)
             // In depth order by where it is now, so that it goes behind what stands in front of it
-            // (on the ground, behind a plant's stem too: CreatureRoutes.drawDepth).
-            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = CreatureRoutes.drawDepth(pose)) {
+            // (on the ground, behind a plant's stem too: CreatureRoutes.drawDepth), and in front of
+            // a building it stands just in front of (#fb-1113 1: the frog at the hut's corner).
+            val depth = CreatureRoutes.drawDepth(pose).let { d ->
+                if (pose.restsOnSomething) d else FootprintOrder.depthOf(pose.cell.x, pose.cell.y, pose.cell.x, pose.cell.y, d, boxes)
+            }
+            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = depth) {
                 // Its shadow only falls on the garden, not on the air round it, and not from a perch.
                 val overGarden = gardenMap.isInside(pose.cell.x, pose.cell.y)
                 drawVisitor(
@@ -722,8 +728,15 @@ private fun submitObjects(
 ) {
     val greenhouses = GreenhouseLayout.of(gridObjects, grid.map::isInside)
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
+    // The buildings of several cells, whatever is being drawn: what stands just in front of one
+    // beside it is drawn after it (#fb-1113 1).
+    val boxes = FootprintOrder.boxesOf(grid.objects)
     // Everything is queued through here, so that objects on their way out can be drawn fading.
-    fun submit(obj: GridObject, layer: RenderLayer, depth: Float, plainDraw: DrawScope.() -> Unit) {
+    fun submit(obj: GridObject, layer: RenderLayer, sortedAt: Float, plainDraw: DrawScope.() -> Unit) {
+        val depth = if (layer != RenderLayer.GRID_OBJECTS) sortedAt else {
+            val footprint = obj.footprint
+            FootprintOrder.depthOf(obj.gridX, obj.gridY, obj.gridX + footprint.width - 1, obj.gridY + footprint.height - 1, sortedAt, boxes)
+        }
         val pop = pops[obj.instanceId]
         // See-through, so that what stands behind it shows. Only the thing itself: its shadow
         // stays on the ground as it is.
