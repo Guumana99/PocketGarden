@@ -64,6 +64,9 @@ class FeedbackVisualTest {
         assertTrue(canvas.contains("StructureData.HUT.objectId to listOf(Lamp(0.3147f, 0.4703f, 0.1066f, 0.111f, skew = 0.0406f))"))
         // The cottage's gable window is in the wall that runs the other way.
         assertTrue(canvas.contains("Lamp(0.718f, 0.4909f, 0.046f, 0.0914f, skew = -0.0094f)"))
+        // #fb-1113 9: the windmill lights its two windows too.
+        assertTrue(canvas.contains("StructureData.WINDMILL.objectId to listOf("))
+        assertTrue(canvas.contains("Lamp(0.714f, 0.457f, 0.107f, 0.104f, skew = -0.023f)"))
     }
 
     @Test

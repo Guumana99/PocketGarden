@@ -3243,7 +3243,7 @@ private val LAMP_CORE = Color(0xFFFFF1C2)
 
 /**
  * The lights of the night, [strength] 0 (out) to 1 (fully lit): the fire in each stone lantern,
- * and the windows of the hut and the cottage, each pane glowing warm with a halo round it, and a
+ * and the windows of the hut, the cottage and the windmill, each pane glowing warm with a halo round it, and a
  * pool of light on the ground below. Drawn over the darkness, so they shine through it. A
  * building still under construction is dark, and so is one whose picture cannot be read.
  *
@@ -3348,6 +3348,12 @@ private val LAMPS: Map<String, List<Lamp>> = mapOf(
         Lamp(0.243f, 0.4486f, 0.043f, 0.089f, skew = 0.01f),
         Lamp(0.3695f, 0.4972f, 0.037f, 0.0835f, skew = 0.0064f),
         Lamp(0.718f, 0.4909f, 0.046f, 0.0914f, skew = -0.0094f),
+    ),
+    // #fb-1113 9: the latticed window on its front face (which rises to the right) and the little
+    // one up in the gable, the glass inside each frame.
+    StructureData.WINDMILL.objectId to listOf(
+        Lamp(0.714f, 0.457f, 0.107f, 0.104f, skew = -0.023f),
+        Lamp(0.707f, 0.228f, 0.045f, 0.059f, skew = -0.005f),
     ),
 )
 
