@@ -92,5 +92,6 @@ class SwitchingGardenRepository @Inject constructor(
 
     override suspend fun getWeatherDays(): Map<Long, WeatherType> = current.getWeatherDays()
     override suspend fun keepWeatherDays(days: Map<Long, WeatherType>) = current.keepWeatherDays(days)
+    override suspend fun pinWeatherDay(day: Long, weather: WeatherType) = current.pinWeatherDay(day, weather)
     override suspend fun forgetWeatherBefore(day: Long) = current.forgetWeatherBefore(day)
 }

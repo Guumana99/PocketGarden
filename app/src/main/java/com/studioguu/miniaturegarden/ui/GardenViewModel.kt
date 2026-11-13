@@ -916,7 +916,11 @@ class GardenViewModel @Inject constructor(
         dropEverythingInHand()
         viewModelScope.launch {
             initJob.join()
-            actionMutex.withLock { leaveTutorial(clock.now(), todayEpochDay()) }
+            actionMutex.withLock {
+                leaveTutorial(clock.now(), todayEpochDay())
+                // The first free day was just made sunny: read it back before the steps let go of the weather.
+                diary = keepWeather(clock.now())
+            }
         }
     }
 

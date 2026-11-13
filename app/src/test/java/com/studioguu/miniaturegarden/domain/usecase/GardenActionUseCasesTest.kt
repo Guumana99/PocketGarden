@@ -805,6 +805,9 @@ internal class FakeGardenRepository : GardenRepository {
     override suspend fun keepWeatherDays(days: Map<Long, WeatherType>) {
         days.forEach { (day, weather) -> weatherDays.putIfAbsent(day, weather) }
     }
+    override suspend fun pinWeatherDay(day: Long, weather: WeatherType) {
+        weatherDays[day] = weather
+    }
     override suspend fun forgetWeatherBefore(day: Long) {
         weatherDays.headMap(day).clear()
     }

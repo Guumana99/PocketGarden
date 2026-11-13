@@ -80,5 +80,6 @@ class PracticeGardenRepository : GardenRepository {
 
     override suspend fun getWeatherDays(): Map<Long, WeatherType> = emptyMap()
     override suspend fun keepWeatherDays(days: Map<Long, WeatherType>) = Unit
+    override suspend fun pinWeatherDay(day: Long, weather: WeatherType) = Unit
     override suspend fun forgetWeatherBefore(day: Long) = Unit
 }
