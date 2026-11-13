@@ -39,8 +39,8 @@ class WellFlipTest {
 
     @Test
     fun `the snow on a turned well's roof is mirrored`() {
-        val plain = EdgeSnow.linesOf(StructureData.WELL.objectId, flipped = false)!!
-        val turned = EdgeSnow.linesOf(StructureData.WELL.objectId, flipped = true)!!
-        assertEquals(plain.map { line -> line.points.map { (a, u) -> -a to u } }, turned.map { it.points })
+        // #fb-1113 3: no heaps along its edges; the snow read off its picture is drawn mirrored with it.
+        assertEquals(null, EdgeSnow.linesOf(StructureData.WELL.objectId, flipped = false))
+        assertTrue(com.studioguu.miniaturegarden.ui.render.PictureSnow.has(StructureData.WELL.objectId, StructureData.WELL.objectId))
     }
 }

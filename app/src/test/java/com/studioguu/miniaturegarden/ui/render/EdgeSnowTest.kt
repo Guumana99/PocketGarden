@@ -43,16 +43,18 @@ class EdgeSnowTest {
     }
 
     @Test
-    fun `the cottage, the hut and the well have lines set by hand, mirrored when turned`() {
-        for (structure in listOf(StructureData.COTTAGE, StructureData.HUT, StructureData.WELL)) {
-            val lines = EdgeSnow.linesOf(structure.objectId, flipped = false)!!
-            assertTrue(structure.name, lines.isNotEmpty() && lines.all { it.points.size >= 2 })
-            // Up off the ground, on the roof, and never as high as the next storey.
-            assertTrue(structure.name, lines.flatMap { it.points }.all { (_, up) -> up > 0.3f && up < 2.2f })
-            val turned = EdgeSnow.linesOf(structure.objectId, flipped = true)!!
-            assertEquals(lines.map { line -> line.points.map { (a, u) -> -a to u } }, turned.map { it.points })
+    fun `only the cottage has heaps along its edges, its ridge and its eave, mirrored when turned`() {
+        val lines = EdgeSnow.linesOf(StructureData.COTTAGE.objectId, flipped = false)!!
+        // #fb-1113 2: the ridge as it was and the near eave; none down the gable's sloping verges.
+        assertEquals(listOf(-0.65f to 1.965f, 0.71f to 1.49f), lines[0].points)
+        assertEquals(listOf(-1.099f to 1.012f, 0.149f to 0.656f), lines[1].points)
+        assertEquals(2, lines.size)
+        val turned = EdgeSnow.linesOf(StructureData.COTTAGE.objectId, flipped = true)!!
+        assertEquals(lines.map { line -> line.points.map { (a, u) -> -a to u } }, turned.map { it.points })
+        // #fb-1113 3-4: the hut, the well and the windmill have only the snow read off their pictures.
+        for (structure in listOf(StructureData.HUT, StructureData.WELL, StructureData.WINDMILL)) {
+            assertNull(structure.name, EdgeSnow.linesOf(structure.objectId, false))
         }
-        assertNull(EdgeSnow.linesOf(StructureData.WINDMILL.objectId, false))
         assertFalse(EdgeSnow.hasLines("deco_bench"))
     }
 
@@ -65,11 +67,11 @@ class EdgeSnowTest {
             val turned = EdgeSnow.facesOf(structure.objectId, flipped = true)!!
             assertEquals(faces.map { f -> f.points.map { (a, u) -> -a to u } }, turned.map { it.points })
         }
-        // The well's near eave, where it had none (device feedback 11/09).
-        assertEquals(3, EdgeSnow.linesOf(StructureData.WELL.objectId, false)!!.size)
         assertNull(EdgeSnow.facesOf(StructureData.WINDMILL.objectId, false))
         val canvas = File(listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
-        assertTrue(canvas.contains("drawRoofSnow(base, unit, faces, ambience.edgeSnow, solid = "))
+        // Drawn from the pictures now (#fb-1113), as the picture is drawn, turned with it.
+        assertTrue(canvas.contains("drawPictureSnow("))
+        assertTrue(canvas.contains("flipped = obj.isFlipped, variant = PictureSnow.variantOf(obj), depth = ambience.edgeSnow"))
     }
 
     @Test
@@ -102,6 +104,7 @@ class EdgeSnowTest {
         assertTrue(EdgeSnow.SOLID_ALPHA >= 0.93f && EdgeSnow.SOLID_ALPHA < 1f)
         val main: File = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
         val canvas = File(main, "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
-        assertTrue(canvas.contains("solid = obj.objectId in EdgeSnow.SOLID_ROOFS"))
+        val snow = File(main, "java/com/studioguu/miniaturegarden/ui/render/PictureSnow.kt").readText()
+        assertTrue(snow.contains("val solid = objectId in EdgeSnow.SOLID_ROOFS"))
     }
 }

@@ -106,6 +106,7 @@ import com.studioguu.miniaturegarden.ui.render.IsometricTransform
 import com.studioguu.miniaturegarden.ui.render.GardenClip
 import com.studioguu.miniaturegarden.ui.render.FootprintOrder
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
+import com.studioguu.miniaturegarden.ui.render.PictureSnow
 import com.studioguu.miniaturegarden.ui.render.RenderCommand
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.AtlasPages
@@ -1052,10 +1053,17 @@ private fun submitObjects(
                 if (obj.isPlant && !underGlass && ambience.weather == WeatherType.SNOWY) {
                     drawSpriteSnow(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
                 }
-                // And a little along the roofs while it lies (#fb-1107).
+                // And on the roofs, the benches and the rocks while it lies (#fb-1107): read off each
+                // picture (#fb-1113), then the cottage's ridge and eave heaped up over it.
                 if (ambience.edgeSnow > 0f && !obj.isWorking) {
-                    // Over the whole of the roof (#fb-1110), then heaped along its ridge, verges and eaves.
-                    EdgeSnow.facesOf(obj.objectId, obj.isFlipped)?.let { faces -> with(EdgeSnow) { drawRoofSnow(base, unit, faces, ambience.edgeSnow, solid = obj.objectId in EdgeSnow.SOLID_ROOFS) } }
+                    if (PictureSnow.has(sprite.assetId, obj.objectId)) {
+                        with(PictureSnow) {
+                            drawPictureSnow(
+                                atlasImage[sprite], obj.objectId, sprite, atlas.manifest.tileWidth, base, spriteScale,
+                                flipped = obj.isFlipped, variant = PictureSnow.variantOf(obj), depth = ambience.edgeSnow,
+                            )
+                        }
+                    }
                     EdgeSnow.linesOf(obj.objectId, obj.isFlipped)?.let { lines -> with(EdgeSnow) { drawEdgeSnow(base, unit, lines, ambience.edgeSnow) } }
                 }
                 if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {

@@ -149,6 +149,23 @@ object GroundGarden {
         return home + ring.flatMapIndexed { i, cell -> place(now, things[i % things.size], listOf(cell)) }
     }
 
+    /**
+     * The snow on everything that has some (#fb-1113 2-5), each as it is and turned:
+     * `--es garden snow_roofs` the cottages and the windmills, `--es garden snow_small` the huts,
+     * the wells, the benches and the five rocks (two of each, the second turned).
+     */
+    fun snow(now: Long, set: String): List<GridObject> {
+        fun pair(objectId: String, plain: GridCell, turned: GridCell) =
+            place(now, objectId, listOf(plain)) + place(now, objectId, listOf(turned)).map { it.copy(isFlipped = true) }
+        return if (set == "roofs") {
+            pair("struct_cottage", GridCell(1, 4), GridCell(5, 1)) + pair("struct_windmill", GridCell(4, 8), GridCell(8, 5))
+        } else {
+            pair("struct_hut", GridCell(1, 4), GridCell(4, 1)) + pair("struct_well", GridCell(4, 5), GridCell(5, 4)) +
+                pair("deco_bench", GridCell(3, 7), GridCell(7, 3)) +
+                ROCKS.flatMapIndexed { i, rock -> pair(rock, GridCell(6 + i % 3, 7 + i / 3 * 2), GridCell(7 + i % 3, 8 + i / 3 * 2)) }
+        }
+    }
+
     /** Two huts side by side, the right one turned (`--es garden hutpair`, #fb-1111): their snow and perches mirror. */
     fun hutPair(now: Long): List<GridObject> =
         place(now, "struct_hut", listOf(GridCell(3, 5))) + place(now, "struct_hut", listOf(GridCell(5, 3))).map { it.copy(isFlipped = true) }

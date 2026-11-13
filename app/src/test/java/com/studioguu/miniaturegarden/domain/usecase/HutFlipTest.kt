@@ -41,7 +41,7 @@ class HutFlipTest {
     fun `the snow on a turned hut's roof and edges is mirrored`() {
         val faces = EdgeSnow.facesOf(StructureData.HUT.objectId, flipped = false)!!
         assertEquals(faces.map { f -> f.points.map { (a, u) -> -a to u } }, EdgeSnow.facesOf(StructureData.HUT.objectId, flipped = true)!!.map { it.points })
-        val lines = EdgeSnow.linesOf(StructureData.HUT.objectId, flipped = false)!!
-        assertEquals(lines.map { l -> l.points.map { (a, u) -> -a to u } }, EdgeSnow.linesOf(StructureData.HUT.objectId, flipped = true)!!.map { it.points })
+        // No heaps along its edges any more (#fb-1113 3): the snow is read off its picture and drawn mirrored with it.
+        assertEquals(null, EdgeSnow.linesOf(StructureData.HUT.objectId, flipped = false))
     }
 }
