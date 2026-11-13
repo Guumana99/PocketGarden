@@ -85,7 +85,13 @@ object CropScale {
      * one alike (device feedback 11/11): the wheat filled its bed edge to edge and seemed to spill
      * over it, the grown daikon stood large beside the bench and the cottage's door.
      */
-    val SHRINKS = mapOf("plant_wheat" to 0.75f, "plant_daikon" to 0.8f)
+    val SHRINKS = mapOf(
+        "plant_wheat" to 0.75f,
+        "plant_daikon" to 0.8f,
+        // #fb-1113 8: both stood a size up on the daikon, the bench and the cottage door.
+        "plant_carrot" to 0.8f,
+        "plant_poinsettia" to 0.82f,
+    )
 
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")
     private val WITHERED = Regex("""^plant_[a-z_]+_withered$""")
