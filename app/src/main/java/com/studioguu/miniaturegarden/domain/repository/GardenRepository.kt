@@ -81,6 +81,9 @@ interface GardenRepository {
     /** Keeps the weather of [days]. A day already kept is not changed: once decided, it stays. */
     suspend fun keepWeatherDays(days: Map<Long, WeatherType>)
 
+    /** Sets [day]'s weather to [weather], whatever was decided before (the first free day, #fb-1113 12). */
+    suspend fun pinWeatherDay(day: Long, weather: WeatherType)
+
     /** Lets go of the weather of the days before [day], which nothing needs any more. */
     suspend fun forgetWeatherBefore(day: Long)
 }

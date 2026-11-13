@@ -143,5 +143,8 @@ class GardenRepositoryImpl @Inject constructor(
     override suspend fun keepWeatherDays(days: Map<Long, WeatherType>) =
         weatherDayDao.insertIfAbsent(days.map { (day, weather) -> WeatherDayEntity(day, weather.name) })
 
+    override suspend fun pinWeatherDay(day: Long, weather: WeatherType) =
+        weatherDayDao.replace(WeatherDayEntity(day, weather.name))
+
     override suspend fun forgetWeatherBefore(day: Long) = weatherDayDao.deleteBefore(day)
 }

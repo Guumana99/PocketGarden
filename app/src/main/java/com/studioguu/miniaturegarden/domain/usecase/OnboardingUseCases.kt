@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.domain.usecase
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureCalls
 import com.studioguu.miniaturegarden.domain.model.Footprint
+import com.studioguu.miniaturegarden.domain.model.GameDay
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
 import com.studioguu.miniaturegarden.domain.model.GardenMapSource
 import com.studioguu.miniaturegarden.domain.model.Gift
@@ -17,10 +18,12 @@ import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.model.Soil
 import com.studioguu.miniaturegarden.domain.model.TutorialGuide
 import com.studioguu.miniaturegarden.domain.model.TutorialStep
+import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.nextAcquisition
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.PracticeMode
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
+import java.time.ZoneId
 import javax.inject.Inject
 
 /**
@@ -133,6 +136,9 @@ class LeavePracticeUseCase @Inject constructor(
     private val placeGift: PlaceGiftUseCase,
     private val rewardLimits: RewardLimitRepository,
 ) {
+    /** The clock's zone, for the game day the first steps end on. */
+    var zone: ZoneId = ZoneId.systemDefault()
+
     /** @return the step the saved garden is on. */
     suspend operator fun invoke(now: Long, today: Long): TutorialStep {
         practice.leave()
@@ -141,6 +147,9 @@ class LeavePracticeUseCase @Inject constructor(
         if (!saved.tutorialStep.isGuiding) return saved.tutorialStep
         rewardLimits.giveBack(RewardType.BLESSED_RAIN, today)
         placeGift(Gift.FIRST, now)
+        // The first day of the garden's own is fine too (#fb-1113 12): sunny through the steps, then
+        // rain the moment they are over would wash out the first free play.
+        gardenRepository.pinWeatherDay(GameDay.of(now, zone), WeatherType.SUNNY)
         gardenRepository.saveProgress(saved.copy(tutorialStep = TutorialStep.FINISHED))
         return TutorialStep.FINISHED
     }

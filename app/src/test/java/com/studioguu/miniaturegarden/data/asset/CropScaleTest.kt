@@ -98,6 +98,16 @@ class CropScaleTest {
     }
 
     @Test
+    fun `the carrot and the poinsettia stand a size down, every stage alike`() {
+        assertEquals(0.8f, CropScale.SHRINKS.getValue("plant_carrot"), 0f)
+        assertEquals(0.82f, CropScale.SHRINKS.getValue("plant_poinsettia"), 0f)
+        for (plant in listOf("plant_carrot", "plant_poinsettia")) {
+            val share = CropScale.SHRINKS.getValue(plant)
+            assertTrue(plant, share in 0.8f..0.85f)
+        }
+    }
+
+    @Test
     fun `the daikon stands at four fifths of the size its caps leave it`() {
         assertEquals(0.8f, CropScale.SHRINKS.getValue("plant_daikon"), 0f)
         for (id in crops.getValue("plant_daikon") + "plant_daikon_withered") {

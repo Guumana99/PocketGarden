@@ -43,9 +43,12 @@ data class AppSettings(
     private fun Float.asVolumeOr(default: Float): Float = if (isNaN()) default else coerceIn(0f, 1f)
 
     companion object {
-        /** The music is mastered loud, so it starts well below the effects. */
-        const val DEFAULT_BGM_VOLUME = 0.35f
-        const val DEFAULT_SOUND_EFFECT_VOLUME = 0.9f
+        /**
+         * A new player's sliders (#fb-1113 14). Every save writes both volumes, so a player who has
+         * opened the garden once keeps what they had (0.35 / 0.9 before); only an empty file reads these.
+         */
+        const val DEFAULT_BGM_VOLUME = 0.6f
+        const val DEFAULT_SOUND_EFFECT_VOLUME = 0.45f
     }
 }
 

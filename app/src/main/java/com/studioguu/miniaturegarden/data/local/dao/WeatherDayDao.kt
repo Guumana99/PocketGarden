@@ -16,6 +16,10 @@ interface WeatherDayDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertIfAbsent(days: List<WeatherDayEntity>)
 
+    /** Overwrites a day's weather (only the first free day is ever set this way). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun replace(day: WeatherDayEntity)
+
     @Query("DELETE FROM weather_days WHERE day < :day")
     suspend fun deleteBefore(day: Long)
 

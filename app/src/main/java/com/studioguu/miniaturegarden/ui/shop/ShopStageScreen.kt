@@ -47,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
@@ -122,8 +123,6 @@ import com.studioguu.miniaturegarden.ui.theme.GardenColors
 fun ShopStageScreen(
     onLeave: () -> Unit,
     modifier: Modifier = Modifier,
-    /** Opened from the coins at the top of the garden: the coin counter glows for a moment. */
-    pointToCoins: Boolean = false,
     viewModel: ShopViewModel = hiltViewModel(),
 ) {
     val stage by viewModel.stage.collectAsStateWithLifecycle()
@@ -180,7 +179,6 @@ fun ShopStageScreen(
     val inHand = inspecting?.let { item -> (shelves.flatten() + rockKinds + fenceKinds).firstOrNull { it.item == item } }
 
     ShopStageContent(
-        pointToCoins = pointToCoins,
         stage = stage,
         shelves = shelves,
         coins = coins,
@@ -214,6 +212,8 @@ fun ShopStageScreen(
         onBuy = { item -> if (guiding || coins >= item.price) viewModel.buy(item) else shortFor = item.price },
         onBonus = offerBonus,
         onBonusResting = { toast.show(bonusRest) },
+        // The purse at the top right offers the same bonus, through the same confirmation (#fb-1113 11).
+        onCoinTap = { if (bonusAvailable) offerBonus() else toast.show(bonusRest) },
         onLeave = leave,
         modifier = modifier,
     )
@@ -382,7 +382,8 @@ fun ShopStageContent(
     expansion: ExpansionOffer? = null,
     onExpand: () -> Unit = {},
     onExpandResting: (ExpansionCheck) -> Unit = {},
-    pointToCoins: Boolean = false,
+    /** The purse was tapped: the coin bonus is offered (never during the first steps). */
+    onCoinTap: () -> Unit = {},
 ) {
     // The shop's own type size, one step up (ShopText); the dialogs it opens are windows of their
     // own, drawn at the game's.
@@ -402,7 +403,7 @@ fun ShopStageContent(
                 ) {
                     CarvedButton(text = stringResource(R.string.shop_leave), onClick = onLeave)
                     Spacer(Modifier.weight(1f))
-                    CoinPill(coins)
+                    CoinPill(coins, onClick = if (guiding) null else onCoinTap)
                 }
                 // During the first steps there is one shop, and nothing to walk to.
                 if (!guiding) Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
@@ -432,7 +433,7 @@ fun ShopStageContent(
                 if (!guiding) {
                     Counter(
                         message.takeIf { inHand == null }, bonusLabel, bonusEnabled, onBonus, onBonusResting,
-                        Modifier.padding(bottom = 8.dp).coinGlow(pointToCoins),
+                        Modifier.padding(bottom = 8.dp),
                     )
                 }
             }
@@ -540,8 +541,14 @@ private fun Signboards(current: ShopStage, onGoTo: (ShopStage) -> Unit, modifier
 }
 
 @Composable
-private fun CoinPill(coins: Long) {
-    Surface(shape = RoundedCornerShape(50), color = GardenColors.Cream, shadowElevation = 2.dp) {
+private fun CoinPill(coins: Long, onClick: (() -> Unit)? = null) {
+    val shape = RoundedCornerShape(50)
+    Surface(
+        shape = shape,
+        color = GardenColors.Cream,
+        shadowElevation = 2.dp,
+        modifier = Modifier.testTag(COIN_PILL_TAG).then(if (onClick != null) Modifier.clip(shape).clickable(onClick = onClick) else Modifier),
+    ) {
         Text(
             text = stringResource(R.string.shop_coins, coins),
             style = MaterialTheme.typography.titleSmall,
@@ -751,41 +758,8 @@ private fun lockedText(item: GardenItem): String = when (item.unlock) {
     else -> stringResource(R.string.shop_locked, item.unlockLevel)
 }
 
-/**
- * Draws the eye to the coin counter when the shop was opened from the coins at the top: a soft
- * gold outline that breathes [COIN_GLOW_PULSES] times and goes. Only a look: nothing is pressed.
- */
-@Composable
-private fun Modifier.coinGlow(on: Boolean): Modifier {
-    if (!on) return this
-    val glow = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        repeat(COIN_GLOW_PULSES) {
-            glow.animateTo(1f, tween(COIN_GLOW_MILLIS / 2))
-            glow.animateTo(0f, tween(COIN_GLOW_MILLIS / 2))
-        }
-    }
-    return this
-        .testTag(COIN_GLOW_TAG)
-        .drawBehind {
-            val a = glow.value
-            if (a > 0f) {
-                drawRoundRect(
-                    color = GardenColors.Gold.copy(alpha = 0.85f * a),
-                    cornerRadius = CornerRadius(10.dp.toPx()),
-                    style = Stroke(width = 3.dp.toPx() * (0.6f + 0.4f * a)),
-                    topLeft = Offset(-4.dp.toPx(), -4.dp.toPx()),
-                    size = Size(size.width + 8.dp.toPx(), size.height + 8.dp.toPx()),
-                )
-            }
-        }
-}
-
-private const val COIN_GLOW_PULSES = 3
-private const val COIN_GLOW_MILLIS = 900
-
-/** Test tag of the counter while it is pointed out. */
-const val COIN_GLOW_TAG = "shop_coin_glow"
+/** Test tag of the purse at the top right. */
+const val COIN_PILL_TAG = "shop_coin_pill"
 
 /** The counter along the bottom: the day's coin bonus, and what was last said at it. */
 @Composable

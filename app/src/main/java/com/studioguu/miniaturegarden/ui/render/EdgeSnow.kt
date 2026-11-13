@@ -39,27 +39,13 @@ object EdgeSnow {
      * garden's slant): the ridge and the verges of the roof, not the whole of it.
      */
     private val BY_HAND: Map<String, List<Line>> = mapOf(
-        // The ridge, the near roof's two verges, and the gable's far verge.
+        // The ridge as it was, and the near roof's eave, where the snow comes to its edge and hangs
+        // over (#fb-1113 2). Not the gable's sloping verges: snow slides off those. The hut and the
+        // well have no heaps along their edges any more, only the snow over their roofs
+        // (PictureSnow, #fb-1113 3).
         StructureData.COTTAGE.objectId to listOf(
             line(-0.65f to 1.965f, 0.71f to 1.49f),
-            line(-0.655f to 1.90f, -1.10f to 1.0f),
-            line(0.70f to 1.42f, 0.15f to 0.66f),
-            line(0.74f to 1.43f, 1.215f to 0.99f),
-        ),
-        // The one-sloped roof: its high back edge and the two verges running down from it, and
-        // its low eave at the front (#fb-1110).
-        StructureData.HUT.objectId to listOf(
-            line(-0.81f to 1.34f, -0.06f to 1.635f),
-            line(-0.81f to 1.33f, -0.005f to 0.66f),
-            line(-0.05f to 1.635f, 0.81f to 0.96f),
-            line(-0.01f to 0.663f, 0.819f to 0.957f),
-        ),
-        // The little roof over the well: its ridge, the far verge, and the eave at the left; and
-        // the near eave along the bottom of the face (#fb-1110), where the snow hangs over.
-        StructureData.WELL.objectId to listOf(
-            line(-0.404f to 0.597f, -0.279f to 0.675f, 0.112f to 0.83f),
-            line(0.119f to 0.823f, 0.258f to 0.627f),
-            line(-0.2125f to 0.494f, 0.26f to 0.629f),
+            line(-1.099f to 1.012f, 0.149f to 0.656f),
         ),
     )
 

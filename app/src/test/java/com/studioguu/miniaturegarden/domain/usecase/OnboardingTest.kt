@@ -173,6 +173,25 @@ class OnboardingTest {
     }
 
     @Test
+    fun `the first free day is sunny, even when its rain was already decided`() = runBlocking {
+        val zone = java.time.ZoneOffset.UTC
+        val day = com.studioguu.miniaturegarden.domain.model.GameDay.of(t0, zone)
+        repo.weatherDays[day] = WeatherType.RAINY
+        repo.weatherDays[day + 1] = WeatherType.RAINY
+        val leave = LeavePracticeUseCase(repo, FakePractice(), PlaceGiftUseCase(repo, GardenMap.DEFAULT), FakeRewardLimits())
+        leave.zone = zone
+        leave(t0, TODAY)
+        assertEquals(WeatherType.SUNNY, repo.weatherDays[day])
+        // Only that day: tomorrow is as it was decided.
+        assertEquals(WeatherType.RAINY, repo.weatherDays[day + 1])
+        // Played again from the settings later: the day's weather is left alone.
+        repo.weatherDays[day] = WeatherType.RAINY
+        repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.DONE)
+        leave(t0, TODAY)
+        assertEquals(WeatherType.RAINY, repo.weatherDays[day])
+    }
+
+    @Test
     fun `playing the first steps again from the settings leaves the day's rain as it was`() = runBlocking {
         repo.progress = repo.progress!!.copy(tutorialStep = TutorialStep.DONE)
         val limits = FakeRewardLimits()

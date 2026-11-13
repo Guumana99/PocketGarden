@@ -104,7 +104,9 @@ import com.studioguu.miniaturegarden.ui.render.GustFront
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
 import com.studioguu.miniaturegarden.ui.render.GardenClip
+import com.studioguu.miniaturegarden.ui.render.FootprintOrder
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
+import com.studioguu.miniaturegarden.ui.render.PictureSnow
 import com.studioguu.miniaturegarden.ui.render.RenderCommand
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.AtlasPages
@@ -550,17 +552,25 @@ fun GardenCanvas(
                 vanish = ghost.progress.value, crumbles = ghost.crumbles, lawn = lawn,
             )
         }
+        val boxes = FootprintOrder.boxesOf(grid.objects)
         for (route in routes) {
             val now = ambience.epochMillis
             val pose = route.poseAt(now) ?: continue
             val visit = route.visit
             val look = VisitorLook.of(visit.creature, pose, now)
             // In depth order by where it is now, so that it goes behind what stands in front of it
-            // (on the ground, behind a plant's stem too: CreatureRoutes.drawDepth).
-            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = CreatureRoutes.drawDepth(pose)) {
-                // Its shadow only falls on the garden, not on the air round it.
+            // (on the ground, behind a plant's stem too: CreatureRoutes.drawDepth), and in front of
+            // a building it stands just in front of (#fb-1113 1: the frog at the hut's corner).
+            val depth = CreatureRoutes.drawDepth(pose).let { d ->
+                if (pose.restsOnSomething) d else FootprintOrder.depthOf(pose.cell.x, pose.cell.y, pose.cell.x, pose.cell.y, d, boxes)
+            }
+            pipeline.submit(RenderLayer.GRID_OBJECTS, depth = depth) {
+                // Its shadow only falls on the garden, not on the air round it, and not from a perch.
                 val overGarden = gardenMap.isInside(pose.cell.x, pose.cell.y)
-                drawVisitor(visit.creature, visitorBase(transform, pose), transform.tileWidth, look, atlas.creatures, creatureImage, shadow = overGarden)
+                drawVisitor(
+                    visit.creature, visitorBase(transform, pose), transform.tileWidth, look, atlas.creatures, creatureImage,
+                    shadow = overGarden && !pose.restsOnSomething,
+                )
             }
         }
         if (showPerches) {
@@ -719,8 +729,15 @@ private fun submitObjects(
 ) {
     val greenhouses = GreenhouseLayout.of(gridObjects, grid.map::isInside)
     val spriteScale = transform.tileWidth / atlas.manifest.tileWidth
+    // The buildings of several cells, whatever is being drawn: what stands just in front of one
+    // beside it is drawn after it (#fb-1113 1).
+    val boxes = FootprintOrder.boxesOf(grid.objects)
     // Everything is queued through here, so that objects on their way out can be drawn fading.
-    fun submit(obj: GridObject, layer: RenderLayer, depth: Float, plainDraw: DrawScope.() -> Unit) {
+    fun submit(obj: GridObject, layer: RenderLayer, sortedAt: Float, plainDraw: DrawScope.() -> Unit) {
+        val depth = if (layer != RenderLayer.GRID_OBJECTS) sortedAt else {
+            val footprint = obj.footprint
+            FootprintOrder.depthOf(obj.gridX, obj.gridY, obj.gridX + footprint.width - 1, obj.gridY + footprint.height - 1, sortedAt, boxes)
+        }
         val pop = pops[obj.instanceId]
         // See-through, so that what stands behind it shows. Only the thing itself: its shadow
         // stays on the ground as it is.
@@ -1036,10 +1053,17 @@ private fun submitObjects(
                 if (obj.isPlant && !underGlass && ambience.weather == WeatherType.SNOWY) {
                     drawSpriteSnow(atlasImage, sprite, base, spriteScale, lean, flipped = obj.isFlipped)
                 }
-                // And a little along the roofs while it lies (#fb-1107).
+                // And on the roofs, the benches and the rocks while it lies (#fb-1107): read off each
+                // picture (#fb-1113), then the cottage's ridge and eave heaped up over it.
                 if (ambience.edgeSnow > 0f && !obj.isWorking) {
-                    // Over the whole of the roof (#fb-1110), then heaped along its ridge, verges and eaves.
-                    EdgeSnow.facesOf(obj.objectId, obj.isFlipped)?.let { faces -> with(EdgeSnow) { drawRoofSnow(base, unit, faces, ambience.edgeSnow, solid = obj.objectId in EdgeSnow.SOLID_ROOFS) } }
+                    if (PictureSnow.has(sprite.assetId, obj.objectId)) {
+                        with(PictureSnow) {
+                            drawPictureSnow(
+                                atlasImage[sprite], obj.objectId, sprite, atlas.manifest.tileWidth, base, spriteScale,
+                                flipped = obj.isFlipped, variant = PictureSnow.variantOf(obj), depth = ambience.edgeSnow,
+                            )
+                        }
+                    }
                     EdgeSnow.linesOf(obj.objectId, obj.isFlipped)?.let { lines -> with(EdgeSnow) { drawEdgeSnow(base, unit, lines, ambience.edgeSnow) } }
                 }
                 if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {
@@ -3240,7 +3264,7 @@ private val LAMP_CORE = Color(0xFFFFF1C2)
 
 /**
  * The lights of the night, [strength] 0 (out) to 1 (fully lit): the fire in each stone lantern,
- * and the windows of the hut and the cottage, each pane glowing warm with a halo round it, and a
+ * and the windows of the hut, the cottage and the windmill, each pane glowing warm with a halo round it, and a
  * pool of light on the ground below. Drawn over the darkness, so they shine through it. A
  * building still under construction is dark, and so is one whose picture cannot be read.
  *
@@ -3345,6 +3369,12 @@ private val LAMPS: Map<String, List<Lamp>> = mapOf(
         Lamp(0.243f, 0.4486f, 0.043f, 0.089f, skew = 0.01f),
         Lamp(0.3695f, 0.4972f, 0.037f, 0.0835f, skew = 0.0064f),
         Lamp(0.718f, 0.4909f, 0.046f, 0.0914f, skew = -0.0094f),
+    ),
+    // #fb-1113 9: the latticed window on its front face (which rises to the right) and the little
+    // one up in the gable, the glass inside each frame.
+    StructureData.WINDMILL.objectId to listOf(
+        Lamp(0.714f, 0.457f, 0.107f, 0.104f, skew = -0.023f),
+        Lamp(0.707f, 0.228f, 0.045f, 0.059f, skew = -0.005f),
     ),
 )
 

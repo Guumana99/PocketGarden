@@ -87,6 +87,12 @@ data class CreaturePose(
 ) {
     /** How far through [action] it is, 0 to 1. */
     val progress: Float get() = if (duration <= 0L) 1f else (elapsed.toFloat() / duration).coerceIn(0f, 1f)
+
+    /**
+     * Settled on something rather than the ground: on a flower or a plant, on a seat, a rim or a
+     * roof. It casts no shadow on the ground then (#fb-1113 6): the oval read as a hole under it.
+     */
+    val restsOnSomething: Boolean get() = onPlant || surface > 0f || action == CreatureAction.PERCH
 }
 
 /**
@@ -420,6 +426,7 @@ object CreatureRoutes {
         }
         val manner = Manner.of(visit.creature)
         val region = regionAround(visit.creature, grid, home, manner.roam)
+        val footings = footingsOf(grid)
         val ponds = region.filterTo(HashSet()) { cell -> grid.occupantAt(cell.x, cell.y)?.let { it.isPond || it.isTerrain } == true }
         val landing = landingOf(visit.creature, home.x + 0.5f, home.y + 0.5f, grid.map.size, random, fromAngle)
         val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
@@ -439,8 +446,8 @@ object CreatureRoutes {
                 plan.standFor(stay)
                 continue
             }
-            val to = pointNearby(plan, region, manner, random, mood.strideScale(random))
-                ?: pointNearby(plan, region, manner, random) ?: break
+            val to = pointNearby(plan, region, footings, manner, random, mood.strideScale(random))
+                ?: pointNearby(plan, region, footings, manner, random) ?: break
             val millis = plan.pace(hypot(to.first - plan.x, to.second - plan.y) * manner.stepMillis, wide = true)
             val rest = (plan.between(manner.rest) * mood.restScale(random)).toLong()
             if (plan.t + millis + rest + reserve > span) break
@@ -456,16 +463,41 @@ object CreatureRoutes {
      * A point a short way from where [plan] has got to, anywhere inside a cell of [region] rather
      * than in its middle, with the way there inside [region] too; null if a few tries find none.
      */
-    private fun pointNearby(plan: Planner, region: Set<GridCell>, manner: Manner, random: Random, scale: Float = 1f): Pair<Float, Float>? {
+    private fun pointNearby(
+        plan: Planner,
+        region: Set<GridCell>,
+        footings: Set<GridCell>,
+        manner: Manner,
+        random: Random,
+        scale: Float = 1f,
+    ): Pair<Float, Float>? {
         repeat(NEARBY_TRIES) {
             val angle = random.nextDouble() * 2 * PI
             val reach = scale * (manner.stride.start + random.nextFloat() * (manner.stride.endInclusive - manner.stride.start))
             val x = plan.x + cos(angle).toFloat() * reach
             val y = plan.y + sin(angle).toFloat() * reach
-            if (isClearWay(plan.x, plan.y, x, y, region)) return x to y
+            if (isClearWay(plan.x, plan.y, x, y, region) && isClearOf(x, y, footings)) return x to y
         }
         return null
     }
+
+    /**
+     * Whether a walker stopping at (x, y) keeps [EDGE_MARGIN] of a cell clear of the [footings] of
+     * the buildings (#fb-1113 1): right at a cell's edge, its body reached into the stones of the
+     * building next door (the frog wedged into the corner of the hut's footing). Crops and the like
+     * it may still brush past, or it would hardly move between them.
+     */
+    internal fun isClearOf(x: Float, y: Float, footings: Set<GridCell>): Boolean {
+        if (footings.isEmpty()) return true
+        for (dx in EDGE_OFFSETS) for (dy in EDGE_OFFSETS) {
+            if (cellOf(x + dx, y + dy) in footings) return false
+        }
+        return true
+    }
+
+    /** The cells the buildings stand on: the hut, the cottage, the windmill, the well and the like. */
+    internal fun footingsOf(grid: GardenGrid): Set<GridCell> =
+        grid.objects.filter { StructureData.fromObjectId(it.objectId).let { s -> s != null && s != StructureData.BRIDGE } }.flatMapTo(HashSet()) { it.occupiedCells() }
 
     /** Whether a straight line stays in [region], also where it cuts past the corner of a cell. */
     private fun isClearWay(fromX: Float, fromY: Float, toX: Float, toY: Float, region: Set<GridCell>): Boolean {
@@ -665,6 +697,13 @@ object CreatureRoutes {
         val inside = { v: Float -> v.coerceIn(EDGE, size - EDGE) }
         val reserve = if (cyclic) 2 * (manner.reach * 2 / manner.flySpeed * 1000).toLong() + manner.rest.first else 0L
         var flightsToPerch = if (told.isNotEmpty()) 0 else manner.flightsBetweenPerches.first + random.nextInt(manner.flightsBetweenPerches.last - manner.flightsBetweenPerches.first + 1)
+        // A butterfly goes about it in more than one way (#fb-1113 7), never the same twice running.
+        var flutter: Flutter? = null
+        val flutters = creature == Creature.BUTTERFLY && told.isEmpty()
+        fun nextFlutter() {
+            flutter = Flutter.next(random, flutter).also { flightsToPerch = it.flights(random) }
+        }
+        if (flutters) nextFlutter()
         var nextTold = 0
         // Where it is drifting round: a flower, for as long as it stays with that one.
         var aroundX = homeX
@@ -689,13 +728,27 @@ object CreatureRoutes {
                 aroundX = spot.x
                 aroundY = spot.y
                 perchedOn = spot
+            } else if (flutter == Flutter.PASS && perches.isNotEmpty()) {
+                // Down over a flower and on, without settling.
+                val others = perches.filter { abs(it.x - plan.x) + abs(it.y - plan.y) > 0.3f }.ifEmpty { perches }
+                val spot = others[random.nextInt(others.size)]
+                tx = spot.x + (random.nextFloat() - 0.5f) * PASS_SCATTER
+                ty = spot.y + (random.nextFloat() - 0.5f) * PASS_SCATTER
+                alt = spot.height + PASS_CLEARANCE
+                aroundX = spot.x
+                aroundY = spot.y
             } else {
-                tx = inside(aroundX + (random.nextFloat() * 2f - 1f) * manner.reach)
-                ty = inside(aroundY + (random.nextFloat() * 2f - 1f) * manner.reach)
-                alt = cruise + (random.nextFloat() - 0.5f) * 0.1f
+                val reach = manner.reach * (flutter?.reach ?: 1f)
+                tx = inside(aroundX + (random.nextFloat() * 2f - 1f) * reach)
+                ty = inside(aroundY + (random.nextFloat() * 2f - 1f) * reach)
+                alt = cruise + (random.nextFloat() - 0.5f) * if (flutter == Flutter.DETOUR) 0.3f else 0.1f
             }
             val flight = maxOf(manner.stepMillis, plan.pace(hypot(tx - plan.x, ty - plan.y) / manner.flySpeed * 1000)) + if (manner.darts) TURN_MILLIS else 0L
-            var pause = if (perching) plan.between(manner.perch) else plan.between(manner.rest)
+            var pause = when {
+                perching -> plan.between(flutter?.perch ?: manner.perch)
+                flutter?.hovers == false -> 0L
+                else -> plan.between(manner.rest)
+            }
             // Told where to settle, it stays there for as long as asked, or as the visit has left,
             // rather than not settling at all.
             if (told.isNotEmpty() && perching) pause = minOf(direction?.stayMillis ?: pause, span - plan.t - flight - reserve)
@@ -704,6 +757,7 @@ object CreatureRoutes {
             if (perching) {
                 plan.hold(CreatureAction.PERCH, pause, cell = perchedOn?.cell)
                 flightsToPerch = manner.flightsBetweenPerches.first + random.nextInt(manner.flightsBetweenPerches.last - manner.flightsBetweenPerches.first + 1)
+                if (flutters) nextFlutter()
             } else {
                 if (pause > 0L) plan.hold(CreatureAction.HOVER, pause)
                 flightsToPerch--
@@ -845,6 +899,10 @@ object CreatureRoutes {
     /** How far from a point a flier may settle, in cells. */
     private const val PERCH_SCATTER = 0.06f
 
+    /** How far above a flower a butterfly passing over it goes, in tile widths, and how far to its side. */
+    private const val PASS_CLEARANCE = 0.16f
+    private const val PASS_SCATTER = 0.3f
+
     /** How far one settled on a rim, a rail, a seat or a leaf shuffles about, in cells. */
     private const val PERCH_REACH = 0.06f
 
@@ -871,6 +929,10 @@ object CreatureRoutes {
 
     /** How many points are tried for the next short move before staying put. */
     private const val NEARBY_TRIES = 6
+
+    /** How far a walker keeps from the edge of a cell it may not walk on, in cells. */
+    internal const val EDGE_MARGIN = 0.22f
+    private val EDGE_OFFSETS = floatArrayOf(-EDGE_MARGIN, 0f, EDGE_MARGIN)
 
     /** How many points along a short move are looked at, to see that its way is clear. */
     private const val WAY_SAMPLES = 16
@@ -938,6 +1000,48 @@ internal class Manner(
             Creature.LADYBUG -> LADYBUG
             Creature.BUTTERFLY -> BUTTERFLY
             Creature.DRAGONFLY -> DRAGONFLY
+        }
+    }
+}
+
+/**
+ * How a butterfly goes from one flower it settles on to the next (#fb-1113 7: flying and settling
+ * by turns read as one beat over and over). Drawn afresh after each stop, never the same twice.
+ *
+ * - [DRIFT]: a few short drifts about the flower, hovering a moment between (as before).
+ * - [HOP]: straight across to another flower, and a shorter stay there.
+ * - [DETOUR]: a wider, unbroken loop up and down, off its way and back.
+ * - [PASS]: down over a flower or two and on without settling, then the next one it does.
+ *
+ * @property flightRange how many flights before it settles.
+ * @property reach how far a drift goes, times the butterfly's usual reach.
+ * @property hovers whether it holds still in the air between flights.
+ * @property perch how long it stays when it settles; null for its usual stay.
+ */
+internal enum class Flutter(
+    private val weight: Float,
+    private val flightRange: IntRange,
+    val reach: Float = 1f,
+    val hovers: Boolean = true,
+    val perch: LongRange? = null,
+) {
+    DRIFT(0.35f, 1..3),
+    HOP(0.25f, 0..0, perch = 1200L..3500L),
+    DETOUR(0.2f, 2..4, reach = 2.2f, hovers = false),
+    PASS(0.2f, 1..2, hovers = false);
+
+    fun flights(random: Random): Int = flightRange.first + random.nextInt(flightRange.last - flightRange.first + 1)
+
+    companion object {
+        /** One by the weights, never [last] again. */
+        fun next(random: Random, last: Flutter?): Flutter {
+            val choices = entries.filter { it != last }
+            var roll = random.nextFloat() * choices.sumOf { it.weight.toDouble() }.toFloat()
+            for (flutter in choices) {
+                roll -= flutter.weight
+                if (roll <= 0f) return flutter
+            }
+            return choices.last()
         }
     }
 }

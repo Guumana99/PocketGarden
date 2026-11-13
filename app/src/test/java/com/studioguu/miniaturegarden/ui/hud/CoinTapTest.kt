@@ -5,33 +5,34 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** #fb-1110 (12): the coins at the top lead to the shop's coin counter, and play no ad by themselves. */
+/**
+ * #fb-1113 (11): the coins at the top of the garden no longer lead to the shop (#fb-1110 12 is
+ * undone); the purse in the shop offers the coin bonus, through the bonus's own confirmation.
+ */
 class CoinTapTest {
 
     private val ui = File(listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }, "java/com/studioguu/miniaturegarden/ui")
     private fun source(path: String) = File(ui, path).readText()
 
     @Test
-    fun `tapping the coins opens the shop at its counter, not during the first steps`() {
+    fun `the coins at the top of the garden take no tap`() {
         val bar = source("hud/TopStatusBar.kt")
-        assertTrue(bar.contains("StatusChip(coinsText, scaled, padding, onClick = onCoinTap)"))
+        assertTrue(bar.contains("StatusChip(coinsText, scaled, padding)"))
+        assertFalse(bar.contains("onCoinTap"))
         val screen = source("GardenScreen.kt")
-        val tap = screen.substringAfter("onCoinTap = ").substringBefore("},\n            ) }")
-        assertTrue(tap.contains("tutorialStep?.isGuiding == true) null"))
-        assertTrue(tap.contains("shopAtCoins = true; showShop = true"))
-        // Only the shop opens: no ad, no bonus claimed.
-        assertFalse(tap.contains("claimBonus"))
-        assertFalse(tap.contains("Bonus"))
-        assertTrue(screen.contains("ShopStageScreen(onLeave = { showShop = false; shopAtCoins = false }, pointToCoins = shopAtCoins)"))
+        assertFalse(screen.contains("onCoinTap"))
+        assertFalse(screen.contains("shopAtCoins"))
+        assertTrue(screen.contains("ShopStageScreen(onLeave = { showShop = false })"))
     }
 
     @Test
-    fun `the counter only glows, the ad still waits for its button and the confirmation`() {
+    fun `the purse in the shop asks first, and only then plays`() {
         val shop = source("shop/ShopStageScreen.kt")
-        assertTrue(shop.contains("Modifier.padding(bottom = 8.dp).coinGlow(pointToCoins)"))
-        val glow = shop.substringAfter("private fun Modifier.coinGlow(").substringBefore("private const val COIN_GLOW_PULSES")
-        assertFalse(glow.contains("onBonus"))
-        assertFalse(glow.contains("claimBonus"))
-        assertFalse(shop.substringAfter("val offerBonus").substringBefore("\n").contains("pointToCoins"))
+        assertFalse(shop.contains("coinGlow"))
+        val tap = shop.substringAfter("onCoinTap = { ").substringBefore('}')
+        // The same offer as the counter's button: the confirmation, then the ad.
+        assertTrue(tap.contains("offerBonus()"))
+        assertFalse(tap.contains("claimBonus"))
+        assertTrue(shop.contains("CoinPill(coins, onClick = if (guiding) null else onCoinTap)"))
     }
 }

@@ -109,8 +109,6 @@ fun TopStatusBar(
     phase: SeasonPhase = SeasonPhase.EARLY,
     onWeatherTap: (() -> Unit)? = null,
     onLevelTap: (() -> Unit)? = null,
-    /** Opens the shop at its coin counter (#fb-1110); never plays an ad by itself. */
-    onCoinTap: (() -> Unit)? = null,
 ) {
     val coinsText = "🪙 $coins"
     val levelText = if (playerLevel >= LevelTable.MAX_LEVEL) {
@@ -139,7 +137,7 @@ fun TopStatusBar(
                 horizontalArrangement = Arrangement.spacedBy(with(capped) { fit.gap.toDp() }),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                StatusChip(coinsText, scaled, padding, onClick = onCoinTap)
+                StatusChip(coinsText, scaled, padding)
                 LevelChip(playerLevel, currentXp, levelText, scaled, padding, fit.textScale, onLevelTap)
                 StatusChip(seasonText, scaled, padding, onClick = onWeatherTap)
             }

@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden
 import android.app.Application
 import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
+import com.studioguu.miniaturegarden.ui.title.TitleSnapshot
 import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.notifications.WorkManagerNotificationScheduler
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
@@ -29,6 +30,9 @@ class PocketGardenApplication : Application() {
         super.onCreate()
         // The artwork is the slowest thing the title waits for (the atlas is a large picture):
         // its decoding starts first, off the main thread, while the rest of the app gets ready.
+        // Before that, the picture of the title's garden kept from last time (#fb-1113 10): small,
+        // and shown the moment the title is up, while the artwork is still being read.
+        TitleSnapshot.prefetch(this, CoroutineScope(SupervisorJob() + Dispatchers.IO))
         val titleArt = assets.prefetch(CoroutineScope(SupervisorJob() + Dispatchers.Default))
         // Silent until the saved settings are read, so the music never starts at the default
         // volume, or at all for a player who muted it. They are read off the main thread: reading

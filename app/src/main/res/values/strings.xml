@@ -520,7 +520,7 @@
     <string name="tip_no_food">土の栄養がなくなると、作物は少し元気をなくすよ。肥料をまくと元気になるよ</string>
     <string name="tip_withered">枯れてしまった株は、編集モードで抜けるよ。抜くと、土の栄養になるんだ</string>
     <string name="tip_new_page">図鑑に新しいページができたよ。開いて、タップしてみてね</string>
-    <string name="tip_visitor">お客さんが来ているよ！タップすると、自然メモに書き留められるよ</string>
+    <string name="tip_visitor">お客さんが来ているよ！タップすると、図鑑の「⁠い⁠き⁠も⁠の⁠」に書き留められるよ</string>
     <!-- The closing board. Lines are broken by hand so that no phrase is split. -->
     <string name="tutorial_done_title">🎉 いよいよ本番！</string>
     <string name="tutorial_done_text">ここから先は、あなただけのお庭づくり。\nお庭に「⁠は⁠じ⁠め⁠て⁠の⁠お⁠く⁠り⁠も⁠の⁠」を\nおいたよ。開けてみてね。</string>
@@ -663,7 +663,7 @@
     <string name="msg_met_squirrel">🐿️ りすが遊びに来ました</string>
     <string name="msg_met_frog">🐸 かえるが遊びに来ました</string>
     <string name="msg_met_dragonfly">🍂 とんぼが遊びに来ました</string>
-    <string name="msg_nature_note_added">📝 自然メモに新しい出会いを書き留めました</string>
+    <string name="msg_nature_note_added">📖 図鑑の「⁠い⁠き⁠も⁠の⁠」に書き留めました</string>
     <string name="nature_tab">いきもの</string>
     <string name="nature_unknown">？？？</string>
     <string name="nature_heading_found">見つけた組み合わせ</string>
