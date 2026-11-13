@@ -772,8 +772,57 @@ class CreatureMotionTest {
     private companion object {
         val GOLDEN_PRINTS: List<Long> = listOf(
             7835538569491737339L, 9184390232171254900L, // squirrel, frog: re-taken for the moods (#fb-1110)
-            -5048540562903024760L, -7566325524328723953L,
+            4956434130467034714L, -7566325524328723953L, // butterfly: re-taken for its ways between flowers (#fb-1113)
             -408090663045976775L, 4581749925029504915L, -8119653952837104962L,
         )
+    }
+
+    @Test
+    fun `a visitor settled on a plant, a seat or a flower leaves no shadow on the ground`() {
+        fun pose(action: CreatureAction, surface: Float = 0f, onPlant: Boolean = false, altitude: Float = 0f) =
+            CreaturePose(5f, 5f, altitude, Facing.LEFT, action, 0L, 1_000L, GridCell(5, 5), surface = surface, onPlant = onPlant)
+        assertFalse(pose(CreatureAction.STAND).restsOnSomething)
+        assertFalse(pose(CreatureAction.STEP).restsOnSomething)
+        assertFalse(pose(CreatureAction.FLY, altitude = 0.6f).restsOnSomething)
+        assertTrue(pose(CreatureAction.STAND, surface = 0.3f).restsOnSomething)
+        assertTrue(pose(CreatureAction.STEP, onPlant = true).restsOnSomething)
+        assertTrue(pose(CreatureAction.PERCH, altitude = 0.4f).restsOnSomething)
+        val canvas = java.io.File(listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory },
+            "java/com/studioguu/miniaturegarden/ui/components/GardenCanvas.kt").readText()
+        assertTrue(canvas.contains("shadow = overGarden && !pose.restsOnSomething"))
+    }
+
+    @Test
+    fun `a butterfly varies how it goes between flowers, never the same way twice running`() {
+        val random = kotlin.random.Random(7)
+        var last: com.studioguu.miniaturegarden.domain.model.Flutter? = null
+        val seen = mutableSetOf<com.studioguu.miniaturegarden.domain.model.Flutter>()
+        repeat(400) {
+            val next = com.studioguu.miniaturegarden.domain.model.Flutter.next(random, last)
+            assertTrue(next != last)
+            seen += next
+            last = next
+        }
+        assertEquals(com.studioguu.miniaturegarden.domain.model.Flutter.entries.toSet(), seen)
+    }
+
+    @Test
+    fun `a settled butterfly holds its wings still, and only now and then closes them`() {
+        val stays = listOf(2_600L, 3_100L, 4_450L, 5_900L, 6_800L)
+        var beats = 0
+        var stillSpells = 0
+        for (stay in stays) {
+            val held = VisitorLook.perchedWings(0L, stay)
+            // Just landed: held, not beating.
+            assertEquals(held, VisitorLook.perchedWings(700L, stay), 0f)
+            for (spell in 1 until (stay / 1400L)) {
+                val mid = VisitorLook.perchedWings(spell * 1400L + 700L, stay)
+                // Every spell starts where the wings were held, so nothing jumps.
+                assertEquals(held, VisitorLook.perchedWings(spell * 1400L, stay), 1e-4f)
+                if (mid < held - 0.05f) beats++ else stillSpells++
+            }
+        }
+        assertTrue(beats > 0)
+        assertTrue(stillSpells > 0)
     }
 }

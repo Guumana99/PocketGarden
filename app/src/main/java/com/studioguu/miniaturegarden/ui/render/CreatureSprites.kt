@@ -192,8 +192,8 @@ data class VisitorLook(
         }
 
         private fun butterfly(base: VisitorLook, pose: CreaturePose, now: Long): VisitorLook = when (pose.action) {
-            // Resting on a flower: the wings open and close, slowly.
-            CreatureAction.PERCH -> base.copy(wingOpen = 0.35f + 0.65f * wave(pose.elapsed, 1800.0, PI / 2), shadow = 0.6f)
+            // Resting on a flower: the wings held still, now and then a slow close and open (#fb-1113 7).
+            CreatureAction.PERCH -> base.copy(wingOpen = perchedWings(pose.elapsed, pose.duration), shadow = 0.6f)
             // In the air: the wings beat, and it bobs as it goes.
             else -> base.copy(
                 lift = sin(now / 430.0).toFloat() * 0.03f,
@@ -230,6 +230,33 @@ data class VisitorLook(
             if (pose.stops) shown = min(shown, (pose.duration - pose.elapsed).toFloat() / CHANGE_MILLIS)
             return shown.coerceIn(0f, 1f)
         }
+
+        /**
+         * How far a settled butterfly's wings are open, [elapsed] into a stay of [duration]: held
+         * still (spread, or half closed, as this stay has it), and in some of the [WING_BEAT_MILLIS]
+         * spells a slow close and open again, starting and ending where they were held. Which
+         * spells, and how far they close, come from the stay's length, so stays differ.
+         */
+        internal fun perchedWings(elapsed: Long, duration: Long): Float {
+            val held = if (mix(duration, -1L) % 3L == 0L) WINGS_HALF else WINGS_SPREAD
+            val spell = elapsed / WING_BEAT_MILLIS
+            // Never in the first spell: it has only just landed.
+            if (spell == 0L || mix(duration, spell) % 5L >= 2L) return held
+            val inSpell = (elapsed % WING_BEAT_MILLIS).toFloat() / WING_BEAT_MILLIS
+            val closesTo = 0.1f + 0.1f * (mix(duration, spell + 7L) % 3L)
+            return held - (held - closesTo) * sin(inSpell * PI).toFloat()
+        }
+
+        /** A number from (a, b) that looks unrelated to that of any other pair; never negative. */
+        private fun mix(a: Long, b: Long): Long {
+            var h = a * -7046029254386353131L + b * -4417276706812531889L
+            h = (h xor (h ushr 31)) * -4658895280553007687L
+            return (h xor (h ushr 29)) ushr 1
+        }
+
+        private const val WING_BEAT_MILLIS = 1400L
+        private const val WINGS_SPREAD = 0.85f
+        private const val WINGS_HALF = 0.45f
 
         /** A flier's shadow: full over its flowers, fading as it climbs into the sky. */
         private fun airShadow(creature: Creature, altitude: Float): Float {

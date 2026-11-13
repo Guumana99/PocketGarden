@@ -558,9 +558,12 @@ fun GardenCanvas(
             // In depth order by where it is now, so that it goes behind what stands in front of it
             // (on the ground, behind a plant's stem too: CreatureRoutes.drawDepth).
             pipeline.submit(RenderLayer.GRID_OBJECTS, depth = CreatureRoutes.drawDepth(pose)) {
-                // Its shadow only falls on the garden, not on the air round it.
+                // Its shadow only falls on the garden, not on the air round it, and not from a perch.
                 val overGarden = gardenMap.isInside(pose.cell.x, pose.cell.y)
-                drawVisitor(visit.creature, visitorBase(transform, pose), transform.tileWidth, look, atlas.creatures, creatureImage, shadow = overGarden)
+                drawVisitor(
+                    visit.creature, visitorBase(transform, pose), transform.tileWidth, look, atlas.creatures, creatureImage,
+                    shadow = overGarden && !pose.restsOnSomething,
+                )
             }
         }
         if (showPerches) {
