@@ -34,6 +34,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.Image
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -70,6 +76,24 @@ import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
 import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import kotlinx.coroutines.delay
 
+/**
+ * Debug builds write, once each, how long after the process started the title first drew a thing
+ * (tag [com.studioguu.miniaturegarden.data.asset.AssetRepository.TIMING_TAG]): the time to the
+ * garden on the title, before and after it was shown from a picture kept from last time (#fb-1113 10).
+ */
+internal object TitleTiming {
+    private val marked = HashSet<String>()
+
+    fun mark(what: String) {
+        if (!com.studioguu.miniaturegarden.BuildConfig.DEBUG || !marked.add(what)) return
+        val since = android.os.SystemClock.elapsedRealtime() - android.os.Process.getStartElapsedRealtime()
+        android.util.Log.i(com.studioguu.miniaturegarden.data.asset.AssetRepository.TIMING_TAG, "title $what shown sinceStart=$since")
+    }
+}
+
+/** How long after the sample garden has faded in its picture is kept for next time: grown a little, settled. */
+private const val SNAPSHOT_AFTER_MILLIS = 2_500L
+
 /** How long one beat of the sample garden's growing lasts. */
 private const val SAMPLE_BEAT_MILLIS = 1_200L
 
@@ -98,6 +122,7 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
     val atlas by viewModel.atlas.collectAsStateWithLifecycle()
     val terrain by viewModel.terrain.collectAsStateWithLifecycle()
     val artLoaded by viewModel.artLoaded.collectAsStateWithLifecycle()
+    val snapshot by viewModel.snapshot.collectAsStateWithLifecycle()
     var confirmStartOver by rememberSaveable { mutableStateOf(false) }
 
     // Music while the title is in front. Leaving for the garden is not leaving the foreground:
@@ -131,13 +156,40 @@ fun TitleScreen(onEnterGarden: () -> Unit, viewModel: TitleViewModel = hiltViewM
             ) {
                 // Fades softly in out of the sky once the artwork is read. Until then the sky is
                 // left empty: no stand-in shapes and no placeholder mark in the middle (#59).
+                // From the second start on, the garden as it was last drawn is there at once
+                // (#fb-1113 10), and the real one fades in over it.
                 val sampleAlpha by animateFloatAsState(
                     if (artLoaded) 1f else 0f,
                     tween(SAMPLE_FADE_IN_MILLIS, easing = LinearOutSlowInEasing),
                     label = "sampleIn",
+                    finishedListener = { if (it >= 1f) viewModel.snapshotCovered() },
                 )
+                snapshot?.let { picture ->
+                    Image(
+                        bitmap = picture,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().drawWithContent {
+                            drawContent()
+                            TitleTiming.mark("snapshot")
+                        },
+                    )
+                }
                 if (artLoaded) {
-                    SampleGarden(atlas, terrain, Modifier.fillMaxSize().graphicsLayer { alpha = sampleAlpha })
+                    // What is drawn is also recorded, to be kept as the next start's picture.
+                    val recorded = rememberGraphicsLayer()
+                    LaunchedEffect(recorded) {
+                        delay(SAMPLE_FADE_IN_MILLIS + SNAPSHOT_AFTER_MILLIS)
+                        runCatching { recorded.toImageBitmap() }.getOrNull()?.let(viewModel::keepSnapshot)
+                    }
+                    SampleGarden(
+                        atlas, terrain,
+                        Modifier.fillMaxSize().graphicsLayer { alpha = sampleAlpha }.drawWithContent {
+                            recorded.record { this@drawWithContent.drawContent() }
+                            drawLayer(recorded)
+                            TitleTiming.mark("garden")
+                        },
+                    )
                 }
                 // Laid over the sample so that it cannot be dragged, pinched or tapped: it is
                 // only to be looked at.

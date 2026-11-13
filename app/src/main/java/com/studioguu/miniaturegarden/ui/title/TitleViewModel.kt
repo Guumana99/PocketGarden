@@ -1,5 +1,7 @@
 package com.studioguu.miniaturegarden.ui.title
 
+import android.content.Context
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
@@ -10,6 +12,7 @@ import com.studioguu.miniaturegarden.data.audio.BgmTrack
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.repository.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +22,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class TitleViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val gardenRepository: GardenRepository,
     assetRepository: AssetRepository,
     private val audio: AudioManager,
@@ -41,9 +45,19 @@ class TitleViewModel @Inject constructor(
     /** Whether the artwork has been read: the sample garden is shown from then on, never in stand-in shapes. */
     val artLoaded: StateFlow<Boolean> = _artLoaded.asStateFlow()
 
+    private val _snapshot = MutableStateFlow<ImageBitmap?>(null)
+
+    /**
+     * The picture of the title's garden kept from last time ([TitleSnapshot]), shown until the real
+     * one has faded in over it; null on a first start, or once it is no longer needed.
+     */
+    val snapshot: StateFlow<ImageBitmap?> = _snapshot.asStateFlow()
+
     private var busy = false
+    private var kept = false
 
     init {
+        viewModelScope.launch { _snapshot.value = TitleSnapshot.await(context) }
         viewModelScope.launch { _hasSavedGarden.value = gardenRepository.hasSavedGarden() }
         // The same artwork the garden uses; it stays loaded for the garden afterwards.
         viewModelScope.launch {
@@ -54,6 +68,18 @@ class TitleViewModel @Inject constructor(
             }
             _artLoaded.value = true
         }
+    }
+
+    /** The real garden has faded in: the kept picture is let go. */
+    fun snapshotCovered() {
+        _snapshot.value = null
+    }
+
+    /** Keeps [picture] of the garden as now shown, for the next start; once a visit to the title. */
+    fun keepSnapshot(picture: ImageBitmap) {
+        if (kept) return
+        kept = true
+        viewModelScope.launch { TitleSnapshot.keep(context, picture) }
     }
 
     /**
