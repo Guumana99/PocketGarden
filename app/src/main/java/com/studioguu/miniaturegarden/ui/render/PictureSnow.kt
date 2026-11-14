@@ -24,8 +24,11 @@ object PictureSnow {
     /** How much of the most the small things' variants carry. */
     private val VARIANT_AMOUNT = floatArrayOf(1.1f, 1.5f, 1.9f)
 
-    /** The windmill's roof face as measured on its picture: shares of its width and height. */
-    val WINDMILL_ROOF: List<Pair<Float, Float>> = listOf(0.324f to 0.008f, 0.751f to 0.126f, 0.559f to 0.399f, 0.154f to 0.331f)
+    /**
+     * The windmill's roof face as measured on its picture: shares of its width and height. FB1114:
+     * out to the ends of its lowest course of shingles and the end of its ridge board.
+     */
+    val WINDMILL_ROOF: List<Pair<Float, Float>> = listOf(0.329f to 0f, 0.76f to 0.137f, 0.587f to 0.396f, 0.138f to 0.358f)
 
     /**
      * The well's roof as measured on its picture (the outline kept for the old cover stopped a
@@ -37,8 +40,9 @@ object PictureSnow {
 
     /** How much a light dusting is at its most, for each small thing (#fb-1113 5: less than a roof). */
     private val DUSTING: Map<String, Float> = mapOf(
-        "deco_bench" to 0.6f,
-        "deco_bench_back" to 0.6f,
+        // FB1114: more on the bench's seat and the top of its back.
+        "deco_bench" to 0.9f,
+        "deco_bench_back" to 0.9f,
         "deco_rock" to 0.55f,
         "deco_rock_flat" to 0.62f,
         "deco_rock_mossy" to 0.45f,
@@ -74,6 +78,11 @@ object PictureSnow {
     private const val ICE_RGB = 0xDDE8F2
     private const val ICE_ALPHA = 0.82f
 
+    /** The bench's pictures: its snow lies thicker and further down its seat and back (FB1114). */
+    private val BENCHES = setOf("deco_bench", "deco_bench_back")
+    private const val BENCH_MOST = 0.95f
+    private const val BENCH_REACH = 0.3f
+
     /** Whether the picture [assetId] has snow of its own. */
     fun has(assetId: String, objectId: String): Boolean =
         objectId in ROOFS || assetId in DUSTING
@@ -92,7 +101,12 @@ object PictureSnow {
      */
     fun specOf(objectId: String, asset: AssetManifest, tileWidth: Int, variant: Int = 0): SnowCover.Spec? {
         DUSTING[asset.assetId]?.let { most ->
-            return SnowCover.Spec(SnowCover.Kind.TOP, (most * VARIANT_AMOUNT[variant % VARIANTS]).coerceAtMost(0.85f))
+            val bench = asset.assetId in BENCHES
+            return SnowCover.Spec(
+                SnowCover.Kind.TOP,
+                (most * VARIANT_AMOUNT[variant % VARIANTS]).coerceAtMost(if (bench) BENCH_MOST else 0.85f),
+                reach = if (bench) BENCH_REACH else SnowCover.TOP_REACH,
+            )
         }
         val faces = if (objectId == StructureData.WINDMILL.objectId) {
             listOf(WINDMILL_ROOF)

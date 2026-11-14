@@ -452,7 +452,7 @@ NONE ──持ち物へ──▶ PACKING ──時間──▶ 持ち物に入�
 
 ## DB
 
-`pocket_garden.db`、現在 **v21**（v20→v21 で肥料の時刻と元の量 `grid_objects.fedAt` `fedFrom`。v19→v20 で温室の扉の向き `grid_objects.doorSide`。v15→v16 で天気の表 `weather_days` と `garden_progress.weatherSeed`）。スキーマは `app/schemas/` に出力される。
+`pocket_garden.db`、現在 **v22**（v21→v22 は表を変えず、置いてあった苔を育ち切りに（FB1114：苔が芝生と同じく育つようになったため）。v20→v21 で肥料の時刻と元の量 `grid_objects.fedAt` `fedFrom`。v19→v20 で温室の扉の向き `grid_objects.doorSide`。v15→v16 で天気の表 `weather_days` と `garden_progress.weatherSeed`）。スキーマは `app/schemas/` に出力される。
 
 | 版 | 変更 |
 |---|---|

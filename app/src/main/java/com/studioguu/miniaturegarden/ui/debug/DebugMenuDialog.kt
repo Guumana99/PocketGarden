@@ -169,7 +169,7 @@ private fun CreatureCallSection(call: CreatureCall, onChange: (CreatureCall) -> 
             // #book60: the rabbit in its white winter coat, when it is called.
             FilterChip(
                 selected = call.whiteRabbit,
-                onClick = { onChange(call.copy(whiteRabbit = !call.whiteRabbit)) },
+                onClick = { onChange(call.toggledWhiteRabbit()) },
                 label = { Text(stringResource(R.string.debug_call_white_rabbit)) },
                 modifier = Modifier.testTag(WHITE_RABBIT_CHIP_TAG),
             )

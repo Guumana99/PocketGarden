@@ -149,6 +149,10 @@ ICON_CUT: dict[str, dict] = {
     "eggplant": {"shadow": 0.7},
     "watermelon": {"white_parts": 1.0},
     "nanohana": {"white_parts": 1.0},
+    # FB1114: the turnip's root is white: only plain white goes, as with the daikon. The sweet
+    # potatoes cast a faint grey shadow under them, which goes as the eggplants' does.
+    "kabu": {"white_parts": 1.0},
+    "satsumaimo": {"shadow": 0.45},
 }
 
 #: Crops whose icon is made here though their plants are not (#72): the rose, paprika and daikon
@@ -256,12 +260,40 @@ SUISEN_CUP_RATIO = 0.87
 SUISEN_WHITE = (244.0, 240.0, 226.0)
 SUISEN_WHITE_SHADE = 1.3
 
+#: FB1114: how far up the narcissus' bunch (a share of its height) the pale foot of its stems is
+#: brought towards the leaves' green, and how far at most ([greener_foot]).
+SUISEN_FOOT = 0.3
+SUISEN_FOOT_GREEN = 0.6
+
 #: How the rare cup's orange is made from its yellow: green and blue scaled down.
 SUISEN_ORANGE = (1.0, 0.58, 0.36)
 
 #: How far below the turnip's widest row its root tip is cut off: where the root is still this
 #: share of that width ([without_tail]).
 KABU_TAIL = 0.24
+
+#: FB1114: the turnip stood on the bed like a white ball set on it, unlike the other crops. Its root
+#: is cut a little below its widest row ([KABU_BURIED_BELOW] of its upper half's height under it),
+#: along the near half of the ring where root meets earth, lower at the front ([KABU_SOIL_DIP] of
+#: its half-width), and earth is drawn heaped round the cut ([buried_turnip]): a low mound
+#: [KABU_HEAP_WIDTH] times as wide as the root and [KABU_HEAP_HEIGHT] of its half-width high, with
+#: clods on it, in the bed's own colours (SoilPalette: DARK, RIDGE, DRY, EDGE).
+KABU_BURIED_BELOW = -0.08
+KABU_SOIL_DIP = 0.26
+KABU_HEAP_WIDTH = 1.22
+KABU_HEAP_HEIGHT = 0.42
+KABU_EARTH_DARK = (58, 48, 41)
+KABU_EARTH_RIDGE = (86, 72, 64)
+KABU_EARTH_DRY = (110, 97, 88)
+KABU_EARTH_EDGE = (35, 28, 24)
+
+#: Where each turnip picture stands (anchor fractions), worked out as it is buried.
+KABU_ANCHORS: dict[str, dict] = {}
+
+#: FB1114: how many steps of erosion (source pixels) a hole shut in by a crop's leaves may outlast
+#: and still be a speck of glare cut out or a fleck of the background left in, not a gap between
+#: leaves ([without_specks]).
+SPECK_WIDTH = 9
 
 #: The withered turnip's root came grey, as dull as a stone: lifted ([KABU_ROOT_GAIN]) and warmed
 #: a little ([KABU_ROOT_WARM], added to red, green and blue).
@@ -547,20 +579,174 @@ def turnip_neck(rgba: np.ndarray) -> int:
     return top + int(np.argmin(widths[top:widest]))
 
 
+def without_specks(rgba: np.ndarray, source: np.ndarray, most: int = SPECK_WIDTH) -> np.ndarray:
+    """
+    [rgba] (cut from [source], the same size) without the little holes in it (FB1114): a speck of
+    the leaves' bright glare that the cut took for background, or a fleck of the background's white
+    left shut in between leaves, looked like a hole in a leaf. What is shut in all round by the
+    picture and too narrow to outlast [most] steps of erosion is given back its own colour from [source] if it was
+    a leaf's glare (not plain white), or the colour of the leaf round it if it was the background.
+    Wider gaps between leaves stay open, as they are.
+    """
+    alpha = rgba[:, :, 3]
+    v = source[:, :, :3].astype(int)
+    mx, mn = v.max(axis=2), v.min(axis=2)
+    plain_white = (mn >= 236) & ((mx - mn) <= 10)
+    hole = (alpha < 128) | (plain_white & (alpha >= 128))
+    # The background outside reaches in by ways wider than a speck's thread: the leaves' edges are
+    # frayed with see-through pixels, through which a speck near one would count as outside.
+    open_out = erode(hole, 2)
+    outside = dilate(reconstruct(border(hole.shape) & open_out, open_out), 3) & hole
+    shut_in = hole & ~outside
+    # Small: none of it outlasts [most] steps of erosion (a speck, not a gap between leaves).
+    specks = shut_in & ~reconstruct(erode(shut_in, most), shut_in)
+    if not specks.any():
+        return rgba
+    out = rgba.copy()
+    glare = specks & ~plain_white
+    out[glare, :3] = source[glare, :3]
+    # The background's white: the colour of the leaf round it, spread in from its edge.
+    fill = specks & plain_white
+    if fill.any():
+        rgb = out[:, :, :3].astype(float)
+        known = ~specks & (alpha >= 128)
+        known |= glare
+        for _ in range(40):
+            if not (fill & ~known).any():
+                break
+            total = np.zeros_like(rgb)
+            count = np.zeros(rgb.shape[:2])
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1)):
+                k = np.roll(np.roll(known, dy, 0), dx, 1)
+                c = np.roll(np.roll(rgb, dy, 0), dx, 1)
+                total += c * k[..., None]
+                count += k
+            new = fill & ~known & (count > 0)
+            rgb[new] = total[new] / count[new][:, None]
+            known = known | new
+        out[fill, :3] = np.clip(rgb[fill], 0, 255).astype(np.uint8)
+    out[specks, 3] = 255
+    return out
+
+
+def load_cut_clean(name: str, **kwargs) -> np.ndarray:
+    """[load_cut] without the little holes in the leaves ([without_specks])."""
+    source = np.array(Image.open(SOURCE / name).convert("RGB"))
+    return without_specks(cut_out(source, **kwargs), source)
+
+
+def buried_turnip(rgba: np.ndarray, asset_id: str, seed: int) -> np.ndarray:
+    """
+    The turnip [rgba] (cropped) with the lower part of its root in the bed (FB1114): cut along the
+    near half of a ring a little below its widest row, stained with earth just above the cut, and a
+    low mound of earth with clods heaped round it. Its anchor, the middle of the mound's foot, goes
+    into [KABU_ANCHORS] under [asset_id].
+    """
+    # The root: its pale body (white, or the withered one's buff), not the green or straw of the leaves.
+    v = rgba[:, :, :3].astype(int)
+    solid = rgba[:, :, 3] > 128
+    root = solid & (v.min(axis=2) > 120) & ((v.max(axis=2) - v.min(axis=2)) < 40)
+    root[: int(rgba.shape[0] * 0.4)] = False
+    root = reconstruct(erode(root, 3), root)
+    counts = root.sum(axis=1)
+    widest = int(np.argmax(counts))
+    # Up from its widest row while the root is still wide: not on up the pale stalks.
+    neck = widest
+    while neck > 0 and counts[neck - 1] > counts.max() * 0.45:
+        neck -= 1
+    cut = min(widest + int((widest - neck) * KABU_BURIED_BELOW), rgba.shape[0] - 1)
+    columns = np.where(root[cut])[0]
+    left, right = columns.min(), columns.max()
+    centre, half = (left + right) / 2, max(1.0, (right - left) / 2)
+    h, w = rgba.shape[:2]
+    rng = np.random.default_rng(seed)
+    x = np.arange(w)
+    across = np.clip((x - centre) / half, -1.0, 1.0)
+    wander = np.convolve(rng.normal(0.0, 1.0, w + 30), np.ones(31) / 31, mode="valid")[:w]
+    wander = wander / max(1e-6, np.abs(wander).max()) * max(1.0, half * 0.02)
+    line = (cut - KABU_SOIL_DIP * half) + KABU_SOIL_DIP * half * np.sqrt(1.0 - across ** 2) + wander
+    ready = rgba[: int(np.ceil(line.max())) + 1].copy()
+    rows_below = np.arange(ready.shape[0])[:, None] - line[None, :]
+    ready[:, :, 3] = (ready[:, :, 3] * np.clip(1.0 - (rows_below + 1.5) / 3.0, 0.0, 1.0)).astype(np.uint8)
+    stain = np.clip(1.0 + rows_below / max(3.0, half * 0.08), 0.0, 1.0) ** 2 * 0.45
+    for c in range(3):
+        channel = ready[:, :, c].astype(float)
+        ready[:, :, c] = np.clip(channel + (KABU_EARTH_DARK[c] - channel) * stain, 0, 255).astype(np.uint8)
+
+    # The mound, on a canvas wide and deep enough for it.
+    rx, ry = half * KABU_HEAP_WIDTH, half * KABU_HEAP_HEIGHT
+    cy = cut - KABU_SOIL_DIP * half * 0.35
+    pad_x = int(max(0.0, rx - centre, rx - (w - 1 - centre))) + 4
+    height = int(np.ceil(cy + ry)) + 4
+    canvas = np.zeros((max(height, ready.shape[0]), w + 2 * pad_x, 4), np.uint8)
+    canvas[: ready.shape[0], pad_x: pad_x + w] = ready
+    ch, cw = canvas.shape[:2]
+    cx = centre + pad_x
+    yy, xx = np.mgrid[0:ch, 0:cw].astype(float)
+    # A ragged oval: its outline wanders a little, as heaped earth does.
+    angle = np.arctan2(yy - cy, (xx - cx) * ry / rx)
+    ragged = 1.0 + 0.06 * np.sin(angle * 7 + seed) + 0.04 * np.sin(angle * 13 + 2 * seed)
+    d = np.sqrt(((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2) / ragged
+    heap = np.clip((1.0 - d) * min(rx, ry) / 1.5, 0.0, 1.0)
+    # Over the root only in front of it: below the soil line, and a little over the cut.
+    line_c = np.full(cw, -1e9)
+    root_cols = solid[: ready.shape[0]].any(axis=0) & (np.abs(across) < 1.0)
+    line_c[pad_x: pad_x + w] = np.where(root_cols, line, -1e9)
+    heap = heap * np.clip((yy - (line_c[None, :] - 2.0)) / 2.0, 0.0, 1.0)
+    # Lit from above: drier on top, damp and dark at its foot, with a grain of crumbs.
+    t = np.clip((yy - (cy - ry)) / (2 * ry), 0.0, 1.0)
+    colour = np.empty((ch, cw, 3))
+    for c in range(3):
+        top = KABU_EARTH_RIDGE[c] * 0.6 + KABU_EARTH_DRY[c] * 0.4
+        colour[..., c] = top + (KABU_EARTH_DARK[c] - top) * t ** 0.8
+    grain = rng.normal(0.0, 1.0, (ch, cw))
+    grain = np.where(grain > 1.6, 18.0, np.where(grain < -1.6, -16.0, grain * 3.0))
+    colour += grain[..., None]
+    # Clods: little lumps on the mound, lit on top, a dark crease under each.
+    ridge, dry, edge = np.array(KABU_EARTH_RIDGE, float), np.array(KABU_EARTH_DRY, float), np.array(KABU_EARTH_EDGE, float)
+    for _ in range(6 + int(half / 20)):
+        a = rng.uniform(-np.pi * 0.95, np.pi * 0.95)
+        r = rng.uniform(0.55, 1.0)
+        px, py = cx + np.sin(a) * rx * r, cy + abs(np.cos(a)) * ry * r * 0.9 - ry * 0.15
+        size = max(2.0, half * rng.uniform(0.035, 0.07))
+        front = yy >= line_c[None, :] - 1
+        dd = np.sqrt(((xx - px) / size) ** 2 + ((yy - py) / (size * 0.75)) ** 2)
+        lump = np.clip((1.0 - dd) * size / 1.2, 0.0, 1.0) * front
+        under = np.clip((1.0 - np.sqrt(((xx - px) / size) ** 2 + ((yy - py - size * 0.5) / (size * 0.5)) ** 2)) * 2, 0, 1) * (1 - lump) * (heap > 0) * front
+        light = np.clip((py - yy) / size + 0.3, 0.0, 1.0)
+        tone = ridge + (dry - ridge) * light[..., None] * rng.uniform(0.3, 0.7)
+        colour = colour * (1 - lump[..., None]) + tone * lump[..., None]
+        colour = colour * (1 - 0.5 * under[..., None]) + edge * 0.5 * under[..., None]
+        heap = np.maximum(heap, lump)
+    base = canvas.astype(float)
+    a = heap[..., None]
+    base_a = base[:, :, 3:4] / 255.0
+    out_a = a + base_a * (1 - a)
+    rgb = (colour * a + base[:, :, :3] * base_a * (1 - a)) / np.maximum(out_a, 1e-6)
+    out = np.concatenate([np.clip(rgb, 0, 255), out_a * 255.0], axis=2).astype(np.uint8)
+    seen = np.where(out[:, :, 3] > 8)
+    y0, y1, x0, x1 = seen[0].min(), seen[0].max() + 1, seen[1].min(), seen[1].max() + 1
+    out = out[y0:y1, x0:x1]
+    foot = min(cy + ry * 0.92, y1 - 1) - y0
+    KABU_ANCHORS[asset_id] = {"anchorX": round(float((cx - x0) / out.shape[1]), 4), "anchorY": round(float(foot / out.shape[0]), 4), "isFlippedAllowed": True}
+    return out
+
+
 def kabu_sprout(rgba: np.ndarray) -> np.ndarray:
     """Stage 1 of the turnip: its stage 2's leaves, without the root under them (a sprout)."""
     return crop(faded_foot(rgba[:turnip_neck(rgba) + 2].copy(), rows=4))
 
 
 def kabu_withered(rgba: np.ndarray) -> np.ndarray:
-    """The withered turnip: its root lifted and warmed, so that it is not read as a stone."""
-    out = without_tail(rgba).astype(float)
-    neck = turnip_neck(out.astype(np.uint8))
+    """The withered turnip: its root lifted and warmed, so that it is not read as a stone, and
+    buried as the growing one is (FB1114)."""
+    out = rgba.astype(float)
+    neck = turnip_neck(rgba)
     rgb = out[neck:, :, :3]
     grey = (rgb.max(axis=2) - rgb.min(axis=2)) < 30
     lifted = np.clip(rgb * KABU_ROOT_GAIN + np.array(KABU_ROOT_WARM), 0, 255)
     rgb[grey] = lifted[grey]
-    return out.astype(np.uint8)
+    return buried_turnip(out.astype(np.uint8), "plant_kabu_withered", seed=13)
 
 
 def without_stem(rgba: np.ndarray, share: float = HABOTAN_STEM) -> np.ndarray:
@@ -593,6 +779,13 @@ def without_earth(rgba: np.ndarray, withered: bool = False) -> np.ndarray:
         keep = seen & (green | red | stems)
     earth = seen & ~keep
     earth[:int(rgba.shape[0] * 0.45)] = False
+    # FB1114: only the mound itself, a wide mass of earth: a leaf's pale glare or a dark mark on a
+    # potato below the middle of the picture was taken for earth and cut out, a hole in it.
+    earth = reconstruct(erode(earth, 4), earth)
+    # And the crumbs of it left at the plant's edge, out in the open where the mound was.
+    loose = seen & ~keep & ~earth
+    loose[:int(rgba.shape[0] * 0.45)] = False
+    earth |= reconstruct(dilate(~seen | earth, 1) & loose & (v.mean(axis=2) < 110), loose & (v.mean(axis=2) < 110))
     plant = reconstruct(keep, seen & ~earth)
     out = rgba.copy()
     out[~plant, 3] = 0
@@ -628,13 +821,13 @@ def livelier(rgba: np.ndarray, factor: float) -> np.ndarray:
 
 
 def satsumaimo_stages() -> list[np.ndarray]:
-    two, three = (livelier(without_earth(crop(load_cut(f"crop_satsumaimo_stage{n}.png"))), SATSUMAIMO_LEAF_SATURATION) for n in (2, 3))
+    two, three = (livelier(without_earth(crop(load_cut_clean(f"crop_satsumaimo_stage{n}.png"))), SATSUMAIMO_LEAF_SATURATION) for n in (2, 3))
     return [two.copy(), two, three]
 
 
 def kabu_stages() -> list[np.ndarray]:
-    two, three = (crop(load_cut(f"crop_kabu_stage{n}.png", **CUT["kabu"])) for n in (2, 3))
-    return [kabu_sprout(two), without_tail(two), without_tail(three)]
+    two, three = (crop(load_cut_clean(f"crop_kabu_stage{n}.png", **CUT["kabu"])) for n in (2, 3))
+    return [kabu_sprout(two), buried_turnip(two, "plant_kabu_stage2", seed=11), buried_turnip(three, "plant_kabu_stage3", seed=12)]
 
 
 def habotan_stages() -> list[np.ndarray]:
@@ -683,14 +876,41 @@ def suisen_colour(rgba: np.ndarray, colour: str) -> np.ndarray:
     return out.clip(0, 255).astype(np.uint8)
 
 
+def greener_foot(rgba: np.ndarray, share: float = SUISEN_FOOT, strength: float = SUISEN_FOOT_GREEN) -> np.ndarray:
+    """
+    The narcissus' bunch with the pale foot of its stems brought towards the green of its leaves
+    (FB1114): a whitish yellow-green bundle at the bottom [share] of the picture, it looked like a
+    bunch of leeks or cut flowers. Pale pixels there go [strength] of the way (more lower down) to
+    the leaves' own colour at their own brightness; the shading stays.
+    """
+    out = rgba.astype(float)
+    rgb = out[:, :, :3]
+    h = rgba.shape[0]
+    seen = rgba[:, :, 3] > 128
+    lum = rgb.mean(axis=2)
+    middle = seen.copy()
+    middle[: int(h * 0.45)] = False
+    middle[int(h * (1 - share)):] = False
+    leafy = middle & (rgb[..., 2] >= rgb[..., 0]) & (lum < 160)
+    leaf = np.median(rgb[leafy], axis=0) if leafy.sum() > 50 else np.array([92.0, 122.0, 118.0])
+    top = int(h * (1 - share))
+    ramp = np.zeros(h)
+    ramp[top:] = np.linspace(0.4, 1.0, h - top)
+    pale = np.clip((lum - 90.0) / 60.0, 0.0, 1.0) * (rgb[..., 1] >= rgb[..., 2] - 4)
+    t = strength * ramp[:, None] * pale * seen
+    target = leaf[None, None, :] * (lum / max(leaf.mean(), 1.0))[..., None]
+    rgb[:] = rgb * (1 - t[..., None]) + np.clip(target, 0, 255) * t[..., None]
+    return out.clip(0, 255).astype(np.uint8)
+
+
 def suisen_stages() -> list[np.ndarray]:
-    two = crop(load_cut("crop_suisen_stage2.png"))
-    return [two.copy(), two, crop(load_cut("crop_suisen_yellow_stage3.png"))]
+    two = greener_foot(crop(load_cut("crop_suisen_stage2.png")))
+    return [two.copy(), two, greener_foot(crop(load_cut("crop_suisen_yellow_stage3.png")))]
 
 
 #: How each new crop's withered picture is made, where the plain cut does not do.
 WITHERED_MAKERS = {
-    "kabu": lambda: kabu_withered(crop(load_cut("crop_kabu_withered.png", **CUT["kabu"]))),
+    "kabu": lambda: kabu_withered(crop(load_cut_clean("crop_kabu_withered.png", **CUT["kabu"]))),
     "satsumaimo": lambda: without_earth(crop(load_cut("crop_satsumaimo_withered.png")), withered=True),
     "habotan": lambda: without_stem(crop(load_cut("crop_habotan_withered.png", **CUT["habotan"]))),
 }
@@ -698,22 +918,12 @@ WITHERED_MAKERS = {
 
 def stage_icons() -> dict[str, np.ndarray]:
     """
-    The icons of the crops that came with none (#book60), cut from their stage 3: the narcissus'
-    bunch with its flowers, the ornamental cabbage's head, the sweet potato's potatoes under its
-    leaves, and the turnip's root with the foot of its leaves (faded out above, so that no leaf
-    ends in a straight cut).
+    The icons of the crops of #book60 that came with none, cut from their stage 3: the narcissus'
+    bunch with its flowers and the ornamental cabbage's head. (The turnip's and the sweet potato's
+    came as pictures of their own in FB1114, icon_kabu.png and icon_satsumaimo.png.)
     """
-    kabu = without_tail(crop(load_cut("crop_kabu_stage3.png", **CUT["kabu"])))
-    neck = turnip_neck(kabu)
-    top = max(0, neck - int(kabu.shape[0] * 0.42))
-    root = kabu[top:].copy()
-    fade = min(root.shape[0], int(kabu.shape[0] * 0.24))
-    for i in range(fade):
-        root[i, :, 3] = (root[i, :, 3].astype(float) * (i / fade)).astype(np.uint8)
-    stages = {"suisen": suisen_stages()[2], "habotan": habotan_stages()[2], "satsumaimo": satsumaimo_stages()[2]}
-    out = {f"icon_{name}": to_icon(picture) for name, picture in stages.items()}
-    out["icon_kabu"] = to_icon(crop(root))
-    return out
+    stages = {"suisen": suisen_stages()[2], "habotan": habotan_stages()[2]}
+    return {f"icon_{name}": to_icon(picture) for name, picture in stages.items()}
 
 
 def simple_stages(name: str, suffix: str) -> list[np.ndarray]:
@@ -786,7 +996,7 @@ def anchor_for(crop_name: str, picture: np.ndarray, asset_id: str) -> dict | Non
         return field_anchor(picture)
     if all(isinstance(s, tuple) and s[0] == "log" for s in STAGES[crop_name]):
         return log_anchor(picture)
-    return ANCHORS.get(asset_id)
+    return KABU_ANCHORS.get(asset_id) or ANCHORS.get(asset_id)
 
 
 def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
@@ -834,7 +1044,7 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         out[f"plant_tulip_stage3_{colour}"] = (bloom, None)
     yellow = load_cut("crop_suisen_yellow_stage3.png")
     for colour in SUISEN_COLOURS:
-        bloom = to_size(crop(suisen_colour(yellow, colour)), STAGES["suisen"][2])
+        bloom = to_size(greener_foot(crop(suisen_colour(yellow, colour))), STAGES["suisen"][2])
         out[f"plant_suisen_stage3_{colour}"] = (bloom, None)
     return out
 

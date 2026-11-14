@@ -47,7 +47,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 import asset_packer
 from prepare_building_art import ALPHA_MIN, SOURCE, TOOLS, border, dilate, reconstruct, resize
@@ -110,10 +110,18 @@ WINTER_WHITE = (247.0, 246.0, 243.0)
 WINTER_FUR_LOW = 0.68
 WINTER_FUR_HIGH = 1.0
 WINTER_FUR_DARKEST = 38
+#: How far (pixels on the original) the fur's brightness is smoothed before it is made white (FB1114).
+WINTER_SMOOTH = 5
 
-#: How far down the rabbit (a share of its height) the dark patches kept as they are may lie: its
-#: eyes and the tips of its ears are all above it, the dark markings of its back below.
-WINTER_HEAD_SHARE = 0.42
+#: The rabbit's eyes on each original (x, y, radius in pixels), kept as they are in its white coat,
+#: and how far above the top of them the dark of its ears may come down (FB1114: the dark streak
+#: of its back, as high as its eyes in the leaping picture, was taken for an ear's tip).
+WINTER_EYES: dict[str, list[tuple[int, int, int]]] = {
+    "rabbit": [(372, 460, 23)],
+    "rabbit_front": [(448, 455, 15), (570, 458, 15)],
+    "rabbit_run": [(370, 460, 23)],
+}
+WINTER_EAR_ABOVE_EYES = 40
 
 #: Where the pecking bird's feet are on the original: its beak reaches as low as they do, so
 #: feet() would take it for one of them.
@@ -238,26 +246,48 @@ def cut(name: str) -> np.ndarray:
     return cut_out(rgb)
 
 
-def winter_coat(rgba: np.ndarray) -> np.ndarray:
-    """The rabbit (#book60) in its white winter coat: its brown fur white, all else as it was."""
+def winter_coat(rgba: np.ndarray, name: str) -> np.ndarray:
+    """The rabbit (#book60) in its white winter coat: all of its fur white, its eyes and the dark
+    tips of its ears as they were.
+
+    Everything seen is fur but its eyes ([WINTER_EYES], kept as they are, iris and all) and the
+    dark of its ears above them. FB1114: fur was only what was brown (red over blue),
+    so the greyish dark hairs of the back and a dark patch on the flank of the front picture were
+    left as they were, a brown streak and dark specks on the white. Its new colour follows the
+    brightness of the fur smoothed over a few pixels ([WINTER_SMOOTH]), lifted into
+    [WINTER_FUR_LOW] to [WINTER_FUR_HIGH] of [WINTER_WHITE]: the shading of its body stays, single
+    dark hairs do not.
+    """
     rgb = rgba[:, :, :3].astype(float)
-    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
     lum = rgb.mean(axis=2)
+    alpha = rgba[:, :, 3].astype(float) / 255.0
     seen = rgba[:, :, 3] > 0
-    fur = seen & (r > b + 10) & (lum > WINTER_FUR_DARKEST)
-    # What is darker still is the eyes and the ears' tips where it lies in patches (thick enough to
-    # outlast a few erosions); in single dark hairs among the fur it is fur, and goes white too.
+    h, w = lum.shape
+    yy, xx = np.mgrid[0:h, 0:w]
+    eyes = np.zeros_like(seen)
+    for ex, ey, er in WINTER_EYES[name]:
+        eyes |= (xx - ex) ** 2 + (yy - ey) ** 2 <= er * er
+    # The dark of the ears, above the eyes: in patches thick enough to outlast a few erosions.
     dark = seen & (lum <= WINTER_FUR_DARKEST)
     patches = reconstruct(erode(dark, 3), dark)
-    # Only up at the head: the dark patches of the back and flanks are fur, and go white.
-    ys = np.where(seen.any(axis=1))[0]
-    patches[ys.min() + int((ys.max() - ys.min()) * WINTER_HEAD_SHARE):] = False
-    hairs = dark & ~dilate(patches, 2)
-    top = np.percentile(lum[fur], 98) if fur.any() else 255.0
-    level = WINTER_FUR_LOW + (WINTER_FUR_HIGH - WINTER_FUR_LOW) * np.clip(lum / top, 0.0, 1.0)
+    patches[min(ey - er for _, ey, er in WINTER_EYES[name]) - WINTER_EAR_ABOVE_EYES:] = False
+    keep = (dilate(patches, 2) | eyes) & seen
+    fur = seen & ~keep
+
+    def blur(a: np.ndarray) -> np.ndarray:
+        image = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "L")
+        return np.asarray(image.filter(ImageFilter.GaussianBlur(WINTER_SMOOTH)), dtype=float)
+
+    weight_a = alpha * fur
+    smooth = blur(lum * weight_a) / np.maximum(blur(weight_a * 255.0) / 255.0, 1e-3)
+    # Light hairs keep the fur's texture; dark ones are lifted to the brightness round them.
+    smooth = np.where(fur, np.maximum(smooth, lum), lum)
+    top = np.percentile(smooth[fur], 98) if fur.any() else 255.0
+    level = WINTER_FUR_LOW + (WINTER_FUR_HIGH - WINTER_FUR_LOW) * np.clip(smooth / top, 0.0, 1.0)
     white = level[..., None] * np.array(WINTER_WHITE)
-    # Eased in from the darkest fur, so that the ears' dark tips do not end in a hard line.
-    weight = np.maximum(np.clip((lum - WINTER_FUR_DARKEST) / 12.0, 0.0, 1.0) * fur, hairs * 1.0)
+    # Eased in round the ears' dark tips and the eyes, so that they do not end in a hard line.
+    rim = dilate(keep, 3) & ~keep
+    weight = np.where(rim, np.clip((lum - WINTER_FUR_DARKEST) / 12.0, 0.0, 1.0), fur * 1.0)
     out = rgba.copy()
     out[:, :, :3] = np.clip(rgb * (1 - weight[..., None]) + white * weight[..., None], 0, 255).astype(np.uint8)
     return out
@@ -435,7 +465,7 @@ def prepare() -> tuple[dict[str, np.ndarray], dict[str, dict]]:
     for name in ("rabbit", "rabbit_run", "rabbit_front"):
         add(f"creature_{name}", cuts[name], scales[name], feet(cuts[name]))
         white = name.replace("rabbit", "rabbit_white")
-        add(f"creature_{white}", winter_coat(cuts[name]), scales[name], feet(cuts[name]))
+        add(f"creature_{white}", winter_coat(cuts[name], name), scales[name], feet(cuts[name]))
     ys, xs = np.where(cuts["snail"][:, :, 3] > 128)
     low = ys >= ys.max() - 12
     add("creature_snail", cuts["snail"], scales["snail"], (float(xs[low].mean()), float(ys.max() + 1)))

@@ -41,6 +41,7 @@ class MigrationSchemaTest {
             MIGRATION_18_19,
             MIGRATION_19_20,
             MIGRATION_20_21,
+            MIGRATION_21_22,
         )
     }
 
@@ -184,6 +185,13 @@ class MigrationSchemaTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `v22 sets moss laid before it grew fully grown, and changes no table`() {
+        // FB1114: moss grows in now, as a lawn does; what was laid before stays as it was.
+        assertEquals(listOf("UPDATE grid_objects SET growthProgress = 1.0 WHERE objectId = 'ground_moss'"), sqlOf(AppDatabase.MIGRATION_21_22))
+        assertEquals(schema(21), schema(22))
     }
 
     @Test

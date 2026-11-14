@@ -96,10 +96,11 @@ python tools/webp_art.py --check   # 何も書かずに確かめるだけ
   原画は `crop_poinsettia_stage{1..3}.png` と `crop_poinsettia_withered.png`（Recraft、白背景）。大きさ（`STAGES`）は丸い株として 0.3 / 0.55 / 0.7、枯れ 0.7（目安のままで幅・高さとも 1→2→3 の順に大きい）。
   段階 2 の苞はピンク、段階 3 は鮮やかな赤で、色は届いた絵のまま。切り抜きはふつうの設定のまま。`crop_soil.SOILLESS` に `poinsettia` を追加。
 - かぶ・さつまいも・水仙・葉ぼたん（#book60、各 4 枚、水仙は段階 3 の色違い 2 枚も）：`plant_{kabu,satsumaimo,suisen,habotan}_stage{1..3}.png` と `_withered.png`、`plant_suisen_stage3_{white,orange}.png`。
-  原画は段階 2・3・枯れの 3 枚ずつ（`crop_<作物>_stage2/stage3/withered.png`、水仙の段階 3 は `crop_suisen_yellow_stage3.png`）。段階 1 は段階 2 から作る（かぶは玉を消した葉だけの芽、ほかは縮めたもの。台帳では 🔁 代用）。アイコンも段階 3 から切り出す（`stage_icons`）。
-  かぶ：真っ白だけを抜き（白い玉が欠けない）、根の先のひげを切って玉の底を接地点に（`without_tail`）。枯れは段階 3 の高さにそろえ、灰色の玉を明るく黄みを足す（`kabu_withered`）。
-  さつまいも：明るい土の山を抜いて芋と葉だけにする（`without_earth`。山を暗く低く残す `with_earth_flattened` と畑の上で比べ、二重の土に見えない抜くほうにした）。葉を 1.25 倍鮮やかに。枯れは葉が土と同じ茶色なので、明るさで土と分ける。
-  水仙：段階 3 の黄から、花の中心（副花冠）を原画の上の楕円（`SUISEN_CUPS`）の中の濃い黄で取り、白（花びらをクリーム色に、陰影は残す）・口紅（中心をオレンジに）を作る（`suisen_colour`）。
+  原画は段階 2・3・枯れの 3 枚ずつ（`crop_<作物>_stage2/stage3/withered.png`、水仙の段階 3 は `crop_suisen_yellow_stage3.png`）。段階 1 は段階 2 から作る（かぶは玉を消した葉だけの芽、ほかは縮めたもの。台帳では 🔁 代用）。水仙・葉ぼたんのアイコンは段階 3 から切り出す（`stage_icons`）。かぶ・さつまいものアイコンは FB1114 で届いた `icon_kabu.png` `icon_satsumaimo.png` から（ほかの作物と同じ `prepare_icons`、かぶは真っ白だけを抜き、さつまいもは下の薄い影を抜く。`ICON_CUT`）。
+  かぶ：真っ白だけを抜き（白い玉が欠けない）、FB1114 から玉の下を土に埋めた見え方にする（`buried_turnip`）。白い玉の行の数から玉のいちばん太い所を探し、少し上を手前ほど低い曲線で切り（`KABU_BURIED_BELOW` `KABU_SOIL_DIP`）、切り口の上を土の色に染め、まわりに土の盛り上がりと土くれを描く（`KABU_HEAP_*`、色は畑の土 `SoilPalette`）。接地点は盛り土の足元で、`atlas_overrides.json` に書かれる。枯れは灰色の玉を明るく黄みを足してから同じく埋める（`kabu_withered`）。
+  かぶ・さつまいも：葉の間の小さな穴（照りが背景として抜けたもの・背景の白が残ったもの）は、外から細い道でしかつながらない小さな穴だけを、原画の色かまわりの葉の色で埋める（`without_specks`、`SPECK_WIDTH`）。
+  さつまいも：明るい土の山を抜いて芋と葉だけにする（`without_earth`。山を暗く低く残す `with_earth_flattened` と畑の上で比べ、二重の土に見えない抜くほうにした）。葉を 1.25 倍鮮やかに。枯れは葉が土と同じ茶色なので、明るさで土と分ける。FB1114：土として抜くのは大きなかたまりとそれにつながる暗い土くれだけ（葉の照りや芋の明るい所が抜けて穴になっていた）。
+  水仙：根元の白っぽい茎の束を葉の緑に寄せる（FB1114、`greener_foot`。下 3 割、最大 6 割）。段階 3 の黄から、花の中心（副花冠）を原画の上の楕円（`SUISEN_CUPS`）の中の濃い黄で取り、白（花びらをクリーム色に、陰影は残す）・口紅（中心をオレンジに）を作る（`suisen_colour`）。
   葉ぼたん：茎を切って葉の塊の下を接地点に（`without_stem`）。背景が薄い灰色で、中心の白い葉を袋の背景として抜かないよう `pocket` を大きくした。
   4 種とも `crop_soil.SOILLESS` に入れた。
 - 苔（#book60）：`res/drawable-nodpi/ground_moss.png`。原画 `tile_moss_top.png` は真上から見た模様で届いたので、板からは作らず、大きな明暗だけ消して（`MOSS_EVEN_OUT`）ごく弱いむらを戻し（`MOSS_MOTTLE`）、端をつなぐ（`moss_texture`）。アイコンはこの模様を芝生のアイコンと同じ板の形にした（`moss_icon`）。
@@ -140,8 +141,8 @@ python tools/webp_art.py --check   # 何も書かずに確かめるだけ
 | 種 | 白菜の種（`seed_hakusai`） | 40 | Lv10 | 確定アセット | `plant_hakusai_*`（#87）、アイコン画像あり |
 | 種 | 菜の花の種（`seed_nanohana`） | 45 | Lv12 | 確定アセット | `plant_nanohana_*`（#87）、アイコン画像あり |
 | 種 | トウモロコシの種（`seed_corn`） | 65 | Lv13 | 確定アセット | `plant_corn_*`（#57）、アイコン画像あり |
-| 種 | かぶの種（`seed_kabu`） | 25 | Lv7 | 確定アセット | `plant_kabu_*`（#book60、段階 1 は段階 2 から作成）、アイコン画像あり（段階 3 から） |
-| 種 | さつまいもの苗（`seed_satsumaimo`） | 40 | Lv9 | 確定アセット | `plant_satsumaimo_*`（#book60、土の山を抜いた）、アイコン画像あり（段階 3 から） |
+| 種 | かぶの種（`seed_kabu`） | 25 | Lv7 | 確定アセット | `plant_kabu_*`（#book60、段階 1 は段階 2 から作成）、アイコン画像あり（FB1114 の `icon_kabu.png`） |
+| 種 | さつまいもの苗（`seed_satsumaimo`） | 40 | Lv9 | 確定アセット | `plant_satsumaimo_*`（#book60、土の山を抜いた）、アイコン画像あり（FB1114 の `icon_satsumaimo.png`） |
 | 種 | 水仙の球根（`seed_suisen`） | 45 | Lv12 | 確定アセット | `plant_suisen_*`（#book60、段階 3 は黄・白・口紅の 3 色）、アイコン画像あり（段階 3 から） |
 | 種 | 葉ぼたんの苗（`seed_habotan`） | 80 | Lv16 | 確定アセット | `plant_habotan_*`（#book60、茎を切った）、アイコン画像あり（段階 3 から） |
 | 建物 | 木の柵（`struct_fence`） | 15 | 最初から | 確定アセット | `struct_fence` `_post` `_rail`（#85）、アイコン画像あり |

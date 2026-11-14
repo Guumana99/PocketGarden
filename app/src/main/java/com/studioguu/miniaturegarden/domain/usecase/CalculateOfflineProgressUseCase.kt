@@ -105,8 +105,8 @@ class CalculateOfflineProgressUseCase @Inject constructor() {
         val newTimestamp = currentTimeMillis - remainder
 
         if (ticks == 0L && gridObject.lastUpdatedTimestamp <= currentTimeMillis) return feeding(gridObject, currentTimeMillis)
-        // A lawn comes on with time alone, whatever the weather (LawnGrowth).
-        if (ticks > 0L && LawnGrowth.isLawn(gridObject) && LawnGrowth.GROWS_IN_STAGES) {
+        // A lawn comes on with time alone, whatever the weather (LawnGrowth); moss too (FB1114).
+        if (ticks > 0L && LawnGrowth.grows(gridObject) && LawnGrowth.GROWS_IN_STAGES) {
             val grown = LawnGrowth.grownBy(gridObject.growthProgress, ticks * TICK_MILLIS)
             return gridObject.copy(growthProgress = grown, lastUpdatedTimestamp = newTimestamp)
         }
