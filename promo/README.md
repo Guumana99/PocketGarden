@@ -77,7 +77,7 @@ timeline:                # at は録画の秒（頭に付ける完成形は含�
 | 収穫 | `harvest: { cells/area, over }` | 株が浮いて消える（ゲームと同じ） |
 | 置く | `place: { item: deco_bench, at: [x,y], flip: false }` | 物の id は `GardenItem` のもの |
 | 取り除く | `remove: { cells/area, over }` | 土以外 |
-| 生き物 | `creature: { kind: butterfly, count: 2, from: outside_left, land_on: [[4,3],[6,4]], stay: 3.0 }` | kind：butterfly / ladybug / bird / squirrel / frog / dragonfly。from：outside_left / outside_right / outside_top / outside_bottom / 角度。land_on の n 番目のマスに n 匹目が止まる（0.5 秒ずつ遅れて来る）。**at は降り立つ秒**：飛ぶもの（ちょうちょ・とんぼ・ことり）は庭の外の空からその分前に飛び始める（ちょうちょは約 7.4 秒、ことり約 3.9 秒、とんぼ約 3 秒前。画面に入るのは 1〜2 秒前）。`from_distance: 6`（ちょうちょ・とんぼのみ）で、何マス先から飛び始めるかを短くできる（速さはそのまま。6 マスでちょうちょ約 3.8 秒）。引きの画面では遠くからの飛来が空に小さく長く見えるので、寄った画面に画面の外から入らせたいときに使う。stay の後は庭の外へ飛び去る（ゲームと同じ距離・速さ）。飛び方・羽ばたき・振り向きはゲームのまま |
+| 生き物 | `creature: { kind: butterfly, count: 2, from: outside_left, land_on: [[4,3],[6,4]], stay: 3.0 }` | kind：butterfly / ladybug / bird / squirrel / frog / dragonfly / rabbit / snail（#book60）。うさぎは `coat: white` で白い冬毛。from：outside_left / outside_right / outside_top / outside_bottom / 角度。land_on の n 番目のマスに n 匹目が止まる（0.5 秒ずつ遅れて来る）。**at は降り立つ秒**：飛ぶもの（ちょうちょ・とんぼ・ことり）は庭の外の空からその分前に飛び始める（ちょうちょは約 7.4 秒、ことり約 3.9 秒、とんぼ約 3 秒前。画面に入るのは 1〜2 秒前）。`from_distance: 6`（ちょうちょ・とんぼのみ）で、何マス先から飛び始めるかを短くできる（速さはそのまま。6 マスでちょうちょ約 3.8 秒）。引きの画面では遠くからの飛来が空に小さく長く見えるので、寄った画面に画面の外から入らせたいときに使う。stay の後は庭の外へ飛び去る（ゲームと同じ距離・速さ）。飛び方・羽ばたき・振り向きはゲームのまま |
 | 天気 | `weather: rainy` | |
 | 時間帯 | `time_of_day: evening` または `time_of_day: { to: evening, over: 2.0 }` | |
 | 季節 | `season: autumn` | |

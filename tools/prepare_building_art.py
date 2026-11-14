@@ -522,7 +522,15 @@ PROPS: dict[str, tuple[str, tuple, float]] = {
     "deco_rock_standing": ("rock_standing.png", ("h", 0.68), 0.1),
     "deco_rock_pebbles": ("rock_pebbles.png", ("w", 0.52), 0.3),
     "struct_bridge_taiko": ("bridge_taiko.png", ("w", 1.5), 0.3),
+    # #book60: a scarecrow about as tall as the weathervane, its arms well inside its cell, and a
+    # bird bath half a cell high, smaller than the bench and the well beside it.
+    "deco_scarecrow": ("deco_scarecrow.png", ("h", 0.92), 0.05),
+    "deco_birdbath": ("deco_birdbath.png", ("h", 0.5), 0.25),
 }
+
+#: Things that stand on the foot of a post rather than on a base (#book60): their anchor is the
+#: middle of the lowest rows of the picture, at its very bottom.
+ON_A_POST = {"deco_scarecrow"}
 
 
 def cut_stone(name: str) -> np.ndarray:
@@ -570,6 +578,11 @@ def prepare_prop(asset_id: str) -> tuple[np.ndarray, dict]:
     rgba = crop(resize(rgba, scale, scale))
     if asset_id == "struct_bridge_taiko":
         return rgba, bridge_fit(rgba, cells=3)
+    if asset_id in ON_A_POST:
+        h, w = rgba.shape[:2]
+        ys, xs = np.where(rgba[:, :, 3] > 128)
+        low = xs[ys >= ys.max() - 6]
+        return rgba, {"anchorX": round(float((low.min() + low.max() + 1) / 2 / w), 4), "anchorY": round(float((ys.max() + 0.5) / h), 4)}
     # It stands on the middle of its base, as a building does.
     cx, side_y, width = base_of(rgba, band)
     ys, _ = np.where(rgba[:, :, 3] > ALPHA_MIN)

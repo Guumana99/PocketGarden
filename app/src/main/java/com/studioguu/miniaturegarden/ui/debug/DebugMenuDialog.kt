@@ -166,6 +166,13 @@ private fun CreatureCallSection(call: CreatureCall, onChange: (CreatureCall) -> 
                     modifier = Modifier.testTag(creatureCallTag(creature)),
                 )
             }
+            // #book60: the rabbit in its white winter coat, when it is called.
+            FilterChip(
+                selected = call.whiteRabbit,
+                onClick = { onChange(call.copy(whiteRabbit = !call.whiteRabbit)) },
+                label = { Text(stringResource(R.string.debug_call_white_rabbit)) },
+                modifier = Modifier.testTag(WHITE_RABBIT_CHIP_TAG),
+            )
         }
     }
 }
@@ -226,6 +233,7 @@ private fun SwitchRow(@StringRes title: Int, on: Boolean, onChange: (Boolean) ->
 const val CREATURE_CALL_SWITCH_TAG = "debug_call_switch"
 const val BOOK_ALL_SWITCH_TAG = "debug_book_all_switch"
 const val PERCHES_SWITCH_TAG = "debug_perches_switch"
+const val WHITE_RABBIT_CHIP_TAG = "debug_call_white_rabbit"
 fun creatureCallTag(creature: Creature): String = "debug_call_${creature.id}"
 
 /** Test tag of the zoom read-out laid over the garden. */

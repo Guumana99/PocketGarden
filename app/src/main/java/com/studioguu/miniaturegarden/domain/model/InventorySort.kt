@@ -24,13 +24,14 @@ enum class InventoryGroup {
             GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP, GardenItem.SEED_TOMATO, GardenItem.SEED_STRAWBERRY,
             GardenItem.SEED_WATERMELON, GardenItem.SEED_SHIITAKE, GardenItem.SEED_POINSETTIA,
             GardenItem.SEED_PAPRIKA, GardenItem.SEED_DAIKON, GardenItem.SEED_CARROT, GardenItem.SEED_EGGPLANT,
-            GardenItem.SEED_WHEAT, GardenItem.SEED_CORN, GardenItem.SEED_HAKUSAI, GardenItem.SEED_NANOHANA -> CROPS
+            GardenItem.SEED_WHEAT, GardenItem.SEED_CORN, GardenItem.SEED_HAKUSAI, GardenItem.SEED_NANOHANA,
+            GardenItem.SEED_KABU, GardenItem.SEED_SATSUMAIMO, GardenItem.SEED_SUISEN, GardenItem.SEED_HABOTAN -> CROPS
             GardenItem.STRUCT_HUT, GardenItem.STRUCT_WELL, GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WINDMILL,
             GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_LANTERN, GardenItem.DECO_SPRINKLER, GardenItem.FLOOR_GREENHOUSE,
             GardenItem.DECO_WEATHERVANE, GardenItem.DECO_ROCK_FLAT, GardenItem.DECO_ROCK_MOSSY, GardenItem.DECO_ROCK_STANDING,
             GardenItem.DECO_ROCK_PEBBLES, GardenItem.STRUCT_BRIDGE, GardenItem.STRUCT_FENCE_WHITE, GardenItem.STRUCT_FENCE_BAMBOO,
-            GardenItem.STRUCT_EDGING_BRICK -> FURNITURE
-            GardenItem.GROUND_GRASS, GardenItem.GROUND_FLOWERS, GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER -> GREENERY
+            GardenItem.STRUCT_EDGING_BRICK, GardenItem.DECO_SCARECROW, GardenItem.DECO_BIRDBATH -> FURNITURE
+            GardenItem.GROUND_GRASS, GardenItem.GROUND_FLOWERS, GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.GROUND_MOSS -> GREENERY
             GardenItem.GROUND_PEBBLE, GardenItem.FLOOR_COBBLESTONE, GardenItem.FLOOR_WOOD, GardenItem.TILE_RIVER, GardenItem.DECO_POND -> GROUND
         }
     }

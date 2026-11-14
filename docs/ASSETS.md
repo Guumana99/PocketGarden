@@ -25,7 +25,7 @@ python tools/webp_art.py --check   # 何も書かずに確かめるだけ
 | 置き場所 | 中身 | 作り方 |
 |---|---|---|
 | `app/src/main/assets/atlas/{crops,world}_<n>.png` + `assets_manifest.json` | スプライト 87 枚を 1 辺 2048px 以内のページに詰めたもの（#73）。作物（`plant_*`）は `crops_0`〜`2`（2035×2045・1952×2023・1925×467）、それ以外（建物・地面・柵）は `world_0`（1820×966）。合計 約 13.8MB、メモリ上 約 43MB、1 タイル 512px | `tools/asset_packer.py` |
-| `app/src/main/assets/atlas/creatures_0.png` + `creatures_manifest.json` | 生き物 6 種の絵 19 枚（#71、2026-11-02 に 3 枚追加。1017×726、約 680KB、1 タイル 960px）。作物のアトラスとは別（形は同じ。#73 で `creatures.png` から改名） | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
+| `app/src/main/assets/atlas/creatures_{0,1}.png` + `creatures_manifest.json` | 生き物 8 種の絵 28 枚（#71、2026-11-02 に 3 枚追加、#book60 でうさぎ 6 枚（白い冬毛 3 枚を含む）・かたつむり 1 枚を足して 2 ページ。1 タイル 960px）。作物のアトラスとは別（形は同じ。#73 で `creatures.png` から改名） | `tools/prepare_creature_art.py`（中で `asset_packer.py` を呼ぶ） |
 | `app/src/main/res/drawable-nodpi/{water_surface,water_ripple_a,water_ripple_b}.png` | 水面（繰り返せる 1 枚）と、その細かい波 2 枚（白＋透明）。川と池で共通。原画 `water_surface.png` | `tools/prepare_water_art.py` |
 | `app/src/main/res/drawable-nodpi/{river_bank,river_bank_concave,river_bank_convex}.png` | 川の岸。まっすぐな帯（1 マスの辺に 1 枚）と、帯を曲げて作った角 2 種。原画 `river_bank.png` | `tools/prepare_water_art.py` |
 | `app/src/main/res/drawable-nodpi/{floor_cobblestone,floor_wood,ground_pebble,ground_flowers}.png` | 石畳・ウッドデッキ・小石・野の花（#74）。真上から見た 1 マス分の模様（512×512）で、並べると隣のマスへ続く。庭は 1 マスに 1 枚敷く（`drawGroundTexture`） | `tools/prepare_drawable_art.py`（`GROUND`）が板の原画の上面から作る |
@@ -95,6 +95,15 @@ python tools/webp_art.py --check   # 何も書かずに確かめるだけ
 - ポインセチア（#69、4 枚）：`plant_poinsettia_stage{1..3}.png` と `_withered.png`（3 段階。#69 で 4 段階から 3 段階にし、コード描画をやめた。これで作物の絵はすべてそろい、作物の仮の絵の仕組み `ui/render/CropArt.kt` は削除した）。
   原画は `crop_poinsettia_stage{1..3}.png` と `crop_poinsettia_withered.png`（Recraft、白背景）。大きさ（`STAGES`）は丸い株として 0.3 / 0.55 / 0.7、枯れ 0.7（目安のままで幅・高さとも 1→2→3 の順に大きい）。
   段階 2 の苞はピンク、段階 3 は鮮やかな赤で、色は届いた絵のまま。切り抜きはふつうの設定のまま。`crop_soil.SOILLESS` に `poinsettia` を追加。
+- かぶ・さつまいも・水仙・葉ぼたん（#book60、各 4 枚、水仙は段階 3 の色違い 2 枚も）：`plant_{kabu,satsumaimo,suisen,habotan}_stage{1..3}.png` と `_withered.png`、`plant_suisen_stage3_{white,orange}.png`。
+  原画は段階 2・3・枯れの 3 枚ずつ（`crop_<作物>_stage2/stage3/withered.png`、水仙の段階 3 は `crop_suisen_yellow_stage3.png`）。段階 1 は段階 2 から作る（かぶは玉を消した葉だけの芽、ほかは縮めたもの。台帳では 🔁 代用）。アイコンも段階 3 から切り出す（`stage_icons`）。
+  かぶ：真っ白だけを抜き（白い玉が欠けない）、根の先のひげを切って玉の底を接地点に（`without_tail`）。枯れは段階 3 の高さにそろえ、灰色の玉を明るく黄みを足す（`kabu_withered`）。
+  さつまいも：明るい土の山を抜いて芋と葉だけにする（`without_earth`。山を暗く低く残す `with_earth_flattened` と畑の上で比べ、二重の土に見えない抜くほうにした）。葉を 1.25 倍鮮やかに。枯れは葉が土と同じ茶色なので、明るさで土と分ける。
+  水仙：段階 3 の黄から、花の中心（副花冠）を原画の上の楕円（`SUISEN_CUPS`）の中の濃い黄で取り、白（花びらをクリーム色に、陰影は残す）・口紅（中心をオレンジに）を作る（`suisen_colour`）。
+  葉ぼたん：茎を切って葉の塊の下を接地点に（`without_stem`）。背景が薄い灰色で、中心の白い葉を袋の背景として抜かないよう `pocket` を大きくした。
+  4 種とも `crop_soil.SOILLESS` に入れた。
+- 苔（#book60）：`res/drawable-nodpi/ground_moss.png`。原画 `tile_moss_top.png` は真上から見た模様で届いたので、板からは作らず、大きな明暗だけ消して（`MOSS_EVEN_OUT`）ごく弱いむらを戻し（`MOSS_MOTTLE`）、端をつなぐ（`moss_texture`）。アイコンはこの模様を芝生のアイコンと同じ板の形にした（`moss_icon`）。
+- かかし・バードバス（#book60）：`prepare_building_art.PROPS`。かかしは高さ 0.92 マスで杭の下端が接地点（`ON_A_POST`）、バードバスは高さ 0.5 マス。アイコンは原画から（`ITEM_ICONS`）。
 - 柵 3 種と、取り下げ中の縁石（#85）：`<id>.png`（1 本のとき）、`<id>_post.png`（杭）、`<id>_rail.png`（杭から次の杭まで）。`<id>` は `struct_fence` `struct_fence_white` `struct_fence_bamboo`。縁石 `struct_edging_brick` に杭は無い。作り方は「柵と縁石の絵を入れるとき」
 
 原画は `tools/raw_assets/`。ファイル名（拡張子なし）がそのまま assetId になる。
@@ -105,7 +114,7 @@ python tools/webp_art.py --check   # 何も書かずに確かめるだけ
 
 ### ショップの取扱一覧（プログレッション改定時点）
 
-`domain/model/GardenItem.kt` の全 46 品（うち縁石 1 品は取り下げ中で、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
+`domain/model/GardenItem.kt` の全 53 品（うち縁石 1 品は取り下げ中で、ショップに出していない）。並びはショップの棚（種・建物・飾り）ごと。
 「確定アセット」は庭に置いたときの絵が受け取った画像素材のもの、「コード描画（仮置き）」は絵が無くプログラムで描いているもの。
 アイコンは、ショップに出している品すべてが画像（`res/drawable-nodpi/icon_*.png`、`itemIconRes`。作物は #72、建物・飾り・地面は #74 と #77）。絵文字（`itemEmoji`）は絵が無いときの予備で、いまはショップに出していない白菜・菜の花・風見鶏だけ。
 
@@ -131,6 +140,10 @@ python tools/webp_art.py --check   # 何も書かずに確かめるだけ
 | 種 | 白菜の種（`seed_hakusai`） | 40 | Lv10 | 確定アセット | `plant_hakusai_*`（#87）、アイコン画像あり |
 | 種 | 菜の花の種（`seed_nanohana`） | 45 | Lv12 | 確定アセット | `plant_nanohana_*`（#87）、アイコン画像あり |
 | 種 | トウモロコシの種（`seed_corn`） | 65 | Lv13 | 確定アセット | `plant_corn_*`（#57）、アイコン画像あり |
+| 種 | かぶの種（`seed_kabu`） | 25 | Lv7 | 確定アセット | `plant_kabu_*`（#book60、段階 1 は段階 2 から作成）、アイコン画像あり（段階 3 から） |
+| 種 | さつまいもの苗（`seed_satsumaimo`） | 40 | Lv9 | 確定アセット | `plant_satsumaimo_*`（#book60、土の山を抜いた）、アイコン画像あり（段階 3 から） |
+| 種 | 水仙の球根（`seed_suisen`） | 45 | Lv12 | 確定アセット | `plant_suisen_*`（#book60、段階 3 は黄・白・口紅の 3 色）、アイコン画像あり（段階 3 から） |
+| 種 | 葉ぼたんの苗（`seed_habotan`） | 80 | Lv16 | 確定アセット | `plant_habotan_*`（#book60、茎を切った）、アイコン画像あり（段階 3 から） |
 | 建物 | 木の柵（`struct_fence`） | 15 | 最初から | 確定アセット | `struct_fence` `_post` `_rail`（#85）、アイコン画像あり |
 | 建物 | 白い柵（`struct_fence_white`） | 25 | Lv5 | 確定アセット | `struct_fence_white` `_post` `_rail`（#85）、アイコン画像あり。ショップでは「柵」の一覧から |
 | 建物 | 竹垣（`struct_fence_bamboo`） | 35 | Lv8 | 確定アセット | `struct_fence_bamboo` `_post` `_rail`（#85）、アイコン画像あり。ショップでは「柵」の一覧から |
@@ -146,19 +159,22 @@ python tools/webp_art.py --check   # 何も書かずに確かめるだけ
 | 飾り | 石畳（`floor_cobblestone`） | 10 | 最初から | 確定アセット | `floor_cobblestone.png`（#74 で差し替え）、アイコン画像あり |
 | 飾り | 小川（`tile_river`） | 10 | 最初から | 生成アセット | `tile_river_autotile.png`（スクリプトで生成）。庭・図鑑での名前は「せせらぎ」 |
 | 飾り | 野の花（`ground_flowers`） | 15 | 最初から | 確定アセット | `ground_flowers.png`（#74）、アイコン画像あり |
-| 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 29 種類 | 確定アセット | `floor_wood.png`（#74）、アイコン画像あり |
+| 飾り | ウッドデッキ（`floor_wood`） | 12 | 図鑑 31 種類 | 確定アセット | `floor_wood.png`（#74）、アイコン画像あり |
 | 飾り | 丸い岩（`deco_rock`） | 60 | Lv2 | 確定アセット | `deco_rock`（#74）、アイコン画像あり。ショップでは「石」の 1 つにまとめて、押すと 5 種の一覧が出る |
 | 飾り | 平たい石（`deco_rock_flat`） | 80 | Lv4 | 確定アセット | `deco_rock_flat`（原画 `rock_flat.png`）、アイコン画像あり |
 | 飾り | 苔むした岩（`deco_rock_mossy`） | 150 | Lv7 | 確定アセット | `deco_rock_mossy`（原画 `rock_mossy.png`）、アイコン画像あり |
 | 飾り | 立て石（`deco_rock_standing`） | 250 | Lv10 | 確定アセット | `deco_rock_standing`（原画 `rock_standing.png`）、アイコン画像あり |
 | 飾り | 小石の山（`deco_rock_pebbles`） | 300 | Lv13 | 確定アセット | `deco_rock_pebbles`（原画 `rock_pebbles.png`）、アイコン画像あり |
 | 飾り | ベンチ（`deco_bench`） | 100 | Lv3 | 確定アセット | `deco_bench`（#74）、アイコン画像あり |
-| 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 34 種類 | 確定アセット | `deco_lantern`（#74）、アイコン画像あり |
+| 飾り | 石灯籠（`deco_lantern`） | 60 | 図鑑 38 種類 | 確定アセット | `deco_lantern`（#74）、アイコン画像あり |
 | 飾り | スプリンクラー（`deco_sprinkler`） | 450 | Lv7 | 確定アセット＋コード | `deco_sprinkler`（#74）、アイコン画像あり。水しぶきは `SprinklerSpray` のコードで、絵の腕の軸から出る |
 | 飾り | 風見鶏（`deco_weathervane`） | 500 | Lv6 | 確定アセット | `deco_weathervane`（#87）、アイコン画像あり |
 | 飾り | 池（`deco_pond`） | 120 | Lv4 | 確定アセット | `pond.png`、つなぎ目と真ん中は `pond_center.png` |
+| 飾り | 苔（`ground_moss`） | 20 | Lv6 | 確定アセット | `ground_moss.png`（#book60、原画 `tile_moss_top.png`）、アイコン画像あり |
+| 飾り | かかし（`deco_scarecrow`） | 200 | Lv8 | 確定アセット | `deco_scarecrow`（#book60）、アイコン画像あり |
+| 飾り | バードバス（`deco_birdbath`） | 350 | Lv12 | 確定アセット | `deco_birdbath`（#book60）、アイコン画像あり |
 
-集計：確定アセット 34（うちコード併用 3、旧画風 3）、生成アセット 1、コード描画（仮置き） 0、未作成（ショップに出していない） 3。
+集計：確定アセット 41（うちコード併用 3、旧画風 3）、生成アセット 1、コード描画（仮置き） 0、未作成（ショップに出していない） 3。
 ショップに出ないもの：畝のある土（鍬で作る。`soil_tilled.png`）、耕した土（鍬で作る。`soil_revived.png`）、おくりものの箱（`deco_starter_crate`、#74 から絵）。
 品を足したり絵を入れたりしたら、この表と `GardenItem.kt` 冒頭の一覧と `ASSET_LEDGER.md` を直すこと。
 
@@ -199,7 +215,9 @@ python tools/webp_art.py --check   # 何も書かずに確かめるだけ
   羽の **anchor は付け根**、**attachX/attachY は胴の接地点の位置**（羽の絵の外にはみ出してよい）。コードは付け根を胴に合わせて吊り、付け根を軸に動かす。
   ちょうちょ・とんぼは胴の中心線で切り、羽は胴の下の部分も持つ（羽をたたむと胴の下に寄り、すき間が開かない）。横方向に縮めて開閉する（`VisitorLook.wingOpen`）。
   飛ぶことりは胴の輪郭を手で決めて（`BIRD_BODY`）翼を切り出し、付け根を軸に下へ回して羽ばたく。羽は胴の後ろに描く。図鑑のちょうちょ・とんぼは切り分ける前の 1 枚を出す。
-- **大きさ**：りす（座る姿の高さ）・ことり・かえる・ちょうちょ・とんぼ（幅）0.2 マス、てんとうむし（幅）0.075 マス（`SIZES`）。
+- **大きさ**：りす（座る姿の高さ）・ことり・かえる・ちょうちょ・とんぼ（幅）0.2 マス、てんとうむし（幅）0.075 マス（`SIZES`）。うさぎ（座る姿の高さ）0.24 マス、かたつむり（幅）0.11 マス（#book60）。
+- **うさぎ（#book60）**：座る `creature_rabbit`・跳ぶ `creature_rabbit_run`（同じ倍率、後ろ足が接地点）・正面 `creature_rabbit_front`（座る姿と高さをそろえ両足の間が接地点）。地面では座る絵、跳ねて宙にいる間は跳ぶ絵に切り替える。白い冬毛は 3 枚とも `_white` を付けた名前（`creature_rabbit_white` ほか）で、茶色の絵の毛だけをコードで白く塗ったもの（`winter_coat`：茶色の毛を明るさを保って白へ。目と耳先の黒は頭の高さにある濃いかたまりだけ残す）。
+- **かたつむり（#book60）**：`creature_snail`（左向き、接地点は足の中ほど）。這うときは絵の左 42% の体だけを横に伸び縮みさせ、殻は動かさない（`SNAIL_SHELL_FROM`、`VisitorLook.stretch`）。
 - **切り抜きで気をつけたところ**：りすの毛先は輪郭から 14px まで白と分けた（白いもやを残さない）。走るりすのお腹の白っぽい毛は背景の白と見分けられず、ふつうの抜き方では白いギザギザが残ったので、お腹の下だけ、オレンジの毛からの距離で 6px かけて消している（`soft_underside`。輪郭はオレンジの毛の縁に沿う）。ことりは白い尾・頬・お腹を残すため、真っ白（244 以上）だけを背景にし、足のあいだの白は別に抜いた。
   とんぼの羽の膜は青みのある白（228〜251）で、背景（253 以上）と分けて不透明度 0.3 以上の半透明で残した。かえるの淡い指先とてんとうむしの細い脚はふつうの抜き方で残る。
 

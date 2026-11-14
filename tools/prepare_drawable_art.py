@@ -106,6 +106,11 @@ STAGES: dict[str, list] = {
     "poinsettia": [0.3, 0.55, 0.7],
     "hakusai": [0.3, 0.46, ("w", 0.76)],
     "nanohana": [0.3, ("w", 0.55), ("w", 0.8)],
+    # The four of the book's 60 (#book60): stage 1 of each is made from its stage 2.
+    "kabu": [0.3, 0.48, 0.62],
+    "satsumaimo": [0.28, ("w", 0.56), ("w", 0.7)],
+    "suisen": [0.3, 0.48, 0.6],
+    "habotan": [0.28, ("w", 0.46), ("w", 0.6)],
 }
 
 #: How a crop's pictures (stages, withered and icon) are cut out, where the defaults do not do:
@@ -121,6 +126,11 @@ CUT: dict[str, dict] = {
     "shiitake": {"white_parts": 0.8},
     "hakusai": {"white_parts": 1.0},
     "nanohana": {"throughout": True, "solid": 100.0},
+    # The turnip's root is white: the usual cut bit its shaded side away (#book60).
+    "kabu": {"white_parts": 1.0},
+    # The ornamental cabbage's heart is white leaves shut in by green ones: none of it is a pocket
+    # of background (its own background is a pale grey, taken out from the edge as usual).
+    "habotan": {"pocket": 60},
 }
 
 #: The same for a withered picture, where it differs from the plant's own (#93): the nanohana's is
@@ -214,7 +224,57 @@ WITHERED: dict[str, object] = {
     "poinsettia": 0.7,
     "hakusai": ("w", 0.76),
     "nanohana": ("w", 0.8),
+    "kabu": 0.62,
+    "satsumaimo": ("w", 0.7),
+    "suisen": 0.6,
+    "habotan": ("w", 0.6),
 }
+
+#: The narcissus' flowers (#book60): yellow is its plain stage 3; the others are made from it in
+#: code, the way the tulip's colours are drawn ([suisen_colour]): white petals round a yellow cup
+#: (the Japanese narcissus), and a yellow flower with an orange cup (the rare one).
+SUISEN_COLOURS = ["white", "orange"]
+
+#: Each narcissus' cup on crop_suisen_yellow_stage3.png (source pixels): ellipses (centre x,
+#: centre y, half width, half height) round it, read off the picture. A cup seen from the side
+#: is two: its flared mouth and its tube. Inside them, only the deep yellow is the cup
+#: ([SUISEN_CUP_RATIO]); the petals lying over one stay petals.
+SUISEN_CUPS = [
+    (532, 258, 60, 55),   # the top flower, facing out
+    (522, 472, 53, 55),   # the front flower, facing out
+    (387, 333, 46, 44),   # the left one, three-quarter
+    (275, 432, 29, 52), (325, 432, 35, 34),   # the left one seen from the side: mouth and tube
+    (745, 391, 35, 56), (700, 388, 34, 34),   # the right one seen from the side
+    (657, 267, 28, 30),   # the small one at the back right
+]
+
+#: How much less green than red the cup is, at most (green / red): the petals are paler, nearer 0.88.
+SUISEN_CUP_RATIO = 0.87
+
+#: The white of the Japanese narcissus' petals at their lightest, a little cream so that it never
+#: melts into the snow or a pale path; shaded as the yellow ones were, a little more deeply.
+SUISEN_WHITE = (244.0, 240.0, 226.0)
+SUISEN_WHITE_SHADE = 1.3
+
+#: How the rare cup's orange is made from its yellow: green and blue scaled down.
+SUISEN_ORANGE = (1.0, 0.58, 0.36)
+
+#: How far below the turnip's widest row its root tip is cut off: where the root is still this
+#: share of that width ([without_tail]).
+KABU_TAIL = 0.24
+
+#: The withered turnip's root came grey, as dull as a stone: lifted ([KABU_ROOT_GAIN]) and warmed
+#: a little ([KABU_ROOT_WARM], added to red, green and blue).
+KABU_ROOT_GAIN = 1.12
+KABU_ROOT_WARM = (10.0, 7.0, -6.0)
+
+#: How far the ornamental cabbage's stem is cut off: where the plant is still this share of its
+#: widest, it is the foot of its leaves ([without_stem]).
+HABOTAN_STEM = 0.3
+
+#: The sweet potato's leaves are a little grey beside the other crops': their colour away from grey
+#: is raised by this much.
+SATSUMAIMO_LEAF_SATURATION = 1.25
 
 
 # --- Cutting out -------------------------------------------------------------------------------
@@ -453,6 +513,209 @@ def snowdrop_stages() -> list[np.ndarray]:
     return [without_roots(stages[0])] + stages[1:]
 
 
+def faded_foot(rgba: np.ndarray, rows: int = 3) -> np.ndarray:
+    """[rgba] with its last [rows] rows fading out, so that a cut across it has no hard edge."""
+    out = rgba.copy()
+    for i in range(1, rows + 1):
+        if i <= out.shape[0]:
+            out[-i, :, 3] = (out[-i, :, 3].astype(float) * i / (rows + 1)).astype(np.uint8)
+    return out
+
+
+def row_widths(rgba: np.ndarray) -> np.ndarray:
+    solid = rgba[:, :, 3] > 128
+    return np.array([(np.ptp(np.where(r)[0]) + 1) if r.any() else 0 for r in solid])
+
+
+def without_tail(rgba: np.ndarray, share: float = KABU_TAIL) -> np.ndarray:
+    """[rgba] (a turnip) cut off below its root: the thin tip under it goes, and it stands on the
+    foot of the round root, as the daikon and the carrot stand in their beds (#book60)."""
+    widths = row_widths(rgba)
+    h = len(widths)
+    widest = int(np.argmax(widths[int(h * 0.55):])) + int(h * 0.55)
+    below = np.where(widths[widest:] >= widths[widest] * share)[0]
+    foot = widest + int(below.max()) + 1
+    return crop(faded_foot(rgba[:foot].copy()))
+
+
+def turnip_neck(rgba: np.ndarray) -> int:
+    """The row where the turnip's leaf stalks meet its root: the narrowest above the root's widest."""
+    widths = row_widths(rgba)
+    h = len(widths)
+    widest = int(np.argmax(widths[int(h * 0.55):])) + int(h * 0.55)
+    top = int(h * 0.5)
+    return top + int(np.argmin(widths[top:widest]))
+
+
+def kabu_sprout(rgba: np.ndarray) -> np.ndarray:
+    """Stage 1 of the turnip: its stage 2's leaves, without the root under them (a sprout)."""
+    return crop(faded_foot(rgba[:turnip_neck(rgba) + 2].copy(), rows=4))
+
+
+def kabu_withered(rgba: np.ndarray) -> np.ndarray:
+    """The withered turnip: its root lifted and warmed, so that it is not read as a stone."""
+    out = without_tail(rgba).astype(float)
+    neck = turnip_neck(out.astype(np.uint8))
+    rgb = out[neck:, :, :3]
+    grey = (rgb.max(axis=2) - rgb.min(axis=2)) < 30
+    lifted = np.clip(rgb * KABU_ROOT_GAIN + np.array(KABU_ROOT_WARM), 0, 255)
+    rgb[grey] = lifted[grey]
+    return out.astype(np.uint8)
+
+
+def without_stem(rgba: np.ndarray, share: float = HABOTAN_STEM) -> np.ndarray:
+    """[rgba] (an ornamental cabbage) without the stem under its leaves: on its stem it read as a
+    ball on a stick, a little tree. It stands on the foot of its leaves."""
+    widths = row_widths(rgba)
+    rows = np.where(widths >= widths.max() * share)[0]
+    return crop(faded_foot(rgba[:int(rows.max()) + 1].copy()))
+
+
+def without_earth(rgba: np.ndarray, withered: bool = False) -> np.ndarray:
+    """
+    The sweet potato without the mound of earth it came on (#book60): only its leaves, their
+    stems and its potatoes stay, standing on the bed as the daikon does. Earth is what is neither
+    green, nor the purple-red of the stems and potatoes, in the lower part of the picture (for a
+    withered one, whose leaves are as brown as earth, what is darker than its pale leaves).
+    The pale shadow on the right of the mound went with the white.
+    """
+    v = rgba[:, :, :3].astype(int)
+    r, g, b = v[..., 0], v[..., 1], v[..., 2]
+    seen = rgba[:, :, 3] > 0
+    if withered:
+        # Its pale leaves, not the grey-white shadow left on the right of the mound.
+        pale_grey = (v.max(axis=2) - v.min(axis=2) < 28) & (v.min(axis=2) > 170)
+        keep = seen & (v.mean(axis=2) > 120) & ~pale_grey
+    else:
+        green = (g > r + 5) & (g >= b)
+        red = (r > g + 35) & (r > b + 10) & (r > 90)
+        stems = (r > g) & (b > g) & (r - g > 15)
+        keep = seen & (green | red | stems)
+    earth = seen & ~keep
+    earth[:int(rgba.shape[0] * 0.45)] = False
+    plant = reconstruct(keep, seen & ~earth)
+    out = rgba.copy()
+    out[~plant, 3] = 0
+    return crop(keep_main_part(out))
+
+
+def with_earth_flattened(rgba: np.ndarray, darken: float = 0.62, squash: float = 0.55) -> np.ndarray:
+    """The other way tried for the sweet potato (#book60, for the report only): its mound kept,
+    darkened to the bed's earth and squashed lower."""
+    h, w = rgba.shape[:2]
+    v = rgba[:, :, :3].astype(int)
+    r, g, b = v[..., 0], v[..., 1], v[..., 2]
+    plant = ((g > r + 5) & (g >= b)) | ((r > g + 35) & (r > b + 10) & (r > 90)) | ((r > g) & (b > g) & (r - g > 15))
+    earth = (rgba[:, :, 3] > 0) & ~dilate(plant, 1)
+    earth[:int(h * 0.45)] = False
+    out = rgba.astype(float)
+    out[earth, :3] *= darken
+    out = out.astype(np.uint8)
+    rows = np.where(earth.sum(axis=1) > w * 0.2)[0]
+    top, bottom = rows.min(), np.where(out[:, :, 3].any(axis=1))[0].max()
+    band = np.array(Image.fromarray(out[top:bottom + 1]).resize((w, max(1, int((bottom + 1 - top) * squash))), Image.LANCZOS))
+    return crop(np.concatenate([out[:top], band], axis=0))
+
+
+def livelier(rgba: np.ndarray, factor: float) -> np.ndarray:
+    """[rgba] with the colour of its green parts [factor] times as far from grey."""
+    rgb = rgba[:, :, :3].astype(float)
+    grey = rgb.mean(axis=2, keepdims=True)
+    green = (rgb[..., 1] > rgb[..., 0]) & (rgb[..., 1] >= rgb[..., 2])
+    out = rgba.copy()
+    out[:, :, :3] = np.where(green[..., None], np.clip(grey + (rgb - grey) * factor, 0, 255), rgb).astype(np.uint8)
+    return out
+
+
+def satsumaimo_stages() -> list[np.ndarray]:
+    two, three = (livelier(without_earth(crop(load_cut(f"crop_satsumaimo_stage{n}.png"))), SATSUMAIMO_LEAF_SATURATION) for n in (2, 3))
+    return [two.copy(), two, three]
+
+
+def kabu_stages() -> list[np.ndarray]:
+    two, three = (crop(load_cut(f"crop_kabu_stage{n}.png", **CUT["kabu"])) for n in (2, 3))
+    return [kabu_sprout(two), without_tail(two), without_tail(three)]
+
+
+def habotan_stages() -> list[np.ndarray]:
+    two, three = (without_stem(crop(load_cut(f"crop_habotan_stage{n}.png", **CUT["habotan"]))) for n in (2, 3))
+    return [two.copy(), two, three]
+
+
+def suisen_flower_masks(rgba: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """On the narcissus' stage 3 (uncropped): how much each pixel is petal, and how much cup, 0 to 1."""
+    from PIL import ImageFilter
+    h, w = rgba.shape[:2]
+    rgb = rgba[:, :, :3].astype(float)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    flower = (rgba[:, :, 3] > 0) & (r > 110) & (r - b > 60) & (r >= g * 0.92)
+    flower[int(h * 0.6):] = False   # the yellow-green foot of the stems is no flower
+    yy, xx = np.mgrid[0:h, 0:w]
+    near_cup = np.zeros((h, w), bool)
+    for cx, cy, rx, ry in SUISEN_CUPS:
+        near_cup |= ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2 <= 1.0
+    ratio = np.where(flower, g / np.maximum(r, 1.0), 1.0)
+    smooth = np.array(Image.fromarray((ratio * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(2))).astype(float) / 255
+    cup = near_cup & flower & (smooth < SUISEN_CUP_RATIO)
+    cup = dilate(erode(cup, 1), 1)
+
+    def soft(mask: np.ndarray) -> np.ndarray:
+        return np.array(Image.fromarray((mask * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2))).astype(float) / 255
+
+    cup_share = soft(cup) * flower
+    return flower * (1.0 - cup_share), cup_share
+
+
+def suisen_colour(rgba: np.ndarray, colour: str) -> np.ndarray:
+    """The narcissus' stage 3 (uncropped, yellow) in [colour] (SUISEN_COLOURS)."""
+    petals, cup = suisen_flower_masks(rgba)
+    out = rgba.astype(float)
+    rgb = out[:, :, :3]
+    if colour == "white":
+        lum = rgb.mean(axis=2)
+        top = np.percentile(lum[petals > 0.8], 97)
+        shade = np.clip(lum / top, 0.0, 1.0) ** SUISEN_WHITE_SHADE
+        white = shade[..., None] * np.array(SUISEN_WHITE)
+        rgb[:] = rgb * (1 - petals[..., None]) + white * petals[..., None]
+    elif colour == "orange":
+        orange = rgb * np.array(SUISEN_ORANGE)
+        rgb[:] = rgb * (1 - cup[..., None]) + orange * cup[..., None]
+    return out.clip(0, 255).astype(np.uint8)
+
+
+def suisen_stages() -> list[np.ndarray]:
+    two = crop(load_cut("crop_suisen_stage2.png"))
+    return [two.copy(), two, crop(load_cut("crop_suisen_yellow_stage3.png"))]
+
+
+#: How each new crop's withered picture is made, where the plain cut does not do.
+WITHERED_MAKERS = {
+    "kabu": lambda: kabu_withered(crop(load_cut("crop_kabu_withered.png", **CUT["kabu"]))),
+    "satsumaimo": lambda: without_earth(crop(load_cut("crop_satsumaimo_withered.png")), withered=True),
+    "habotan": lambda: without_stem(crop(load_cut("crop_habotan_withered.png", **CUT["habotan"]))),
+}
+
+
+def stage_icons() -> dict[str, np.ndarray]:
+    """
+    The icons of the crops that came with none (#book60), cut from their stage 3: the narcissus'
+    bunch with its flowers, the ornamental cabbage's head, the sweet potato's potatoes under its
+    leaves, and the turnip's root with the foot of its leaves (faded out above, so that no leaf
+    ends in a straight cut).
+    """
+    kabu = without_tail(crop(load_cut("crop_kabu_stage3.png", **CUT["kabu"])))
+    neck = turnip_neck(kabu)
+    top = max(0, neck - int(kabu.shape[0] * 0.42))
+    root = kabu[top:].copy()
+    fade = min(root.shape[0], int(kabu.shape[0] * 0.24))
+    for i in range(fade):
+        root[i, :, 3] = (root[i, :, 3].astype(float) * (i / fade)).astype(np.uint8)
+    stages = {"suisen": suisen_stages()[2], "habotan": habotan_stages()[2], "satsumaimo": satsumaimo_stages()[2]}
+    out = {f"icon_{name}": to_icon(picture) for name, picture in stages.items()}
+    out["icon_kabu"] = to_icon(crop(root))
+    return out
+
+
 def simple_stages(name: str, suffix: str) -> list[np.ndarray]:
     return [crop(load_cut(f"crop_{name}{suffix}{n}.png", **CUT.get(name, {}))) for n in (1, 2, 3)]
 
@@ -545,6 +808,10 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
         "poinsettia": simple_stages("poinsettia", "_stage"),
         "hakusai": hakusai_stages(),
         "nanohana": simple_stages("nanohana", "_stage"),
+        "kabu": kabu_stages(),
+        "satsumaimo": satsumaimo_stages(),
+        "suisen": suisen_stages(),
+        "habotan": habotan_stages(),
     }
     out: dict[str, tuple[np.ndarray, dict | None]] = {}
     for crop_name, pictures in stages.items():
@@ -555,13 +822,20 @@ def prepare_crops() -> dict[str, tuple[np.ndarray, dict | None]]:
             if asset_id in LEAF_GAIN:
                 picture = brighter_leaves(picture, LEAF_GAIN[asset_id])
             out[asset_id] = (picture, override)
-        if crop_name in WITHERED:
+        if crop_name in WITHERED_MAKERS:
+            dead = to_size(WITHERED_MAKERS[crop_name](), WITHERED[crop_name])
+            out[f"plant_{crop_name}_withered"] = (dead, anchor_for(crop_name, dead, f"plant_{crop_name}_withered"))
+        elif crop_name in WITHERED:
             cut = crop(load_cut(f"crop_{crop_name}_withered.png", **WITHERED_CUT.get(crop_name, CUT.get(crop_name, {}))))
             dead = to_size(firmed(cut, *FIRMED[crop_name]) if crop_name in FIRMED else cut, WITHERED[crop_name])
             out[f"plant_{crop_name}_withered"] = (dead, anchor_for(crop_name, dead, f"plant_{crop_name}_withered"))
     for colour in TULIP_COLOURS:
         bloom = to_size(crop(load_cut(f"crop_tulip_{colour}_stage3.png")), STAGES["tulip"][2])
         out[f"plant_tulip_stage3_{colour}"] = (bloom, None)
+    yellow = load_cut("crop_suisen_yellow_stage3.png")
+    for colour in SUISEN_COLOURS:
+        bloom = to_size(crop(suisen_colour(yellow, colour)), STAGES["suisen"][2])
+        out[f"plant_suisen_stage3_{colour}"] = (bloom, None)
     return out
 
 
@@ -580,6 +854,8 @@ def prepare_icons() -> dict[str, np.ndarray]:
     for item_id, path in CUT_ICONS.items():
         out[f"icon_{item_id}"] = to_icon(crop(np.array(Image.open(path).convert("RGBA"))))
     out["icon_struct_windmill"] = windmill_icon()
+    out.update(stage_icons())
+    out["icon_ground_moss"] = moss_icon()
     return out
 
 
@@ -594,6 +870,8 @@ GROUND_TEXTURES: dict[str, tuple[str, float, str]] = {
     "ground_flowers": ("tile_flowers_iso.png", 0.05, "blend"),
     "floor_wood": ("tile_wood_deck_iso.png", 0.03, "boards"),
     "floor_cobblestone": ("tile_cobblestone_iso.png", 0.05, "joints"),
+    # #book60: seen from above already; made by moss_texture, not from a slab.
+    "ground_moss": ("tile_moss_top.png", 0.0, "moss"),
 }
 
 #: Pixels a side of a ground texture: one cell. About as many as a cell of the atlas (512).
@@ -621,6 +899,9 @@ ITEM_ICONS: dict[str, str] = {
     # Device feedback (after #75): the rest of what the shop sells, so that no shelf mixes pictures
     # and emoji. The grass as the slab it came as, like the other ground.
     "ground_grass": "tile_grass_iso.png",
+    # #book60: the scarecrow and the bird bath, from the pictures their sprites are cut from.
+    "deco_scarecrow": "deco_scarecrow.png",
+    "deco_birdbath": "deco_birdbath.png",
 }
 
 #: Icons cut from pictures that are already cut out (transparent), as the garden draws them: the
@@ -690,7 +971,63 @@ def tile_boards(rgb: np.ndarray) -> np.ndarray:
     return rgb[:width, starts[0]:starts[0] + width]
 
 
+#: The moss (#book60) came seen from straight above already (tile_moss_top.png), with broad
+#: diagonal waves of light and shade across it: those larger than this (pixels, at
+#: [GROUND_SIZE] + [GROUND_MARGIN]) go, as the wasteland's do (FlatGround.evenOut).
+MOSS_EVEN_OUT = 26
+
+#: A faint mottling put back over the evened-out moss, so that it is not as flat as felt: its
+#: size (pixels) and strength (share of brightness).
+MOSS_MOTTLE = (40.0, 0.05)
+
+
+def moss_texture() -> np.ndarray:
+    """The moss over one cell, made to tile: the picture evened out, mottled faintly, blended round."""
+    from PIL import ImageFilter
+    size = GROUND_SIZE + GROUND_MARGIN
+    rgb = np.array(Image.open(SOURCE / "tile_moss_top.png").convert("RGB").resize((size, size), Image.LANCZOS)).astype(float)
+    flat = even_out(rgb, MOSS_EVEN_OUT)
+    radius, strength = MOSS_MOTTLE
+    rng = np.random.default_rng(160)
+    noise = Image.fromarray((rng.random((size, size)) * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(radius))
+    n = np.array(noise).astype(float)
+    n = (n - n.mean()) / max(1e-6, n.std())
+    flat = flat * (1.0 + strength * np.clip(n, -2.5, 2.5))[..., None]
+    return tile_by_blending(flat, GROUND_MARGIN, joints=False).clip(0, 255).astype(np.uint8)
+
+
+def moss_icon() -> np.ndarray:
+    """The moss' icon: a slab of it, as the other ground's icons are (its top a 2:1 diamond, its
+    sides the same moss in shade over a band of earth)."""
+    tex = Image.fromarray(moss_texture())
+    w, h, depth = 640, 320, 70
+    top = tex.resize((w, w)).rotate(45, resample=Image.BICUBIC, expand=True)
+    top = top.resize((w, h), Image.LANCZOS)
+    diamond = Image.new("L", (w, h), 0)
+    from PIL import ImageDraw
+    ImageDraw.Draw(diamond).polygon([(w / 2, 0), (w, h / 2), (w / 2, h), (0, h / 2)], fill=255)
+    canvas = Image.new("RGBA", (w, h + depth), (0, 0, 0, 0))
+    side = np.array(tex.resize((w, depth))).astype(float)
+    earth = np.array([92.0, 70.0, 48.0])
+    rows = np.linspace(0, 1, depth)[:, None, None]
+    side = side * (1 - rows) * 0.55 + earth * rows * 0.75
+    for x0, x1, gain in ((0, w // 2, 0.9), (w // 2, w, 0.7)):
+        face = Image.new("L", (w, h + depth), 0)
+        if x0 == 0:
+            ImageDraw.Draw(face).polygon([(0, h / 2), (w / 2, h), (w / 2, h + depth), (0, h / 2 + depth)], fill=255)
+        else:
+            ImageDraw.Draw(face).polygon([(w / 2, h), (w, h / 2), (w, h / 2 + depth), (w / 2, h + depth)], fill=255)
+        band = np.zeros((h + depth, w, 3))
+        for y in range(h + depth):
+            band[y] = side[min(depth - 1, max(0, y - h // 2))] * gain
+        canvas.paste(Image.fromarray(band.clip(0, 255).astype(np.uint8)), (0, 0), face)
+    canvas.paste(top, (0, 0), diamond)
+    return to_icon(crop(np.array(canvas)))
+
+
 def ground_texture(object_id: str) -> np.ndarray:
+    if object_id == "ground_moss":
+        return moss_texture()
     name, inset, how = GROUND_TEXTURES[object_id]
     face = even_out(flat_face(name, GROUND_SIZE + GROUND_MARGIN, inset), GROUND_EVEN_OUT)
     if how == "boards":

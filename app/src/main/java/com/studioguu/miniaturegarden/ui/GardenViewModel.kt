@@ -716,7 +716,7 @@ class GardenViewModel @Inject constructor(
                     // Some come in greater numbers to a player further on (CreatureCrowds).
                     val level = gardenRepository.getUserProfile()?.playerLevel ?: 1
                     val visits = if (call.calling) {
-                        CreatureCalls.visitsAt(now, call.creatures, visiting.objects, visiting.map, call.since, level)
+                        CreatureCalls.visitsAt(now, call.creatures, visiting.objects, visiting.map, call.since, level, call.whiteRabbit)
                     } else {
                         CreatureVisits.visitorsAt(now, visiting.objects, visiting.weather, visiting.map, visiting.season, visiting.timeOfDay, visiting.phase, leftAt, level)
                     }
@@ -771,17 +771,17 @@ class GardenViewModel @Inject constructor(
      *   (and nothing to show for it) the cells round it could not be selected (device feedback).
      */
     fun onVisitorTapped(visit: CreatureVisit): Boolean {
-        val news = natureNotes.value.isNews(visit.rule)
+        val news = natureNotes.value.isNews(visit.rule, visit.variant)
         if (!notedVisits.add(CreatureVisits.periodOf(visit.arrivesAt) to visit.rule)) return false
         viewModelScope.launch {
-            when (actionMutex.withLock { recordNatureNote(visit.rule, clock.now()) }) {
+            when (actionMutex.withLock { recordNatureNote(visit.rule, clock.now(), visit.variant) }) {
                 NoteResult.NEW_CREATURE -> {
                     audio.play(SoundEffect.LEVEL_UP)
                     unmetVisitor.value = false
                     _messages.trySend(R.string.msg_nature_note_added)
                     happyMoment()
                 }
-                NoteResult.NEW_COMBINATION -> _messages.trySend(R.string.msg_nature_note_added)
+                NoteResult.NEW_COMBINATION, NoteResult.NEW_LOOK -> _messages.trySend(R.string.msg_nature_note_added)
                 NoteResult.SEEN_BEFORE -> Unit
             }
         }

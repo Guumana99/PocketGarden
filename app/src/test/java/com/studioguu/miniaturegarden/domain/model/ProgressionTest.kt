@@ -138,17 +138,18 @@ class ProgressionTest {
             3 to setOf(GardenItem.SEED_SUNFLOWER, GardenItem.DECO_BENCH, GardenItem.STRUCT_COTTAGE),
             4 to setOf(GardenItem.SEED_DAIKON, GardenItem.DECO_POND, GardenItem.DECO_ROCK_FLAT),
             5 to setOf(GardenItem.SEED_LAVENDER, GardenItem.STRUCT_WELL, GardenItem.STRUCT_FENCE_WHITE),
-            6 to setOf(GardenItem.SEED_EGGPLANT, GardenItem.DECO_WEATHERVANE),
-            7 to setOf(GardenItem.SEED_WHEAT, GardenItem.DECO_SPRINKLER, GardenItem.DECO_ROCK_MOSSY),
-            8 to setOf(GardenItem.SEED_ROSE, GardenItem.STRUCT_FENCE_BAMBOO),
-            9 to setOf(GardenItem.SEED_WATERMELON, GardenItem.STRUCT_WINDMILL),
+            // #book60: the moss, the kabu, the scarecrow, the satsumaimo, the suisen and the bird bath, the habotan.
+            6 to setOf(GardenItem.SEED_EGGPLANT, GardenItem.DECO_WEATHERVANE, GardenItem.GROUND_MOSS),
+            7 to setOf(GardenItem.SEED_WHEAT, GardenItem.DECO_SPRINKLER, GardenItem.DECO_ROCK_MOSSY, GardenItem.SEED_KABU),
+            8 to setOf(GardenItem.SEED_ROSE, GardenItem.STRUCT_FENCE_BAMBOO, GardenItem.DECO_SCARECROW),
+            9 to setOf(GardenItem.SEED_WATERMELON, GardenItem.STRUCT_WINDMILL, GardenItem.SEED_SATSUMAIMO),
             10 to setOf(GardenItem.SEED_HAKUSAI, GardenItem.DECO_ROCK_STANDING),
             11 to setOf(GardenItem.SEED_PAPRIKA, GardenItem.STRUCT_HUT),
-            12 to setOf(GardenItem.SEED_NANOHANA),
+            12 to setOf(GardenItem.SEED_NANOHANA, GardenItem.SEED_SUISEN, GardenItem.DECO_BIRDBATH),
             13 to setOf(GardenItem.SEED_CORN, GardenItem.DECO_ROCK_PEBBLES),
             14 to setOf(GardenItem.SEED_SHIITAKE),
             15 to setOf(GardenItem.SEED_POINSETTIA),
-            16 to setOf(GardenItem.STRUCT_EDGING_BRICK),
+            16 to setOf(GardenItem.STRUCT_EDGING_BRICK, GardenItem.SEED_HABOTAN),
             17 to setOf(GardenItem.STRUCT_BRIDGE),
             18 to setOf(GardenItem.FLOOR_GREENHOUSE),
         )
@@ -168,10 +169,10 @@ class ProgressionTest {
             setOf(GardenItem.SEED_SUNFLOWER, GardenItem.DECO_BENCH, GardenItem.STRUCT_COTTAGE, GardenItem.SEED_DAIKON, GardenItem.DECO_POND, GardenItem.DECO_ROCK_FLAT),
             GardenItem.unlockedBetween(2, 4).toSet(),
         )
-        assertEquals(setOf(GardenItem.SEED_EGGPLANT, GardenItem.DECO_WEATHERVANE), GardenItem.unlockedBetween(5, 6).toSet())
+        assertEquals(setOf(GardenItem.SEED_EGGPLANT, GardenItem.DECO_WEATHERVANE, GardenItem.GROUND_MOSS), GardenItem.unlockedBetween(5, 6).toSet())
         assertEquals(setOf(GardenItem.DECO_ROCK_STANDING, GardenItem.SEED_HAKUSAI), GardenItem.unlockedBetween(9, 10).toSet())
-        assertEquals(setOf(GardenItem.SEED_NANOHANA), GardenItem.unlockedBetween(11, 12).toSet())
-        assertEquals(setOf(GardenItem.STRUCT_BRIDGE), GardenItem.unlockedBetween(15, 17).toSet())
+        assertEquals(setOf(GardenItem.SEED_NANOHANA, GardenItem.SEED_SUISEN, GardenItem.DECO_BIRDBATH), GardenItem.unlockedBetween(11, 12).toSet())
+        assertEquals(setOf(GardenItem.SEED_HABOTAN, GardenItem.STRUCT_BRIDGE), GardenItem.unlockedBetween(15, 17).toSet())
         assertTrue(GardenItem.unlockedBetween(3, 3).isEmpty())
     }
 
@@ -190,8 +191,8 @@ class ProgressionTest {
     fun `the level-up notice names what the shop just opened`() {
         assertEquals(GardenItem.unlockedBetween(1, 4).toSet(), LevelUpNotice(1, 4).unlockedItems.toSet())
         assertTrue(LevelUpNotice(1, 2).unlockedItems.isNotEmpty())
-        // A level that opens nothing: the board does not speak of new items.
-        assertTrue(LevelUpNotice(15, 16).unlockedItems.isEmpty())
+        // A level that opens nothing: the board does not speak of new items (#book60: Lv.16 opens the habotan now).
+        assertTrue(LevelUpNotice(18, 19).unlockedItems.isEmpty())
     }
 
     // --- What is registered and not on sale ---
@@ -247,6 +248,11 @@ class ProgressionTest {
             PlantSpecies.CORN to Row(42, 65, 165, 63),
             PlantSpecies.SHIITAKE to Row(48, 45, 100, 65, Triple(24, 50, 33)),
             PlantSpecies.POINSETTIA to Row(40, 70, 175, 67),
+            // #book60.
+            PlantSpecies.KABU to Row(24, 25, 66, 30),
+            PlantSpecies.SATSUMAIMO to Row(30, 40, 100, 42),
+            PlantSpecies.SUISEN to Row(34, 45, 120, 46),
+            PlantSpecies.HABOTAN to Row(44, 80, 200, 72),
         )
         assertEquals(PlantSpecies.entries.toSet(), table.keys)
         for ((species, row) in table) {
@@ -337,6 +343,8 @@ class ProgressionTest {
                 GardenItem.GROUND_GRASS to 10, GardenItem.GROUND_PEBBLE to 10, GardenItem.FLOOR_COBBLESTONE to 10,
                 GardenItem.TILE_RIVER to 10, GardenItem.GROUND_FLOWERS to 15, GardenItem.STRUCT_FENCE to 15,
                 GardenItem.FLOOR_WOOD to 12, GardenItem.DECO_LANTERN to 60,
+                // #book60.
+                GardenItem.GROUND_MOSS to 20, GardenItem.DECO_SCARECROW to 200, GardenItem.DECO_BIRDBATH to 350,
             ),
             GardenItem.entries.filter { it.category != ItemCategory.SEED }.associateWith { it.price },
         )

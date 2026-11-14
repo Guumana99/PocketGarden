@@ -56,16 +56,20 @@
 | ポインセチア（`plant_poinsettia`） | Lv15 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#69。C2PA を grep で確認）。#69 で 4 段階から 3 段階に。段階 2 の苞はピンク、段階 3 は赤（届いた絵のまま） |
 | 白菜（`plant_hakusai`） | Lv10 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87、#91 で段階 3 と枯れを外葉の広がった株に差し替え。横幅 0.76 マス、結球の足元に立つ）。段階 2 のひげ根を切り落とす。葉が白っぽいので真っ白だけを抜く（`white_parts`）。段階 3 は縦長で高さ 0.8 マス |
 | 菜の花（`plant_nanohana`） | Lv12 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87、#93 で段階 3 と枯れを穂の付いた株に差し替え。横幅 0.8 マス。#94 で段階 2 を緑のつぼみの房の株に差し替え。横幅 0.55 マス）。切り抜きはコスモスと同じ（`throughout`）。段階 2 から幅で大きさを決める（0.55・0.72 マス） |
+| かぶ（`plant_kabu`） | Lv7 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60。段階 2・3・枯れが届いた）。段階 1 は段階 2 から白い玉を消した葉だけの芽（`kabu_sprout`）。土なしで、根の先のひげを切り、玉の底が接地点（`without_tail`）。白い玉が欠けないよう真っ白だけを抜く（`white_parts`）。枯れは段階 3 と同じ高さ 0.62 マスにし、灰色の玉を少し明るく黄みを足した（`KABU_ROOT_*`）。アイコンは段階 3 の玉と葉の付け根（上はぼかして切る） |
+| さつまいも（`plant_satsumaimo`） | Lv9 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60）。原画の明るい土の山は抜き、芋と葉だけにした（大根と同じ見え方。土を暗く低く残す案と畑の上で比べた。`without_earth`）。山の右の薄い影も抜いた。葉の色を 1.25 倍鮮やかに。段階 1 は段階 2 を縮めたもの。横幅 0.56・0.7 マス。アイコンは段階 3（芋と葉） |
+| 水仙（`plant_suisen`） | Lv12 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60、段階 3 は黄の `crop_suisen_yellow_stage3.png`）。段階 3 は 3 色：黄（原画のまま）・白い花びらに黄の中心（`_white`）・黄の花びらにオレンジの中心（`_orange`、めずらしい）。花びらと中心（副花冠）の範囲を原画の上で決め（`SUISEN_CUPS`）、色をコードで変えた（`suisen_colour`）。真っ白は作らずクリーム色で陰影を残す。段階 1 は段階 2 を縮めたもの。高さ 0.3・0.48・0.6 マス。アイコンは段階 3 の束 |
+| 葉ぼたん（`plant_habotan`） | Lv16 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60）。長い茎はほぼ切り、葉の塊の下が接地点（`without_stem`）。背景の薄い灰色は外から抜き、中心の白い葉は抜かない（`pocket` 60）。段階 1 は段階 2 を縮めたもの。横幅 0.46・0.6 マス。アイコンは段階 3 の株 |
 
 - 仮（⬜）の作物に絵を入れるときは、**その作物の段階と枯れを全部そろえて**入れる（一部だけだと `CodeArtTest` が落ちる）。段階の数を 3 に変えるなら `PlantSpecies.growthStages` も直す。
 - アイコンの絵は `res/drawable-nodpi/icon_<作物>.png`（256×256、`tools/prepare_drawable_art.py` が原画から作る）を置き、`UiLabels.itemIconRes` に 1 行足す。
 
-**集計（作物の絵の枠 80、アイコン 20）**
+**集計（作物の絵の枠 96、アイコン 24）**
 
 | | ✅ 採用 | 🟡 旧画風 | 🔁 代用 | ⬜ 仮 |
 |---|---|---|---|---|
-| 段階・枯れの枠（80） | 67 | 13 | 0 | 0 |
-| アイコン（20） | 20 | — | — | 0 |
+| 段階・枯れの枠（96） | 79 | 13 | 4 | 0 |
+| アイコン（24） | 24 | — | — | 0 |
 
 ## 建物
 
@@ -91,6 +95,7 @@
 | 畝のある土（`floor_tilled`） | ✅ | Recraft | `res/drawable/soil_tilled.png` |
 | 土の質の色（よい土・ふかふかの土） | ⬜ | — | 土の絵に色を掛ける（`soilTint`、乗算。#78）。たい肥は物として残さず、抜いたときの崩れる演出（`drawCrumbling`、コード）だけ |
 | 芝生（`ground_grass`） | ✅＋⬜ | Recraft | 育ちきると `tile_grass`（原画 `tile_grass_iso.png`）。育つ途中の苗床と葉の切り抜きは演出としてコードで描く（#61）。`tile_grass_dark` は 📦 |
+| 苔（`ground_moss`） | ✅ | Recraft | `res/drawable-nodpi/ground_moss.png`（原画 `tile_moss_top.png`、#book60。真上から見た模様のまま届いた）。大きな斜めの明暗の波を消して平らにし（`MOSS_EVEN_OUT`）、ごく弱いむらを戻し（`MOSS_MOTTLE`）、端をつないで 1 マスに 1 枚敷く（`moss_texture`）。芝生と同じく地面を覆い、上に置ける物も芝生と同じ |
 | 小石（`ground_pebble`） | ✅ | Recraft | `res/drawable-nodpi/ground_pebble.png`（原画 `tile_pebble_iso.png`、Recraft（#74。C2PA を grep で確認））。板の上面を真上から見た模様にし、マスどうしが続くようにして 1 マスに 1 枚敷く |
 | 野の花（`ground_flowers`） | ✅ | Recraft | `res/drawable-nodpi/ground_flowers.png`（原画 `tile_flowers_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方 |
 | 石畳（`floor_cobblestone`） | ✅ | Recraft | `res/drawable-nodpi/floor_cobblestone.png`（原画 `tile_cobblestone_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方で、継ぎ目では石が重ならず目地で区切れる。#73 まではイラスト調の `tile_path_cobblestone.png`（📦、`tools/source_art/`） |
@@ -107,6 +112,8 @@
 | 石灯籠（`deco_lantern`） | ✅ | Recraft | `deco_lantern`（原画 `deco_lantern.png`、Recraft（#74。C2PA を grep で確認））。高さ 0.44 マス |
 | スプリンクラー（`deco_sprinkler`） | ✅＋⬜ | Recraft | 本体 `deco_sprinkler`（原画 `deco_sprinkler.png`、Recraft（#74。C2PA を grep で確認）。高さ 0.34 マス）。水しぶき（`SprinklerSpray`）は演出としてコードで描き、本体の絵の腕の軸（取り付け点）から出る。しぶきの絵を入れるなら `deco_sprinkler_spray_0`〜`_7` |
 | 風見鶏（`deco_weathervane`） | ✅ | Recraft | `deco_weathervane`（原画 `deco_weathervane.png`、#87）。高さ 0.8 マス、柱の土台の中心がマスの中心 |
+| かかし（`deco_scarecrow`） | ✅ | Recraft | `deco_scarecrow`（原画 `deco_scarecrow.png`、#book60）。高さ 0.92 マス（腕は 1 マスに収まる 0.62 マス幅）、杭の下端が接地点（`ON_A_POST`）。向きを変えると左右反転。雪の日は帽子と袖の上にうっすら雪（`PictureSnow`） |
+| バードバス（`deco_birdbath`） | ✅ | Recraft | `deco_birdbath`（原画 `deco_birdbath.png`、#book60）。高さ 0.5 マス。向きを変えると左右反転。雪の日は鉢の縁にうっすら雪、水面は雪を載せず淡い氷の色（`PictureSnow.FROZEN`） |
 | おくりものの箱（`deco_starter_crate`。#79 で名前だけ変更、絵は同じ） | ✅ | Recraft | `deco_starter_crate`（原画 `deco_starter_crate.png`、Recraft（#74。C2PA を grep で確認））。幅 0.42 マス、ふたが開いて苗と種袋が見える |
 
 ## ショップのアイコン
@@ -125,8 +132,9 @@
 | 池・芝生（`deco_pond` `ground_grass`） | ✅ | `icon_deco_pond.png`（#77、`pond.png`）・`icon_ground_grass.png`（#77、`tile_grass_iso.png` を板の形のまま） |
 | 小川（`tile_river`） | ⚙️ | `icon_tile_river.png`（#77、スクリプトで作った `tile_river_autotile.png` のまっすぐなひと続きを、庭のマスと同じひし形に） |
 | 風見鶏（`deco_weathervane`） | ✅ | `icon_deco_weathervane.png`（#87、原画 `deco_weathervane.png` から） |
+| 苔・かかし・バードバス（`ground_moss` `deco_scarecrow` `deco_birdbath`） | ✅ | `icon_ground_moss.png`（#book60、苔の模様を芝生のアイコンと同じ板の形に）・`icon_deco_scarecrow.png` `icon_deco_birdbath.png`（原画から、#74 と同じ作り） |
 
-**集計（作物以外の品物のアイコン 21。すべて絵）**：✅ 20、⚙️ 1。
+**集計（作物以外の品物のアイコン 24。すべて絵）**：✅ 23、⚙️ 1。
 
 ## 演出としてコードで描くもの
 
@@ -143,8 +151,8 @@
 
 ## 生き物
 
-#71 から 6 種とも ✅（Recraft の絵。原画は `tools/source_art/creature_*.png`、白背景 1024×1024、11 枚すべて C2PA に Recraft AI の記録あり、Google の記録なし）。
-作物のアトラスではなく、生き物用の別の画像 `creatures_0.png` / `creatures_manifest.json`（1017×726、約 680KB、1 タイル 960px）に入っている。✅ はその画像に入っているもの。
+#71 から 6 種とも ✅（Recraft の絵。原画は `tools/source_art/creature_*.png`、白背景 1024×1024、11 枚すべて C2PA に Recraft AI の記録あり、Google の記録なし）。#book60 でうさぎとかたつむりを足して 8 種。
+作物のアトラスではなく、生き物用の別の画像 `creatures_0.png` `creatures_1.png` / `creatures_manifest.json`（#book60 で 2 ページ、998×1021 と 545×154、1 タイル 960px）に入っている。✅ はその画像に入っているもの。
 作り方は `tools/prepare_creature_art.py`、絵の決まり（羽の部品・接地点・大きさ）は `ASSETS.md` の「生き物の絵の決まり」。コード描画の仮の絵は #71 で削除した。
 
 | 生き物 | assetId | 出所・メモ | 状態 |
@@ -160,6 +168,8 @@
 | りす（縮んだ走り） | `creature_squirrel_run2` | Recraft で作成・採用（2026-11-02）。接地点は足元。移動中、跳ねの地面側で `creature_squirrel_run` と入れ替わる | ✅ |
 | かえる（跳ぶ） | `creature_frog_jump` | Recraft で作成・採用（2026-11-02）。原画のかえるが小さいので 1.8 倍にして目をそろえた。跳ぶ間だけ出す | ✅ |
 | とんぼ | `creature_dragonfly` | Recraft（#71）。真上から見た姿。2026-11-08 から 0.26 マス（前は 0.2 マス、1.3 倍）。透明な羽は半透明（不透明度 0.3〜）で残し、脈と縁は不透明。胴と左右の羽に切り分け | ✅ |
+| うさぎ | `creature_rabbit` | Recraft（#book60）。座る姿・跳ぶ姿（`creature_rabbit_run`、同じ倍率）・正面（`creature_rabbit_front`、座る姿と頭から足までの高さをそろえ、両足の間が接地点）。高さ 0.24 マス。お腹と尾の白が欠けないよう真っ白だけを抜く。白い冬毛の 3 枚（`creature_rabbit_white` `creature_rabbit_white_run` `creature_rabbit_white_front`）は茶色の 3 枚の毛だけをコードで白く塗った（`winter_coat`。耳先の黒・目・陰影は残す） | ✅ |
+| かたつむり | `creature_snail` | Recraft（#book60）。左向き。幅 0.11 マス（最大ズームで殻の渦が見える）。淡い目の柄が消えないよう真っ白だけを抜く。這うときは殻を残して体だけ伸び縮みさせる（`SNAIL_SHELL_FROM`） | ✅ |
 
 図鑑の「いきもの」の章（影絵・ページの絵）は、各種の 1 枚目（`creature_<id>`）を静止して出す。
 

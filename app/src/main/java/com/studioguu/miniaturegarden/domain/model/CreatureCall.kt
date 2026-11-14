@@ -9,7 +9,13 @@ package com.studioguu.miniaturegarden.domain.model
  * @property since when they were called (epoch millis): the rounds run from then, so that one
  *   called comes at once and stays a whole round, not what is left of one already under way.
  */
-data class CreatureCall(val creatures: List<Creature> = emptyList(), val on: Boolean = false, val since: Long = 0L) {
+data class CreatureCall(
+    val creatures: List<Creature> = emptyList(),
+    val on: Boolean = false,
+    val since: Long = 0L,
+    /** #book60: the rabbit called comes in its white winter coat. */
+    val whiteRabbit: Boolean = false,
+) {
     /** Whether anyone is being called at all. */
     val calling: Boolean get() = on && creatures.isNotEmpty()
 
@@ -48,7 +54,15 @@ object CreatureCalls {
      * Those that come in numbers come as many as the garden and [level] allow at most
      * ([CreatureCrowds.mostFor]), to be watched together.
      */
-    fun visitsAt(now: Long, creatures: List<Creature>, objects: List<GridObject>, map: GardenMap, since: Long = 0L, level: Int = 1): List<CreatureVisit> {
+    fun visitsAt(
+        now: Long,
+        creatures: List<Creature>,
+        objects: List<GridObject>,
+        map: GardenMap,
+        since: Long = 0L,
+        level: Int = 1,
+        whiteRabbit: Boolean = false,
+    ): List<CreatureVisit> {
         val round = roundOf(now, since)
         val start = roundStart(round, since)
         val garden = GardenSnapshot(objects, WeatherType.SUNNY)
@@ -58,7 +72,8 @@ object CreatureCalls {
         return creatures.flatMap { creature ->
             val first = firstOf(creature, round, start, garden, grid, map, taken, middle) ?: return@flatMap emptyList()
             val most = CreatureCrowds.mostFor(creature, CreatureCrowds.habitat(creature, garden.settled), level)
-            CreatureCrowds.crowdOf(first, most, garden, grid, map, taken) { k -> round * 7 + k }
+            val variant = if (creature == Creature.RABBIT && whiteRabbit) CreatureVisits.WHITE_COAT else null
+            CreatureCrowds.crowdOf(first.copy(variant = variant), most, garden, grid, map, taken) { k -> round * 7 + k }
         }
     }
 
@@ -107,6 +122,9 @@ object CreatureCalls {
         Creature.LADYBUG -> "struct_fence"
         Creature.BUTTERFLY -> PlantSpecies.TULIP.objectId
         Creature.SQUIRREL -> "deco_rock"
+        // #book60: a lawn for the rabbit to lope over, moss for the snail to creep on.
+        Creature.RABBIT -> LawnGrowth.OBJECT_ID
+        Creature.SNAIL -> LawnGrowth.MOSS_OBJECT_ID
     }
 
     /** Whether [obj] is the thing [creature] is called to ([perchFor]); a tulip only in bloom. */
@@ -126,6 +144,8 @@ object CreatureCalls {
         fun grown(species: PlantSpecies) = listOf(thing(GridObject.TILLED_SOIL_OBJECT_ID), thing(species.objectId, growth = 1f))
         return when (creature) {
             Creature.BUTTERFLY -> grown(PlantSpecies.TULIP)
+            // A lawn grown, not one just sown.
+            Creature.RABBIT -> listOf(thing(perchFor(creature), growth = 1f))
             else -> listOf(thing(perchFor(creature)))
         }
     }

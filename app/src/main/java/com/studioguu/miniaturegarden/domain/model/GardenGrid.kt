@@ -86,10 +86,10 @@ class GardenGrid(
         for (obj in objects) if (obj.isFloor) for (cell in obj.occupiedCells()) put(cell, obj)
     }
     private val lawns: Map<GridCell, GridObject> = buildMap {
-        for (obj in objects) if (LawnGrowth.isLawn(obj)) for (cell in obj.occupiedCells()) put(cell, obj)
+        for (obj in objects) if (LawnGrowth.isCarpet(obj.objectId)) for (cell in obj.occupiedCells()) put(cell, obj)
     }
     private val standing: Map<GridCell, GridObject> = buildMap {
-        for (obj in objects) if (!obj.isFloor && !LawnGrowth.isLawn(obj) && !obj.isBridge) for (cell in obj.occupiedCells()) put(cell, obj)
+        for (obj in objects) if (!obj.isFloor && !LawnGrowth.isCarpet(obj.objectId) && !obj.isBridge) for (cell in obj.occupiedCells()) put(cell, obj)
     }
 
     /** A bridge stands over its river, in a layer of its own: the river goes on under it. */
@@ -234,7 +234,7 @@ class GardenGrid(
 
     /** Whether [cell] has no room for [objectId] (null: something that shares with nothing). */
     private fun taken(cell: GridCell, objectId: String?): Boolean {
-        val placingLawn = objectId == LawnGrowth.OBJECT_ID
+        val placingLawn = objectId != null && LawnGrowth.isCarpet(objectId)
         val placingOnLawn = objectId != null && sharesCellWithLawn(objectId)
         val thing = standing[cell]
         return when {

@@ -30,6 +30,8 @@ enum class Decoration(val objectId: String) {
     SPRINKLER("deco_sprinkler"),
     WEATHERVANE("deco_weathervane"),
     POND("deco_pond"),
+    SCARECROW("deco_scarecrow"),
+    BIRDBATH("deco_birdbath"),
 }
 
 /** Flat ground cover, drawn below plants and decorations. */
@@ -37,6 +39,9 @@ enum class GroundCover(val objectId: String) {
     PEBBLE("ground_pebble"),
     GRASS_TUFT("ground_grass"),
     FLOWERS("ground_flowers"),
+
+    /** Moss (#book60): laid like the lawn, drawn like the pebbles, a picture over its cell. */
+    MOSS("ground_moss"),
 }
 
 /**
@@ -134,6 +139,24 @@ object TileSetDefinition {
     const val BIRD_FRONT = "creature_bird_front"
     const val SQUIRREL_FRONT = "creature_squirrel_front"
 
+    /**
+     * The rabbit (#book60): leaping, `creature_rabbit_run` (stood on its hind feet), and facing the
+     * viewer, `creature_rabbit_front`, as the squirrel's. In its white winter coat each of its three
+     * pictures has a twin, `creature_rabbit_white`, `_white_run` and `_white_front` ([coatOf]).
+     */
+    const val RABBIT_RUNNING = "creature_rabbit_run"
+    const val RABBIT_FRONT = "creature_rabbit_front"
+
+    /** The rabbit's white winter coat, as a visit's [com.studioguu.miniaturegarden.domain.model.CreatureVisit.variant] names it. */
+    const val WHITE_COAT = "white"
+
+    /** The picture [assetId] of the rabbit in its white coat: `creature_rabbit...` as `creature_rabbit_white...`. */
+    fun coatOf(assetId: String, variant: String?): String =
+        if (variant == WHITE_COAT && assetId.startsWith("creature_rabbit")) assetId.replaceFirst("creature_rabbit", "creature_rabbit_white") else assetId
+
+    /** The rabbit's three pictures in its white coat. */
+    val WHITE_RABBIT_SPRITES: List<String> = listOf("creature_rabbit", RABBIT_RUNNING, RABBIT_FRONT).map { coatOf(it, WHITE_COAT) }
+
     /** The frog in mid-leap, `creature_frog_jump`, anchored so that its head lies where the sitting frog's does. */
     const val FROG_LEAPING = "creature_frog_jump"
 
@@ -162,7 +185,8 @@ object TileSetDefinition {
     /** Every sprite id the creatures' atlas has: each visitor's picture, its other poses, and the fliers in parts. */
     val expectedCreatureSpriteIds: List<String> =
         Creature.entries.flatMap { listOf(assetIdFor(it)) + listOfNotNull(wingedBodyId(it)) + wingIds(it) } +
-            listOf(SQUIRREL_RUNNING, SQUIRREL_GATHERED, BIRD_PECKING, FROG_LEAPING, BIRD_FRONT, SQUIRREL_FRONT)
+            listOf(SQUIRREL_RUNNING, SQUIRREL_GATHERED, BIRD_PECKING, FROG_LEAPING, BIRD_FRONT, SQUIRREL_FRONT, RABBIT_RUNNING, RABBIT_FRONT) +
+            WHITE_RABBIT_SPRITES
 
     /**
      * Things drawn from a picture of their own in `res/drawable` (through [TerrainTextures]),
@@ -172,7 +196,7 @@ object TileSetDefinition {
      */
     val DRAWABLE_OBJECT_IDS: Set<String> = setOf(
         GridObject.POND_OBJECT_ID, GridObject.COBBLESTONE_OBJECT_ID, GridObject.WOOD_DECK_OBJECT_ID,
-        GroundCover.PEBBLE.objectId, GroundCover.FLOWERS.objectId,
+        GroundCover.PEBBLE.objectId, GroundCover.FLOWERS.objectId, GroundCover.MOSS.objectId,
     )
 
     /** The windmill's sails: a sprite of their own, hung on the mill's hub and turned. */

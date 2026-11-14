@@ -22,6 +22,12 @@ data class CreatureVisit(
     val companion: Int = 0,
     /** How many of its kind came together. */
     val crowd: Int = 1,
+    /**
+     * Which look of its kind it came in, null for its usual one: [CreatureVisits.WHITE_COAT] for a
+     * rabbit in its white winter coat (#book60). Noted in the nature notes as a tulip's colours are
+     * on its page, and no kind of its own.
+     */
+    val variant: String? = null,
 ) {
     val creature: Creature get() = rule.creature
 
@@ -98,9 +104,11 @@ object CreatureVisits {
                 host = spot.second,
                 arrivesAt = arrivesAt,
                 leavesAt = start + PERIOD_MILLIS - margin(period, rule, salt = 2),
+                variant = variantFor(creature, season, period),
             )
             // Some come in numbers (CreatureCrowds): a second roll says how many.
-            val count = CreatureCrowds.countFor(creature, CreatureCrowds.habitat(creature, garden.settled), level, crowdRoll(period, creature))
+            val count = if (!CreatureCrowds.comesInNumbers(rule)) 1 else
+                CreatureCrowds.countFor(creature, CreatureCrowds.habitat(creature, garden.settled), level, crowdRoll(period, creature))
             visits += CreatureCrowds.crowdOf(first, count, garden, grid, map, taken) { k -> period * 7 + k }
         }
         return visits
@@ -134,6 +142,16 @@ object CreatureVisits {
             }
         }
     }
+
+    /** How likely a rabbit come in winter is to be in its white coat (#book60). */
+    const val WHITE_RABBIT_CHANCE = 0.35f
+
+    /** The rabbit's white winter coat, as [CreatureVisit.variant] names it. */
+    const val WHITE_COAT = "white"
+
+    /** The look [creature] comes in in [season], in [period]: the rabbit in winter, now and then white. */
+    fun variantFor(creature: Creature, season: Season, period: Long): String? =
+        if (creature == Creature.RABBIT && season == Season.WINTER && (hash(period, creature.ordinal, salt = 9) % 10_000L) / 10_000f < WHITE_RABBIT_CHANCE) WHITE_COAT else null
 
     /** The cell of [obj]'s footprint nearest the viewer. */
     fun frontCell(obj: GridObject): GridCell =
@@ -178,10 +196,16 @@ class NatureNotes(notes: List<NatureNote>) {
 
     fun hasMet(creature: Creature): Boolean = creatureKey(creature) in byId
 
+    /** Whether [creature] has been met in its look [variant] (#book60: the white rabbit). */
+    fun hasMet(creature: Creature, variant: String): Boolean = variantKey(creature, variant) in byId
+
     fun hasFound(rule: VisitRule): Boolean = ruleKey(rule) in byId
 
     /** Whether a visitor that came for [rule] would add anything to the notes. */
     fun isNews(rule: VisitRule): Boolean = !hasMet(rule.creature) || !hasFound(rule)
+
+    /** Whether a visitor that came for [rule] in its look [variant] would add anything to the notes. */
+    fun isNews(rule: VisitRule, variant: String?): Boolean = isNews(rule) || (variant != null && !hasMet(rule.creature, variant))
 
     fun noteOf(creature: Creature): NatureNote? = byId[creatureKey(creature)]
 
@@ -197,10 +221,14 @@ class NatureNotes(notes: List<NatureNote>) {
     companion object {
         /** Notes with every creature and combination met on [today], none of them new: only ever looked at, never kept. */
         fun allMet(today: Long): NatureNotes = NatureNotes(
-            (Creature.entries.map(::creatureKey) + VisitRule.entries.map(::ruleKey)).map { NatureNote(it, today, count = 1) },
+            (Creature.entries.map(::creatureKey) + VisitRule.entries.map(::ruleKey) + variantKey(Creature.RABBIT, CreatureVisits.WHITE_COAT))
+                .map { NatureNote(it, today, count = 1) },
         )
 
         fun creatureKey(creature: Creature) = "creature:${creature.id}"
+
+        /** The note of [creature] met in its look [variant]: `creature:rabbit#white`. No kind of its own. */
+        fun variantKey(creature: Creature, variant: String) = "${creatureKey(creature)}#$variant"
         fun ruleKey(rule: VisitRule) = "combination:${rule.name.lowercase()}"
     }
 }

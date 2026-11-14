@@ -34,6 +34,12 @@ object BloomColours {
             "purple" to BloomRarity.RARE,
             "blue" to BloomRarity.VERY_RARE,
         ),
+        // #book60: the narcissus, yellow or white, and on good soil now and then an orange cup.
+        PlantSpecies.SUISEN to mapOf(
+            "yellow" to BloomRarity.COMMON,
+            "white" to BloomRarity.COMMON,
+            "orange" to BloomRarity.RARE,
+        ),
     )
 
     fun rarityOf(species: PlantSpecies, colour: String): BloomRarity = RARITY[species]?.get(colour) ?: BloomRarity.COMMON
@@ -48,7 +54,9 @@ object BloomColours {
     fun pick(species: PlantSpecies, grade: SoilGrade, level: Int, season: Season, random: Random): String? {
         val colours = RARITY[species] ?: return null
         fun of(rarity: BloomRarity) = colours.filterValues { it == rarity }.keys.toList().random(random)
-        val veryRare = grade == SoilGrade.FLUFFY && level >= VERY_RARE_LEVEL && season == Season.SPRING
+        // Only for a flower that has a very rare colour at all (the narcissus has none).
+        val veryRare = grade == SoilGrade.FLUFFY && level >= VERY_RARE_LEVEL && season == Season.SPRING &&
+            BloomRarity.VERY_RARE in colours.values
         return when {
             veryRare && random.nextFloat() < VERY_RARE_CHANCE -> of(BloomRarity.VERY_RARE)
             grade >= SoilGrade.GOOD && random.nextFloat() < RARE_CHANCE -> of(BloomRarity.RARE)

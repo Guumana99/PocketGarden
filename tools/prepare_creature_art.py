@@ -71,6 +71,10 @@ SIZES: dict[str, tuple[str, float]] = {
     "butterfly": ("w", 0.2),
     # 1.3 times what it was (2026-11-08): at the usual zooms it was too small to tell it was flying.
     "dragonfly": ("w", 0.26),
+    # #book60: the rabbit a little bigger than the squirrel, by the height of it sitting up; the
+    # snail a little bigger than the ladybird, large enough for its shell's whorl at the closest zoom.
+    "rabbit": ("h", 0.24),
+    "snail": ("w", 0.11),
 }
 
 #: Pictures brought to the scale of another: (that one, how much larger its head is there). The
@@ -88,12 +92,28 @@ SAME_SCALE: dict[str, tuple[str, float]] = {
     "bird_peck": ("bird", 0.92),
     "squirrel_run2": ("squirrel", 1.03),
     "frog_jump": ("frog", 1.8),
+    # #book60: the leaping rabbit is drawn at the scale of the sitting one (their heads are as
+    # long: 150 px nose to the back of the head on both originals).
+    "rabbit_run": ("rabbit", 1.0),
 }
 
 #: Pictures facing the viewer (2026-11-07), shown for a moment as the bird and the squirrel turn
 #: round: brought to the height of the one seen from the side (head to feet), and stood on their
 #: feet like it, so that turning does not jump.
-FRONT_OF: dict[str, str] = {"bird_front": "bird", "squirrel_front": "squirrel"}
+FRONT_OF: dict[str, str] = {"bird_front": "bird", "squirrel_front": "squirrel", "rabbit_front": "rabbit"}
+
+#: The rabbit's winter coat (#book60): its three pictures with the fur painted white in code, the
+#: dark tips of its ears, its eyes, its nose and its shading kept. Fur is the brown of it (red over
+#: green over blue) and not dark; its new colour keeps the brightness the brown had, lifted into
+#: [WINTER_FUR_LOW] to [WINTER_FUR_HIGH] of [WINTER_WHITE], so that it keeps its shape on snow.
+WINTER_WHITE = (247.0, 246.0, 243.0)
+WINTER_FUR_LOW = 0.68
+WINTER_FUR_HIGH = 1.0
+WINTER_FUR_DARKEST = 38
+
+#: How far down the rabbit (a share of its height) the dark patches kept as they are may lie: its
+#: eyes and the tips of its ears are all above it, the dark markings of its back below.
+WINTER_HEAD_SHARE = 0.42
 
 #: Where the pecking bird's feet are on the original: its beak reaches as low as they do, so
 #: feet() would take it for one of them.
@@ -209,7 +229,38 @@ def cut(name: str) -> np.ndarray:
         return without_white_pockets(rgb, cut_out(rgb, light=244, tol=10, pocket=60, edge=3))
     if name == "dragonfly":
         return clear_wings(rgb)
+    if name.startswith("rabbit"):
+        # Fine fur like the squirrel's, and a white belly and tail: only plain white goes.
+        return cut_out(rgb, edge=10, solid=110.0, white_parts=1.0, pocket=60)
+    if name == "snail":
+        # Its eye stalks are pale and thin: only plain white goes round them.
+        return cut_out(rgb, white_parts=1.0)
     return cut_out(rgb)
+
+
+def winter_coat(rgba: np.ndarray) -> np.ndarray:
+    """The rabbit (#book60) in its white winter coat: its brown fur white, all else as it was."""
+    rgb = rgba[:, :, :3].astype(float)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    lum = rgb.mean(axis=2)
+    seen = rgba[:, :, 3] > 0
+    fur = seen & (r > b + 10) & (lum > WINTER_FUR_DARKEST)
+    # What is darker still is the eyes and the ears' tips where it lies in patches (thick enough to
+    # outlast a few erosions); in single dark hairs among the fur it is fur, and goes white too.
+    dark = seen & (lum <= WINTER_FUR_DARKEST)
+    patches = reconstruct(erode(dark, 3), dark)
+    # Only up at the head: the dark patches of the back and flanks are fur, and go white.
+    ys = np.where(seen.any(axis=1))[0]
+    patches[ys.min() + int((ys.max() - ys.min()) * WINTER_HEAD_SHARE):] = False
+    hairs = dark & ~dilate(patches, 2)
+    top = np.percentile(lum[fur], 98) if fur.any() else 255.0
+    level = WINTER_FUR_LOW + (WINTER_FUR_HIGH - WINTER_FUR_LOW) * np.clip(lum / top, 0.0, 1.0)
+    white = level[..., None] * np.array(WINTER_WHITE)
+    # Eased in from the darkest fur, so that the ears' dark tips do not end in a hard line.
+    weight = np.maximum(np.clip((lum - WINTER_FUR_DARKEST) / 12.0, 0.0, 1.0) * fur, hairs * 1.0)
+    out = rgba.copy()
+    out[:, :, :3] = np.clip(rgb * (1 - weight[..., None]) + white * weight[..., None], 0, 255).astype(np.uint8)
+    return out
 
 
 def clearer_ladybug(rgba: np.ndarray, saturation: float = 1.3, value: float = 1.08, rim: float = 0.3) -> np.ndarray:
@@ -334,7 +385,7 @@ def fraction(point, zero, scale, picture) -> dict:
 def prepare() -> tuple[dict[str, np.ndarray], dict[str, dict]]:
     cuts = {name: cut(name) for name in
             ["squirrel", "squirrel_run", "squirrel_run2", "squirrel_front", "bird", "bird_fly", "bird_peck", "bird_front",
-             "frog", "frog_jump", "ladybug", "butterfly", "dragonfly"]}
+             "frog", "frog_jump", "ladybug", "butterfly", "dragonfly", "rabbit", "rabbit_run", "rabbit_front", "snail"]}
     scales: dict[str, float] = {}
     for name, (side, share) in SIZES.items():
         x0, y0, x1, y1 = bounds(cuts[name])
@@ -377,6 +428,17 @@ def prepare() -> tuple[dict[str, np.ndarray], dict[str, dict]]:
     for name in FRONT_OF:
         add(f"creature_{name}", cuts[name], scales[name], feet(cuts[name]))
     add("creature_frog_jump", cuts["frog_jump"], scales["frog_jump"], leaping_anchor(feet(cuts["frog"]), SAME_SCALE["frog_jump"][1]))
+
+    # #book60: the rabbit sitting, leaping (stood on its lowest point, its hind feet, which touch
+    # down as it lands) and facing the viewer (between its feet); and each again in its white
+    # winter coat. The snail on the middle of its foot.
+    for name in ("rabbit", "rabbit_run", "rabbit_front"):
+        add(f"creature_{name}", cuts[name], scales[name], feet(cuts[name]))
+        white = name.replace("rabbit", "rabbit_white")
+        add(f"creature_{white}", winter_coat(cuts[name]), scales[name], feet(cuts[name]))
+    ys, xs = np.where(cuts["snail"][:, :, 3] > 128)
+    low = ys >= ys.max() - 12
+    add("creature_snail", cuts["snail"], scales["snail"], (float(xs[low].mean()), float(ys.max() + 1)))
 
     # The flying bird: anchored on the middle of its body; each wing hung on its root.
     fly = bird_parts(cuts["bird_fly"])

@@ -206,6 +206,8 @@ class BuildingArtTest {
             listOf(
                 "struct_cottage", "struct_windmill", "deco_bench", "struct_well", "struct_hut",
                 "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles", "struct_bridge_taiko",
+                // #book60.
+                "deco_scarecrow", "deco_birdbath",
             ),
             GridObject.FLIPPABLE_OBJECT_IDS,
         )

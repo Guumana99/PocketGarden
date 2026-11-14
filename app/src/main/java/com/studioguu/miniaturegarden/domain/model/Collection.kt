@@ -53,6 +53,10 @@ enum class CollectionEntry(
     CORN(PlantSpecies.CORN.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 80),
     HAKUSAI(PlantSpecies.HAKUSAI.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 60),
     NANOHANA(PlantSpecies.NANOHANA.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 60),
+    KABU(PlantSpecies.KABU.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 60),
+    SATSUMAIMO(PlantSpecies.SATSUMAIMO.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 50),
+    SUISEN(PlantSpecies.SUISEN.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 60),
+    HABOTAN(PlantSpecies.HABOTAN.objectId, CollectionCategory.CROPS, CollectionTrigger.HARVEST, discoveryCoins = 90),
     GRASS("ground_grass", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     PEBBLE("ground_pebble", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     RIVER(GridObject.RIVER_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
@@ -60,6 +64,7 @@ enum class CollectionEntry(
     FLOWERS("ground_flowers", CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 10),
     DECK(GridObject.WOOD_DECK_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     POND(GridObject.POND_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
+    MOSS(LawnGrowth.MOSS_OBJECT_ID, CollectionCategory.TERRAIN, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     ROCK("deco_rock", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     ROCK_FLAT("deco_rock_flat", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 15),
     ROCK_MOSSY("deco_rock_mossy", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 20),
@@ -72,6 +77,8 @@ enum class CollectionEntry(
     LANTERN("deco_lantern", CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     SPRINKLER(Sprinkler.OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
     WEATHERVANE(WeatherOutlook.WEATHERVANE_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
+    SCARECROW(GridObject.SCARECROW_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 30),
+    BIRDBATH(GridObject.BIRDBATH_OBJECT_ID, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 40),
     WELL(StructureData.WELL.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 40),
     HUT(StructureData.HUT.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 80),
     COTTAGE(StructureData.COTTAGE.objectId, CollectionCategory.STRUCTURES, CollectionTrigger.PLACEMENT, discoveryCoins = 100),
@@ -126,11 +133,17 @@ data class CollectionRecord(
  * first autumn (BookUnlockPaceTest works out the first year phase by phase).
  */
 object BookUnlocks {
-    /** The keen player has 27 kinds at the end of the first summer's start and 30 at its middle. */
-    const val WOOD_DECK = 29
+    /**
+     * The keen player has 30 kinds at the end of the first summer's start and 33 at its middle
+     * (#book60: 29 before the book held 60, when it had 27 and 30).
+     */
+    const val WOOD_DECK = 31
 
-    /** 32 at the end of the first summer, the decking with them; 36 at the end of the autumn's start. */
-    const val LANTERN = 34
+    /**
+     * 36 at the end of the first summer, the decking with them (34 with the ads, a level behind);
+     * 40 at the end of the autumn's start (#book60: 34 before).
+     */
+    const val LANTERN = 38
 
     /**
      * The kinds that count: the pages filled in ([CollectionProgress.revealed]), and the creatures

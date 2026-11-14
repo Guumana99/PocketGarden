@@ -258,12 +258,15 @@ class SeasonsTest {
         assertEquals(
             setOf(
                 GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_ROSE, GardenItem.SEED_COSMOS, GardenItem.SEED_SHIITAKE, GardenItem.SEED_DAIKON,
-                GardenItem.SEED_CARROT, GardenItem.SEED_WHEAT,
+                GardenItem.SEED_CARROT, GardenItem.SEED_WHEAT, GardenItem.SEED_SATSUMAIMO,
             ),
             GardenItem.shelf(ItemCategory.SEED, Season.AUTUMN).toSet(),
         )
         assertEquals(
-            setOf(GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_SNOWDROP, GardenItem.SEED_POINSETTIA, GardenItem.SEED_DAIKON, GardenItem.SEED_HAKUSAI),
+            setOf(
+                GardenItem.SEED_MINT, GardenItem.SEED_LAVENDER, GardenItem.SEED_SNOWDROP, GardenItem.SEED_POINSETTIA, GardenItem.SEED_DAIKON, GardenItem.SEED_HAKUSAI,
+                GardenItem.SEED_KABU, GardenItem.SEED_SUISEN, GardenItem.SEED_HABOTAN,
+            ),
             GardenItem.shelf(ItemCategory.SEED, Season.WINTER).toSet(),
         )
         // The other shelves are the same in every season.
@@ -323,7 +326,9 @@ class SeasonsTest {
             }
             assertFalse(GardenItem.SEED_SHIITAKE in sown)
             for ((j, seed) in sown.withIndex()) {
-                assertEquals("$seed in $s", ActionResult.SUCCESS, sow(seed, j % 11, i + 4 * (j / 11), inGreenhouse = true))
+                // A cell of its own for each (#book60: more seeds than four seasons of rows of 11 held).
+                val k = i * sown.size + j
+                assertEquals("$seed in $s", ActionResult.SUCCESS, sow(seed, k % 11, k / 11, inGreenhouse = true))
                 repo.objects.values.removeIf { it.isPlant }
             }
         }

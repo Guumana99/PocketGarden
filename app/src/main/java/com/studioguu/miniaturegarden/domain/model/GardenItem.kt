@@ -33,14 +33,18 @@ enum class ItemCategory {
  *                  lavender     Lv.5            20   52 coins + 24 XP after 24 h (any season)
  *                  eggplant     Lv.6            15   34 coins + 25 XP after 22 h (summer); regrows 17 + 12 in 11 h
  *                  wheat        Lv.7            35   90 coins + 39 XP after 30 h (autumn)
+ *                  kabu         Lv.7            25   66 coins + 30 XP after 24 h (winter)
  *                  rose         Lv.8            40   105 coins + 40 XP after 36 h (spring and autumn)
  *                  watermelon   Lv.9            40   100 coins + 42 XP after 30 h (summer)
+ *                  satsumaimo   Lv.9            40   100 coins + 42 XP after 30 h (autumn)
  *                  hakusai      Lv.10           40   105 coins + 43 XP after 30 h (winter)
  *                  paprika      Lv.11           40   90 coins + 58 XP after 32 h (summer); regrows 45 + 29 in 16 h
  *                  nanohana     Lv.12           45   115 coins + 45 XP after 32 h (spring)
+ *                  suisen       Lv.12           45   120 coins + 46 XP after 34 h (winter), on a flower bed; yellow, white or an orange cup
  *                  corn         Lv.13           65   165 coins + 63 XP after 42 h (summer)
  *                  shiitake     Lv.14           45   100 coins + 65 XP after 48 h (autumn), on a log; regrows 50 + 33 in 24 h
  *                  poinsettia   Lv.15           70   175 coins + 67 XP after 40 h (winter)
+ *                  habotan      Lv.16           80   200 coins + 72 XP after 44 h (winter), on a flower bed
  *     structures   fence        from start      15   joins its neighbours of its kind; 20 s to build
  *                  white fence  Lv.5            25   as the fence
  *                  bamboo fence Lv.8            35   as the fence
@@ -55,6 +59,7 @@ enum class ItemCategory {
  *                  cobblestone  from start      10   paving; things can stand on it
  *                  river tile   from start      10   terrain; nothing can stand on it
  *                  flowers      from start      15   ground cover
+ *                  moss         Lv.6            20   ground cover, as the lawn: what stands on a lawn stands on it
  *                  wooden deck  2 book pages    12   paving; things can stand on it
  *                  rock         Lv.2            60   ornament
  *                  bench        Lv.3           100   ornament
@@ -62,6 +67,8 @@ enum class ItemCategory {
  *                  lantern      4 book pages    60   ornament
  *                  weathervane  Lv.6           500   ornament; tomorrow's weather can be read
  *                  sprinkler    Lv.7           450   while on, the soil round it hardly dries
+ *                  scarecrow    Lv.8           200   ornament; turns to face the other way
+ *                  bird bath    Lv.12          350   ornament; turns to face the other way; the birds sit on its rim
  *
  * Which of these have finished pictures and which are drawn in code for now: docs/ASSETS.md,
  * "ショップの取扱一覧". Keep the two in step.
@@ -357,6 +364,48 @@ enum class GardenItem(
     STRUCT_BRIDGE(
         "struct_bridge_taiko", price = 3500, objectId = StructureData.BRIDGE.objectId, category = ItemCategory.STRUCTURE,
         unlock = UnlockCondition.PlayerLevel(17),
+    ),
+
+    /** Winter's white root (#book60). */
+    SEED_KABU(
+        "seed_kabu", price = 25, objectId = PlantSpecies.KABU.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(7),
+    ),
+
+    /** Autumn's sweet potato (#book60). */
+    SEED_SATSUMAIMO(
+        "seed_satsumaimo", price = 40, objectId = PlantSpecies.SATSUMAIMO.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(9),
+    ),
+
+    /** Winter's narcissus, a bulb for a flower bed (#book60). */
+    SEED_SUISEN(
+        "seed_suisen", price = 45, objectId = PlantSpecies.SUISEN.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(12),
+    ),
+
+    /** Winter's ornamental cabbage, for a flower bed (#book60). */
+    SEED_HABOTAN(
+        "seed_habotan", price = 80, objectId = PlantSpecies.HABOTAN.objectId, category = ItemCategory.SEED,
+        unlock = UnlockCondition.PlayerLevel(16),
+    ),
+
+    /** Moss: ground cover laid as the lawn is, finer and darker (#book60). */
+    GROUND_MOSS(
+        "ground_moss", price = 20, objectId = LawnGrowth.MOSS_OBJECT_ID, category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(6),
+    ),
+
+    /** A scarecrow: an ornament, nothing more; the birds sit on it (#book60). */
+    DECO_SCARECROW(
+        "deco_scarecrow", price = 200, objectId = GridObject.SCARECROW_OBJECT_ID, category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(8),
+    ),
+
+    /** A bird bath of stone (#book60): the birds sit on its rim, a frog at its foot. */
+    DECO_BIRDBATH(
+        "deco_birdbath", price = 350, objectId = GridObject.BIRDBATH_OBJECT_ID, category = ItemCategory.DECORATION,
+        unlock = UnlockCondition.PlayerLevel(12),
     );
 
     /** A symbol building: one per garden, see [StructureData.isSymbol]. */
@@ -395,6 +444,10 @@ enum class GardenItem(
             SEED_CORN -> setOf(Season.SUMMER)
             SEED_HAKUSAI -> setOf(Season.WINTER)
             SEED_NANOHANA -> setOf(Season.SPRING)
+            SEED_KABU -> setOf(Season.WINTER)
+            SEED_SATSUMAIMO -> setOf(Season.AUTUMN)
+            SEED_SUISEN -> setOf(Season.WINTER)
+            SEED_HABOTAN -> setOf(Season.WINTER)
             else -> emptySet()
         }
 

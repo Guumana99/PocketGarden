@@ -109,7 +109,7 @@ class HoeTest {
     fun `seeds and seedlings go into tilled soil and nowhere else`() = runBlocking {
         // Every crop sown in the soil: the shiitake's log goes on open earth as well (#68, ShiitakeTest).
         val seeds = GardenItem.entries.filter { it.category == ItemCategory.SEED && PlantSpecies.forObjectId(it.objectId).ground != PlantGround.LOG }
-        assertEquals(19, seeds.size) // the hakusai and the nanohana among them, though not on sale yet
+        assertEquals(23, seeds.size) // the hakusai and the nanohana among them; #book60 the kabu, satsumaimo, suisen and habotan
         seeds.forEachIndexed { slot, seed -> repo.putSlot(InventorySlot(slot, seed.itemId, 2)) }
         // Three rows of ridged soil along the top, nine to a row.
         seeds.indices.forEach {
