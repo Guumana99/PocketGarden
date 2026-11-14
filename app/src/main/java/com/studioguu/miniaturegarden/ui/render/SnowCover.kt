@@ -39,6 +39,14 @@ object SnowCover {
         val solid: Boolean = false,
         /** For a dusting, how far down from open air it reaches, as a share of the picture's height. */
         val reach: Float = TOP_REACH,
+        /**
+         * For a dusting, the faces that look straight up (a bench's seat and the top of its back,
+         * FB1114b), as outlines like [faces]: on their lit wood the snow lies clearly white, not
+         * as a dusting; their dark seams and edges keep only the dusting.
+         */
+        val caps: List<List<Pair<Float, Float>>> = emptyList(),
+        /** How thick the snow on [caps] is at the least (0 to 1; at the most it is solid): where it lies thinnest. */
+        val capFloor: Float = 0f,
     )
 
     /** How far down from open air a dusting reaches, as a share of the picture's height. */
@@ -96,6 +104,7 @@ object SnowCover {
     private fun top(argb: IntArray, lum: FloatArray, w: Int, h: Int, spec: Spec, seed: Int, out: FloatArray) {
         val reach = max(3f, h * spec.reach)
         val patch = max(4f, w * 0.12f)
+        val capped = capsOf(argb, lum, w, h, spec)
         for (x in 0 until w) {
             var sinceAir = Int.MAX_VALUE / 2
             for (y in 0 until h) {
@@ -106,6 +115,12 @@ object SnowCover {
                 }
                 sinceAir++
                 val facing = exp(-(sinceAir - 1) / reach)
+                if (capped[i]) {
+                    // A face looking straight up: white all over it, a little thinner in patches.
+                    val spots = smooth(valueNoise(x / (patch * 0.6f), y / (patch * 0.6f), seed + 7))
+                    out[i] = spec.capFloor + (1f - spec.capFloor) * spots
+                    continue
+                }
                 if (facing < 0.05f) continue
                 // A lit face takes more of it than a dark one; patches leave bare stone between.
                 val lit = (0.65f + lum[i] * 0.8f).coerceIn(0.4f, 1f)
@@ -115,6 +130,33 @@ object SnowCover {
             }
         }
     }
+
+    /**
+     * Which pixels of the picture lie on [Spec.caps] and are lit wood, not one of the dark seams
+     * between the planks or a plank's shadowed edge: at least [CAP_LIT] of the faces' mean lightness.
+     */
+    private fun capsOf(argb: IntArray, lum: FloatArray, w: Int, h: Int, spec: Spec): BooleanArray {
+        val out = BooleanArray(w * h)
+        if (spec.caps.isEmpty()) return out
+        val caps = spec.caps.map { face -> face.map { (x, y) -> x * w to y * h } }
+        var sum = 0.0
+        var count = 0
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            if (alpha(argb[i]) < OPAQUE) continue
+            if (caps.none { contains(it, x + 0.5f, y + 0.5f) }) continue
+            out[i] = true
+            sum += lum[i]
+            count++
+        }
+        if (count == 0) return out
+        val least = (sum / count).toFloat() * CAP_LIT
+        for (i in out.indices) if (out[i] && lum[i] < least) out[i] = false
+        return out
+    }
+
+    /** How light a pixel on a face looking up is at the least, as a share of the faces' mean, to take the snow. */
+    const val CAP_LIT = 0.78f
 
     /** A 3 x 3 box blur, so that the snow's edges are soft rather than a pixel's line. */
     private fun blur(a: FloatArray, w: Int, h: Int): FloatArray {

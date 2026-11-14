@@ -273,12 +273,12 @@ SUISEN_ORANGE = (1.0, 0.58, 0.36)
 KABU_TAIL = 0.24
 
 #: FB1114: the turnip stood on the bed like a white ball set on it, unlike the other crops. Its root
-#: is cut a little below its widest row ([KABU_BURIED_BELOW] of its upper half's height under it),
+#: is cut a little below its widest row (FB1114b: further below, so that more of its round shows) ([KABU_BURIED_BELOW] of its upper half's height under it),
 #: along the near half of the ring where root meets earth, lower at the front ([KABU_SOIL_DIP] of
 #: its half-width), and earth is drawn heaped round the cut ([buried_turnip]): a low mound
 #: [KABU_HEAP_WIDTH] times as wide as the root and [KABU_HEAP_HEIGHT] of its half-width high, with
-#: clods on it, in the bed's own colours (SoilPalette: DARK, RIDGE, DRY, EDGE).
-KABU_BURIED_BELOW = -0.08
+#: clods on it (FB1114b: a soft shadow of earth instead, [KABU_SHADOW_ALPHA]), in the bed's own colours (SoilPalette: DARK, RIDGE, DRY, EDGE).
+KABU_BURIED_BELOW = 0.22
 KABU_SOIL_DIP = 0.26
 KABU_HEAP_WIDTH = 1.22
 KABU_HEAP_HEIGHT = 0.42
@@ -286,6 +286,10 @@ KABU_EARTH_DARK = (58, 48, 41)
 KABU_EARTH_RIDGE = (86, 72, 64)
 KABU_EARTH_DRY = (110, 97, 88)
 KABU_EARTH_EDGE = (35, 28, 24)
+#: FB1114b: the earth round the cut is a soft shadow, not a mound: how opaque it is at its middle,
+#: and over how much of its reach (from the edge in) it fades from nothing to that.
+KABU_SHADOW_ALPHA = 0.8
+KABU_SHADOW_SOFT = 0.75
 
 #: Where each turnip picture stands (anchor fractions), worked out as it is buried.
 KABU_ANCHORS: dict[str, dict] = {}
@@ -639,7 +643,7 @@ def buried_turnip(rgba: np.ndarray, asset_id: str, seed: int) -> np.ndarray:
     """
     The turnip [rgba] (cropped) with the lower part of its root in the bed (FB1114): cut along the
     near half of a ring a little below its widest row, stained with earth just above the cut, and a
-    low mound of earth with clods heaped round it. Its anchor, the middle of the mound's foot, goes
+    soft shadow of earth round it (FB1114b; a heaped mound with clods before). Its anchor, the middle of the mound's foot, goes
     into [KABU_ANCHORS] under [asset_id].
     """
     # The root: its pale body (white, or the withered one's buff), not the green or straw of the leaves.
@@ -683,41 +687,21 @@ def buried_turnip(rgba: np.ndarray, asset_id: str, seed: int) -> np.ndarray:
     ch, cw = canvas.shape[:2]
     cx = centre + pad_x
     yy, xx = np.mgrid[0:ch, 0:cw].astype(float)
-    # A ragged oval: its outline wanders a little, as heaped earth does.
-    angle = np.arctan2(yy - cy, (xx - cx) * ry / rx)
-    ragged = 1.0 + 0.06 * np.sin(angle * 7 + seed) + 0.04 * np.sin(angle * 13 + 2 * seed)
-    d = np.sqrt(((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2) / ragged
-    heap = np.clip((1.0 - d) * min(rx, ry) / 1.5, 0.0, 1.0)
+    # FB1114b: no heaped mound with a crisp outline (it read as a dish or a pot), only a shadow of
+    # earth round the cut, darkest at the middle and fading out to nothing at its edge.
+    d = np.sqrt(((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2)
+    fall = np.clip((1.0 - d) / KABU_SHADOW_SOFT, 0.0, 1.0)
+    fall = fall * fall * (3.0 - 2.0 * fall)
+    heap = KABU_SHADOW_ALPHA * fall
     # Over the root only in front of it: below the soil line, and a little over the cut.
     line_c = np.full(cw, -1e9)
     root_cols = solid[: ready.shape[0]].any(axis=0) & (np.abs(across) < 1.0)
     line_c[pad_x: pad_x + w] = np.where(root_cols, line, -1e9)
     heap = heap * np.clip((yy - (line_c[None, :] - 2.0)) / 2.0, 0.0, 1.0)
-    # Lit from above: drier on top, damp and dark at its foot, with a grain of crumbs.
-    t = np.clip((yy - (cy - ry)) / (2 * ry), 0.0, 1.0)
+    # The bed's damp earth, a little darker in the middle where the root goes in.
     colour = np.empty((ch, cw, 3))
     for c in range(3):
-        top = KABU_EARTH_RIDGE[c] * 0.6 + KABU_EARTH_DRY[c] * 0.4
-        colour[..., c] = top + (KABU_EARTH_DARK[c] - top) * t ** 0.8
-    grain = rng.normal(0.0, 1.0, (ch, cw))
-    grain = np.where(grain > 1.6, 18.0, np.where(grain < -1.6, -16.0, grain * 3.0))
-    colour += grain[..., None]
-    # Clods: little lumps on the mound, lit on top, a dark crease under each.
-    ridge, dry, edge = np.array(KABU_EARTH_RIDGE, float), np.array(KABU_EARTH_DRY, float), np.array(KABU_EARTH_EDGE, float)
-    for _ in range(6 + int(half / 20)):
-        a = rng.uniform(-np.pi * 0.95, np.pi * 0.95)
-        r = rng.uniform(0.55, 1.0)
-        px, py = cx + np.sin(a) * rx * r, cy + abs(np.cos(a)) * ry * r * 0.9 - ry * 0.15
-        size = max(2.0, half * rng.uniform(0.035, 0.07))
-        front = yy >= line_c[None, :] - 1
-        dd = np.sqrt(((xx - px) / size) ** 2 + ((yy - py) / (size * 0.75)) ** 2)
-        lump = np.clip((1.0 - dd) * size / 1.2, 0.0, 1.0) * front
-        under = np.clip((1.0 - np.sqrt(((xx - px) / size) ** 2 + ((yy - py - size * 0.5) / (size * 0.5)) ** 2)) * 2, 0, 1) * (1 - lump) * (heap > 0) * front
-        light = np.clip((py - yy) / size + 0.3, 0.0, 1.0)
-        tone = ridge + (dry - ridge) * light[..., None] * rng.uniform(0.3, 0.7)
-        colour = colour * (1 - lump[..., None]) + tone * lump[..., None]
-        colour = colour * (1 - 0.5 * under[..., None]) + edge * 0.5 * under[..., None]
-        heap = np.maximum(heap, lump)
+        colour[..., c] = KABU_EARTH_DARK[c] + (KABU_EARTH_EDGE[c] - KABU_EARTH_DARK[c]) * fall * 0.5
     base = canvas.astype(float)
     a = heap[..., None]
     base_a = base[:, :, 3:4] / 255.0

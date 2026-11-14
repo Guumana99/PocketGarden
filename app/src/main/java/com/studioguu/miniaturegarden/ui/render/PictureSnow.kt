@@ -83,6 +83,27 @@ object PictureSnow {
     private const val BENCH_MOST = 0.95f
     private const val BENCH_REACH = 0.3f
 
+    /**
+     * FB1114b: the faces of each bench picture that look straight up, measured on it (shares of its
+     * width and height): the seat's planks and the top edge of its back (seen from in front), the
+     * broad top of its back (seen from behind). Snow lies clearly white on them ([SnowCover.Spec.caps]).
+     */
+    val BENCH_CAPS: Map<String, List<List<Pair<Float, Float>>>> = mapOf(
+        "deco_bench" to listOf(
+            share(287, 311, 54 to 95, 263 to 194, 206 to 233, 0 to 134),
+            share(287, 311, 83 to 7, 90 to 0, 287 to 103, 287 to 110),
+        ),
+        "deco_bench_back" to listOf(
+            share(287, 270, 4 to 8, 13 to 0, 110 to 30, 287 to 127, 287 to 141, 200 to 111, 93 to 43, 4 to 16),
+        ),
+    )
+
+    /** How thin the snow on a bench's top faces lies at the least, for each of its [VARIANTS]: not every bench alike. */
+    private val BENCH_CAP_FLOOR = floatArrayOf(0.7f, 0.8f, 0.9f)
+
+    private fun share(width: Int, height: Int, vararg points: Pair<Int, Int>): List<Pair<Float, Float>> =
+        points.map { (x, y) -> x / width.toFloat() to y / height.toFloat() }
+
     /** Whether the picture [assetId] has snow of its own. */
     fun has(assetId: String, objectId: String): Boolean =
         objectId in ROOFS || assetId in DUSTING
@@ -106,6 +127,8 @@ object PictureSnow {
                 SnowCover.Kind.TOP,
                 (most * VARIANT_AMOUNT[variant % VARIANTS]).coerceAtMost(if (bench) BENCH_MOST else 0.85f),
                 reach = if (bench) BENCH_REACH else SnowCover.TOP_REACH,
+                caps = BENCH_CAPS[asset.assetId].orEmpty(),
+                capFloor = if (bench) BENCH_CAP_FLOOR[variant % VARIANTS] else 0f,
             )
         }
         val faces = if (objectId == StructureData.WINDMILL.objectId) {
