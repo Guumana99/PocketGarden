@@ -31,7 +31,9 @@ object RiverAutotile {
 // Reused between draws; all drawing happens on the main thread.
 private val groundMatrix = Matrix()
 private val groundPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-private val maskedGroundPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
+// No anti-aliasing: a soft edge would leave a little of the white mask showing at the cell's
+// edge; the clip round the cell gives the edge instead.
+private val maskedGroundPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
     xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
 }
 private val groundSource = FloatArray(8)
@@ -81,6 +83,9 @@ fun DrawScope.drawGroundTexture(
         native.concat(groundMatrix)
         if (mask != null) {
             // Only where [mask] has drawn, and as strongly: the picture goes in over it (FB1114: moss growing in).
+            // Kept to the cell: past its edge the picture does not reach, and the mask would stay
+            // there as it is, white, over the cells beside it.
+            native.clipRect(groundDestination)
             native.saveLayer(groundDestination, null)
             mask(native, groundDestination)
             native.drawBitmap(texture, groundSourceRect, groundDestination, maskedGroundPaint)
