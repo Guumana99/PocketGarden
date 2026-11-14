@@ -72,6 +72,13 @@ data class VisitorLook(
     val shadow: Float = 1f,
     val whole: Boolean = false,
     val front: Boolean = false,
+    /**
+     * #book60: how far the snail's body is drawn out ahead of its shell, which stays as it is
+     * (1 as drawn): it creeps by stretching and drawing in.
+     */
+    val stretch: Float = 1f,
+    /** #book60: which look of its kind it has ([com.studioguu.miniaturegarden.domain.model.CreatureVisit.variant]): the white rabbit. */
+    val variant: String? = null,
 ) {
     companion object {
         /** Standing (or hovering) still, as the nature notes show it. */
@@ -92,6 +99,8 @@ data class VisitorLook(
                 Creature.LADYBUG -> ladybug(base, pose, now)
                 Creature.BUTTERFLY -> butterfly(base, pose, now)
                 Creature.DRAGONFLY -> dragonfly(base, pose, now)
+                Creature.RABBIT -> rabbit(base, pose, p, now)
+                Creature.SNAIL -> snail(base, pose, now)
             }.turning(creature, pose)
             return when (pose.action) {
                 CreatureAction.APPEAR -> look.popped(popIn(p))
@@ -122,6 +131,34 @@ data class VisitorLook(
             }
             // Sits up, breathing.
             else -> base.copy(scaleY = 1f + 0.012f * wave(now, 1800.0))
+        }
+
+        private fun rabbit(base: VisitorLook, pose: CreaturePose, p: Float, now: Long): VisitorLook = when (pose.action) {
+            // Lopes in hops (#book60): crouched in its sitting picture on the ground, stretched out
+            // in its leaping one in the air, nose up to leap and down to land.
+            CreatureAction.STEP -> {
+                val hops = (pose.duration / RABBIT_HOP_MILLIS).toInt().coerceAtLeast(1)
+                val hop = (p * hops) % 1f
+                val a = arc(hop)
+                val crouch = 1f - a
+                base.copy(
+                    lift = a * 0.09f,
+                    scaleX = 1f + 0.06f * a - 0.05f * crouch,
+                    scaleY = 1f - 0.04f * a + 0.05f * crouch,
+                    tilt = -8f * sin(hop * 2f * PI).toFloat(),
+                    moving = easing(pose),
+                    pose = a < RABBIT_SITS_BELOW,
+                    shadow = 1f - 0.4f * a,
+                )
+            }
+            // Sits up, its nose and flanks moving as it breathes.
+            else -> base.copy(scaleY = 1f + 0.01f * wave(now, 1300.0))
+        }
+
+        private fun snail(base: VisitorLook, pose: CreaturePose, now: Long): VisitorLook = when (pose.action) {
+            // Creeps (#book60): its body drawn out ahead of its shell and drawn in again, slowly.
+            CreatureAction.STEP -> base.copy(stretch = 1f + SNAIL_STRETCH * wave(now, 2400.0))
+            else -> base.copy(stretch = 1f + 0.25f * SNAIL_STRETCH * wave(now, 4000.0))
         }
 
         private fun bird(base: VisitorLook, pose: CreaturePose, p: Float, now: Long): VisitorLook = when (pose.action) {
@@ -295,6 +332,8 @@ data class VisitorLook(
                 Creature.LADYBUG -> turned.copy(tilt = tilt + 7f * bump * (if (pose.turnPassed) 1f else -1f), scaleY = scaleY * (1f - 0.05f * bump))
                 Creature.BUTTERFLY -> turned.copy(lift = lift + 0.02f * bump, wingOpen = wingOpen * (1f - 0.35f * bump))
                 Creature.DRAGONFLY -> this
+                Creature.RABBIT -> turned.copy(scaleY = scaleY * (1f - 0.07f * bump))
+                Creature.SNAIL -> turned.copy(scaleY = scaleY * (1f - 0.06f * bump))
             }
         }
 
@@ -305,7 +344,7 @@ data class VisitorLook(
         const val FRONT_SHARE = 0.3f
 
         /** Whether [creature] has a picture of its front to turn round through. */
-        fun hasFront(creature: Creature): Boolean = creature == Creature.BIRD || creature == Creature.SQUIRREL
+        fun hasFront(creature: Creature): Boolean = creature == Creature.BIRD || creature == Creature.SQUIRREL || creature == Creature.RABBIT
 
         /** How high the bird hops as it turns round, in tile widths (its hop between spots is 0.05). */
         const val TURN_HOP = 0.028f
@@ -348,6 +387,13 @@ data class VisitorLook(
 
         /** A hop of the bird's this long or longer is a flutter. */
         private const val BIRD_FLUTTER_MILLIS = 380L
+
+        /** #book60: how long a hop of the rabbit's takes, and how high in it (0 to 1) it is still in its sitting picture. */
+        private const val RABBIT_HOP_MILLIS = 330L
+        private const val RABBIT_SITS_BELOW = 0.3f
+
+        /** #book60: how much longer the snail's body gets as it creeps. */
+        private const val SNAIL_STRETCH = 0.12f
 
         /** How long a bound of the squirrel's takes. */
         private const val SQUIRREL_BOUND_MILLIS = 190L
@@ -399,7 +445,7 @@ fun DrawScope.drawVisitor(
             drawPictures(creature, look, atlas, image, scale, unit)
         }
     }
-    val front = if (look.front) frontOf(creature)?.let { atlas[it] } else null
+    val front = if (look.front) frontOf(creature)?.let { atlas[TileSetDefinition.coatOf(it, look.variant)] } else null
     val picture: DrawScope.() -> Unit = {
         if (front != null) {
             // Facing the viewer, stood where the middle of its body is, mirrored neither way.
@@ -429,8 +475,25 @@ fun DrawScope.drawVisitor(
  * ([VisitorLook.moving]) over it as much as it shows; a flier in parts, its wings moving.
  */
 private fun DrawScope.drawPictures(creature: Creature, look: VisitorLook, atlas: SpriteAtlas, image: AtlasPages, scale: Float, unit: Float) {
-    val own = atlas[TileSetDefinition.assetIdFor(creature)]
+    val own = atlas[TileSetDefinition.coatOf(TileSetDefinition.assetIdFor(creature), look.variant)]
     when (creature) {
+        Creature.RABBIT -> {
+            // Its leaping picture in the air, its sitting one on the ground (#book60).
+            val leaping = atlas[TileSetDefinition.coatOf(TileSetDefinition.RABBIT_RUNNING, look.variant)]
+            val picture = if (leaping != null && look.moving >= 0.5f && !look.pose) leaping else own
+            if (picture != null) drawSprite(image, picture, Offset.Zero, scale)
+        }
+        Creature.SNAIL -> if (own != null) {
+            // The shell stays as it is; the body ahead of it (the picture faces left) is drawn out.
+            val left = -own.anchorX * own.drawnWidth(scale)
+            val split = left + SNAIL_SHELL_FROM * own.drawnWidth(scale)
+            val top = -own.anchorY * own.drawnHeight(scale)
+            val bottom = top + own.drawnHeight(scale)
+            clipRect(left = split, top = top, right = left + own.drawnWidth(scale) + 1f, bottom = bottom) { drawSprite(image, own, Offset.Zero, scale) }
+            clipRect(left = left - own.drawnWidth(scale), top = top, right = split, bottom = bottom) {
+                scale(look.stretch, 1f, Offset(split, 0f)) { drawSprite(image, own, Offset.Zero, scale) }
+            }
+        }
         Creature.SQUIRREL -> {
             val running = atlas[TileSetDefinition.SQUIRREL_RUNNING]
             val stride = atlas[TileSetDefinition.SQUIRREL_GATHERED].takeIf { look.pose } ?: running
@@ -488,8 +551,12 @@ private fun rootOf(wing: AssetManifest, scale: Float): Offset {
 private fun frontOf(creature: Creature): String? = when (creature) {
     Creature.BIRD -> TileSetDefinition.BIRD_FRONT
     Creature.SQUIRREL -> TileSetDefinition.SQUIRREL_FRONT
+    Creature.RABBIT -> TileSetDefinition.RABBIT_FRONT
     else -> null
 }
+
+/** #book60: where the snail's shell begins along its picture (which faces left), as a share of its width. */
+private const val SNAIL_SHELL_FROM = 0.42f
 
 /**
  * Where each visitor turns round about, in tile widths from its anchor (along its picture, which
@@ -501,6 +568,7 @@ private val TURN_PIVOT: Map<Creature, Float> = mapOf(
     Creature.SQUIRREL to 0.022f,
     Creature.BIRD to 0.004f,
     Creature.FROG to 0.015f,
+    Creature.RABBIT to 0.02f,
 )
 
 /** How far the standing bird's body is above its feet, in tile widths (prepare_creature_art.py prints it). */
@@ -517,6 +585,8 @@ private val SHADOW_WIDTH: Map<Creature, Float> = mapOf(
     Creature.SQUIRREL to 0.16f,
     Creature.FROG to 0.17f,
     Creature.DRAGONFLY to 0.156f,
+    Creature.RABBIT to 0.19f,
+    Creature.SNAIL to 0.09f,
 )
 
 /** A small soft shadow under a creature on the ground. */

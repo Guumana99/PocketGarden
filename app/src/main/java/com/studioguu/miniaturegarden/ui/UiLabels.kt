@@ -50,6 +50,13 @@ fun objectNameRes(objectId: String): Int? = when (objectId) {
     "plant_poinsettia" -> R.string.object_plant_poinsettia
     "plant_hakusai" -> R.string.object_plant_hakusai
     "plant_nanohana" -> R.string.object_plant_nanohana
+    "plant_kabu" -> R.string.object_plant_kabu
+    "plant_satsumaimo" -> R.string.object_plant_satsumaimo
+    "plant_suisen" -> R.string.object_plant_suisen
+    "plant_habotan" -> R.string.object_plant_habotan
+    "ground_moss" -> R.string.object_ground_moss
+    "deco_scarecrow" -> R.string.object_deco_scarecrow
+    "deco_birdbath" -> R.string.object_deco_birdbath
     "deco_weathervane" -> R.string.object_deco_weathervane
     "floor_greenhouse" -> R.string.object_floor_greenhouse
     "deco_rock" -> R.string.object_deco_rock
@@ -108,6 +115,10 @@ fun itemDisplayName(item: GardenItem): String = when (item) {
     GardenItem.SEED_POINSETTIA -> stringResource(R.string.item_seed_poinsettia)
     GardenItem.SEED_HAKUSAI -> stringResource(R.string.item_seed_hakusai)
     GardenItem.SEED_NANOHANA -> stringResource(R.string.item_seed_nanohana)
+    GardenItem.SEED_KABU -> stringResource(R.string.item_seed_kabu)
+    GardenItem.SEED_SATSUMAIMO -> stringResource(R.string.item_seed_satsumaimo)
+    GardenItem.SEED_SUISEN -> stringResource(R.string.item_seed_suisen)
+    GardenItem.SEED_HABOTAN -> stringResource(R.string.item_seed_habotan)
     GardenItem.TILE_RIVER -> stringResource(R.string.item_tile_river)
     else -> objectDisplayName(item.objectId)
 }
@@ -155,6 +166,13 @@ fun itemEmoji(item: GardenItem): String = when (item) {
     GardenItem.SEED_HAKUSAI -> "🥬"
     GardenItem.SEED_NANOHANA -> "🌼"
     GardenItem.DECO_WEATHERVANE -> "🐓"
+    GardenItem.SEED_KABU -> "🥬"
+    GardenItem.SEED_SATSUMAIMO -> "🍠"
+    GardenItem.SEED_SUISEN -> "🌼"
+    GardenItem.SEED_HABOTAN -> "🥬"
+    GardenItem.GROUND_MOSS -> "🌱"
+    GardenItem.DECO_SCARECROW -> "🧑‍🌾"
+    GardenItem.DECO_BIRDBATH -> "⛲"
 }
 
 /**
@@ -183,6 +201,13 @@ fun itemIconRes(item: GardenItem): Int? = when (item) {
     GardenItem.SEED_DAIKON -> R.drawable.icon_daikon
     GardenItem.SEED_HAKUSAI -> R.drawable.icon_hakusai
     GardenItem.SEED_NANOHANA -> R.drawable.icon_nanohana
+    GardenItem.SEED_KABU -> R.drawable.icon_kabu
+    GardenItem.SEED_SATSUMAIMO -> R.drawable.icon_satsumaimo
+    GardenItem.SEED_SUISEN -> R.drawable.icon_suisen
+    GardenItem.SEED_HABOTAN -> R.drawable.icon_habotan
+    GardenItem.GROUND_MOSS -> R.drawable.icon_ground_moss
+    GardenItem.DECO_SCARECROW -> R.drawable.icon_deco_scarecrow
+    GardenItem.DECO_BIRDBATH -> R.drawable.icon_deco_birdbath
     // The buildings, decorations and ground of #74.
     GardenItem.STRUCT_HUT -> R.drawable.icon_struct_hut
     GardenItem.STRUCT_WELL -> R.drawable.icon_struct_well
@@ -359,6 +384,8 @@ fun creatureName(creature: Creature): Int = when (creature) {
     Creature.SQUIRREL -> R.string.creature_squirrel
     Creature.FROG -> R.string.creature_frog
     Creature.DRAGONFLY -> R.string.creature_dragonfly
+    Creature.RABBIT -> R.string.creature_rabbit
+    Creature.SNAIL -> R.string.creature_snail
 }
 
 /** Said once, the first time a creature comes. */
@@ -370,6 +397,8 @@ fun creatureMetMessage(creature: Creature): Int = when (creature) {
     Creature.SQUIRREL -> R.string.msg_met_squirrel
     Creature.FROG -> R.string.msg_met_frog
     Creature.DRAGONFLY -> R.string.msg_met_dragonfly
+    Creature.RABBIT -> R.string.msg_met_rabbit
+    Creature.SNAIL -> R.string.msg_met_snail
 }
 
 /** What the nature notes say about a creature once it has been met. */
@@ -381,6 +410,8 @@ fun creatureFlavor(creature: Creature): Int = when (creature) {
     Creature.SQUIRREL -> R.string.creature_flavor_squirrel
     Creature.FROG -> R.string.creature_flavor_frog
     Creature.DRAGONFLY -> R.string.creature_flavor_dragonfly
+    Creature.RABBIT -> R.string.creature_flavor_rabbit
+    Creature.SNAIL -> R.string.creature_flavor_snail
 }
 
 /** A combination once found, in a few words. */
@@ -400,6 +431,10 @@ fun combinationLabel(rule: VisitRule): Int = when (rule) {
     VisitRule.FROG_RAIN -> R.string.combo_frog_rain
     VisitRule.FROG_SUMMER -> R.string.combo_frog_summer
     VisitRule.DRAGONFLY_AUTUMN -> R.string.combo_dragonfly_autumn
+    VisitRule.RABBIT_VEG -> R.string.combo_rabbit_veg
+    VisitRule.RABBIT_LAWN -> R.string.combo_rabbit_lawn
+    VisitRule.SNAIL_RAIN -> R.string.combo_snail_rain
+    VisitRule.SNAIL_MOSS -> R.string.combo_snail_moss
 }
 
 /** A quiet hint for a combination not found yet: what the creature seems to like. */
@@ -419,6 +454,10 @@ fun combinationHint(rule: VisitRule): Int = when (rule) {
     VisitRule.FROG_RAIN -> R.string.hint_frog_rain
     VisitRule.FROG_SUMMER -> R.string.hint_frog_summer
     VisitRule.DRAGONFLY_AUTUMN -> R.string.hint_dragonfly_autumn
+    VisitRule.RABBIT_VEG -> R.string.hint_rabbit_veg
+    VisitRule.RABBIT_LAWN -> R.string.hint_rabbit_lawn
+    VisitRule.SNAIL_RAIN -> R.string.hint_snail_rain
+    VisitRule.SNAIL_MOSS -> R.string.hint_snail_moss
 }
 
 /** What a grade of soil is called. */

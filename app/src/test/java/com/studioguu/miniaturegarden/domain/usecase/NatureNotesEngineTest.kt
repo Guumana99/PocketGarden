@@ -73,7 +73,9 @@ class NatureNotesEngineTest {
     @Test
     fun `the creatures keep their places, so their pages in the book do not move`() {
         assertEquals(Creature.FROG, Creature.entries[4])
-        assertEquals(Creature.DRAGONFLY, Creature.entries.last())
+        // #book60: the rabbit and the snail after the dragonfly.
+        assertEquals(Creature.DRAGONFLY, Creature.entries[5])
+        assertEquals(listOf(Creature.RABBIT, Creature.SNAIL), Creature.entries.takeLast(2))
     }
 
     @Test

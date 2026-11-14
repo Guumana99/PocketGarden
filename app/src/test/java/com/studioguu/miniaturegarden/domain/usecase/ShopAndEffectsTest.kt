@@ -63,9 +63,10 @@ class ShopAndEffectsTest {
         assertEquals(onSale.toSet(), shelves.values.flatten().toSet())
         assertEquals(onSale.size, shelves.values.sumOf { it.size })
 
-        assertEquals(20, shelves.getValue(ItemCategory.SEED).size)
+        // #book60: four seeds more, and the moss, the scarecrow and the bird bath.
+        assertEquals(24, shelves.getValue(ItemCategory.SEED).size)
         assertEquals(7, shelves.getValue(ItemCategory.STRUCTURE).size)
-        assertEquals(12, shelves.getValue(ItemCategory.DECORATION).size)
+        assertEquals(15, shelves.getValue(ItemCategory.DECORATION).size)
     }
 
     @Test
@@ -91,8 +92,14 @@ class ShopAndEffectsTest {
         assertEquals(5, fromStart.size)
         assertEquals(fromStart.map { it.price }.sorted(), fromStart.map { it.price })
         // ... then what a level opens, then what the encyclopedia opens.
-        assertEquals(listOf(GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_POND, GardenItem.DECO_WEATHERVANE, GardenItem.DECO_SPRINKLER), decorations.subList(5, 10))
-        assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(10, 12))
+        assertEquals(
+            listOf(
+                GardenItem.DECO_ROCK, GardenItem.DECO_BENCH, GardenItem.DECO_POND, GardenItem.GROUND_MOSS, GardenItem.DECO_WEATHERVANE,
+                GardenItem.DECO_SPRINKLER, GardenItem.DECO_SCARECROW, GardenItem.DECO_BIRDBATH,
+            ),
+            decorations.subList(5, 13),
+        )
+        assertEquals(listOf(GardenItem.FLOOR_WOOD, GardenItem.DECO_LANTERN), decorations.subList(13, 15))
 
         assertEquals(
             listOf(GardenItem.STRUCT_FENCE, GardenItem.STRUCT_COTTAGE, GardenItem.STRUCT_WELL, GardenItem.STRUCT_WINDMILL, GardenItem.STRUCT_HUT, GardenItem.STRUCT_BRIDGE, GardenItem.FLOOR_GREENHOUSE),
@@ -102,8 +109,10 @@ class ShopAndEffectsTest {
             listOf(
                 GardenItem.SEED_MINT, GardenItem.SEED_STRAWBERRY, GardenItem.SEED_TULIP, GardenItem.SEED_COSMOS, GardenItem.SEED_SNOWDROP,
                 GardenItem.SEED_TOMATO, GardenItem.SEED_CARROT, GardenItem.SEED_SUNFLOWER, GardenItem.SEED_DAIKON,
-                GardenItem.SEED_LAVENDER, GardenItem.SEED_EGGPLANT, GardenItem.SEED_WHEAT, GardenItem.SEED_ROSE, GardenItem.SEED_WATERMELON, GardenItem.SEED_HAKUSAI,
-                GardenItem.SEED_PAPRIKA, GardenItem.SEED_NANOHANA, GardenItem.SEED_CORN, GardenItem.SEED_SHIITAKE, GardenItem.SEED_POINSETTIA,
+                GardenItem.SEED_LAVENDER, GardenItem.SEED_EGGPLANT, GardenItem.SEED_KABU, GardenItem.SEED_WHEAT, GardenItem.SEED_ROSE,
+                GardenItem.SEED_WATERMELON, GardenItem.SEED_SATSUMAIMO, GardenItem.SEED_HAKUSAI,
+                GardenItem.SEED_PAPRIKA, GardenItem.SEED_NANOHANA, GardenItem.SEED_SUISEN, GardenItem.SEED_CORN, GardenItem.SEED_SHIITAKE, GardenItem.SEED_POINSETTIA,
+                GardenItem.SEED_HABOTAN,
             ),
             GardenItem.shelf(ItemCategory.SEED),
         )

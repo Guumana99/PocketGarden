@@ -174,7 +174,13 @@ data class GridObject(
             "struct_hut",
             "deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles",
             "struct_bridge_taiko",
+            // #book60: the scarecrow and the bird bath, as the rocks.
+            SCARECROW_OBJECT_ID, BIRDBATH_OBJECT_ID,
         )
+
+        /** The scarecrow and the bird bath (#book60). */
+        const val SCARECROW_OBJECT_ID = "deco_scarecrow"
+        const val BIRDBATH_OBJECT_ID = "deco_birdbath"
 
         private const val ROCK_ID_PREFIX = "deco_rock"
 
@@ -184,6 +190,7 @@ data class GridObject(
         /** The small things that stand on a lawn as a rock does; buildings and the shiitake log do not. */
         val SMALL_ORNAMENT_IDS: Set<String> = setOf(
             "deco_bench", "deco_lantern", StructureData.WELL.objectId, Sprinkler.OBJECT_ID, WeatherOutlook.WEATHERVANE_OBJECT_ID,
+            SCARECROW_OBJECT_ID, BIRDBATH_OBJECT_ID,
         )
 
         /** What is drawn from behind as well as from the front, and so has four ways to face. */

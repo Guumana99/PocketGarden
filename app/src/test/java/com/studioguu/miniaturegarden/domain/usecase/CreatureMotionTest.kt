@@ -236,11 +236,13 @@ class CreatureMotionTest {
 
     @Test
     fun `a lawn and paving can be walked through, and among the crops only by the squirrel`() {
+        // #book60: and by the rabbit.
         assertTrue(CreatureRoutes.canWalk(Creature.SQUIRREL, grid, 6, 6))
-        for (creature in Creature.entries - Creature.SQUIRREL) assertFalse(CreatureRoutes.canWalk(creature, grid, 6, 6))
-        // Neither the ladybird nor the fliers walk on the ground at all.
-        for (creature in listOf(Creature.LADYBUG, Creature.BUTTERFLY, Creature.DRAGONFLY)) assertFalse(CreatureRoutes.canWalk(creature, grid, 2, 3))
-        for (creature in listOf(Creature.SQUIRREL, Creature.BIRD, Creature.FROG)) {
+        assertTrue(CreatureRoutes.canWalk(Creature.RABBIT, grid, 6, 6))
+        for (creature in Creature.entries - Creature.SQUIRREL - Creature.RABBIT) assertFalse(CreatureRoutes.canWalk(creature, grid, 6, 6))
+        // Neither the ladybird, the snail nor the fliers walk on the ground at all.
+        for (creature in listOf(Creature.LADYBUG, Creature.BUTTERFLY, Creature.DRAGONFLY, Creature.SNAIL)) assertFalse(CreatureRoutes.canWalk(creature, grid, 2, 3))
+        for (creature in listOf(Creature.SQUIRREL, Creature.BIRD, Creature.FROG, Creature.RABBIT)) {
             assertTrue(CreatureRoutes.canWalk(creature, grid, 3, 5))
             assertTrue(CreatureRoutes.canWalk(creature, grid, 2, 3))
             assertFalse(CreatureRoutes.canWalk(creature, grid, 4, 6))
@@ -463,12 +465,18 @@ class CreatureMotionTest {
     @Test
     fun `each creature may be only where the table says`() {
         val expected = mapOf(
-            Creature.BIRD to setOf(PerchKind.GROUND, PerchKind.ROOF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH),
+            Creature.BIRD to setOf(
+                PerchKind.GROUND, PerchKind.ROOF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH,
+                PerchKind.BIRDBATH_RIM, PerchKind.SCARECROW_ARM, PerchKind.SCARECROW_HAT,
+            ),
             Creature.BUTTERFLY to setOf(PerchKind.FLOWER, PerchKind.WEATHERVANE, PerchKind.WELL_RIM, PerchKind.BENCH),
             Creature.SQUIRREL to setOf(PerchKind.GROUND),
-            Creature.DRAGONFLY to setOf(PerchKind.FLOWER, PerchKind.WELL_RIM, PerchKind.WEATHERVANE, PerchKind.POND_EDGE, PerchKind.RIVER_EDGE),
+            Creature.DRAGONFLY to setOf(PerchKind.FLOWER, PerchKind.WELL_RIM, PerchKind.WEATHERVANE, PerchKind.POND_EDGE, PerchKind.RIVER_EDGE, PerchKind.SCARECROW_HAT),
             Creature.LADYBUG to setOf(PerchKind.FLOWER, PerchKind.LEAF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH),
-            Creature.FROG to setOf(PerchKind.POND, PerchKind.POND_EDGE, PerchKind.WELL_RIM, PerchKind.GROUND, PerchKind.BENCH),
+            Creature.FROG to setOf(PerchKind.POND, PerchKind.POND_EDGE, PerchKind.WELL_RIM, PerchKind.GROUND, PerchKind.BENCH, PerchKind.BIRDBATH_FOOT),
+            // #book60.
+            Creature.RABBIT to setOf(PerchKind.GROUND),
+            Creature.SNAIL to setOf(PerchKind.LEAF, PerchKind.MOSS, PerchKind.ROCK, PerchKind.BIRDBATH_FOOT, PerchKind.WELL_RIM),
         )
         assertEquals(expected, CreaturePerches.ALLOWED)
         // The roofs are the bird's alone, and the weathervane is not.
@@ -491,7 +499,9 @@ class CreatureMotionTest {
         assertEquals(setOf(PerchKind.FENCE), kinds["struct_fence"])
         assertEquals(setOf(PerchKind.BENCH), kinds["deco_bench"])
         assertEquals(setOf(PerchKind.WEATHERVANE), kinds["deco_weathervane"])
-        for (id in listOf("deco_rock", "deco_lantern", StructureData.BRIDGE.objectId, StructureData.WINDMILL.objectId)) assertEquals(id, emptySet<PerchKind>(), kinds[id])
+        for (id in listOf("deco_lantern", StructureData.BRIDGE.objectId, StructureData.WINDMILL.objectId)) assertEquals(id, emptySet<PerchKind>(), kinds[id])
+        // #book60: a rock has its top, for the snail alone.
+        assertEquals(setOf(PerchKind.ROCK), kinds["deco_rock"])
         // Each is drawn over what it is on: by its front cell.
         for (thing in things) for (p in CreaturePerches.pointsOf(thing)) assertEquals(CreatureVisits.frontCell(thing), p.cell)
     }

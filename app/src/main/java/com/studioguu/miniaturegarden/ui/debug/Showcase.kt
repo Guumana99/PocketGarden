@@ -3,6 +3,8 @@ package com.studioguu.miniaturegarden.ui.debug
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
+import com.studioguu.miniaturegarden.domain.model.CreatureVisits
+import com.studioguu.miniaturegarden.domain.model.VisitPlacement
 import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -62,6 +64,15 @@ data class Showcase(
     val skipAd: Boolean = false,
     val bird: String? = null,
     val birdAt: Long = 0L,
+    /**
+     * #book60: creatures that come now, whatever the dice say, each "kind,x,y" or "kind,x,y,white"
+     * (the white rabbit), separated by ";": on what stands at that cell when it is something the
+     * kind settles on (a crop's leaves, the moss, a lawn), or else about that cell on the ground.
+     */
+    val visit: String? = null,
+    val visitAt: Long = 0L,
+    /** #book60: the snow lying on the roofs and the things as thick as it gets, for the snowy shots. */
+    val snowLying: Boolean = false,
 ) {
     /**
      * The visitors to show: [visits] of the kinds allowed, and the butterfly asked for, if there
@@ -69,7 +80,9 @@ data class Showcase(
      */
     fun visitors(visits: List<CreatureVisit>, objects: List<GridObject>): List<CreatureVisit> {
         val kept = creatures?.let { kinds -> visits.filter { it.creature in kinds } } ?: visits
-        val allowed = calledBird(objects)?.let { called -> kept.filter { it.creature != Creature.BIRD } + called } ?: kept
+        val birds = calledBird(objects)?.let { called -> kept.filter { it.creature != Creature.BIRD } + called } ?: kept
+        val asked = calledVisits(objects)
+        val allowed = birds.filter { v -> asked.none { it.creature == v.creature } } + asked
         val cell = butterfly ?: return allowed
         val host = objects.firstOrNull { it.isPlant && it.gridX == cell.x && it.gridY == cell.y } ?: return allowed
         val summoned = CreatureVisit(VisitRule.BUTTERFLY_BLOOMS, cell, host, butterflyAt, butterflyAt + BUTTERFLY_STAY_MILLIS)
@@ -87,6 +100,23 @@ data class Showcase(
         val host = objects.firstOrNull { it.objectId == id } ?: return null
         val rule = if (id == StructureData.COTTAGE.objectId) VisitRule.BIRD_COTTAGE else VisitRule.BIRD_WELL
         return CreatureVisit(rule, GridCell(host.gridX, host.gridY), host, birdAt, birdAt + BIRD_STAY_MILLIS)
+    }
+
+    /** The visits asked for by [visit]. */
+    private fun calledVisits(objects: List<GridObject>): List<CreatureVisit> = visit.orEmpty().split(';').mapIndexedNotNull { i, one ->
+        val parts = one.split(',').map { it.trim() }
+        if (parts.size < 3) return@mapIndexedNotNull null
+        val creature = Creature.entries.firstOrNull { it.id == parts[0] } ?: return@mapIndexedNotNull null
+        val x = parts[1].toIntOrNull() ?: return@mapIndexedNotNull null
+        val y = parts[2].toIntOrNull() ?: return@mapIndexedNotNull null
+        val here = objects.filter { it.gridX == x && it.gridY == y && !it.isFloor }
+        val rules = VisitRule.forCreature(creature)
+        val match = rules.firstNotNullOfOrNull { rule ->
+            here.firstOrNull { rule.anchor.matches(it) && rule.placement == VisitPlacement.ON_ANCHOR }?.let { rule to it }
+        }
+        val rule = match?.first ?: rules.firstOrNull { it.placement == VisitPlacement.BESIDE_ANCHOR } ?: rules.first()
+        val variant = parts.getOrNull(3)?.takeIf { it == CreatureVisits.WHITE_COAT }
+        CreatureVisit(rule, GridCell(x, y), match?.second, visitAt + i * 500L, visitAt + BIRD_STAY_MILLIS, variant = variant)
     }
 
     companion object {
@@ -144,5 +174,6 @@ object ShowcaseControls {
         if (!BuildConfig.DEBUG) return
         _showcase.value = showcase?.let { if (it.butterfly != null) it.copy(butterflyAt = now) else it }
             ?.let { if (it.bird != null) it.copy(birdAt = now) else it }
+            ?.let { if (it.visit != null) it.copy(visitAt = now) else it }
     }
 }

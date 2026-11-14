@@ -101,7 +101,7 @@ class PostTest {
         assertEquals(Season.SUMMER, letter.season)
         assertTrue(GardenItem.unlockedBetween(1, 2).isNotEmpty())
         // A level that opens nothing, or no level-up at all, sends nothing.
-        assertNull(PostOffice.newStock(15, 16, Season.SUMMER, t0))
+        assertNull(PostOffice.newStock(18, 19, Season.SUMMER, t0)) // #book60: Lv.16 opens the habotan now
         assertNull(PostOffice.newStock(3, 3, Season.SUMMER, t0))
     }
 
@@ -111,7 +111,7 @@ class PostTest {
         val post = PostLettersUseCase(repo)
         assertNotNull(post.newStock(1, 4, t0))
         assertNull(post.newStock(1, 4, t0 + 1))
-        assertNull(post.newStock(15, 16, t0 + 2))
+        assertNull(post.newStock(18, 19, t0 + 2)) // #book60: Lv.16 opens the habotan now
         val stock = repo.getLetters().single { it.kind == LetterKind.NEW_STOCK }
         assertEquals(1..4, stock.stockLevels)
         assertFalse(stock.read)

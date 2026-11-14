@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
 import com.studioguu.miniaturegarden.domain.model.Creature
+import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.NatureNotes
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.ui.combinationHint
@@ -188,11 +189,18 @@ private fun NaturePage(creature: Creature, notes: NatureNotes, isNew: Boolean, a
                     BookHeading(stringResource(R.string.nature_heading_found))
                     found.forEach { BookText("✓ " + stringResource(combinationLabel(it))) }
                 }
+                // #book60: the white rabbit, noted on the rabbit's page and no kind of its own.
+                if (creature == Creature.RABBIT && notes.hasMet(creature, CreatureVisits.WHITE_COAT)) {
+                    BookHeading(stringResource(R.string.nature_heading_looks))
+                    BookText("✓ " + stringResource(R.string.nature_white_rabbit))
+                }
             }
             val rumours = rules.filterNot(notes::hasFound)
-            if (rumours.isNotEmpty()) {
+            val whiteRumour = creature == Creature.RABBIT && !notes.hasMet(creature, CreatureVisits.WHITE_COAT)
+            if (rumours.isNotEmpty() || whiteRumour) {
                 BookHeading(stringResource(R.string.nature_heading_hints))
                 rumours.forEach { BookText(stringResource(combinationHint(it)), faded = true) }
+                if (whiteRumour) BookText(stringResource(R.string.nature_hint_white_rabbit), faded = true)
             }
         }
     }

@@ -15,6 +15,7 @@ package com.studioguu.miniaturegarden.domain.model
  *     dragonfly, frog       always                                      100%
  *                           4 cells of water or more, or Lv.10 on        70%   30%
  *                           8 cells of water or more, and Lv.14 on       50%   50%
+ *     snail                 on a rainy day only (SNAIL_RAIN)             70%   30%
  *
  * Flowers are those in bloom ([CreaturePerches.isInBloom]) and the cells of wild flowers; water is
  * the cells of ponds and streams. Each after the first comes [STAGGER_MILLIS] after the one before
@@ -43,6 +44,12 @@ object CreatureCrowds {
         Tier(habitat = 4, level = 10, both = false, chances = listOf(0.7f, 0.3f)),
     )
 
+    /** For the snail (#book60): one alone more often than not, two now and then, and only in the rain. */
+    val SNAIL_TIERS = listOf(Tier(habitat = 0, level = 1, both = true, chances = listOf(0.7f, 0.3f)))
+
+    /** Whether a visit for [rule] may bring more than one: the snail only when it came for the rain. */
+    fun comesInNumbers(rule: VisitRule): Boolean = rule.creature != Creature.SNAIL || rule == VisitRule.SNAIL_RAIN
+
     /** How long after the one before it each of a crowd comes. */
     const val STAGGER_MILLIS = 4_000L
 
@@ -53,7 +60,8 @@ object CreatureCrowds {
     fun tiersFor(creature: Creature): List<Tier>? = when (creature) {
         Creature.BUTTERFLY, Creature.LADYBUG -> FLOWER_TIERS
         Creature.DRAGONFLY, Creature.FROG -> WATER_TIERS
-        Creature.BIRD, Creature.SQUIRREL -> null
+        Creature.SNAIL -> SNAIL_TIERS
+        Creature.BIRD, Creature.SQUIRREL, Creature.RABBIT -> null
     }
 
     /** What [creature]'s numbers go by in [garden]: its flowers in bloom, or its cells of water. */

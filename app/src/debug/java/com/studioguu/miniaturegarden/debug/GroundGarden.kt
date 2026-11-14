@@ -98,7 +98,57 @@ object GroundGarden {
             place(now, "deco_weathervane", listOf(GridCell(7, 6))) +
             place(now, GridObject.POND_OBJECT_ID, cells(4..5, 7..7)) +
             place(now, GridObject.RIVER_OBJECT_ID, cells(9..10, 5..5)) +
-            place(now, "ground_flowers", listOf(GridCell(2, 4)))
+            place(now, "ground_flowers", listOf(GridCell(2, 4))) +
+            // #book60: the scarecrow, the bird bath, a narcissus in bloom and a kabu growing, moss and a rock.
+            place(now, GridObject.SCARECROW_OBJECT_ID, listOf(GridCell(1, 1))) +
+            place(now, GridObject.BIRDBATH_OBJECT_ID, listOf(GridCell(3, 1))) +
+            place(now, GridObject.LOOSE_SOIL_OBJECT_ID, listOf(GridCell(3, 9))) +
+            place(now, PlantSpecies.SUISEN.objectId, listOf(GridCell(3, 9))).map { it.copy(growthProgress = 1f) } +
+            place(now, GridObject.TILLED_SOIL_OBJECT_ID, listOf(GridCell(10, 7))) +
+            place(now, PlantSpecies.KABU.objectId, listOf(GridCell(10, 7))).map { it.copy(growthProgress = 0.5f) } +
+            place(now, "ground_moss", cells(0..1, 8..9)) +
+            place(now, "deco_rock_flat", listOf(GridCell(1, 3)))
+    }
+
+    /**
+     * #book60, for the report (`--es garden b60_<set>`):
+     * - `stages`: the four new crops in rows, stage 1, 2, 3 and withered, beside the daikon and the
+     *   carrot, the snowdrop and the hakusai, and each one's own ground (beds, flower beds);
+     * - `colours`: the narcissus in its three colours on a flower bed, by the tulip and the snowdrop;
+     * - `moss`: a block of moss against a block of lawn, and the things that stand on both;
+     * - `things`: the scarecrow and the bird bath, on the lawn, the moss, the bare earth and paving.
+     */
+    fun book60(now: Long, set: String): List<GridObject> {
+        fun crop(species: PlantSpecies, x: Int, y: Int, growth: Float, withered: Boolean = false): List<GridObject> {
+            val bed = if (species.isFlower) GridObject.LOOSE_SOIL_OBJECT_ID else GridObject.TILLED_SOIL_OBJECT_ID
+            val plant = place(now, species.objectId, listOf(GridCell(x, y))).map {
+                it.copy(growthProgress = growth, status = if (withered) PlantStatus.WITHERED else it.status)
+            }
+            return place(now, bed, listOf(GridCell(x, y))) + plant
+        }
+        fun row(species: PlantSpecies, y: Int, x0: Int = 3) =
+            crop(species, x0, y, 0f) + crop(species, x0 + 1, y, 0.5f) + crop(species, x0 + 2, y, 1f) + crop(species, x0 + 3, y, 1f, withered = true)
+        return when (set) {
+            "stages" -> row(PlantSpecies.KABU, 3) + row(PlantSpecies.SATSUMAIMO, 4) + row(PlantSpecies.SUISEN, 5) + row(PlantSpecies.HABOTAN, 6) +
+                row(PlantSpecies.DAIKON, 7) + row(PlantSpecies.CARROT, 8) + row(PlantSpecies.SNOWDROP, 2) + row(PlantSpecies.HAKUSAI, 9, x0 = 4)
+            "colours" -> listOf("yellow", "white", "orange").flatMapIndexed { i, colour ->
+                crop(PlantSpecies.SUISEN, 4 + i, 5, 1f).map { if (it.isPlant) it.copy(bloomColour = colour) else it }
+            } + crop(PlantSpecies.SNOWDROP, 4, 6, 1f) + crop(PlantSpecies.TULIP, 5, 6, 1f) + crop(PlantSpecies.SUISEN, 6, 6, 0.5f) +
+                listOf("white", "orange", "yellow").flatMapIndexed { i, colour ->
+                    crop(PlantSpecies.SUISEN, 4 + i, 4, 1f).map { if (it.isPlant) it.copy(bloomColour = colour) else it }
+                }
+            "moss" -> place(now, "ground_moss", cells(2..5, 3..7)) + place(now, LAWN, cells(6..9, 3..7)) +
+                place(now, "deco_rock_mossy", listOf(GridCell(4, 5))) + place(now, "deco_rock_mossy", listOf(GridCell(7, 5))) +
+                place(now, GridObject.SCARECROW_OBJECT_ID, listOf(GridCell(3, 6))) + place(now, GridObject.BIRDBATH_OBJECT_ID, listOf(GridCell(8, 6)))
+            "things" -> place(now, LAWN, cells(3..4, 3..4)) + place(now, "ground_moss", cells(6..7, 3..4)) + place(now, GridObject.COBBLESTONE_OBJECT_ID, cells(6..7, 6..7)) +
+                place(now, GridObject.SCARECROW_OBJECT_ID, listOf(GridCell(3, 3), GridCell(6, 4), GridCell(4, 6))) +
+                place(now, GridObject.BIRDBATH_OBJECT_ID, listOf(GridCell(4, 4), GridCell(7, 3), GridCell(6, 6))) +
+                place(now, GridObject.SCARECROW_OBJECT_ID, listOf(GridCell(7, 7))).map { it.copy(isFlipped = true) } +
+                place(now, GridObject.BIRDBATH_OBJECT_ID, listOf(GridCell(3, 6))).map { it.copy(isFlipped = true) } +
+                place(now, "deco_bench", listOf(GridCell(5, 3))) + place(now, "struct_well", listOf(GridCell(5, 7))) +
+                crop(PlantSpecies.KABU, 8, 5, 1f) + crop(PlantSpecies.CARROT, 8, 6, 1f) + crop(PlantSpecies.HABOTAN, 2, 5, 1f) + crop(PlantSpecies.SATSUMAIMO, 9, 5, 1f)
+            else -> emptyList()
+        }
     }
 
     /**

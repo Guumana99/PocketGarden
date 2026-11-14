@@ -36,6 +36,24 @@ enum class PerchKind {
 
     /** The bank of a stream. */
     RIVER_EDGE,
+
+    /** #book60: the scarecrow's outstretched arms (its sleeves). */
+    SCARECROW_ARM,
+
+    /** #book60: the brim and the top of the scarecrow's hat. */
+    SCARECROW_HAT,
+
+    /** #book60: the rim of the bird bath's bowl. */
+    BIRDBATH_RIM,
+
+    /** #book60: the foot of the bird bath, its stone plinth on the ground. */
+    BIRDBATH_FOOT,
+
+    /** #book60: a cell of moss. */
+    MOSS,
+
+    /** #book60: the top of a rock. */
+    ROCK,
 }
 
 /**
@@ -77,12 +95,19 @@ object CreaturePerches {
      * windmill are no one's. The roofs (the cottage's and the hut's) are the bird's alone.
      */
     val ALLOWED: Map<Creature, Set<PerchKind>> = mapOf(
-        Creature.BIRD to setOf(PerchKind.GROUND, PerchKind.ROOF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH),
+        Creature.BIRD to setOf(
+            PerchKind.GROUND, PerchKind.ROOF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH,
+            PerchKind.BIRDBATH_RIM, PerchKind.SCARECROW_ARM, PerchKind.SCARECROW_HAT,
+        ),
         Creature.BUTTERFLY to setOf(PerchKind.FLOWER, PerchKind.WEATHERVANE, PerchKind.WELL_RIM, PerchKind.BENCH),
         Creature.SQUIRREL to setOf(PerchKind.GROUND),
-        Creature.DRAGONFLY to setOf(PerchKind.FLOWER, PerchKind.WELL_RIM, PerchKind.WEATHERVANE, PerchKind.POND_EDGE, PerchKind.RIVER_EDGE),
+        Creature.DRAGONFLY to setOf(
+            PerchKind.FLOWER, PerchKind.WELL_RIM, PerchKind.WEATHERVANE, PerchKind.POND_EDGE, PerchKind.RIVER_EDGE, PerchKind.SCARECROW_HAT,
+        ),
         Creature.LADYBUG to setOf(PerchKind.FLOWER, PerchKind.LEAF, PerchKind.WELL_RIM, PerchKind.FENCE, PerchKind.BENCH),
-        Creature.FROG to setOf(PerchKind.POND, PerchKind.POND_EDGE, PerchKind.WELL_RIM, PerchKind.GROUND, PerchKind.BENCH),
+        Creature.FROG to setOf(PerchKind.POND, PerchKind.POND_EDGE, PerchKind.WELL_RIM, PerchKind.GROUND, PerchKind.BENCH, PerchKind.BIRDBATH_FOOT),
+        Creature.RABBIT to setOf(PerchKind.GROUND),
+        Creature.SNAIL to setOf(PerchKind.LEAF, PerchKind.MOSS, PerchKind.ROCK, PerchKind.BIRDBATH_FOOT, PerchKind.WELL_RIM),
     )
 
     fun allows(creature: Creature, kind: PerchKind): Boolean = kind in ALLOWED.getValue(creature)
@@ -91,6 +116,8 @@ object CreaturePerches {
     val FLOWERS: Set<PlantSpecies> = setOf(
         PlantSpecies.COSMOS, PlantSpecies.ROSE, PlantSpecies.TULIP, PlantSpecies.LAVENDER,
         PlantSpecies.SUNFLOWER, PlantSpecies.NANOHANA, PlantSpecies.SNOWDROP, PlantSpecies.POINSETTIA,
+        // #book60: the narcissus; not the ornamental cabbage, whose leaves are no flower to a butterfly.
+        PlantSpecies.SUISEN,
     )
 
     /** Whether [obj] is one of the [FLOWERS] at its last stage, in bloom. */
@@ -111,6 +138,31 @@ object CreaturePerches {
         StructureData.HUT.objectId to listOf(Triple(0.75f, 0.85f, HUT_RIDGE_HEIGHT), Triple(0.75f, 1.3f, HUT_RIDGE_HEIGHT)),
         BENCH_OBJECT_ID to listOf(Triple(0.5f, 0.5f, BENCH_SEAT_HEIGHT)),
         WeatherOutlook.WEATHERVANE_OBJECT_ID to listOf(Triple(0.5f, 0.5f, WEATHERVANE_TIP_HEIGHT)),
+    )
+
+    /**
+     * #book60: points set by hand of more than one kind on one thing, as [BY_HAND] (across, down,
+     * height), each with its kind. Across the screen is along the cell's diagonal: x up and y down
+     * by as much moves a point right by that many tile widths. Set against the pictures with the
+     * debug menu's view of the points.
+     */
+    private val BY_HAND_KINDS: Map<String, List<Pair<Triple<Float, Float, Float>, PerchKind>>> = mapOf(
+        GridObject.SCARECROW_OBJECT_ID to listOf(
+            Triple(0.5f - SCARECROW_ARM_REACH, 0.5f + SCARECROW_ARM_REACH, SCARECROW_ARM_HEIGHT) to PerchKind.SCARECROW_ARM,
+            Triple(0.5f + SCARECROW_ARM_REACH, 0.5f - SCARECROW_ARM_REACH, SCARECROW_ARM_HEIGHT) to PerchKind.SCARECROW_ARM,
+            Triple(0.5f, 0.5f, SCARECROW_HAT_HEIGHT) to PerchKind.SCARECROW_HAT,
+        ),
+        GridObject.BIRDBATH_OBJECT_ID to listOf(
+            Triple(0.5f - BIRDBATH_RIM_REACH, 0.5f + BIRDBATH_RIM_REACH, BIRDBATH_RIM_HEIGHT) to PerchKind.BIRDBATH_RIM,
+            Triple(0.5f + BIRDBATH_RIM_REACH, 0.5f - BIRDBATH_RIM_REACH, BIRDBATH_RIM_HEIGHT) to PerchKind.BIRDBATH_RIM,
+            // In front of the bowl's stem, on its plinth.
+            Triple(0.5f + BIRDBATH_FOOT_REACH, 0.5f + BIRDBATH_FOOT_REACH, BIRDBATH_FOOT_HEIGHT) to PerchKind.BIRDBATH_FOOT,
+        ),
+    )
+
+    /** #book60: how high the top of each kind of rock is, in tile widths, for a snail on it. */
+    private val ROCK_TOPS: Map<String, Float> = mapOf(
+        "deco_rock" to 0.2f, "deco_rock_flat" to 0.11f, "deco_rock_mossy" to 0.22f, "deco_rock_standing" to 0.55f, "deco_rock_pebbles" to 0.1f,
     )
 
     /** Fence rails, of every kind of fence (not the kerb). */
@@ -134,6 +186,15 @@ object CreaturePerches {
     /** The points on [obj]. */
     fun pointsOf(obj: GridObject, plantTop: (GridObject) -> PlantTop? = { null }): List<Perch> {
         val front = CreatureVisits.frontCell(obj)
+        BY_HAND_KINDS[obj.objectId]?.let { points ->
+            return points.map { (point, kind) ->
+                val (dx, dy, h) = point
+                val (x, y) = if (obj.isFlipped) dy to dx else dx to dy
+                Perch(obj.gridX + x, obj.gridY + y, h, kind, front, obj)
+            }
+        }
+        if (obj.objectId == LawnGrowth.MOSS_OBJECT_ID) return listOf(Perch(obj.gridX + 0.5f, obj.gridY + 0.5f, 0f, PerchKind.MOSS, front, obj))
+        ROCK_TOPS[obj.objectId]?.let { top -> return listOf(Perch(obj.gridX + 0.5f, obj.gridY + 0.5f, top, PerchKind.ROCK, front, obj)) }
         BY_HAND[obj.objectId]?.let { points ->
             val kind = when (obj.objectId) {
                 StructureData.WELL.objectId -> PerchKind.WELL_RIM
@@ -229,6 +290,15 @@ object CreaturePerches {
     const val HUT_RIDGE_HEIGHT = 1.52f
     const val BENCH_SEAT_HEIGHT = 0.1f
     const val WEATHERVANE_TIP_HEIGHT = 0.6f
+
+    /** #book60: the scarecrow's arms and hat, and the bird bath's rim and plinth (tile widths). */
+    const val SCARECROW_ARM_HEIGHT = 0.6f
+    const val SCARECROW_ARM_REACH = 0.2f
+    const val SCARECROW_HAT_HEIGHT = 0.86f
+    const val BIRDBATH_RIM_HEIGHT = 0.38f
+    const val BIRDBATH_RIM_REACH = 0.2f
+    const val BIRDBATH_FOOT_HEIGHT = 0.04f
+    const val BIRDBATH_FOOT_REACH = 0.2f
     private const val WILD_FLOWER_HEIGHT = 0.04f
     private const val LEAF_HEIGHT = 0.05f
 }

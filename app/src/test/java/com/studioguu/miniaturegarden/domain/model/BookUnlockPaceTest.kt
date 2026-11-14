@@ -70,6 +70,9 @@ class BookUnlockPaceTest {
             if ((PlantSpecies.SUNFLOWER in grown && open(GardenItem.DECO_ROCK)) || PlantSpecies.SHIITAKE in grown) add(Creature.SQUIRREL)
             if (water) add(Creature.FROG) // on a rainy day, or any day of summer
             if (water && inLateSummerOrAutumn) add(Creature.DRAGONFLY)
+            // #book60: four cells of lawn (any season), and three crops on a rainy day.
+            if (open(GardenItem.GROUND_GRASS) || open(GardenItem.GROUND_MOSS)) add(Creature.RABBIT)
+            if (grown.isNotEmpty() || open(GardenItem.SEED_TULIP)) add(Creature.SNAIL)
         }
         var things = placed()
         val pagesSoFar = grown.size + things.size + met.size
@@ -138,7 +141,7 @@ class BookUnlockPaceTest {
             GardenItem.entries.filter { it.unlock is UnlockCondition.CollectionPages },
         )
         // The creatures the table above reckons with: a new one has to be added to it.
-        assertEquals(6, Creature.entries.size)
-        assertEquals(51, CollectionEntry.entries.size + Creature.entries.size)
+        assertEquals(8, Creature.entries.size)
+        assertEquals(60, CollectionEntry.entries.size + Creature.entries.size)
     }
 }

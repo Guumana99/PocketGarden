@@ -80,6 +80,13 @@
     <string name="object_plant_poinsettia">ポインセチア</string>
     <string name="object_plant_hakusai">白菜</string>
     <string name="object_plant_nanohana">菜の花</string>
+    <string name="object_plant_kabu">かぶ</string>
+    <string name="object_plant_satsumaimo">さつまいも</string>
+    <string name="object_plant_suisen">水仙</string>
+    <string name="object_plant_habotan">葉ぼたん</string>
+    <string name="object_ground_moss">苔</string>
+    <string name="object_deco_scarecrow">かかし</string>
+    <string name="object_deco_birdbath">バードバス</string>
     <string name="object_deco_weathervane">風見鶏</string>
     <string name="object_plant_paprika">パプリカ</string>
     <string name="object_plant_daikon">大根</string>
@@ -212,6 +219,10 @@
     <string name="item_seed_poinsettia">ポインセチアの苗</string>
     <string name="item_seed_hakusai">白菜の種</string>
     <string name="item_seed_nanohana">菜の花の種</string>
+    <string name="item_seed_kabu">かぶの種</string>
+    <string name="item_seed_satsumaimo">さつまいもの苗</string>
+    <string name="item_seed_suisen">水仙の球根</string>
+    <string name="item_seed_habotan">葉ぼたんの苗</string>
     <string name="item_seed_paprika">パプリカの苗</string>
     <string name="item_seed_daikon">大根の種</string>
     <string name="item_seed_carrot">ニンジンの種</string>
@@ -348,6 +359,37 @@
     <string name="flavor_well">冷たい水が、\nこんこんと湧く。\nのぞき込むと、\n自分の顔が揺れる。</string>
     <string name="flavor_windmill">風を受けて、\nくるり、くるり。\n羽根の回る音が、\nお庭に響く。</string>
     <string name="flavor_hut">小さいけれど、\n夢の詰まった小屋。\n道具の手入れも、\n昼寝も、ここで。</string>
+    <string name="flavor_kabu">白くて丸い、冬の根っこ。
+葉も根も、
+まるごと食べられる。</string>
+    <string name="flavor_satsumaimo">秋の土の中で、
+甘く育つ赤い芋。
+焼くと、ほくほく。</string>
+    <string name="flavor_suisen">寒さの中で咲く、
+黄色いラッパの花。
+うつむきかげんに、
+春を待つ。</string>
+    <string name="flavor_suisen_white">白い花びらに、
+黄色の小さな杯。
+冬の庭に、
+清らかな香り。</string>
+    <string name="flavor_suisen_orange">よい土で、まれに咲く。
+黄色い花の真ん中が、
+口紅のように色づく。</string>
+    <string name="flavor_habotan">花のように重なる葉。
+寒くなるほど、
+色が深まる。</string>
+    <string name="flavor_moss">しっとりとした、
+深い緑のじゅうたん。
+雨の日には、
+いっそう生き生きする。</string>
+    <string name="flavor_scarecrow">麦わら帽子の、
+畑の見張り番。
+小鳥たちは、
+あまりこわがらない。</string>
+    <string name="flavor_birdbath">小鳥の水浴び場。
+石の鉢に、
+空が映る。</string>
     <string name="flavor_cottage">お庭の真ん中に建つ、\n灯りのともる家。\n窓の明かりが、\nお庭をやさしく照らす。</string>
 
     <!-- Sharing -->
@@ -446,13 +488,16 @@
     <string name="debug_perches_hint">赤：屋根　青：井戸の縁　茶：柵
 橙：ベンチ　紫：風見鶏　桃：花
 緑：葉　水色：池の縁　青緑：川の縁
-灰（小）：地面</string>
+黄：かかしの腕　黄土：かかしの帽子
+空色：バードバスの縁　紺：その足元
+深緑：苔　鼠：岩　灰（小）：地面</string>
     <string name="debug_ask_review">レビューの流れを今すぐ呼ぶ</string>
     <string name="debug_ask_review_hint">条件を無視して呼びます。呼んだ記録は残しません。Play ストアから入れたアプリでないと、シートは出ません</string>
     <string name="debug_review_requested">レビューの流れを受け取りました（出すかどうかは Play が決めます）</string>
     <string name="debug_review_failed">レビューの流れを受け取れませんでした</string>
     <string name="debug_call_title">生き物を呼ぶ</string>
-    <string name="debug_call_hint">2 種まで選べます。ON の間は、季節・時間帯・天気・確率を無視して来ます。止まれる物（ことり：井戸、とんぼ・かえる：池、てんとうむし：柵、ちょうちょ：チューリップ、りす：岩）が無ければ、庭の真ん中近くに置きます</string>
+    <string name="debug_call_hint">2 種まで選べます。ON の間は、季節・時間帯・天気・確率を無視して来ます。止まれる物（ことり：井戸、とんぼ・かえる：池、てんとうむし：柵、ちょうちょ：チューリップ、りす：岩、うさぎ：芝生、かたつむり：苔）が無ければ、庭の真ん中近くに置きます。「⁠う⁠さ⁠ぎ⁠（⁠白⁠）⁠」で白い冬毛のうさぎを呼びます</string>
+    <string name="debug_call_white_rabbit">うさぎ（白）</string>
 
     <!-- Title screen -->
     <string name="title_subtitle">Pocket Garden</string>
@@ -657,12 +702,16 @@
     <string name="creature_squirrel">りす</string>
     <string name="creature_frog">かえる</string>
     <string name="creature_dragonfly">とんぼ</string>
+    <string name="creature_rabbit">うさぎ</string>
+    <string name="creature_snail">かたつむり</string>
     <string name="msg_met_butterfly">🦋 ちょうちょが遊びに来ました</string>
     <string name="msg_met_ladybug">🐞 てんとうむしが遊びに来ました</string>
     <string name="msg_met_bird">🐦 ことりが遊びに来ました</string>
     <string name="msg_met_squirrel">🐿️ りすが遊びに来ました</string>
     <string name="msg_met_frog">🐸 かえるが遊びに来ました</string>
     <string name="msg_met_dragonfly">🍂 とんぼが遊びに来ました</string>
+    <string name="msg_met_rabbit">🐇 うさぎが遊びに来ました</string>
+    <string name="msg_met_snail">🐌 かたつむりが遊びに来ました</string>
     <string name="msg_nature_note_added">📖 図鑑の「⁠い⁠き⁠も⁠の⁠」に書き留めました</string>
     <string name="nature_tab">いきもの</string>
     <string name="nature_unknown">？？？</string>
@@ -686,6 +735,7 @@
     <string name="bloom_colour_purple">紫</string>
     <string name="bloom_colour_blue">青</string>
     <string name="bloom_colour_other">ほかの色</string>
+    <string name="bloom_colour_orange">口紅</string>
     <string name="msg_new_bloom_colour">🌷 図鑑に新しい色が書き加えられました</string>
     <string name="book_entered_on">登録日 %1$s</string>
     <string name="nature_none_yet">まだ誰にも出会っていない。\nお庭を整えて、待ってみよう。</string>
@@ -695,6 +745,8 @@
     <string name="creature_flavor_squirrel">大きな尻尾を揺らして、\n木の実をかじる。\n岩陰がお気に入り。</string>
     <string name="creature_flavor_frog">雨の日、川辺で\n喉をふくらませる。\nケロケロ。</string>
     <string name="creature_flavor_dragonfly">秋の川辺を、\nすいすいと飛ぶ。\n透きとおった翅が、\n光を返す。</string>
+    <string name="creature_flavor_rabbit">長い耳をぴんと立て、\nぴょんと跳ねる。\n冬には、\n白い毛になる子も。</string>
+    <string name="creature_flavor_snail">雨あがりに、\nゆっくり這い出す。\nうずまきの殻が、\n小さなおうち。</string>
     <string name="combo_butterfly_blooms">咲きそろった花</string>
     <string name="combo_butterfly_lavender">ラベンダーの香り</string>
     <string name="combo_ladybug_crops">作物と草むら</string>
@@ -709,6 +761,10 @@
     <string name="combo_frog_rain">雨の日の水辺</string>
     <string name="combo_frog_summer">夏の水辺</string>
     <string name="combo_dragonfly_autumn">秋の水辺</string>
+    <string name="combo_rabbit_veg">収穫どきの野菜</string>
+    <string name="combo_rabbit_lawn">芝生や苔の原っぱ</string>
+    <string name="combo_snail_rain">雨の日の畑</string>
+    <string name="combo_snail_moss">しめった苔</string>
     <string name="hint_butterfly_blooms">花がいくつも咲くころ、ひらひらとやって来るようだ</string>
     <string name="hint_butterfly_lavender">花のあいだにあの香りがあると、誘われて来るらしい</string>
     <string name="hint_ladybug_crops">作物の葉と、草むらの近くを好むようだ</string>
@@ -723,6 +779,13 @@
     <string name="hint_frog_rain">雨の日、水辺で声がするらしい</string>
     <string name="hint_frog_summer">夏のあいだ、水辺でひと休みするらしい</string>
     <string name="hint_dragonfly_autumn">夏の終わりから秋の晴れた日、水の上を飛ぶらしい</string>
+    <string name="hint_rabbit_veg">朝夕、実った野菜のそばに来るらしい</string>
+    <string name="hint_rabbit_lawn">広い芝生や苔の上を、跳ねまわるという</string>
+    <string name="hint_snail_rain">雨の日、畑の葉の上で見かけるという</string>
+    <string name="hint_snail_moss">くもりや雨の朝夕、苔の上にいるらしい</string>
+    <string name="nature_heading_looks">見かけた姿</string>
+    <string name="nature_white_rabbit">白い冬毛</string>
+    <string name="nature_hint_white_rabbit">冬には、白い姿のうさぎもいるという</string>
 
     <!-- Level-up board -->
     <string name="level_up_title">🎉 レベルが上がりました！</string>

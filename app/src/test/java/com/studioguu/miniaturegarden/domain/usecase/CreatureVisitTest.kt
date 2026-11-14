@@ -56,9 +56,20 @@ class CreatureVisitTest {
         VisitRule.SQUIRREL_SUNFLOWER -> listOf(at(1, 1, "plant_sunflower", 1f), at(5, 5, "deco_rock"))
         VisitRule.FROG_RAIN, VisitRule.FROG_SUMMER -> water(0, 1, 2)
         VisitRule.DRAGONFLY_AUTUMN -> water(0, 1)
+        // #book60.
+        VisitRule.RABBIT_VEG -> listOf(at(4, 4, "plant_kabu", 1f))
+        VisitRule.RABBIT_LAWN -> (2..5).map { at(it, 6, "ground_grass", 1f) }
+        VisitRule.SNAIL_RAIN -> listOf(at(1, 1, "plant_kabu"), at(2, 1, "plant_carrot"), at(3, 1, "plant_tomato"))
+        VisitRule.SNAIL_MOSS -> (2..4).map { at(it, 6, "ground_moss") }
     }
 
-    private fun weatherFor(rule: VisitRule) = if (rule == VisitRule.FROG_RAIN) WeatherType.RAINY else sunny
+    private fun weatherFor(rule: VisitRule) = when (rule) {
+        VisitRule.FROG_RAIN, VisitRule.SNAIL_RAIN, VisitRule.SNAIL_MOSS -> WeatherType.RAINY
+        else -> sunny
+    }
+
+    /** #book60: the rabbit's vegetables and the snail's moss are mornings and evenings. */
+    private fun timeFor(rule: VisitRule) = if (rule == VisitRule.RABBIT_VEG || rule == VisitRule.SNAIL_MOSS) TimeOfDay.MORNING else TimeOfDay.DAY
 
     /** The season each combination is the best one in; spring for those that come in any. */
     private fun seasonFor(rule: VisitRule) = when (rule) {
@@ -73,8 +84,9 @@ class CreatureVisitTest {
         objects: List<GridObject>,
         weather: WeatherType = sunny,
         season: Season = Season.SPRING,
+        time: TimeOfDay = TimeOfDay.DAY,
     ): List<CreatureVisit> =
-        (0 until periods).flatMap { CreatureVisits.visitorsAt(it * CreatureVisits.PERIOD_MILLIS + 1, objects, weather, map, season) }
+        (0 until periods).flatMap { CreatureVisits.visitorsAt(it * CreatureVisits.PERIOD_MILLIS + 1, objects, weather, map, season, time) }
 
     // --- The table ---
 
@@ -95,12 +107,12 @@ class CreatureVisitTest {
         for (rule in VisitRule.entries) {
             val objects = gardenFor(rule)
             val season = seasonFor(rule)
-            assertTrue(rule.name, rule.isMetBy(GardenSnapshot(objects, weatherFor(rule), season)))
+            assertTrue(rule.name, rule.isMetBy(GardenSnapshot(objects, weatherFor(rule), season, timeFor(rule))))
             // Take any one thing away and it is no longer met.
             for (missing in objects) {
-                assertFalse("${rule.name} without ${missing.objectId}", rule.isMetBy(GardenSnapshot(objects - missing, weatherFor(rule), season)))
+                assertFalse("${rule.name} without ${missing.objectId}", rule.isMetBy(GardenSnapshot(objects - missing, weatherFor(rule), season, timeFor(rule))))
             }
-            assertFalse(rule.name, rule.isMetBy(GardenSnapshot(emptyList(), weatherFor(rule), season)))
+            assertFalse(rule.name, rule.isMetBy(GardenSnapshot(emptyList(), weatherFor(rule), season, timeFor(rule))))
         }
     }
 
@@ -147,7 +159,7 @@ class CreatureVisitTest {
     fun `each combination comes about as often as its chance says`() {
         for (rule in VisitRule.entries) {
             val periods = 4_000
-            val came = visitsOver(periods, gardenFor(rule), weatherFor(rule), seasonFor(rule)).count { it.rule == rule }
+            val came = visitsOver(periods, gardenFor(rule), weatherFor(rule), seasonFor(rule), timeFor(rule)).count { it.rule == rule && it.companion == 0 }
             val rate = came.toFloat() / periods
             assertTrue("${rule.name}: $rate against ${rule.chance}", kotlin.math.abs(rate - rule.chance) < 0.03f)
         }
@@ -196,7 +208,7 @@ class CreatureVisitTest {
         for (rule in VisitRule.entries) {
             val objects = gardenFor(rule)
             val grid = GardenGrid(map, objects)
-            val visits = visitsOver(400, objects, weatherFor(rule), seasonFor(rule)).filter { it.rule == rule }
+            val visits = visitsOver(400, objects, weatherFor(rule), seasonFor(rule), timeFor(rule)).filter { it.rule == rule }
             assertTrue(rule.name, visits.isNotEmpty())
             for (visit in visits) {
                 when (rule.placement) {
@@ -469,7 +481,8 @@ class CreatureVisitTest {
         val outAtNight = VisitRule.entries.filter { rule ->
             rule.conditions.filterIsInstance<VisitCondition.TimeIs>().all { TimeOfDay.NIGHT in it.times }
         }
-        assertEquals(setOf(Creature.FROG), outAtNight.map { it.creature }.toSet())
+        // #book60: and the snails, after the rain.
+        assertEquals(setOf(Creature.FROG, Creature.SNAIL), outAtNight.map { it.creature }.toSet())
         // By day they come as before.
         for (rule in VisitRule.forCreature(Creature.LADYBUG) + VisitRule.forCreature(Creature.SQUIRREL)) {
             assertTrue(rule.name, rule.conditions.filterIsInstance<VisitCondition.TimeIs>().single().times.containsAll(listOf(TimeOfDay.MORNING, TimeOfDay.DAY, TimeOfDay.EVENING)))

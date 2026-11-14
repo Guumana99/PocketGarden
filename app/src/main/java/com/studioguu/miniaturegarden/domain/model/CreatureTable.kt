@@ -24,9 +24,16 @@ package com.studioguu.miniaturegarden.domain.model
  *     FROG_SUMMER         frog       3 cells of river or pond, in summer                  10%       beside the water
  *     DRAGONFLY_AUTUMN    dragonfly  2 cells of river or pond, late summer or autumn,     20%       over the water
  *                                    fair weather, day/evening
+ *     RABBIT_VEG          rabbit     a carrot, daikon, kabu or hakusai ready to pull      15% (20%) beside it
+ *                                    (stage 3), morning or evening
+ *     RABBIT_LAWN         rabbit     4 cells of lawn or moss, not at night                10%       on the lawn or moss
+ *     SNAIL_RAIN          snail      3 crops (any size), on a rainy day                   25% (35%) on a crop's leaves
+ *     SNAIL_MOSS          snail      3 cells of moss, cloudy or rainy, morning or evening 10%       on the moss
  *
  * In brackets is the chance with its [ChanceBoost]: for a bird a flower in bloom, for a squirrel
- * the autumn.
+ * the autumn, for a rabbit 3 cells of lawn or moss, for a snail 2 cells of moss. The rabbit comes
+ * in any season (in winter, now and then in its white coat: [CreatureVisits.WHITE_RABBIT_CHANCE]);
+ * the snail, like the frog, never on a snowy day.
  *
  * "Fair weather" is sunny or cloudy: no butterfly or dragonfly is out in the rain or the snow.
  * The snow does not count as rain either, so the frogs that come with the rain stay away on a
@@ -172,6 +179,40 @@ enum class VisitRule(
         anchor = Anchor(WATER),
         placement = VisitPlacement.ON_ANCHOR,
         chance = 0.2f,
+    ),
+    RABBIT_VEG(
+        Creature.RABBIT,
+        conditions = listOf(VisitCondition.Crops(atLeast = 1, species = RABBIT_VEGETABLES, minGrowth = 1f), VisitCondition.TimeIs(MORNING_AND_EVENING)),
+        anchor = Anchor(RABBIT_VEGETABLES.map { it.objectId }.toSet(), minGrowth = 1f),
+        placement = VisitPlacement.BESIDE_ANCHOR,
+        chance = 0.15f,
+        boost = ChanceBoost(VisitCondition.Things(LawnGrowth.CARPET_OBJECT_IDS, atLeast = 3), 0.2f),
+    ),
+    RABBIT_LAWN(
+        Creature.RABBIT,
+        conditions = listOf(VisitCondition.Things(LawnGrowth.CARPET_OBJECT_IDS, atLeast = 4), VisitCondition.TimeIs(NOT_NIGHT)),
+        anchor = Anchor(LawnGrowth.CARPET_OBJECT_IDS),
+        placement = VisitPlacement.ON_ANCHOR,
+        chance = 0.1f,
+    ),
+    SNAIL_RAIN(
+        Creature.SNAIL,
+        conditions = listOf(VisitCondition.WeatherIs(WeatherType.RAINY), VisitCondition.Crops(atLeast = 3)),
+        anchor = Anchor(LEAFY_CROPS),
+        placement = VisitPlacement.ON_ANCHOR,
+        chance = 0.25f,
+        boost = ChanceBoost(VisitCondition.Things(setOf(LawnGrowth.MOSS_OBJECT_ID), atLeast = 2), 0.35f),
+    ),
+    SNAIL_MOSS(
+        Creature.SNAIL,
+        conditions = listOf(
+            VisitCondition.Things(setOf(LawnGrowth.MOSS_OBJECT_ID), atLeast = 3),
+            VisitCondition.WeatherIn(setOf(WeatherType.CLOUDY, WeatherType.RAINY)),
+            VisitCondition.TimeIs(MORNING_AND_EVENING),
+        ),
+        anchor = Anchor(setOf(LawnGrowth.MOSS_OBJECT_ID)),
+        placement = VisitPlacement.ON_ANCHOR,
+        chance = 0.1f,
     );
 
     /** Whether the garden as it is would draw this creature. */
@@ -198,10 +239,28 @@ enum class Creature(val id: String) {
 
     /** Added after the first five; it only comes from the end of summer through autumn. */
     DRAGONFLY("dragonfly"),
+
+    /** #book60: one that lopes over the ground, in any season; in winter now and then in white. */
+    RABBIT("rabbit"),
+
+    /** #book60: one that creeps out on the leaves and the moss after rain. */
+    SNAIL("snail"),
 }
 
-/** The crops that flower, as the bed they grow in says. */
-private val FLOWERS = PlantSpecies.entries.filter { it.isFlower }.toSet()
+/**
+ * The crops that flower, when they are in bloom: the ones the butterfly takes for a flower
+ * ([CreaturePerches.FLOWERS]). The ornamental cabbage grows on a flower bed and is none.
+ */
+private val FLOWERS = CreaturePerches.FLOWERS
+
+/** The vegetables a rabbit comes to when they are ready to pull (#book60). */
+private val RABBIT_VEGETABLES = setOf(PlantSpecies.CARROT, PlantSpecies.DAIKON, PlantSpecies.KABU, PlantSpecies.HAKUSAI)
+
+/** The crops whose leaves a snail comes out on: not the flowers (it does not settle on a bloom), nor the shiitake's log. */
+private val LEAFY_CROPS: Set<String> = (PlantSpecies.entries.toSet() - CreaturePerches.FLOWERS - PlantSpecies.SHIITAKE).map { it.objectId }.toSet()
+
+/** The mornings and evenings: when the rabbits come out to the vegetables, and the snails onto the moss. */
+private val MORNING_AND_EVENING = setOf(TimeOfDay.MORNING, TimeOfDay.EVENING)
 
 /** Every kind of rock: a new one goes in here, and all that count rocks count it. */
 private val ROCKS = setOf("deco_rock", "deco_rock_flat", "deco_rock_mossy", "deco_rock_standing", "deco_rock_pebbles")

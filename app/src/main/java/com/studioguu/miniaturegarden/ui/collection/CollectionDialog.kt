@@ -627,6 +627,7 @@ private fun bloomDotColour(colour: String): Color = when (colour) {
     "white" -> Color(0xFFFFFBF0)
     "purple" -> Color(0xFF8E5BB5)
     "blue" -> Color(0xFF5B8DD9)
+    "orange" -> Color(0xFFF08A24)
     else -> InkFaded
 }
 
@@ -742,12 +743,18 @@ internal fun bloomColourLabel(colour: String): Int = when (colour) {
     "white" -> R.string.bloom_colour_white
     "purple" -> R.string.bloom_colour_purple
     "blue" -> R.string.bloom_colour_blue
+    "orange" -> R.string.bloom_colour_orange
     else -> R.string.bloom_colour_other
 }
 
 /** The words of [entry]; a crop of several colours has them for each ([colour]). */
 @StringRes
 internal fun flavorText(entry: CollectionEntry, colour: String?): Int = when {
+    entry == CollectionEntry.SUISEN -> when (colour) {
+        "white" -> R.string.flavor_suisen_white
+        "orange" -> R.string.flavor_suisen_orange
+        else -> R.string.flavor_suisen
+    }
     entry != CollectionEntry.TULIP -> flavorText(entry)
     colour == "pink" -> R.string.flavor_tulip_pink
     colour == "yellow" -> R.string.flavor_tulip_yellow
@@ -811,6 +818,13 @@ internal fun flavorText(entry: CollectionEntry): Int = when (entry) {
     CollectionEntry.HUT -> R.string.flavor_hut
     CollectionEntry.WINDMILL -> R.string.flavor_windmill
     CollectionEntry.COTTAGE -> R.string.flavor_cottage
+    CollectionEntry.KABU -> R.string.flavor_kabu
+    CollectionEntry.SATSUMAIMO -> R.string.flavor_satsumaimo
+    CollectionEntry.SUISEN -> R.string.flavor_suisen
+    CollectionEntry.HABOTAN -> R.string.flavor_habotan
+    CollectionEntry.MOSS -> R.string.flavor_moss
+    CollectionEntry.SCARECROW -> R.string.flavor_scarecrow
+    CollectionEntry.BIRDBATH -> R.string.flavor_birdbath
 }
 
 /** What is drawn here, filled in with the ink: a colour not grown yet. */

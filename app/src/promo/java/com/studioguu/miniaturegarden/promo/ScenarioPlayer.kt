@@ -5,6 +5,7 @@ import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureDirection
 import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
+import com.studioguu.miniaturegarden.domain.model.CreatureVisits
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -185,7 +186,9 @@ class ScenarioPlayer(private val scenario: Scenario) {
             // the sky outside the garden that much earlier (a butterfly about 7 seconds), at the
             // game's own speed.
             val arrives = baseMillis + ((cue.at + i * STAGGER_SECONDS) * 1000).roundToLong() - (if (flies) travelIn else 0L)
-            val visit = CreatureVisit(rule, cell, host = null, arrivesAt = arrives, leavesAt = arrives + travelIn + travelOut + stayMillis + SETTLE_MILLIS)
+            // `coat: white` (#book60): the rabbit in its white winter coat.
+            val variant = cue.string("coat")?.takeIf { it == CreatureVisits.WHITE_COAT && creature == Creature.RABBIT }
+            val visit = CreatureVisit(rule, cell, host = null, arrivesAt = arrives, leavesAt = arrives + travelIn + travelOut + stayMillis + SETTLE_MILLIS, variant = variant)
             visits += visit
             directions[visit] = CreatureDirection(perches = if (landOn.isEmpty()) emptyList() else listOf(cell), fromAngle = angle, stayMillis = stayMillis, fromCells = fromCells)
         }

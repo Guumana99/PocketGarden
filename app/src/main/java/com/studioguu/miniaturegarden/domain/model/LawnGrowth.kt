@@ -25,8 +25,20 @@ object LawnGrowth {
     /** How long a lawn takes from seed to fully grown. */
     const val HOURS_TO_FULL = 48f
 
+    /**
+     * Moss (#book60): laid on the ground as a lawn is, and sharing its cell with what a lawn
+     * shares its own with ([isCarpet]); it does not grow, it is laid as it is.
+     */
+    const val MOSS_OBJECT_ID = "ground_moss"
+
     /** Whether [obj] is a lawn. */
     fun isLawn(obj: GridObject): Boolean = obj.objectId == OBJECT_ID
+
+    /** Whether [objectId] lies on the ground as a lawn does, under the small things: the lawn or the moss. */
+    fun isCarpet(objectId: String): Boolean = objectId == OBJECT_ID || objectId == MOSS_OBJECT_ID
+
+    /** The lawn and the moss: what a rabbit lopes over, or a snail comes out on. */
+    val CARPET_OBJECT_IDS: Set<String> = setOf(OBJECT_ID, MOSS_OBJECT_ID)
 
     /** The stage a lawn [progress] of the way grown is at (0 sown, 1 fully grown). */
     fun stageFor(progress: Float): LawnStage {

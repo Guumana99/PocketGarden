@@ -557,7 +557,7 @@ fun GardenCanvas(
             val now = ambience.epochMillis
             val pose = route.poseAt(now) ?: continue
             val visit = route.visit
-            val look = VisitorLook.of(visit.creature, pose, now)
+            val look = VisitorLook.of(visit.creature, pose, now).copy(variant = visit.variant)
             // In depth order by where it is now, so that it goes behind what stands in front of it
             // (on the ground, behind a plant's stem too: CreatureRoutes.drawDepth), and in front of
             // a building it stands just in front of (#fb-1113 1: the frog at the hut's corner).
@@ -1616,6 +1616,12 @@ private val PERCH_COLOURS = mapOf(
     PerchKind.POND to Color(0xFF00ACC1),
     PerchKind.POND_EDGE to Color(0xFF00ACC1),
     PerchKind.RIVER_EDGE to Color(0xFF26A69A),
+    PerchKind.SCARECROW_ARM to Color(0xFFFDD835),
+    PerchKind.SCARECROW_HAT to Color(0xFFB8860B),
+    PerchKind.BIRDBATH_RIM to Color(0xFF81D4FA),
+    PerchKind.BIRDBATH_FOOT to Color(0xFF1A237E),
+    PerchKind.MOSS to Color(0xFF1B5E20),
+    PerchKind.ROCK to Color(0xFF616161),
 )
 
 /** The visitor under [position] at [now], if any: a generous circle ([TapTargets.visitorReach]). */

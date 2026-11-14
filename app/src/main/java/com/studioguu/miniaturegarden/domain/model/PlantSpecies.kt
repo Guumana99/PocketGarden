@@ -109,7 +109,22 @@ enum class PlantSpecies(
     /**
      * Spring's yellow field flower at Lv.12, light like the cosmos.
      */
-    NANOHANA("plant_nanohana", growthHours = 32, dryOutHours = 20, harvestCoins = 115, harvestXp = 45, growthStages = 3, ground = PlantGround.FLOWER_BED);
+    NANOHANA("plant_nanohana", growthHours = 32, dryOutHours = 20, harvestCoins = 115, harvestXp = 45, growthStages = 3, ground = PlantGround.FLOWER_BED),
+
+    /** Winter's white root at Lv.7 (#book60): pulled up whole like the daikon, and as thirsty. */
+    KABU("plant_kabu", growthHours = 24, dryOutHours = 26, harvestCoins = 66, harvestXp = 30, growthStages = 3),
+
+    /** Autumn's sweet potato at Lv.9 (#book60): dug up once; it stands dry weather as the wheat does. */
+    SATSUMAIMO("plant_satsumaimo", growthHours = 30, dryOutHours = 32, harvestCoins = 100, harvestXp = 42, growthStages = 3),
+
+    /**
+     * Winter's narcissus at Lv.12 (#book60), on a flower bed as the tulip is: yellow or white, and
+     * now and then yellow with an orange cup ([BloomColours]). It drinks like the nanohana.
+     */
+    SUISEN("plant_suisen", growthHours = 34, dryOutHours = 20, harvestCoins = 120, harvestXp = 46, growthStages = 3, ground = PlantGround.FLOWER_BED),
+
+    /** Winter's ornamental cabbage at Lv.16 (#book60), on a flower bed; slow to dry out, like the poinsettia. */
+    HABOTAN("plant_habotan", growthHours = 44, dryOutHours = 36, harvestCoins = 200, harvestXp = 72, growthStages = 3, ground = PlantGround.FLOWER_BED);
 
     /** Growth progress (0..1) gained per healthy hour. */
     val growthPerHour: Float get() = 1f / growthHours
@@ -154,6 +169,8 @@ enum class PlantSpecies(
     companion object {
         private val BLOOM_COLOURS: Map<PlantSpecies, List<String>> = mapOf(
             TULIP to listOf("red", "pink", "yellow", "white", "purple", "blue"),
+            // #book60: yellow is its plain stage 3; white petals round a yellow cup; an orange cup.
+            SUISEN to listOf("yellow", "white", "orange"),
         )
 
         /**

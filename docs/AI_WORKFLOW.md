@@ -52,6 +52,7 @@
 | 大きい建物と手前の物・生き物の描く順（`FootprintOrder`） | `FootprintOrderTest`（＋生き物が足場から離れる `CreatureMotionTest`） |
 | 屋根・ベンチ・岩の雪（`SnowCover` `PictureSnow`）、縁の雪（`EdgeSnow`） | `SnowCoverTest` `EdgeSnowTest` `HutFlipTest` `WellFlipTest` |
 | タイトルの前回の庭の絵（`TitleSnapshot`） | `TitleSnapshotTest` |
+| #book60 の作物 4 種・苔・かかし・バードバス・うさぎ（白い冬毛）・かたつむり | `Book60Test`（＋生き物の表 `CreatureVisitTest` `CreatureMotionTest`、数を見る 4 クラス、図鑑の試算 `BookUnlockPaceTest`） |
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | 生き物の来訪・組み合わせ表 | `CreatureVisitTest` |
 | 生き物の動き（経路・入れないマス・ポン・飛来）、止まる場所（`CreaturePerches` `PlantTops`）・描く順、`CreatureSprites`、生き物の絵（`creatures_0.png`） | `CreatureMotionTest` `CodeArtTest` `AssetLedgerTest` |

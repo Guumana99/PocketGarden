@@ -363,7 +363,8 @@ object CreatureRoutes {
         return when {
             thing.isWorking -> false
             thing.isPond -> CreaturePerches.allows(creature, PerchKind.POND)
-            thing.isPlant -> creature == Creature.SQUIRREL && thing.objectId != PlantSpecies.SHIITAKE.objectId
+            // The rabbit (#book60) too, behind the plants as the squirrel goes.
+            thing.isPlant -> (creature == Creature.SQUIRREL || creature == Creature.RABBIT) && thing.objectId != PlantSpecies.SHIITAKE.objectId
             else -> false
         }
     }
@@ -416,12 +417,20 @@ object CreatureRoutes {
         length: Long,
         fromAngle: Double? = null,
     ): CreatureRoute {
-        // The bird come for a well or a fence sits on its rim or its rail more often than not.
+        // The bird come for a well or a fence sits on its rim or its rail more often than not; on a
+        // bird bath's rim or a scarecrow nearby as well (#book60), whatever it came for.
         if (visit.creature == Creature.BIRD) {
             val onAnchor = CreaturePerches.near(home.x + 0.5f, home.y + 0.5f, ANCHOR_PERCH_REACH, spots)
-                .filter { it.kind != PerchKind.GROUND && it.on != null && visit.rule.anchor.matches(it.on) }
+                .filter { it.kind != PerchKind.GROUND && it.on != null && (visit.rule.anchor.matches(it.on) || it.kind in BIRD_ANYWAY) }
             if (onAnchor.isNotEmpty() && random.nextFloat() < BIRD_PERCH_CHANCE) {
                 return planOnPerch(visit, onAnchor[random.nextInt(onAnchor.size)], grid.map.size, random, length, fromAngle)
+            }
+        }
+        // A frog by a bird bath now and then sits on its plinth (#book60).
+        if (visit.creature == Creature.FROG) {
+            val foot = CreaturePerches.near(home.x + 0.5f, home.y + 0.5f, ANCHOR_PERCH_REACH, spots).filter { it.kind == PerchKind.BIRDBATH_FOOT }
+            if (foot.isNotEmpty() && random.nextFloat() < FROG_FOOT_CHANCE) {
+                return planOnPerch(visit, foot[random.nextInt(foot.size)], grid.map.size, random, length, fromAngle)
             }
         }
         val manner = Manner.of(visit.creature)
@@ -576,6 +585,10 @@ object CreatureRoutes {
         if (on.isNotEmpty()) return planOnPerch(visit, on[random.nextInt(on.size)], grid.map.size, random, length, fromAngle)
         val homeX = host.gridX + host.footprint.width / 2f
         val homeY = host.gridY + host.footprint.height / 2f
+        // Come for a lawn (the rabbit, #book60): out on it, not beside it.
+        if (host.isGroundCover && canWalk(visit.creature, grid, host.gridX, host.gridY)) {
+            return planOnGround(visit, GridCell(host.gridX, host.gridY), grid, emptyList(), random, length, fromAngle)
+        }
         if (CreaturePerches.allows(visit.creature, PerchKind.GROUND)) {
             val beside = host.occupiedCells().flatMap(::neighbours).distinct()
                 .filter { it !in host.occupiedCells() && canWalk(visit.creature, grid, it.x, it.y) }
@@ -617,15 +630,15 @@ object CreatureRoutes {
             val rest = plan.between(manner.rest)
             val millis = plan.pace(manner.hostStepMillis.toFloat())
             if (plan.t + millis + rest + reserve > span) break
-            // Along a roof's ridge it may wander; on a rim, a rail, a seat or a leaf, only shuffle.
-            val r = if (spot.kind == PerchKind.ROOF) manner.hostReach else minOf(manner.hostReach, PERCH_REACH)
+            // Along a roof's ridge or over the moss it may wander; on a rim, a rail, a seat or a leaf, only shuffle.
+            val r = if (spot.kind == PerchKind.ROOF || spot.kind == PerchKind.MOSS) manner.hostReach else minOf(manner.hostReach, PERCH_REACH)
             plan.stepTo(homeX + random.nextFloat() * 2f * r - r, homeY + random.nextFloat() * 2f * r - r, millis)
             plan.standFor(rest)
         }
         if (cyclic) plan.stepTo(homeX, homeY, manner.hostStepMillis)
         plan.standUntil(span)
         // A ladybird on a plant stays in sight: over the plants in front of it too (2026-11-08).
-        val onPlant = visit.creature == Creature.LADYBUG && (spot.kind == PerchKind.FLOWER || spot.kind == PerchKind.LEAF)
+        val onPlant = (visit.creature == Creature.LADYBUG || visit.creature == Creature.SNAIL) && (spot.kind == PerchKind.FLOWER || spot.kind == PerchKind.LEAF)
         return arriving(visit, plan, landing, homeX, homeY, size, depthCell = spot.cell, ponds = emptySet(), surface = spot.height, onPlant = onPlant)
     }
 
@@ -912,6 +925,12 @@ object CreatureRoutes {
     /** How likely the bird come for a well or a fence is to sit on it rather than on the ground. */
     private const val BIRD_PERCH_CHANCE = 0.6f
 
+    /** #book60: what a bird nearby sits on whatever it came for: a bird bath's rim and a scarecrow. */
+    private val BIRD_ANYWAY = setOf(PerchKind.BIRDBATH_RIM, PerchKind.SCARECROW_ARM, PerchKind.SCARECROW_HAT)
+
+    /** #book60: how likely a frog by a bird bath is to sit on its plinth. */
+    private const val FROG_FOOT_CHANCE = 0.4f
+
     /** How high the bird with nowhere to settle passes over, in tile widths. */
     private const val PASSING_ALTITUDE = 0.9f
 
@@ -993,6 +1012,15 @@ internal class Manner(
             stepMillis = 220L, rest = 900L..2600L, flySpeed = 4f, reach = 1.4f, perch = 2500L..6500L, flightsBetweenPerches = 3..6, darts = true,
         )
 
+        /** #book60: hops about further than the squirrel, and sits up a while between. */
+        private val RABBIT = Manner(stepMillis = 520L, rest = 1800L..5200L, roam = 3, stride = 0.6f..1.6f, lookChance = 0.55f, turnChance = 0.3f)
+
+        /** #book60: creeps, very slowly, a little way over its leaf or its moss. */
+        private val SNAIL = Manner(
+            stepMillis = 9000L, rest = 2500L..7000L, firstRest = 2000L..3500L, stride = 0.05f..0.15f, turnChance = 0.25f,
+            hostStepMillis = 6500L, hostReach = 0.18f,
+        )
+
         fun of(creature: Creature): Manner = when (creature) {
             Creature.SQUIRREL -> SQUIRREL
             Creature.BIRD -> BIRD
@@ -1000,6 +1028,8 @@ internal class Manner(
             Creature.LADYBUG -> LADYBUG
             Creature.BUTTERFLY -> BUTTERFLY
             Creature.DRAGONFLY -> DRAGONFLY
+            Creature.RABBIT -> RABBIT
+            Creature.SNAIL -> SNAIL
         }
     }
 }

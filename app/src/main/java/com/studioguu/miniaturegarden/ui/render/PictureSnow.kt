@@ -44,7 +44,35 @@ object PictureSnow {
         "deco_rock_mossy" to 0.45f,
         "deco_rock_standing" to 0.4f,
         "deco_rock_pebbles" to 0.5f,
+        // #book60: a dusting on the scarecrow's hat brim and sleeves, and on the bird bath's rim.
+        GridObject.SCARECROW_OBJECT_ID to 0.75f,
+        GridObject.BIRDBATH_OBJECT_ID to 0.55f,
     )
+
+    /**
+     * #book60: what has water in its picture that freezes over while the snow lies: the bird
+     * bath. No snow lies on the water ([isWater]); it is drawn over in pale ice instead.
+     */
+    val FROZEN: Set<String> = setOf(GridObject.BIRDBATH_OBJECT_ID)
+
+    /** Whether the pixel [argb] is water: solid, and clearly bluer than it is red or green. */
+    fun isWater(argb: Int): Boolean {
+        val a = argb ushr 24
+        val r = (argb shr 16) and 0xFF
+        val g = (argb shr 8) and 0xFF
+        val b = argb and 0xFF
+        return a > 128 && b > r + WATER_BLUE && b >= g
+    }
+
+    /** How far down the bird bath's picture its water lies at most: below it, bluish shade on the stone is no water. */
+    const val WATER_TOP_SHARE = 0.4f
+
+    /** How much bluer than red water is, at least. */
+    private const val WATER_BLUE = 14
+
+    /** The ice over frozen water, and how opaque it is. */
+    private const val ICE_RGB = 0xDDE8F2
+    private const val ICE_ALPHA = 0.82f
 
     /** Whether the picture [assetId] has snow of its own. */
     fun has(assetId: String, objectId: String): Boolean =
@@ -95,9 +123,16 @@ object PictureSnow {
             val pixels = IntArray(w * h)
             runCatching { page.asAndroidBitmap().getPixels(pixels, 0, w, asset.atlasX, asset.atlasY, w, h) }.getOrElse { return@getOrPut null }
             val alpha = SnowCover.alphaOf(pixels, w, h, spec, seed = asset.assetId.hashCode() + variant * 31)
+            val frozen = objectId in FROZEN
             val colours = IntArray(w * h) { i ->
-                val a = (alpha[i] * 255f).toInt().coerceIn(0, 255)
-                (a shl 24) or SNOW_RGB
+                if (frozen && i / w < h * WATER_TOP_SHARE && isWater(pixels[i])) {
+                    // Ice, not snow, over the bird bath's water.
+                    val a = (ICE_ALPHA * 255f).toInt()
+                    (a shl 24) or ICE_RGB
+                } else {
+                    val a = (alpha[i] * 255f).toInt().coerceIn(0, 255)
+                    (a shl 24) or SNOW_RGB
+                }
             }
             Bitmap.createBitmap(colours, w, h, Bitmap.Config.ARGB_8888).asImageBitmap()
         }

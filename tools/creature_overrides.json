@@ -35,9 +35,37 @@
     "anchorX": 0.4913,
     "anchorY": 1.0
   },
+  "creature_rabbit_front": {
+    "anchorX": 0.495,
+    "anchorY": 1.0
+  },
   "creature_frog_jump": {
     "anchorX": 0.2744,
     "anchorY": 0.8603
+  },
+  "creature_rabbit": {
+    "anchorX": 0.3553,
+    "anchorY": 1.0
+  },
+  "creature_rabbit_white": {
+    "anchorX": 0.3553,
+    "anchorY": 1.0
+  },
+  "creature_rabbit_run": {
+    "anchorX": 0.1177,
+    "anchorY": 0.9962
+  },
+  "creature_rabbit_white_run": {
+    "anchorX": 0.1177,
+    "anchorY": 0.9962
+  },
+  "creature_rabbit_white_front": {
+    "anchorX": 0.495,
+    "anchorY": 1.0
+  },
+  "creature_snail": {
+    "anchorX": 0.2394,
+    "anchorY": 0.998
   },
   "creature_bird_fly_body": {
     "anchorX": 0.3579,

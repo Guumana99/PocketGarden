@@ -161,7 +161,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val flowerBeds = garden == "flowers"
         val ring = garden?.startsWith("ring_") == true
         val snowSet = garden?.startsWith("snow_") == true
-        val feedback = garden == "fb" || banks || perches || birdWell || wellAlone || hungry || hutAlone || hutPair || millPair || millCottage || ring || snowSet || flowerBeds || art || fences || bridges || crops || roses || lineup || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val book60 = garden?.startsWith("b60_") == true
+        val feedback = garden == "fb" || book60 || banks || perches || birdWell || wellAlone || hungry || hutAlone || hutPair || millPair || millCottage || ring || snowSet || flowerBeds || art || fences || bridges || crops || roses || lineup || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -187,6 +188,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     millCottage -> GroundGarden.millCottage(now)
                     ring -> GroundGarden.ring(now, garden!!.removePrefix("ring_"))
                     snowSet -> GroundGarden.snow(now, garden!!.removePrefix("snow_"))
+                    book60 -> GroundGarden.book60(now, garden!!.removePrefix("b60_"))
                     flowerBeds -> GroundGarden.flowerBeds(now)
                     fenceLook -> GroundGarden.fencesOnGrounds(now)
                     lawnThings -> GroundGarden.lawnThings(now)
@@ -262,6 +264,8 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 rainGlint = intent.takeIf { it.hasExtra("rain_glint") }?.getFloatExtra("rain_glint", 0f),
                 hoe = intent.getBooleanExtra("hoe", false),
                 bird = intent.getStringExtra("bird"),
+                visit = intent.getStringExtra("visit"),
+                snowLying = intent.getBooleanExtra("snow_lying", false),
                 sideOnly = intent.getBooleanExtra("side_only", false),
                 skipAd = intent.getBooleanExtra("skip_ad", false),
             )

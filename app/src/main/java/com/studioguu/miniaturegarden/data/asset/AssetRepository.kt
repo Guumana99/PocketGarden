@@ -101,11 +101,14 @@ class TerrainTextures(
     val pebbles: Bitmap? = null,
     val flowers: Bitmap? = null,
     val woodDeck: Bitmap? = null,
+    /** Moss (#book60), seen from above as it came, evened out and made to tile. */
+    val moss: Bitmap? = null,
 ) {
     /** The picture laid over a cell of ground cover [objectId] (pebbles, wild flowers), or null. */
     fun coverFor(objectId: String): Bitmap? = when (objectId) {
         GroundCover.PEBBLE.objectId -> pebbles
         GroundCover.FLOWERS.objectId -> flowers
+        GroundCover.MOSS.objectId -> moss
         else -> null
     }
 
@@ -211,6 +214,7 @@ class AssetRepository @Inject constructor(
                     val pebbles = async { decodeGround(R.drawable.ground_pebble) }
                     val flowers = async { decodeGround(R.drawable.ground_flowers) }
                     val woodDeck = async { decodeGround(R.drawable.floor_wood) }
+                    val moss = async { decodeGround(R.drawable.ground_moss) }
                     val pond = async { decodeUnscaled(R.drawable.pond) }
                     val tilled = async(Dispatchers.Default) { bedFace(R.drawable.soil_tilled, GroundSlab.TILLED) }
                     val broken = async(Dispatchers.Default) { looseEarth() }
@@ -224,6 +228,7 @@ class AssetRepository @Inject constructor(
                         pebbles = pebbles.await(),
                         flowers = flowers.await(),
                         woodDeck = woodDeck.await(),
+                        moss = moss.await(),
                     )
                 }.also { logTiming("ground", started) }
             }.also { cachedTerrain = it }
@@ -231,7 +236,7 @@ class AssetRepository @Inject constructor(
         val ground = wasteland?.await() ?: return@coroutineScope rest
         TerrainTextures(
             rest.water, rest.cobblestone, ground, rest.pond, rest.pondWater, rest.tilled, rest.broken,
-            rest.pebbles, rest.flowers, rest.woodDeck,
+            rest.pebbles, rest.flowers, rest.woodDeck, rest.moss,
         )
     }
 
