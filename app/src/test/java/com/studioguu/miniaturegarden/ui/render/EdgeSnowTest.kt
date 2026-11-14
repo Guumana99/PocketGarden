@@ -43,12 +43,12 @@ class EdgeSnowTest {
     }
 
     @Test
-    fun `only the cottage has heaps along its edges, its ridge and its eave, mirrored when turned`() {
+    fun `only the cottage has a heap along its edges, its ridge, mirrored when turned`() {
         val lines = EdgeSnow.linesOf(StructureData.COTTAGE.objectId, flipped = false)!!
-        // #fb-1113 2: the ridge as it was and the near eave; none down the gable's sloping verges.
+        // #fb-1113 2: the ridge as it was; none down the gable's sloping verges. FB1114: none along
+        // the near eave, where it stood out in front of the roof as a big lump.
         assertEquals(listOf(-0.65f to 1.965f, 0.71f to 1.49f), lines[0].points)
-        assertEquals(listOf(-1.099f to 1.012f, 0.149f to 0.656f), lines[1].points)
-        assertEquals(2, lines.size)
+        assertEquals(1, lines.size)
         val turned = EdgeSnow.linesOf(StructureData.COTTAGE.objectId, flipped = true)!!
         assertEquals(lines.map { line -> line.points.map { (a, u) -> -a to u } }, turned.map { it.points })
         // #fb-1113 3-4: the hut, the well and the windmill have only the snow read off their pictures.

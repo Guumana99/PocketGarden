@@ -32,7 +32,7 @@ import com.studioguu.miniaturegarden.data.local.entity.WeatherDayEntity
         LetterEntity::class,
         WeatherDayEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -264,6 +264,13 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN fedAt INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE grid_objects ADD COLUMN fedFrom REAL NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** FB1114: moss grows in now, as a lawn does; moss laid before it did stays as it was, grown. */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE grid_objects SET growthProgress = 1.0 WHERE objectId = 'ground_moss'")
             }
         }
     }

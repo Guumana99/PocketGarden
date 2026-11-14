@@ -39,13 +39,13 @@ object EdgeSnow {
      * garden's slant): the ridge and the verges of the roof, not the whole of it.
      */
     private val BY_HAND: Map<String, List<Line>> = mapOf(
-        // The ridge as it was, and the near roof's eave, where the snow comes to its edge and hangs
-        // over (#fb-1113 2). Not the gable's sloping verges: snow slides off those. The hut and the
-        // well have no heaps along their edges any more, only the snow over their roofs
+        // The ridge as it was (#fb-1113 2). Not the gable's sloping verges: snow slides off those.
+        // FB1114: no heap along the near roof's eave any more: it stood out in front of the roof as
+        // a big lump; the snow over the roof comes to the eave's edge instead (PictureSnow). The hut
+        // and the well have no heaps along their edges either, only the snow over their roofs
         // (PictureSnow, #fb-1113 3).
         StructureData.COTTAGE.objectId to listOf(
             line(-0.65f to 1.965f, 0.71f to 1.49f),
-            line(-1.099f to 1.012f, 0.149f to 0.656f),
         ),
     )
 
@@ -53,9 +53,12 @@ object EdgeSnow {
      * The roof faces the viewer sees, as outlines measured on each picture (#fb-1110): snow lies
      * over the whole of them, not only along their edges. Same offsets as the lines.
      */
+    // FB1114: the cottage's and the hut's out to the outer edges of their roofs, the verges' boards
+    // and the ends of the eaves' tiles (a course of tiles was left bare along each). The cottage's
+    // eave bends with the slant: a point in its middle.
     private val FACES: Map<String, List<Line>> = mapOf(
-        StructureData.COTTAGE.objectId to listOf(line(-0.648f to 1.963f, 0.704f to 1.505f, 0.149f to 0.656f, -1.099f to 1.012f)),
-        StructureData.HUT.objectId to listOf(line(-0.814f to 1.341f, -0.059f to 1.638f, 0.819f to 0.957f, -0.01f to 0.663f)),
+        StructureData.COTTAGE.objectId to listOf(line(-0.65f to 1.977f, 0.764f to 1.455f, 0.179f to 0.562f, -0.513f to 0.85f, -1.118f to 0.983f)),
+        StructureData.HUT.objectId to listOf(line(-0.844f to 1.333f, -0.037f to 1.66f, 0.84f to 0.94f, 0.033f to 0.633f)),
         StructureData.WELL.objectId to listOf(line(-0.4f to 0.597f, 0.107f to 0.831f, 0.26f to 0.629f, -0.2125f to 0.494f)),
     )
 

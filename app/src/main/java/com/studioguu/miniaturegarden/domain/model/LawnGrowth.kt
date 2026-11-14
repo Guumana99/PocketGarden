@@ -27,12 +27,20 @@ object LawnGrowth {
 
     /**
      * Moss (#book60): laid on the ground as a lawn is, and sharing its cell with what a lawn
-     * shares its own with ([isCarpet]); it does not grow, it is laid as it is.
+     * shares its own with ([isCarpet]). FB1114: it grows as a lawn does, in the same time, from a
+     * few thin patches to a whole cell of moss ([MossPatches]); moss laid before then (saved with
+     * no growth, which it did not use) was set fully grown when the database moved to version 22.
      */
     const val MOSS_OBJECT_ID = "ground_moss"
 
     /** Whether [obj] is a lawn. */
     fun isLawn(obj: GridObject): Boolean = obj.objectId == OBJECT_ID
+
+    /** Whether [obj] is moss. */
+    fun isMoss(obj: GridObject): Boolean = obj.objectId == MOSS_OBJECT_ID
+
+    /** Whether [obj] grows in with time, as a lawn does: the lawn and the moss (FB1114). */
+    fun grows(obj: GridObject): Boolean = obj.objectId in CARPET_OBJECT_IDS
 
     /** Whether [objectId] lies on the ground as a lawn does, under the small things: the lawn or the moss. */
     fun isCarpet(objectId: String): Boolean = objectId == OBJECT_ID || objectId == MOSS_OBJECT_ID

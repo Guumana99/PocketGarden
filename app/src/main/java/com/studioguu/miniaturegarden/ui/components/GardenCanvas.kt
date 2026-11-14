@@ -75,6 +75,7 @@ import com.studioguu.miniaturegarden.domain.model.PerchKind
 import com.studioguu.miniaturegarden.domain.model.PlantGround
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.LawnGrowth
+import com.studioguu.miniaturegarden.domain.model.MossPatches
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Soil
@@ -936,7 +937,15 @@ private fun submitObjects(
         if (cover != null) {
             // Pebbles and wild flowers (#74): a picture seen from straight above over the cell,
             // running on into the cells beside it, under whatever stands round it.
-            submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) { drawGroundTexture(cover, transform, obj.gridX, obj.gridY) }
+            // Moss grows in as a lawn does (FB1114): thin patches spreading until they cover it.
+            val mossGrowth = if (LawnGrowth.isMoss(obj)) LawnGrowth.growthOf(obj) else 1f
+            submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {
+                if (mossGrowth >= 1f) {
+                    drawGroundTexture(cover, transform, obj.gridX, obj.gridY)
+                } else {
+                    drawGroundTexture(cover, transform, obj.gridX, obj.gridY, mask = { canvas, cell -> drawMossMask(canvas, cell, obj.gridX, obj.gridY, mossGrowth) })
+                }
+            }
             continue
         }
         val run = obj.runKind
@@ -3416,3 +3425,24 @@ private fun DrawScope.drawLightPool(center: Offset, radius: Float, strength: Flo
 
 /** Half the width of the little mound of snow on a fence post's head, in tile widths (#fb-1110). */
 private const val POST_CAP_HALF = 0.04f
+
+private val mossMaskPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+/**
+ * Where moss [growth] of the way grown covers its cell ([MossPatches]), drawn onto [canvas] laid
+ * out as the cell's picture ([cell]): each patch solid in the middle and fading at its edge, all
+ * of them as thick as the moss is yet.
+ */
+private fun drawMossMask(canvas: android.graphics.Canvas, cell: android.graphics.RectF, x: Int, y: Int, growth: Float) {
+    val alpha = (MossPatches.thickness(growth) * 255).toInt()
+    val solid = android.graphics.Color.argb(alpha, 255, 255, 255)
+    val clear = android.graphics.Color.argb(0, 255, 255, 255)
+    for (patch in MossPatches.at(x, y, growth)) {
+        val cx = cell.left + patch.u * cell.width()
+        val cy = cell.top + patch.v * cell.height()
+        val r = patch.radius * cell.width()
+        mossMaskPaint.shader = android.graphics.RadialGradient(cx, cy, r, intArrayOf(solid, solid, clear), floatArrayOf(0f, 0.6f, 1f), android.graphics.Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, r, mossMaskPaint)
+    }
+    mossMaskPaint.shader = null
+}

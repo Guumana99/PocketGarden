@@ -3,6 +3,7 @@ package com.studioguu.miniaturegarden.debug
 import com.studioguu.miniaturegarden.domain.model.GreenhouseSide
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RunKind
@@ -44,7 +45,7 @@ object GroundGarden {
     private fun place(now: Long, objectId: String, cells: List<GridCell>): List<GridObject> = cells.map {
         GridObject(
             instanceId = "gg_${objectId}_${it.x}_${it.y}", gridX = it.x, gridY = it.y, objectId = objectId,
-            growthProgress = if (objectId == LAWN) 1f else 0f, lastUpdatedTimestamp = now,
+            growthProgress = if (objectId == LAWN || objectId == LawnGrowth.MOSS_OBJECT_ID) 1f else 0f, lastUpdatedTimestamp = now,
         )
     }
 
@@ -140,6 +141,11 @@ object GroundGarden {
             "moss" -> place(now, "ground_moss", cells(2..5, 3..7)) + place(now, LAWN, cells(6..9, 3..7)) +
                 place(now, "deco_rock_mossy", listOf(GridCell(4, 5))) + place(now, "deco_rock_mossy", listOf(GridCell(7, 5))) +
                 place(now, GridObject.SCARECROW_OBJECT_ID, listOf(GridCell(3, 6))) + place(now, GridObject.BIRDBATH_OBJECT_ID, listOf(GridCell(8, 6)))
+            // FB1114: moss growing in, beside a lawn at the same growth, 0 to 1 along x.
+            "moss_growth" -> listOf(0f, 0.15f, 0.35f, 0.6f, 0.85f, 1f).flatMapIndexed { i, g ->
+                place(now, LawnGrowth.MOSS_OBJECT_ID, listOf(GridCell(2 + i, 4), GridCell(2 + i, 5))).map { it.copy(growthProgress = g) } +
+                    place(now, LAWN, listOf(GridCell(2 + i, 7))).map { it.copy(growthProgress = g) }
+            }
             "things" -> place(now, LAWN, cells(3..4, 3..4)) + place(now, "ground_moss", cells(6..7, 3..4)) + place(now, GridObject.COBBLESTONE_OBJECT_ID, cells(6..7, 6..7)) +
                 place(now, GridObject.SCARECROW_OBJECT_ID, listOf(GridCell(3, 3), GridCell(6, 4), GridCell(4, 6))) +
                 place(now, GridObject.BIRDBATH_OBJECT_ID, listOf(GridCell(4, 4), GridCell(7, 3), GridCell(6, 6))) +

@@ -56,6 +56,7 @@
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | 生き物の来訪・組み合わせ表 | `CreatureVisitTest` |
 | 生き物の動き（経路・入れないマス・ポン・飛来）、止まる場所（`CreaturePerches` `PlantTops`）・描く順、`CreatureSprites`、生き物の絵（`creatures_0.png`） | `CreatureMotionTest` `CodeArtTest` `AssetLedgerTest` |
+| FB1114：白うさぎを呼ぶ・苔の育ち（`MossPatches`、DB v22）・作物の縮み・コテージの雪 | `Fb1114Test`（＋`CreatureCallTest` `MigrationSchemaTest` `CalculateOfflineProgressUseCaseTest` `EdgeSnowTest` `SnowCoverTest` `CropScaleTest`） |
 | 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |
 | 生き物の季節の条件・自然メモの「あたらしい」・DB v11 | `NatureNotesEngineTest`（＋表の網羅 `CreatureVisitTest`） |
 | リワード・1 日の回数 | `RewardTest` |

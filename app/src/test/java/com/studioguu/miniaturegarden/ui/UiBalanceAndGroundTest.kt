@@ -351,7 +351,10 @@ class UiBalanceAndGroundTest {
     fun `pebbles and wild flowers cover their cell, not a few specks (#60, #74)`() {
         // #74: pictures seen from straight above, laid over the whole cell; the drawn scatter is gone.
         val canvas = source("ui/components/GardenCanvas.kt")
-        assertTrue(canvas.contains("submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) { drawGroundTexture(cover, transform, obj.gridX, obj.gridY) }"))
+        // FB1114: moss still growing in is drawn through its patches; anything else, the whole picture.
+        val branch = canvas.substringAfter("val cover = terrain.coverFor(obj.objectId)").substringBefore("continue")
+        assertTrue(branch.contains("submit(obj, RenderLayer.BOTTOM_OBJECTS, depth) {"))
+        assertTrue(branch.contains("drawGroundTexture(cover, transform, obj.gridX, obj.gridY)\n"))
         assertFalse(canvas.contains("drawPebbles("))
         assertFalse(canvas.contains("drawWildFlowers("))
     }

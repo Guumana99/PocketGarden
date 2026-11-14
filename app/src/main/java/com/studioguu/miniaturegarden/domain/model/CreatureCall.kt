@@ -21,9 +21,21 @@ data class CreatureCall(
 
     /** With [creature] chosen, or no longer: a choice past [MOST] takes the place of the oldest. */
     fun toggled(creature: Creature): CreatureCall = when {
-        creature in creatures -> copy(creatures = creatures - creature)
+        // Letting the rabbit go lets its white coat go with it.
+        creature in creatures -> copy(creatures = creatures - creature, whiteRabbit = whiteRabbit && creature != Creature.RABBIT)
         creatures.size >= MOST -> copy(creatures = creatures.drop(1) + creature)
         else -> copy(creatures = creatures + creature)
+    }
+
+    /**
+     * With the white rabbit chosen, or no longer (FB1114): choosing it calls the rabbit too, so
+     * that it comes, and comes white, without the rabbit's own chip as well (chosen alone, nothing
+     * came before). Letting it go leaves the rabbit called, in its usual coat.
+     */
+    fun toggledWhiteRabbit(): CreatureCall = when {
+        whiteRabbit -> copy(whiteRabbit = false)
+        Creature.RABBIT in creatures -> copy(whiteRabbit = true)
+        else -> toggled(Creature.RABBIT).copy(whiteRabbit = true)
     }
 
     companion object {
@@ -144,8 +156,8 @@ object CreatureCalls {
         fun grown(species: PlantSpecies) = listOf(thing(GridObject.TILLED_SOIL_OBJECT_ID), thing(species.objectId, growth = 1f))
         return when (creature) {
             Creature.BUTTERFLY -> grown(PlantSpecies.TULIP)
-            // A lawn grown, not one just sown.
-            Creature.RABBIT -> listOf(thing(perchFor(creature), growth = 1f))
+            // A lawn grown, not one just sown; moss grown too (FB1114).
+            Creature.RABBIT, Creature.SNAIL -> listOf(thing(perchFor(creature), growth = 1f))
             else -> listOf(thing(perchFor(creature)))
         }
     }

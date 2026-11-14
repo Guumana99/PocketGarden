@@ -332,7 +332,8 @@ data class VisitorLook(
                 Creature.LADYBUG -> turned.copy(tilt = tilt + 7f * bump * (if (pose.turnPassed) 1f else -1f), scaleY = scaleY * (1f - 0.05f * bump))
                 Creature.BUTTERFLY -> turned.copy(lift = lift + 0.02f * bump, wingOpen = wingOpen * (1f - 0.35f * bump))
                 Creature.DRAGONFLY -> this
-                Creature.RABBIT -> turned.copy(scaleY = scaleY * (1f - 0.07f * bump))
+                // FB1114: sinks down as the squirrel does.
+                Creature.RABBIT -> turned.copy(scaleY = scaleY * (1f - 0.08f * bump))
                 Creature.SNAIL -> turned.copy(scaleY = scaleY * (1f - 0.06f * bump))
             }
         }
@@ -478,10 +479,14 @@ private fun DrawScope.drawPictures(creature: Creature, look: VisitorLook, atlas:
     val own = atlas[TileSetDefinition.coatOf(TileSetDefinition.assetIdFor(creature), look.variant)]
     when (creature) {
         Creature.RABBIT -> {
-            // Its leaping picture in the air, its sitting one on the ground (#book60).
+            // Its leaping picture in the air, its sitting one on the ground (#book60), changed into
+            // as the squirrel changes into its running one (FB1114): eased over as it sets off and
+            // stops, not switched halfway.
             val leaping = atlas[TileSetDefinition.coatOf(TileSetDefinition.RABBIT_RUNNING, look.variant)]
-            val picture = if (leaping != null && look.moving >= 0.5f && !look.pose) leaping else own
-            if (picture != null) drawSprite(image, picture, Offset.Zero, scale)
+            val stride = (if (look.pose) own else leaping) ?: own
+            val moving = if (stride == null) 0f else look.moving
+            if (own != null && moving < 1f) drawSprite(image, own, Offset.Zero, scale, alpha = 1f - moving)
+            if (stride != null && moving > 0f) drawSprite(image, stride, Offset.Zero, scale, alpha = moving)
         }
         Creature.SNAIL -> if (own != null) {
             // The shell stays as it is; the body ahead of it (the picture faces left) is drawn out.

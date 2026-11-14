@@ -56,10 +56,10 @@
 | ポインセチア（`plant_poinsettia`） | Lv15 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#69。C2PA を grep で確認）。#69 で 4 段階から 3 段階に。段階 2 の苞はピンク、段階 3 は赤（届いた絵のまま） |
 | 白菜（`plant_hakusai`） | Lv10 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87、#91 で段階 3 と枯れを外葉の広がった株に差し替え。横幅 0.76 マス、結球の足元に立つ）。段階 2 のひげ根を切り落とす。葉が白っぽいので真っ白だけを抜く（`white_parts`）。段階 3 は縦長で高さ 0.8 マス |
 | 菜の花（`plant_nanohana`） | Lv12 | ✅ | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#87、#93 で段階 3 と枯れを穂の付いた株に差し替え。横幅 0.8 マス。#94 で段階 2 を緑のつぼみの房の株に差し替え。横幅 0.55 マス）。切り抜きはコスモスと同じ（`throughout`）。段階 2 から幅で大きさを決める（0.55・0.72 マス） |
-| かぶ（`plant_kabu`） | Lv7 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60。段階 2・3・枯れが届いた）。段階 1 は段階 2 から白い玉を消した葉だけの芽（`kabu_sprout`）。土なしで、根の先のひげを切り、玉の底が接地点（`without_tail`）。白い玉が欠けないよう真っ白だけを抜く（`white_parts`）。枯れは段階 3 と同じ高さ 0.62 マスにし、灰色の玉を少し明るく黄みを足した（`KABU_ROOT_*`）。アイコンは段階 3 の玉と葉の付け根（上はぼかして切る） |
-| さつまいも（`plant_satsumaimo`） | Lv9 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60）。原画の明るい土の山は抜き、芋と葉だけにした（大根と同じ見え方。土を暗く低く残す案と畑の上で比べた。`without_earth`）。山の右の薄い影も抜いた。葉の色を 1.25 倍鮮やかに。段階 1 は段階 2 を縮めたもの。横幅 0.56・0.7 マス。アイコンは段階 3（芋と葉） |
-| 水仙（`plant_suisen`） | Lv12 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60、段階 3 は黄の `crop_suisen_yellow_stage3.png`）。段階 3 は 3 色：黄（原画のまま）・白い花びらに黄の中心（`_white`）・黄の花びらにオレンジの中心（`_orange`、めずらしい）。花びらと中心（副花冠）の範囲を原画の上で決め（`SUISEN_CUPS`）、色をコードで変えた（`suisen_colour`）。真っ白は作らずクリーム色で陰影を残す。段階 1 は段階 2 を縮めたもの。高さ 0.3・0.48・0.6 マス。アイコンは段階 3 の束 |
-| 葉ぼたん（`plant_habotan`） | Lv16 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60）。長い茎はほぼ切り、葉の塊の下が接地点（`without_stem`）。背景の薄い灰色は外から抜き、中心の白い葉は抜かない（`pocket` 60）。段階 1 は段階 2 を縮めたもの。横幅 0.46・0.6 マス。アイコンは段階 3 の株 |
+| かぶ（`plant_kabu`） | Lv7 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60。段階 2・3・枯れが届いた）。段階 1 は段階 2 から白い玉を消した葉だけの芽（`kabu_sprout`）。白い玉が欠けないよう真っ白だけを抜く（`white_parts`）。FB1114：畑の上に白い玉を置いたように見えたので、段階 2・3・枯れとも玉の下を切って土に埋めた見え方に（`buried_turnip`。玉のいちばん太い所の少し上を、手前ほど低い曲線で切り、切り口のすぐ上を土の色に染め、まわりに土の盛り上がりと土くれをコードで描く。色は畑の土 `SoilPalette`。接地点は盛り土の足元）。葉の間に閉じ込められた背景の白い点は、まわりの葉の色で埋めた（`without_specks`）。枯れは灰色の玉を少し明るく黄みを足した（`KABU_ROOT_*`）。アイコンは FB1114 で届いた `icon_kabu.png`（収穫物の大写し。大根と同じく真っ白だけを抜く） |
+| さつまいも（`plant_satsumaimo`） | Lv9 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60）。原画の明るい土の山は抜き、芋と葉だけにした（大根と同じ見え方。土を暗く低く残す案と畑の上で比べた。`without_earth`）。山の右の薄い影も抜いた。葉の色を 1.25 倍鮮やかに。段階 1 は段階 2 を縮めたもの。横幅 0.56・0.7 マス。FB1114：土を抜くときに、葉の明るい照りと芋の明るい所まで土として抜けて穴になっていたので、土は大きなかたまりだけを抜くようにし、閉じ込められた小さな穴は原画の色で埋めた（`without_earth`・`without_specks`）。描くときに 0.85 倍（葉が隣のマスにかかった）。アイコンは FB1114 で届いた `icon_satsumaimo.png`（芋の下の薄い影はナスと同じく抜く） |
+| 水仙（`plant_suisen`） | Lv12 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60、段階 3 は黄の `crop_suisen_yellow_stage3.png`）。段階 3 は 3 色：黄（原画のまま）・白い花びらに黄の中心（`_white`）・黄の花びらにオレンジの中心（`_orange`、めずらしい）。花びらと中心（副花冠）の範囲を原画の上で決め（`SUISEN_CUPS`）、色をコードで変えた（`suisen_colour`）。真っ白は作らずクリーム色で陰影を残す。段階 1 は段階 2 を縮めたもの。高さ 0.3・0.48・0.6 マス。FB1114：根元の白っぽい茎の束（下 3 割）を葉の緑に 6 割まで寄せた（`greener_foot`。アイコン・3 色とも）。描くときに 0.85 倍 |
+| 葉ぼたん（`plant_habotan`） | Lv16 | 🔁 | ✅ | ✅ | ➖ | ✅ | ✅ | Recraft（#book60）。長い茎はほぼ切り、葉の塊の下が接地点（`without_stem`）。背景の薄い灰色は外から抜き、中心の白い葉は抜かない（`pocket` 60）。段階 1 は段階 2 を縮めたもの。横幅 0.46・0.6 マス。描くときに 0.8 倍（FB1114。白菜より大きく見えた）。アイコンは段階 3 の株 |
 
 - 仮（⬜）の作物に絵を入れるときは、**その作物の段階と枯れを全部そろえて**入れる（一部だけだと `CodeArtTest` が落ちる）。段階の数を 3 に変えるなら `PlantSpecies.growthStages` も直す。
 - アイコンの絵は `res/drawable-nodpi/icon_<作物>.png`（256×256、`tools/prepare_drawable_art.py` が原画から作る）を置き、`UiLabels.itemIconRes` に 1 行足す。
@@ -95,7 +95,7 @@
 | 畝のある土（`floor_tilled`） | ✅ | Recraft | `res/drawable/soil_tilled.png` |
 | 土の質の色（よい土・ふかふかの土） | ⬜ | — | 土の絵に色を掛ける（`soilTint`、乗算。#78）。たい肥は物として残さず、抜いたときの崩れる演出（`drawCrumbling`、コード）だけ |
 | 芝生（`ground_grass`） | ✅＋⬜ | Recraft | 育ちきると `tile_grass`（原画 `tile_grass_iso.png`）。育つ途中の苗床と葉の切り抜きは演出としてコードで描く（#61）。`tile_grass_dark` は 📦 |
-| 苔（`ground_moss`） | ✅ | Recraft | `res/drawable-nodpi/ground_moss.png`（原画 `tile_moss_top.png`、#book60。真上から見た模様のまま届いた）。大きな斜めの明暗の波を消して平らにし（`MOSS_EVEN_OUT`）、ごく弱いむらを戻し（`MOSS_MOTTLE`）、端をつないで 1 マスに 1 枚敷く（`moss_texture`）。芝生と同じく地面を覆い、上に置ける物も芝生と同じ |
+| 苔（`ground_moss`） | ✅ | Recraft | `res/drawable-nodpi/ground_moss.png`（原画 `tile_moss_top.png`、#book60。真上から見た模様のまま届いた）。大きな斜めの明暗の波を消して平らにし（`MOSS_EVEN_OUT`）、ごく弱いむらを戻し（`MOSS_MOTTLE`）、端をつないで 1 マスに 1 枚敷く（`moss_texture`）。芝生と同じく地面を覆い、上に置ける物も芝生と同じ。FB1114：芝生と同じ時間（48 時間）で育つ。育つ途中は同じ絵をまだらな薄い斑点で見せ、斑点が広がってつながり一面になる（コード描画 `MossPatches`）。旧セーブの苔は育ち切った状態 |
 | 小石（`ground_pebble`） | ✅ | Recraft | `res/drawable-nodpi/ground_pebble.png`（原画 `tile_pebble_iso.png`、Recraft（#74。C2PA を grep で確認））。板の上面を真上から見た模様にし、マスどうしが続くようにして 1 マスに 1 枚敷く |
 | 野の花（`ground_flowers`） | ✅ | Recraft | `res/drawable-nodpi/ground_flowers.png`（原画 `tile_flowers_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方 |
 | 石畳（`floor_cobblestone`） | ✅ | Recraft | `res/drawable-nodpi/floor_cobblestone.png`（原画 `tile_cobblestone_iso.png`、Recraft（#74。C2PA を grep で確認））。小石と同じ作り方で、継ぎ目では石が重ならず目地で区切れる。#73 まではイラスト調の `tile_path_cobblestone.png`（📦、`tools/source_art/`） |
@@ -168,7 +168,7 @@
 | りす（縮んだ走り） | `creature_squirrel_run2` | Recraft で作成・採用（2026-11-02）。接地点は足元。移動中、跳ねの地面側で `creature_squirrel_run` と入れ替わる | ✅ |
 | かえる（跳ぶ） | `creature_frog_jump` | Recraft で作成・採用（2026-11-02）。原画のかえるが小さいので 1.8 倍にして目をそろえた。跳ぶ間だけ出す | ✅ |
 | とんぼ | `creature_dragonfly` | Recraft（#71）。真上から見た姿。2026-11-08 から 0.26 マス（前は 0.2 マス、1.3 倍）。透明な羽は半透明（不透明度 0.3〜）で残し、脈と縁は不透明。胴と左右の羽に切り分け | ✅ |
-| うさぎ | `creature_rabbit` | Recraft（#book60）。座る姿・跳ぶ姿（`creature_rabbit_run`、同じ倍率）・正面（`creature_rabbit_front`、座る姿と頭から足までの高さをそろえ、両足の間が接地点）。高さ 0.24 マス。お腹と尾の白が欠けないよう真っ白だけを抜く。白い冬毛の 3 枚（`creature_rabbit_white` `creature_rabbit_white_run` `creature_rabbit_white_front`）は茶色の 3 枚の毛だけをコードで白く塗った（`winter_coat`。耳先の黒・目・陰影は残す） | ✅ |
+| うさぎ | `creature_rabbit` | Recraft（#book60）。座る姿・跳ぶ姿（`creature_rabbit_run`、同じ倍率）・正面（`creature_rabbit_front`、座る姿と頭から足までの高さをそろえ、両足の間が接地点）。高さ 0.24 マス。お腹と尾の白が欠けないよう真っ白だけを抜く。白い冬毛の 3 枚（`creature_rabbit_white` `creature_rabbit_white_run` `creature_rabbit_white_front`）は茶色の 3 枚の毛をコードで白く塗った（`winter_coat`。耳先の黒・目・陰影は残す）。FB1114：茶色の判定から外れた灰色がかった暗い毛が背中の筋・正面の右わきの斑として残っていたので、目（原画上の位置で指定）と耳の黒以外の見えている所はすべて毛として塗り、明るさは周りとならして暗い毛の点を消した | ✅ |
 | かたつむり | `creature_snail` | Recraft（#book60）。左向き。幅 0.11 マス（最大ズームで殻の渦が見える）。淡い目の柄が消えないよう真っ白だけを抜く。這うときは殻を残して体だけ伸び縮みさせる（`SNAIL_SHELL_FROM`） | ✅ |
 
 図鑑の「いきもの」の章（影絵・ページの絵）は、各種の 1 枚目（`creature_<id>`）を静止して出す。

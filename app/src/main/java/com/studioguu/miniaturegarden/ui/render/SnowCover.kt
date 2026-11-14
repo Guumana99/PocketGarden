@@ -37,7 +37,12 @@ object SnowCover {
         val faces: List<List<Pair<Float, Float>>> = emptyList(),
         val floor: Float = 0f,
         val solid: Boolean = false,
+        /** For a dusting, how far down from open air it reaches, as a share of the picture's height. */
+        val reach: Float = TOP_REACH,
     )
+
+    /** How far down from open air a dusting reaches, as a share of the picture's height. */
+    const val TOP_REACH = 0.2f
 
     /** The alpha (0 to 1) of the snow over each pixel of a [width] x [height] picture of [argb]. */
     fun alphaOf(argb: IntArray, width: Int, height: Int, spec: Spec, seed: Int): FloatArray {
@@ -89,7 +94,7 @@ object SnowCover {
     }
 
     private fun top(argb: IntArray, lum: FloatArray, w: Int, h: Int, spec: Spec, seed: Int, out: FloatArray) {
-        val reach = max(3f, h * 0.2f)
+        val reach = max(3f, h * spec.reach)
         val patch = max(4f, w * 0.12f)
         for (x in 0 until w) {
             var sinceAir = Int.MAX_VALUE / 2

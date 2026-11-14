@@ -91,6 +91,11 @@ object CropScale {
         // #fb-1113 8: both stood a size up on the daikon, the bench and the cottage door.
         "plant_carrot" to 0.8f,
         "plant_poinsettia" to 0.82f,
+        // FB1114: the sweet potato's leaves reached into the beds beside it; the ornamental
+        // cabbage stood larger than the hakusai; the narcissus' stems stood out over the others'.
+        "plant_satsumaimo" to 0.85f,
+        "plant_habotan" to 0.8f,
+        "plant_suisen" to 0.85f,
     )
 
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")

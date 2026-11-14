@@ -31,6 +31,11 @@ object RiverAutotile {
 // Reused between draws; all drawing happens on the main thread.
 private val groundMatrix = Matrix()
 private val groundPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+// No anti-aliasing: a soft edge would leave a little of the white mask showing at the cell's
+// edge; the clip round the cell gives the edge instead.
+private val maskedGroundPaint = Paint(Paint.FILTER_BITMAP_FLAG).apply {
+    xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.SRC_IN)
+}
 private val groundSource = FloatArray(8)
 private val groundTarget = FloatArray(8)
 private val groundSourceRect = Rect()
@@ -51,6 +56,7 @@ fun DrawScope.drawGroundTexture(
     srcRight: Int = texture.width,
     srcBottom: Int = texture.height,
     overlay: ((canvas: Canvas, cell: RectF) -> Unit)? = null,
+    mask: ((canvas: Canvas, cell: RectF) -> Unit)? = null,
 ) {
     val top = transform.worldToScreen(x.toFloat(), y.toFloat())
     val right = transform.worldToScreen(x + 1f, y.toFloat())
@@ -75,7 +81,16 @@ fun DrawScope.drawGroundTexture(
         val native = canvas.nativeCanvas
         native.save()
         native.concat(groundMatrix)
-        if (overlay == null) {
+        if (mask != null) {
+            // Only where [mask] has drawn, and as strongly: the picture goes in over it (FB1114: moss growing in).
+            // Kept to the cell: past its edge the picture does not reach, and the mask would stay
+            // there as it is, white, over the cells beside it.
+            native.clipRect(groundDestination)
+            native.saveLayer(groundDestination, null)
+            mask(native, groundDestination)
+            native.drawBitmap(texture, groundSourceRect, groundDestination, maskedGroundPaint)
+            native.restore()
+        } else if (overlay == null) {
             native.drawBitmap(texture, groundSourceRect, groundDestination, groundPaint)
         } else {
             // A layer of its own, so that what is laid over the picture can keep to it.
