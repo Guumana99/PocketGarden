@@ -4,12 +4,12 @@
   "pages": [
     {
       "file": "crops_0.png",
-      "width": 2046,
+      "width": 2045,
       "height": 2047
     },
     {
       "file": "crops_1.png",
-      "width": 2034,
+      "width": 2030,
       "height": 2042
     },
     {
@@ -512,7 +512,7 @@
       "height": 235,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1702,
+      "atlasX": 1701,
       "atlasY": 1799
     },
     {
@@ -550,9 +550,9 @@
     },
     {
       "assetId": "plant_kabu_stage2",
-      "anchorX": 0.4876,
-      "anchorY": 0.9938,
-      "width": 223,
+      "anchorX": 0.4883,
+      "anchorY": 0.9988,
+      "width": 222,
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
@@ -562,8 +562,8 @@
     {
       "assetId": "plant_kabu_stage3",
       "anchorX": 0.4863,
-      "anchorY": 0.9906,
-      "width": 290,
+      "anchorY": 0.9988,
+      "width": 284,
       "height": 317,
       "isFlippedAllowed": true,
       "page": 1,
@@ -572,9 +572,9 @@
     },
     {
       "assetId": "plant_kabu_withered",
-      "anchorX": 0.4346,
-      "anchorY": 0.9918,
-      "width": 227,
+      "anchorX": 0.4337,
+      "anchorY": 0.9988,
+      "width": 223,
       "height": 317,
       "isFlippedAllowed": true,
       "page": 1,
@@ -589,7 +589,7 @@
       "height": 133,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1954,
+      "atlasX": 1953,
       "atlasY": 1799
     },
     {
@@ -655,7 +655,7 @@
       "height": 317,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 231,
+      "atlasX": 227,
       "atlasY": 1476
     },
     {
@@ -666,7 +666,7 @@
       "height": 317,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 466,
+      "atlasX": 462,
       "atlasY": 1476
     },
     {
@@ -963,7 +963,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 531,
+      "atlasX": 530,
       "atlasY": 1799
     },
     {
@@ -974,7 +974,7 @@
       "height": 317,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 713,
+      "atlasX": 709,
       "atlasY": 1476
     },
     {
@@ -985,7 +985,7 @@
       "height": 317,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 991,
+      "atlasX": 987,
       "atlasY": 1476
     },
     {
@@ -1007,7 +1007,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 676,
+      "atlasX": 675,
       "atlasY": 1799
     },
     {
@@ -1029,7 +1029,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 952,
+      "atlasX": 951,
       "atlasY": 1799
     },
     {
@@ -1051,7 +1051,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1275,
+      "atlasX": 1274,
       "atlasY": 1799
     },
     {
@@ -1062,7 +1062,7 @@
       "height": 307,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 1819,
+      "atlasX": 1815,
       "atlasY": 1476
     },
     {
@@ -1205,7 +1205,7 @@
       "height": 246,
       "isFlippedAllowed": true,
       "page": 0,
-      "atlasX": 1435,
+      "atlasX": 1434,
       "atlasY": 1799
     },
     {
@@ -1216,7 +1216,7 @@
       "height": 317,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 1315,
+      "atlasX": 1311,
       "atlasY": 1476
     },
     {
@@ -1227,7 +1227,7 @@
       "height": 317,
       "isFlippedAllowed": true,
       "page": 1,
-      "atlasX": 1567,
+      "atlasX": 1563,
       "atlasY": 1476
     },
     {
