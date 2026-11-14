@@ -45,7 +45,7 @@ object PictureSnow {
         "deco_rock_standing" to 0.4f,
         "deco_rock_pebbles" to 0.5f,
         // #book60: a dusting on the scarecrow's hat brim and sleeves, and on the bird bath's rim.
-        GridObject.SCARECROW_OBJECT_ID to 0.5f,
+        GridObject.SCARECROW_OBJECT_ID to 0.75f,
         GridObject.BIRDBATH_OBJECT_ID to 0.55f,
     )
 
@@ -63,6 +63,9 @@ object PictureSnow {
         val b = argb and 0xFF
         return a > 128 && b > r + WATER_BLUE && b >= g
     }
+
+    /** How far down the bird bath's picture its water lies at most: below it, bluish shade on the stone is no water. */
+    const val WATER_TOP_SHARE = 0.4f
 
     /** How much bluer than red water is, at least. */
     private const val WATER_BLUE = 14
@@ -122,7 +125,7 @@ object PictureSnow {
             val alpha = SnowCover.alphaOf(pixels, w, h, spec, seed = asset.assetId.hashCode() + variant * 31)
             val frozen = objectId in FROZEN
             val colours = IntArray(w * h) { i ->
-                if (frozen && isWater(pixels[i])) {
+                if (frozen && i / w < h * WATER_TOP_SHARE && isWater(pixels[i])) {
                     // Ice, not snow, over the bird bath's water.
                     val a = (ICE_ALPHA * 255f).toInt()
                     (a shl 24) or ICE_RGB

@@ -265,6 +265,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 hoe = intent.getBooleanExtra("hoe", false),
                 bird = intent.getStringExtra("bird"),
                 visit = intent.getStringExtra("visit"),
+                snowLying = intent.getBooleanExtra("snow_lying", false),
                 sideOnly = intent.getBooleanExtra("side_only", false),
                 skipAd = intent.getBooleanExtra("skip_ad", false),
             )

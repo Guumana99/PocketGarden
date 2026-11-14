@@ -71,6 +71,8 @@ data class Showcase(
      */
     val visit: String? = null,
     val visitAt: Long = 0L,
+    /** #book60: the snow lying on the roofs and the things as thick as it gets, for the snowy shots. */
+    val snowLying: Boolean = false,
 ) {
     /**
      * The visitors to show: [visits] of the kinds allowed, and the butterfly asked for, if there

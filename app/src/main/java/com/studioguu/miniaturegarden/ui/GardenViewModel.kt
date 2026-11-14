@@ -1407,7 +1407,9 @@ class GardenViewModel @Inject constructor(
      * How much snow lies along the roofs and the fences ([EdgeSnow.depthAt]): it builds up while it
      * snows and goes once it stops, looked at again every minute and whenever the weather changes.
      */
-    val edgeSnow: StateFlow<Float> = combine(minutes, weather) { _, _ -> EdgeSnow.depthAt(gardenForecast(), clock.now()) }
+    val edgeSnow: StateFlow<Float> = combine(minutes, weather, ShowcaseControls.showcase) { _, _, showcase ->
+        if (showcase?.snowLying == true) 1f else EdgeSnow.depthAt(gardenForecast(), clock.now())
+    }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0f)
 
