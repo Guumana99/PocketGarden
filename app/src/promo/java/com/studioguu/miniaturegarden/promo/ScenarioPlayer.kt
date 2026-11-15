@@ -177,6 +177,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
             "camera" -> Scenario.cameraOf(cue.args)?.let { cameras += at to it }
             "day_label" -> steps += SetLabel(at, cue.plain?.takeIf { it.isNotBlank() && it != "null" })
             "tap_marker" -> steps += SetMarker(at, cue.plain?.toBooleanStrictOrNull() ?: true)
+            // `label_opacity: { to: 0.35, over: 0.3 }`: the label board fainter for a while (something passes behind it), `to: 1` back.
+            "label_opacity" -> labelDims += HourMove(at, cue.overOr(0.3), (cue.double("to") ?: cue.plain?.toDoubleOrNull() ?: 1.0).toFloat())
             "sparkle" -> {
                 glints += at to cue.overOr(GLINT_SECONDS)
                 sound(null, at)
@@ -238,6 +240,9 @@ class ScenarioPlayer(private val scenario: Scenario) {
     private var label: Pair<Double, String?> = 0.0 to null
     /** The label before the latest, for the second line's change ([Scene.dayLabelBefore]). */
     private var labelBefore: String? = null
+    /** When the label came up (true) or only its second line changed (false): each shows it full size for a while. */
+    private val labelShows = mutableListOf<Pair<Double, Boolean>>()
+    private val labelDims = mutableListOf<HourMove>()
     private var marker = scenario.start.tapMarker
     private var next = 0
     /** Each harvest so far: when, and the coins it paid. */
@@ -282,6 +287,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
             dayLabelAlpha = labelAlpha,
             dayLabelBefore = if (swapping && labelChange < 1f) labelBefore else null,
             dayLabelSwap = if (swapping) labelChange else 1f,
+            dayLabelFull = labelFullAt(seconds),
+            dayLabelDim = labelDimAt(seconds),
             coins = coins?.second,
             coinsProgress = coins?.let { ((seconds - it.first) / COINS_SECONDS).toFloat() } ?: 0f,
         )
@@ -342,6 +349,10 @@ class ScenarioPlayer(private val scenario: Scenario) {
             is SetLabel -> {
                 labelBefore = label.second
                 label = step.at to step.text
+                if (step.text != null) {
+                    val firstLine = { text: String? -> text?.lineSequence()?.firstOrNull() }
+                    labelShows += step.at to (labelBefore == null || firstLine(labelBefore) != firstLine(step.text))
+                }
             }
             is SetMarker -> marker = step.shown
         }
@@ -372,6 +383,31 @@ class ScenarioPlayer(private val scenario: Scenario) {
 
     private fun soilAt(cell: GridCell) = objects.values.firstOrNull { it.isSoil && it.gridX == cell.x && it.gridY == cell.y }
     private fun plantAt(cell: GridCell) = objects.values.firstOrNull { it.isPlant && it.gridX == cell.x && it.gridY == cell.y }
+
+    /**
+     * How far the label board is at its full size (1) rather than its small, faint resting size (0):
+     * full for [LABEL_FULL_SECONDS] after it comes up, then shrinking over [LABEL_SHRINK_SECONDS];
+     * when its second line changes, back to full ([LABEL_GROW_SECONDS]) for [LABEL_SWAP_FULL_SECONDS], then shrinking again.
+     */
+    private fun labelFullAt(seconds: Double): Float = labelShows.filter { it.first <= seconds }.maxOfOrNull { (at, first) ->
+        val t = seconds - at
+        val hold = if (first) LABEL_FULL_SECONDS else LABEL_GROW_SECONDS + LABEL_SWAP_FULL_SECONDS
+        when {
+            !first && at > 0.0 && t < LABEL_GROW_SECONDS -> t / LABEL_GROW_SECONDS
+            t < hold -> 1.0
+            else -> 1.0 - (t - hold) / LABEL_SHRINK_SECONDS
+        }.coerceIn(0.0, 1.0)
+    }?.toFloat() ?: 1f
+
+    private fun labelDimAt(seconds: Double): Float {
+        var dim = 1f
+        for (move in labelDims) {
+            if (seconds < move.at) break
+            val p = if (move.over <= 0.0) 1.0 else ((seconds - move.at) / move.over).coerceIn(0.0, 1.0)
+            dim += ((move.to - dim) * p).toFloat()
+        }
+        return dim
+    }
 
     private fun hourAt(seconds: Double): Float {
         var hour = hourOf(scenario.start.timeOfDay)
@@ -442,6 +478,10 @@ class ScenarioPlayer(private val scenario: Scenario) {
         private const val COINS_SECONDS = 2.6
         private const val LABEL_FADE_SECONDS = 0.25
         private const val LABEL_SWAP_SECONDS = 0.6
+        private const val LABEL_FULL_SECONDS = 3.0
+        private const val LABEL_SHRINK_SECONDS = 0.5
+        private const val LABEL_GROW_SECONDS = 0.3
+        private const val LABEL_SWAP_FULL_SECONDS = 2.0
         private const val GLINT_SECONDS = 1.2
         private const val STAGGER_SECONDS = 0.5
         private const val POP_MILLIS = 400L
@@ -517,6 +557,10 @@ class Scene(
     /** While only the label's second line changes: the label before, fading out under the new one ([dayLabelSwap], 0 to 1). */
     val dayLabelBefore: String? = null,
     val dayLabelSwap: Float = 1f,
+    /** How far the label board is at full size (1) rather than small and faint (0). */
+    val dayLabelFull: Float = 1f,
+    /** The board's opacity on top of that (`label_opacity`), while something passes behind it. */
+    val dayLabelDim: Float = 1f,
     /** The coins of the latest harvest while they float up (null when none), and how far on they are (0 to 1). */
     val coins: Int? = null,
     val coinsProgress: Float = 0f,
