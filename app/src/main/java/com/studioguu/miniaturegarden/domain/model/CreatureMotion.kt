@@ -637,13 +637,13 @@ object CreatureRoutes {
             val millis = plan.pace(manner.hostStepMillis.toFloat())
             if (plan.t + millis + rest + reserve > span) break
             if (ridge != null) {
-                // On a roof, hop along its ridge only (between the roof's points), to the other half of
-                // it from where it stands, so that each hop shows and it never steps off into the air.
+                // On a roof, hop along its ridge only (between the roof's points), towards the far end
+                // from where it stands, so that each hop shows and it never steps off into the air.
                 val (a, b) = ridge
                 val dx = b.x - a.x
                 val dy = b.y - a.y
                 val here = (((plan.x - a.x) * dx + (plan.y - a.y) * dy) / (dx * dx + dy * dy)).coerceIn(0f, 1f)
-                val t = if (here < 0.5f) 0.5f + random.nextFloat() * 0.5f else random.nextFloat() * 0.5f
+                val t = if (here < 0.5f) 0.75f + random.nextFloat() * 0.25f else random.nextFloat() * 0.25f
                 plan.stepTo(a.x + dx * t, a.y + dy * t, millis)
                 plan.standFor(rest)
                 continue
