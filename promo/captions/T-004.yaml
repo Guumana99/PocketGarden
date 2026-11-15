@@ -1,0 +1,7 @@
+bgm: パステルハウス.mp3
+bgm_start: 4.0
+captions:
+  - { from: 0.0,  to: 2.6,  text: "荒れ地を畑にして" }
+  - { from: 2.6,  to: 6.5,  text: "苗を植えて、水をあげて" }
+  - { from: 6.5,  to: 10.6, text: "数日たつと…" }
+  - { from: 10.6, to: 13.6, text: "一気に収穫！" }
