@@ -1,0 +1,5 @@
+bgm: Cat_life.mp3
+bgm_start: 0.3
+captions:
+  - { from: 0.0, to: 3.2, text: "今日、庭に来た子は…" }
+  - { from: 3.2, to: 9.5, text: "ことり。\n屋根の上でひと休み" }

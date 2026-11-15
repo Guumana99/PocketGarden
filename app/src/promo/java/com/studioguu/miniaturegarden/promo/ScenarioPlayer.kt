@@ -12,6 +12,7 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantGround
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.Season
+import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.WeatherType
 import kotlinx.serialization.json.JsonArray
@@ -47,7 +48,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
     private data class Sow(override val at: Double, val cell: GridCell, val species: PlantSpecies, val colour: String?) : Step
     private data class Grow(override val at: Double, val cell: GridCell, val stage: Int, val bloomSound: String?) : Step
     private data class Reap(override val at: Double, val cell: GridCell) : Step
-    private data class Place(override val at: Double, val cell: GridCell, val objectId: String, val flipped: Boolean) : Step
+    private data class Place(override val at: Double, val obj: GridObject) : Step
     private data class Remove(override val at: Double, val cell: GridCell) : Step
     private data class SetWeather(override val at: Double, val weather: WeatherType) : Step
     private data class SetSeason(override val at: Double, val season: Season) : Step
@@ -55,6 +56,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
     private data class SetMarker(override val at: Double, val shown: Boolean) : Step
 
     private val steps = mutableListOf<Step>()
+    private var placed = 0
     private val taps = mutableListOf<Pair<Double, GridCell>>()
     private val rawSounds = mutableListOf<Sound>()
     private val glints = mutableListOf<Pair<Double, Double>>()
@@ -148,7 +150,11 @@ class ScenarioPlayer(private val scenario: Scenario) {
                 val objectId = cue.string("item") ?: return warn("place without item")
                 val cell = cue.element("at")?.let { Scenario.cellList(kotlinx.serialization.json.JsonArray(listOf(it))) }?.firstOrNull()
                     ?: return warn("place without at")
-                steps += Place(at, cell, objectId, cue.bool("flip") ?: false)
+                // Made here, not when it is put down, so that a visitor can be sent to it (the bird to a roof).
+                steps += Place(at, GridObject(
+                    instanceId = "promo_obj_${placed++}", gridX = cell.x, gridY = cell.y, objectId = objectId,
+                    isFlipped = cue.bool("flip") ?: false, lastUpdatedTimestamp = baseMillis,
+                ))
                 taps += at to cell
                 sound("se_plant", at)
             }
@@ -200,10 +206,22 @@ class ScenarioPlayer(private val scenario: Scenario) {
             val arrives = baseMillis + ((cue.at + i * STAGGER_SECONDS) * 1000).roundToLong() - (if (flies) travelIn else 0L)
             // `coat: white` (#book60): the rabbit in its white winter coat.
             val variant = cue.string("coat")?.takeIf { it == CreatureVisits.WHITE_COAT && creature == Creature.RABBIT }
-            val visit = CreatureVisit(rule, cell, host = null, arrivesAt = arrives, leavesAt = arrives + travelIn + travelOut + stayMillis + SETTLE_MILLIS, variant = variant)
+            val visit = CreatureVisit(rule, cell, host = roofAt(creature, cell, cue.at), arrivesAt = arrives, leavesAt = arrives + travelIn + travelOut + stayMillis + SETTLE_MILLIS, variant = variant)
             visits += visit
             directions[visit] = CreatureDirection(perches = if (landOn.isEmpty()) emptyList() else listOf(cell), fromAngle = angle, stayMillis = stayMillis, fromCells = fromCells)
         }
+    }
+
+    /**
+     * The building with a roof (the cottage, the hut) standing on [cell] by [at] seconds, when the
+     * bird is sent there: the bird then comes down on its ridge, as it does in the game when it
+     * comes for that building. Sent to a cell with nothing on it, it comes down on the ground.
+     */
+    private fun roofAt(creature: Creature, cell: GridCell, at: Double): GridObject? {
+        if (creature != Creature.BIRD) return null
+        return steps.filterIsInstance<Place>().lastOrNull { step ->
+            step.at <= at && step.obj.objectId in ROOFED && cell in step.obj.occupiedCells()
+        }?.obj
     }
 
     // --- The garden as the timeline goes ---
@@ -276,10 +294,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
                 }
             }
             is Reap -> plantAt(step.cell)?.let { objects.remove(it.instanceId) }
-            is Place -> put(GridObject(
-                instanceId = "promo_obj_${serial++}", gridX = step.cell.x, gridY = step.cell.y, objectId = step.objectId,
-                isFlipped = step.flipped, lastUpdatedTimestamp = baseMillis,
-            ))
+            is Place -> put(step.obj)
             is Remove -> objects.values.filter { it.gridX == step.cell.x && it.gridY == step.cell.y && !it.isSoil }.forEach { objects.remove(it.instanceId) }
             is SetWeather -> weather = step.weather
             is SetSeason -> season = step.season
@@ -383,6 +398,9 @@ class ScenarioPlayer(private val scenario: Scenario) {
         private const val POP_MILLIS = 400L
         private const val SETTLE_MILLIS = 700L
         private const val VISIT_LEAD_MILLIS = 500L
+
+        /** What the bird can come down on the roof of ([com.studioguu.miniaturegarden.domain.model.PerchKind.ROOF]). */
+        private val ROOFED = setOf(StructureData.COTTAGE.objectId, StructureData.HUT.objectId)
 
         /** What `setup:` does not take: what only means something while it is seen. */
         private val NOT_IN_SETUP = setOf("creature", "sparkle", "sound", "end")
