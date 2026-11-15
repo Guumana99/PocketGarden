@@ -96,7 +96,16 @@ object CropScale {
         "plant_satsumaimo" to 0.85f,
         "plant_habotan" to 0.8f,
         "plant_suisen" to 0.85f,
+        // FB1114b2: the hakusai stood larger than the ornamental cabbage beside it.
+        "plant_hakusai" to 0.8f,
     )
+
+    /**
+     * Pictures [SHRINKS] leaves alone though their crop is in it (FB1114b2): the poinsettia's
+     * seedling, a dark little clump hardly to be seen beside the other seedlings, already held to
+     * a seedling's size.
+     */
+    val UNSHRUNK = setOf("plant_poinsettia_stage1")
 
     private val STAGE = Regex("""^(plant_[a-z_]+?)_stage(\d+)$""")
     private val WITHERED = Regex("""^plant_[a-z_]+_withered$""")
@@ -140,7 +149,7 @@ object CropScale {
             scales[asset.assetId] = scales[stage] ?: capped(asset, MAX_HEIGHT * tile, MAX_WIDTH * tile)
         }
         for ((plant, share) in SHRINKS) {
-            for (id in scales.keys.filter { it.startsWith(plant + "_") }) scales[id] = scales.getValue(id) * share
+            for (id in scales.keys.filter { it.startsWith(plant + "_") && it !in UNSHRUNK }) scales[id] = scales.getValue(id) * share
         }
         if (scales.isEmpty()) return manifest
         return manifest.copy(assets = manifest.assets.map { asset -> scales[asset.assetId]?.let { asset.copy(drawScale = it) } ?: asset })

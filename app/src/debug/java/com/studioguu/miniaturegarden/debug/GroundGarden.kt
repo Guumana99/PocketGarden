@@ -9,6 +9,7 @@ import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.RunKind
 import com.studioguu.miniaturegarden.domain.model.Sprinkler
 import com.studioguu.miniaturegarden.domain.model.WeatherOutlook
+import com.studioguu.miniaturegarden.domain.model.WorkKind
 
 /**
  * Gardens to look at how the grounds meet (debug builds only), loaded with `--ez load true --es
@@ -153,6 +154,28 @@ object GroundGarden {
                 place(now, GridObject.BIRDBATH_OBJECT_ID, listOf(GridCell(3, 6))).map { it.copy(isFlipped = true) } +
                 place(now, "deco_bench", listOf(GridCell(5, 3))) + place(now, "struct_well", listOf(GridCell(5, 7))) +
                 crop(PlantSpecies.KABU, 8, 5, 1f) + crop(PlantSpecies.CARROT, 8, 6, 1f) + crop(PlantSpecies.HABOTAN, 2, 5, 1f) + crop(PlantSpecies.SATSUMAIMO, 9, 5, 1f)
+            // FB1114b2: every crop's seedling in a row (the poinsettia's among them), and the hakusai
+            // beside the ornamental cabbage, grown and withered.
+            "fb2_stage1" -> listOf(
+                PlantSpecies.POINSETTIA, PlantSpecies.TULIP, PlantSpecies.CARROT, PlantSpecies.DAIKON, PlantSpecies.KABU,
+                PlantSpecies.HAKUSAI, PlantSpecies.HABOTAN, PlantSpecies.TOMATO,
+            ).flatMapIndexed { i, species -> crop(species, 2 + i, 3, 0f) } +
+                crop(PlantSpecies.HAKUSAI, 3, 6, 1f) + crop(PlantSpecies.HABOTAN, 4, 6, 1f) + crop(PlantSpecies.HAKUSAI, 5, 6, 1f, withered = true) +
+                crop(PlantSpecies.HABOTAN, 6, 6, 1f, withered = true) + crop(PlantSpecies.HAKUSAI, 7, 6, 0.5f) + crop(PlantSpecies.HABOTAN, 8, 6, 0.5f)
+            // FB1114b2: two greenhouses, their doors turned two ways, and a cell of one going up.
+            "fb2_glass" -> place(now, GridObject.GREENHOUSE_OBJECT_ID, cells(2..3, 3..4)).map { it.copy(doorSide = GreenhouseSide.SOUTH) } +
+                place(now, GridObject.GREENHOUSE_OBJECT_ID, cells(6..7, 3..4)).map { it.copy(doorSide = GreenhouseSide.EAST) } +
+                place(now, GridObject.GREENHOUSE_OBJECT_ID, listOf(GridCell(4, 7))).map {
+                    it.copy(workKind = WorkKind.BUILDING, workStartedAt = now, workEndsAt = now + 600_000L)
+                } + crop(PlantSpecies.TOMATO, 2, 3, 1f).filter { it.isPlant } + crop(PlantSpecies.TOMATO, 7, 4, 1f).filter { it.isPlant }
+            // FB1114b2: the three fences on a lawn, a run and one alone of each.
+            "fb2_fences" -> place(now, LAWN, cells(1..9, 2..8)) + listOf(GridObject.FENCE_OBJECT_ID, "struct_fence_white", "struct_fence_bamboo").flatMapIndexed { i, id ->
+                place(now, id, cells(2..5, 3 + 2 * i..3 + 2 * i)) + place(now, id, listOf(GridCell(7, 3 + 2 * i)))
+            }
+            // FB1114b2: moss just laid, growing in, and grown.
+            "fb2_moss" -> listOf(0f, 0.05f, 0.3f, 0.6f, 1f).flatMapIndexed { i, g ->
+                place(now, LawnGrowth.MOSS_OBJECT_ID, listOf(GridCell(2 + i, 4), GridCell(2 + i, 5))).map { it.copy(growthProgress = g) }
+            }
             else -> emptyList()
         }
     }

@@ -74,7 +74,8 @@ class FenceKindsTest {
         assertFalse(edging in GardenItem.shelf(ItemCategory.STRUCTURE))
         assertFalse(edging in GardenItem.unlockedBetween(15, 16))
         assertNull(CollectionEntry.fromObjectId(edging.objectId))
-        assertEquals(45, CollectionEntry.entries.size)
+        // #book60 added its pages since (45 then).
+        assertEquals(52, CollectionEntry.entries.size)
     }
 
     @Test

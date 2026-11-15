@@ -395,7 +395,7 @@ class PlaceItemUseCase @Inject constructor(
             // A building earns and is recorded when it is unveiled; anything else now, but for a
             // lawn, which goes into the book once it has grown in (SyncGardenUseCase).
             if (item.buildSeconds <= 0) {
-                if (item.objectId != LawnGrowth.OBJECT_ID) recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
+                if (!LawnGrowth.isCarpet(item.objectId)) recordCollection(item.objectId, CollectionTrigger.PLACEMENT, now)
                 if (item.placeXp > 0) {
                     gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it.gainXp(item.placeXp)) }
                 }
@@ -761,11 +761,13 @@ class SyncGardenUseCase @Inject constructor(
             val opened = aged.map { BloomColours.settled(it, aged, level, season, random) }
             val changed = opened.filterIndexed { index, obj -> obj != objects[index] }
             if (changed.isNotEmpty()) gardenRepository.upsertGridObjects(changed)
-            // The first lawn to have grown in goes into the book.
-            if (opened.any { LawnGrowth.isLawn(it) && it.growthProgress >= 1f } &&
-                gardenRepository.getCollection().none { it.entryId == LawnGrowth.OBJECT_ID }
-            ) {
-                recordCollection(LawnGrowth.OBJECT_ID, CollectionTrigger.PLACEMENT, now)
+            // The first lawn to have grown in goes into the book; the first moss too (FB1114b2).
+            for (carpet in LawnGrowth.CARPET_OBJECT_IDS) {
+                if (opened.any { it.objectId == carpet && it.growthProgress >= 1f } &&
+                    gardenRepository.getCollection().none { it.entryId == carpet }
+                ) {
+                    recordCollection(carpet, CollectionTrigger.PLACEMENT, now)
+                }
             }
             gardenRepository.getUserProfile()?.let { gardenRepository.saveUserProfile(it) }
         }
@@ -818,7 +820,7 @@ class TurnGreenhouseDoorUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(gridX: Int, gridY: Int): ActionResult = gardenRepository.runInTransaction {
         val objects = gardenRepository.getGridObjects()
-        val glass = objects.filter { it.isGreenhouse }
+        val glass = objects.filter { it.isGreenhouse && !it.isWorking }
         val group = GreenhouseDoor.groups(glass.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) })
             .firstOrNull { GridCell(gridX, gridY) in it } ?: return@runInTransaction ActionResult.NOT_FOUND
         val map = gardenMap.current()

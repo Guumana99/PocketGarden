@@ -124,7 +124,8 @@ class GardenGrid(
         val thing = standing[cell]
         return when {
             !map.isBuildable(x, y) || thing?.isTerrain == true || thing?.isPond == true -> Ground.WATER
-            floor?.isGreenhouse == true -> Ground.GREENHOUSE
+            // A greenhouse still going up is a work site: nothing is sown in it yet (FB1114b2).
+            floor?.isGreenhouse == true && !floor.isWorking -> Ground.GREENHOUSE
             floor?.isTilledSoil == true -> Ground.TILLED_SOIL
             floor?.isLooseSoil == true -> Ground.LOOSE_SOIL
             floor != null -> Ground.PAVING
@@ -145,7 +146,7 @@ class GardenGrid(
     }
 
     /** Whether (x, y) is under glass, where anything grows whatever the season. */
-    fun isUnderGlass(x: Int, y: Int): Boolean = floorAt(x, y)?.isGreenhouse == true
+    fun isUnderGlass(x: Int, y: Int): Boolean = floorAt(x, y)?.let { it.isGreenhouse && !it.isWorking } == true
 
     /** Whether a symbol building stands in the garden, finished or not. */
     val hasSymbol: Boolean = objects.any { it.isSymbol }

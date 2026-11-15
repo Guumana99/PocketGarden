@@ -165,6 +165,8 @@ ICON_ONLY = {"rose", "paprika", "daikon"}
 #: bed: their median brightness was 51 against stage 3's 66.
 LEAF_GAIN: dict[str, float] = {
     "plant_watermelon_stage2": 1.3,
+    # FB1114b2: a dark little clump sunk in the soil beside the other seedlings.
+    "plant_poinsettia_stage1": 1.7,
 }
 
 #: How [deepened] takes a picture: contrast about its middle colour, and the power its alpha is
@@ -273,13 +275,13 @@ SUISEN_ORANGE = (1.0, 0.58, 0.36)
 KABU_TAIL = 0.24
 
 #: FB1114: the turnip stood on the bed like a white ball set on it, unlike the other crops. Its root
-#: is cut a little below its widest row (FB1114b: further below, so that more of its round shows) ([KABU_BURIED_BELOW] of its upper half's height under it),
+#: is cut a little below its widest row (FB1114b: further below, so that more of its round shows; FB1114b2: further still, about half the ball out of the earth; and the line it is cut along curves down much less at the front ([KABU_SOIL_DIP], 0.26 before), so that the round of its sides is not cut away) ([KABU_BURIED_BELOW] of its upper half's height under it),
 #: along the near half of the ring where root meets earth, lower at the front ([KABU_SOIL_DIP] of
 #: its half-width), and earth is drawn heaped round the cut ([buried_turnip]): a low mound
 #: [KABU_HEAP_WIDTH] times as wide as the root and [KABU_HEAP_HEIGHT] of its half-width high, with
 #: clods on it (FB1114b: a soft shadow of earth instead, [KABU_SHADOW_ALPHA]), in the bed's own colours (SoilPalette: DARK, RIDGE, DRY, EDGE).
-KABU_BURIED_BELOW = 0.22
-KABU_SOIL_DIP = 0.26
+KABU_BURIED_BELOW = 0.45
+KABU_SOIL_DIP = 0.08
 KABU_HEAP_WIDTH = 1.22
 KABU_HEAP_HEIGHT = 0.42
 KABU_EARTH_DARK = (58, 48, 41)

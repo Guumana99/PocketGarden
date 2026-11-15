@@ -89,6 +89,10 @@ object GreenhouseDoor {
         return ways[(ways.indexOf(current) + 1) % ways.size]
     }
 
+    /** Whether the greenhouse at ([x], [y]) among [objects] is there to turn: built, not a work site (FB1114b2). */
+    fun canTurnAt(x: Int, y: Int, objects: List<GridObject>): Boolean =
+        objects.any { it.isGreenhouse && !it.isWorking && it.gridX == x && it.gridY == y }
+
     /** What [objects] have chosen for [group]: the first choice found going through its cells in order. */
     fun chosenIn(group: Set<GridCell>, objects: List<GridObject>): GreenhouseSide? =
         objects.filter { it.isGreenhouse && it.doorSide != null && GridCell(it.gridX, it.gridY) in group }
