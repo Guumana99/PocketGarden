@@ -68,6 +68,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
 
     /** Hour of day, as (from seconds, to seconds, from hour, to hour). */
     private val hours = mutableListOf<HourMove>()
+    /** `label_opacity` moves (declared before `init`, which fills it). */
+    private val labelDims = mutableListOf<HourMove>()
     private data class HourMove(val at: Double, val over: Double, val to: Float)
 
     /** Camera moves after the first view. */
@@ -242,7 +244,6 @@ class ScenarioPlayer(private val scenario: Scenario) {
     private var labelBefore: String? = null
     /** When the label came up (true) or only its second line changed (false): each shows it full size for a while. */
     private val labelShows = mutableListOf<Pair<Double, Boolean>>()
-    private val labelDims = mutableListOf<HourMove>()
     private var marker = scenario.start.tapMarker
     private var next = 0
     /** Each harvest so far: when, and the coins it paid. */
