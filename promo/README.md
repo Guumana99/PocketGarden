@@ -11,7 +11,7 @@
 | 時計の差し替え口 | `app/src/main/.../ui/components/GardenClock.kt` | 庭の描画（`GardenCanvas`）が使う時刻。ふだんは端末の時計。撮影中は 1 コマずつ進める時計 |
 | 生き物の行き先 | `CreatureRoutes.plan(..., direction)`（`CreatureDirection`） | 止まるマス・入ってくる方向・止まる秒数。ゲームでは渡さない（動きは前と同じ） |
 | 撮影 | `tools/promo_shoot.py` | 台本を JSON にして送る → 撮影 → 画像を `build/promo/<id>/` に取ってくる |
-| 編集 | `tools/promo_render.py` | 画像＋効果音＋字幕＋締めの画面 → `docs/promo/tiktok/<id>_<name>.mp4` と切り抜き一覧 |
+| 編集 | `tools/promo_render.py` | 画像＋効果音＋BGM＋字幕＋締めの画面 → `docs/promo/tiktok/<id>_<name>.mp4` と切り抜き一覧 |
 
 撮影中は、庭の Compose を専用の時計（`BroadcastFrameClock`）で 1 コマずつ動かし、`GraphicsLayer.toImageBitmap()` で 1080×1920 の PNG にする。
 風・川・生き物・耕したときの土・消える物のアニメーションは全部この時計で進む。
@@ -128,6 +128,32 @@ captions:
 字の大きさは 74px。1 行が安全な幅（約 820px）に収まらないときは自動で小さくする。
 白い文字に濃い茶の縁取り。画面の上の 12%・下の 20%・右の 190px には置かない。
 
+## BGM
+
+台本（`promo/scenarios/<id>.yaml`）か字幕ファイル（`promo/captions/<id>.yaml`）の一番上に書く（両方にあれば字幕ファイルが勝つ）。
+撮影には関係しないので、字幕ファイルに書くのがよい。
+
+```yaml
+bgm: パステルハウス.mp3   # tools/bgm/ のファイル名
+bgm_start: 4.0            # 曲の何秒から使うか
+```
+
+- `bgm_start` は、曲の頭に無音や静かな前奏があれば飛ばして、メロディの始まる所にする（動画の最初の 1 秒から曲が聞こえるように）。
+- 動画の頭で 0.2 秒のフェードイン、最後の 1.5 秒（締めの画面）でフェードアウト。
+- 音量は自動で合わせる：効果音が鳴っている間の平均（50ms ごとの RMS、いちばん大きい所から 30dB 以内）より、曲全体の平均が 9dB 小さくなるようにする。
+  さらに効果音が鳴る瞬間だけ曲を 4dB 下げる（ダッキング。下げ 0.03 秒・戻し 0.35 秒）。書き出しのときに `bgm: ... gain -14.9 dB` のように数値を出す。
+- 曲は切り出し・音量・フェード以外の加工をしない（規約でアレンジ禁止。速さ・音程も変えない）。44.1kHz への変換だけは書き出しの都合で行う。
+- 曲のファイル（`tools/bgm/`）は Git に入れない（配布にあたるため。作業する PC にだけ置く）。アプリにも入れない。
+
+### 使っている曲
+
+どちらも OpenTracks（https://opentracks.com/ ）の曲。
+
+| 曲名 | 作曲者 | URL | ファイル | bgm_start | 使う動画 |
+|---|---|---|---|---|---|
+| パステルハウス | かずち | https://opentracks.com/bgm/detail/1021 | `パステルハウス.mp3` | 4.0 秒（0〜4.0 秒は静かな前奏。4.02 秒から音が大きくなる） | 早送りシリーズ（T-001） |
+| Cat life | GT-K | https://opentracks.com/bgm/detail/2551 | `Cat_life.mp3` | 0.3 秒（頭の 0.3 秒は無音。すぐ曲が始まる） | 今日来た子・日記シリーズ |
+
 ## 締めの画面（`promo/outro.yaml`）
 
 2 秒。最後の場面をぼかして暗くした上に、大きく「ポケット庭園」（画面の幅に収まる大きさ）、下に小さく「（ポケ庭）」「Androidで年内配信予定」。文言・秒数・ぼかしはこのファイルで変える。
@@ -135,6 +161,6 @@ captions:
 
 ## 出来上がり
 
-`docs/promo/tiktok/<id>_<name>.mp4`（1080×1920、30fps、H.264＋AAC 128kbps、BGM なし）と、
+`docs/promo/tiktok/<id>_<name>.mp4`（1080×1920、30fps、H.264＋AAC 128kbps。BGM は指定したときだけ）と、
 1 秒ごとの切り抜き一覧 `docs/promo/tiktok/<id>_sheet.jpg`。15MB を超えたら `--crf` を大きくする。
 書き出した画像（`build/promo/`）は Git に入れない。

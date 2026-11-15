@@ -1,4 +1,7 @@
 # 字幕。from / to は本編の秒
+# BGM（tools/bgm/ の曲、promo/README.md「使っている曲」）。bgm_start は曲の何秒から使うか（前奏を飛ばしてメロディの頭）
+bgm: パステルハウス.mp3
+bgm_start: 4.0
 captions:
   - { from: 0.0,  to: 2.5,  text: "何もない庭から" }
   - { from: 2.5,  to: 6.5,  text: "耕して、種をまいて、\n水をあげて" }

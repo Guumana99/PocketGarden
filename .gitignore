@@ -41,3 +41,6 @@ Desktop.ini
 
 # Source audio (Suno WAVs with C2PA, kept on the user's PC only as proof of commercial use)
 tools/source_audio/
+
+# Promo BGM (OpenTracks songs; used only by tools/promo_render.py, never in the app; the files stay on the user's PC)
+tools/bgm/

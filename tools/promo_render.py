@@ -11,8 +11,12 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
 2. The frames become the video.
 3. Captions are burnt in (Noto Sans JP Bold, white with a dark edge), at most 15 characters a line
    and 2 lines, kept out of TikTok's top edge, its bottom fifth and its right-hand buttons.
-4. The sound effects go in where cues.json says (no music: that is added in TikTok).
-5. Two seconds of ending: the name large over the last scene blurred, the lines of promo/outro.yaml.
+4. The sound effects go in where cues.json says.
+5. Music, if the script or the captions file names it (bgm: <file in tools/bgm>, bgm_start: <second
+   of the song to start from>): cut from there, faded in over 0.2 s and out over the last 1.5 s,
+   set 9 dB under the sound effects and dipped a little while one sounds. Nothing else is done to
+   the song (its licence forbids arranging it: no change of speed or pitch).
+6. Two seconds of ending: the name large over the last scene blurred, the lines of promo/outro.yaml.
 """
 import argparse
 import json
@@ -22,12 +26,14 @@ import subprocess
 import sys
 import tempfile
 
+import numpy as np
 import yaml
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 FONT = ROOT / "tools/fonts/NotoSansJP.ttf"
 RAW = ROOT / "app/src/main/res/raw"
+BGM_DIR = ROOT / "tools/bgm"
 W, H = 1080, 1920
 
 # TikTok's own buttons and text cover these: captions keep clear of them.
@@ -42,6 +48,15 @@ MAX_LINES = 2
 GAIN = {"se_tap": 0.80, "se_harvest": 0.80, "se_level_up": 0.90}
 
 OUTRO_FADE = 0.4
+
+RATE = 44100
+BGM_FADE_IN = 0.2
+BGM_FADE_OUT = 1.5
+BGM_UNDER_SE_DB = 9.0     # the music this far under the sound effects
+DUCK_DB = 4.0             # and this much more while one sounds
+DUCK_ATTACK = 0.03
+DUCK_RELEASE = 0.35
+LIMIT = 0.9
 
 
 def ffmpeg_exe():
@@ -124,34 +139,107 @@ def outro_png(last_frame, outro, path):
     base.save(path)
 
 
-def make_sound(sound_cues, hook, total, path):
-    """The sound effects of [sound_cues], [hook] seconds later than recorded, as one WAV [total] seconds long."""
+def run_ffmpeg(args, stdin=None):
+    return subprocess.run([ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error", *args],
+                          input=stdin, stdout=subprocess.PIPE, check=True).stdout
+
+
+def make_effects(sound_cues, hook, total):
+    """The sound effects of [sound_cues], [hook] seconds later than recorded, [total] seconds of
+    float stereo samples at RATE (not limited yet)."""
+    samples = round(total * RATE)
     sounds = [c for c in sound_cues if (RAW / f"{c['name']}.mp3").exists()]
     missing = sorted({c["name"] for c in sound_cues} - {c["name"] for c in sounds})
     if missing:
         print("  warning: no such sound file:", ", ".join(missing))
-    if not sounds:
-        subprocess.run([ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i",
-                        f"anullsrc=r=44100:cl=stereo", "-t", f"{total:.3f}", str(path)], check=True)
-        return
-    by_file = {}
+    out = np.zeros((samples, 2), dtype=np.float32)
+    clips = {}
     for c in sounds:
-        by_file.setdefault(c["name"], []).append(c["t"] + hook)
-    inputs, filters, parts = [], [], []
-    for n, (name, times) in enumerate(by_file.items()):
-        inputs += ["-i", str(RAW / f"{name}.mp3")]
-        labels = [f"s{n}_{k}" for k in range(len(times))]
-        head = f"[{n}:a]aformat=sample_rates=44100:channel_layouts=stereo,volume={GAIN.get(name, 1.0)}"
-        filters.append(head + (f",asplit={len(times)}" if len(times) > 1 else "") + "".join(f"[{l}x]" for l in labels))
-        for l, t in zip(labels, times):
-            ms = int(round(t * 1000))
-            filters.append(f"[{l}x]adelay={ms}|{ms}[{l}]")
-            parts.append(f"[{l}]")
-    filters.append("".join(parts) + f"amix=inputs={len(parts)}:normalize=0,alimiter=limit=0.9,apad=pad_dur={total + 1:.3f},atrim=0:{total:.3f}[aout]")
-    script = path.with_suffix(".txt")
-    script.write_text(";\n".join(filters), encoding="utf-8")
-    subprocess.run([ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error", *inputs,
-                    "-filter_complex_script", str(script), "-map", "[aout]", "-ar", "44100", str(path)], check=True)
+        name = c["name"]
+        if name not in clips:
+            raw = run_ffmpeg(["-i", str(RAW / f"{name}.mp3"), "-f", "f32le", "-ac", "2", "-ar", str(RATE), "-"])
+            clips[name] = np.frombuffer(raw, dtype=np.float32).reshape(-1, 2) * GAIN.get(name, 1.0)
+        clip = clips[name]
+        at = int(round((c["t"] + hook) * RATE))
+        if at >= samples:
+            continue
+        n = min(len(clip), samples - at)
+        out[at:at + n] += clip[:n]
+    return out
+
+
+def block_rms_db(x, block):
+    """RMS of each [block]-sample block of [x] (stereo), in dB."""
+    n = len(x) // block
+    power = (x[:n * block].astype(np.float64) ** 2).mean(axis=1).reshape(n, block).mean(axis=1)
+    return 10 * np.log10(np.maximum(power, 1e-12))
+
+
+def power_mean_db(levels):
+    return 10 * np.log10(np.mean(10 ** (levels / 10))) if len(levels) else -120.0
+
+
+def add_music(effects, total, bgm, bgm_start):
+    """[effects] with the song [bgm] under it, from [bgm_start] s of the song (see the module notes)."""
+    path = BGM_DIR / bgm
+    if not path.exists():
+        sys.exit(f"no such song: {path}")
+    samples = len(effects)
+    raw = run_ffmpeg(["-ss", f"{bgm_start:.3f}", "-i", str(path), "-t", f"{total:.3f}",
+                      "-f", "f32le", "-ac", "2", "-ar", str(RATE), "-"])
+    song = np.frombuffer(raw, dtype=np.float32).reshape(-1, 2)
+    if len(song) < samples:
+        print(f"  warning: the song ends {(samples - len(song)) / RATE:.1f}s before the video")
+        song = np.vstack([song, np.zeros((samples - len(song), 2), dtype=np.float32)])
+    song = song[:samples].astype(np.float64)
+
+    # Loudness by 50 ms blocks: the effects while they sound (within 30 dB of their loudest
+    # block), the song over the whole cut.
+    block = int(RATE * 0.05)
+    fx_levels = block_rms_db(effects, block)
+    sounding = fx_levels[fx_levels > fx_levels.max() - 30] if fx_levels.max() > -100 else np.array([])
+    song_level = power_mean_db(block_rms_db(song, block))
+    if len(sounding):
+        fx_level = power_mean_db(sounding)
+        gain_db = fx_level - BGM_UNDER_SE_DB - song_level
+    else:
+        fx_level, gain_db = None, -BGM_UNDER_SE_DB
+    gain = 10 ** (gain_db / 20)
+
+    # Ducking: 10 ms blocks where an effect sounds pull the song down DUCK_DB, smoothed.
+    step = int(RATE * 0.01)
+    fx_short = block_rms_db(effects, step)
+    floor = (fx_levels.max() - 30) if len(sounding) else 1e9
+    target = np.where(fx_short > floor, -DUCK_DB, 0.0)
+    attack = 1 - np.exp(-0.01 / DUCK_ATTACK)
+    release = 1 - np.exp(-0.01 / DUCK_RELEASE)
+    duck = np.zeros_like(target)
+    level = 0.0
+    for i, want in enumerate(target):
+        level += (want - level) * (attack if want < level else release)
+        duck[i] = level
+    duck = np.interp(np.arange(samples) / step, np.arange(len(duck)) + 0.5, duck)
+    envelope = gain * 10 ** (duck / 20)
+
+    # Fades: in at the start, out over the ending.
+    t = np.arange(samples) / RATE
+    envelope *= np.clip(t / BGM_FADE_IN, 0, 1)
+    envelope *= np.clip((total - t) / BGM_FADE_OUT, 0, 1)
+
+    print(f"  bgm: {bgm} from {bgm_start:.2f}s, "
+          + (f"effects {fx_level:.1f} dB, " if fx_level is not None else "")
+          + f"song {song_level:.1f} dB, gain {gain_db:+.1f} dB, ducking {DUCK_DB:.0f} dB")
+    return effects + (song * envelope[:, None]).astype(np.float32)
+
+
+def make_sound(sound_cues, hook, total, path, bgm=None, bgm_start=0.0):
+    """The sound effects (and the song, if any) as one WAV [total] seconds long."""
+    mix = make_effects(sound_cues, hook, total)
+    if bgm:
+        mix = add_music(mix, total, bgm, bgm_start)
+    run_ffmpeg(["-f", "f32le", "-ac", "2", "-ar", str(RATE), "-i", "-",
+                "-af", f"alimiter=limit={LIMIT}", "-c:a", "pcm_s16le", str(path)],
+               stdin=np.ascontiguousarray(mix, dtype=np.float32).tobytes())
 
 
 def contact_sheet(frames, fps, hook, path, columns=6):
@@ -180,7 +268,11 @@ def main():
     cues = json.loads((recorded / "cues.json").read_text(encoding="utf-8"))
     script = yaml.safe_load((ROOT / "promo/scenarios" / f"{args.id}.yaml").read_text(encoding="utf-8"))
     captions_file = ROOT / "promo/captions" / f"{args.id}.yaml"
-    captions = (yaml.safe_load(captions_file.read_text(encoding="utf-8")) or {}).get("captions", []) if captions_file.exists() else []
+    caption_doc = (yaml.safe_load(captions_file.read_text(encoding="utf-8")) or {}) if captions_file.exists() else {}
+    captions = caption_doc.get("captions", [])
+    # The song: the captions file wins over the script.
+    bgm = caption_doc.get("bgm", script.get("bgm"))
+    bgm_start = float(caption_doc.get("bgm_start", script.get("bgm_start", 0.0)) or 0.0)
     outro = yaml.safe_load((ROOT / "promo/outro.yaml").read_text(encoding="utf-8"))
 
     fps = cues["fps"]
@@ -213,7 +305,7 @@ def main():
         # The sound first, on its own: each file once, split into as many copies as it is heard,
         # each delayed to its cue.
         audio = tmp / "sound.wav"
-        make_sound(cues["sounds"], hook, total, audio)
+        make_sound(cues["sounds"], hook, total, audio, bgm, bgm_start)
 
         # Then the picture, frame by frame: put together here and handed to ffmpeg as it goes
         # (ffmpeg's own filters stalled on reading the frames twice, for the hook).
