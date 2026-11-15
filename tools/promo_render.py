@@ -11,11 +11,12 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
 2. The frames become the video.
 3. Captions are burnt in (Noto Sans JP Bold, white with a dark edge), at most 15 characters a line
    and 2 lines, kept out of TikTok's top edge, its bottom fifth and its right-hand buttons.
-4. The sound effects go in where cues.json says.
+4. The sound effects go in where cues.json says, thinned: one of a kind a second at most, and of
+   tilling, planting and watering only the first two clear, the rest 6 dB quieter.
 5. Music, if the script or the captions file names it (bgm: <file in tools/bgm>, bgm_start: <second
-   of the song to start from>): cut from there, faded in over 0.2 s and out over the last 1.5 s,
-   set 5 dB under the sound effects and dipped a little while one sounds. Nothing else is done to
-   the song (its licence forbids arranging it: no change of speed or pitch).
+   of the song to start from>): cut from there, faded in over 0.2 s and out over the last 1.5 s.
+   The music leads: the clear sound effects sit 5 dB under it, and it is not dipped for them.
+   Nothing else is done to the song (its licence forbids arranging it: no change of speed or pitch).
 6. The whole sound (effects and music together, one gain, so their balance stays) brought to
    -14 LUFS, a limiter keeping the true peak under -1 dB.
 7. Two seconds of ending: the name large over the last scene blurred, the lines of promo/outro.yaml.
@@ -54,10 +55,11 @@ OUTRO_FADE = 0.4
 RATE = 44100
 BGM_FADE_IN = 0.2
 BGM_FADE_OUT = 1.5
-BGM_UNDER_SE_DB = 5.0     # the music this far under the sound effects
-DUCK_DB = 3.0             # and this much more while one sounds
-DUCK_ATTACK = 0.03
-DUCK_RELEASE = 0.35
+SE_UNDER_BGM_DB = 5.0     # the music leads: the clear sound effects this far under it, no ducking
+SAME_SOUND_GAP = 1.0      # one sound of a kind a second at most
+REPEATS = {"se_tap", "se_plant", "se_water"}   # tilling, planting, watering:
+CLEAR_REPEATS = 2         # the first this many clear,
+REPEAT_QUIET_DB = 6.0     # the rest this much quieter
 TARGET_LUFS = -14.0       # the whole sound, integrated loudness (TikTok's level)
 PEAK_CEILING_DB = -1.0    # true peak of the finished mp4 at most this
 LIMIT_DB = -2.0           # the limiter's ceiling: under the above, leaving room for AAC and inter-sample peaks
@@ -148,17 +150,35 @@ def run_ffmpeg(args, stdin=None):
                           input=stdin, stdout=subprocess.PIPE, check=True).stdout
 
 
+def thin(sounds):
+    """[sounds] with at most one of a kind a second, each with its extra gain in dB
+    (the repeats of REPEATS after the first CLEAR_REPEATS: -REPEAT_QUIET_DB)."""
+    kept, last, count = [], {}, {}
+    for c in sorted(sounds, key=lambda c: c["t"]):
+        name = c["name"]
+        if name in last and c["t"] - last[name] < SAME_SOUND_GAP - 1e-6:
+            continue
+        last[name] = c["t"]
+        count[name] = count.get(name, 0) + 1
+        quiet = name in REPEATS and count[name] > CLEAR_REPEATS
+        kept.append((c, -REPEAT_QUIET_DB if quiet else 0.0))
+    return kept
+
+
 def make_effects(sound_cues, hook, total):
-    """The sound effects of [sound_cues], [hook] seconds later than recorded, [total] seconds of
-    float stereo samples at RATE (not limited yet)."""
+    """The sound effects of [sound_cues] (thinned), [hook] seconds later than recorded, [total]
+    seconds of float stereo samples at RATE (not limited yet); and the clear ones alone, to measure."""
     samples = round(total * RATE)
     sounds = [c for c in sound_cues if (RAW / f"{c['name']}.mp3").exists()]
     missing = sorted({c["name"] for c in sound_cues} - {c["name"] for c in sounds})
     if missing:
         print("  warning: no such sound file:", ", ".join(missing))
+    kept = thin(sounds)
+    print(f"  sounds: {len(kept)} of {len(sounds)} kept ({sum(1 for _, g in kept if g < 0)} of them quieter)")
     out = np.zeros((samples, 2), dtype=np.float32)
+    clear = np.zeros((samples, 2), dtype=np.float32)
     clips = {}
-    for c in sounds:
+    for c, extra_db in kept:
         name = c["name"]
         if name not in clips:
             raw = run_ffmpeg(["-i", str(RAW / f"{name}.mp3"), "-f", "f32le", "-ac", "2", "-ar", str(RATE), "-"])
@@ -168,8 +188,10 @@ def make_effects(sound_cues, hook, total):
         if at >= samples:
             continue
         n = min(len(clip), samples - at)
-        out[at:at + n] += clip[:n]
-    return out
+        out[at:at + n] += clip[:n] * 10 ** (extra_db / 20)
+        if extra_db == 0:
+            clear[at:at + n] += clip[:n]
+    return out, clear
 
 
 def block_rms_db(x, block):
@@ -183,8 +205,9 @@ def power_mean_db(levels):
     return 10 * np.log10(np.mean(10 ** (levels / 10))) if len(levels) else -120.0
 
 
-def add_music(effects, total, bgm, bgm_start):
-    """[effects] with the song [bgm] under it, from [bgm_start] s of the song (see the module notes)."""
+def add_music(effects, clear, total, bgm, bgm_start):
+    """[effects] with the song [bgm] over it, from [bgm_start] s of the song (see the module notes);
+    [clear] is the clear effects alone, whose loudness sets the song's."""
     path = BGM_DIR / bgm
     if not path.exists():
         sys.exit(f"no such song: {path}")
@@ -197,33 +220,18 @@ def add_music(effects, total, bgm, bgm_start):
         song = np.vstack([song, np.zeros((samples - len(song), 2), dtype=np.float32)])
     song = song[:samples].astype(np.float64)
 
-    # Loudness by 50 ms blocks: the effects while they sound (within 30 dB of their loudest
-    # block), the song over the whole cut.
+    # Loudness by 50 ms blocks: the clear effects while they sound (within 30 dB of their loudest
+    # block), the song over the whole cut. The song goes SE_UNDER_BGM_DB over the effects.
     block = int(RATE * 0.05)
-    fx_levels = block_rms_db(effects, block)
+    fx_levels = block_rms_db(clear, block)
     sounding = fx_levels[fx_levels > fx_levels.max() - 30] if fx_levels.max() > -100 else np.array([])
     song_level = power_mean_db(block_rms_db(song, block))
     if len(sounding):
         fx_level = power_mean_db(sounding)
-        gain_db = fx_level - BGM_UNDER_SE_DB - song_level
+        gain_db = fx_level + SE_UNDER_BGM_DB - song_level
     else:
-        fx_level, gain_db = None, -BGM_UNDER_SE_DB
-    gain = 10 ** (gain_db / 20)
-
-    # Ducking: 10 ms blocks where an effect sounds pull the song down DUCK_DB, smoothed.
-    step = int(RATE * 0.01)
-    fx_short = block_rms_db(effects, step)
-    floor = (fx_levels.max() - 30) if len(sounding) else 1e9
-    target = np.where(fx_short > floor, -DUCK_DB, 0.0)
-    attack = 1 - np.exp(-0.01 / DUCK_ATTACK)
-    release = 1 - np.exp(-0.01 / DUCK_RELEASE)
-    duck = np.zeros_like(target)
-    level = 0.0
-    for i, want in enumerate(target):
-        level += (want - level) * (attack if want < level else release)
-        duck[i] = level
-    duck = np.interp(np.arange(samples) / step, np.arange(len(duck)) + 0.5, duck)
-    envelope = gain * 10 ** (duck / 20)
+        fx_level, gain_db = None, 0.0
+    envelope = np.full(samples, 10 ** (gain_db / 20))
 
     # Fades: in at the start, out over the ending.
     t = np.arange(samples) / RATE
@@ -231,8 +239,8 @@ def add_music(effects, total, bgm, bgm_start):
     envelope *= np.clip((total - t) / BGM_FADE_OUT, 0, 1)
 
     print(f"  bgm: {bgm} from {bgm_start:.2f}s, "
-          + (f"effects {fx_level:.1f} dB, " if fx_level is not None else "")
-          + f"song {song_level:.1f} dB, gain {gain_db:+.1f} dB, ducking {DUCK_DB:.0f} dB")
+          + (f"clear effects {fx_level:.1f} dB, " if fx_level is not None else "")
+          + f"song {song_level:.1f} dB, gain {gain_db:+.1f} dB (effects {SE_UNDER_BGM_DB:.0f} dB under, no ducking)")
     return effects + (song * envelope[:, None]).astype(np.float32)
 
 
@@ -261,9 +269,9 @@ def limited(samples):
 
 def make_sound(sound_cues, hook, total, path, bgm=None, bgm_start=0.0):
     """The sound effects (and the song, if any) as one WAV [total] seconds long, at TARGET_LUFS."""
-    mix = make_effects(sound_cues, hook, total)
+    mix, clear = make_effects(sound_cues, hook, total)
     if bgm:
-        mix = add_music(mix, total, bgm, bgm_start)
+        mix = add_music(mix, clear, total, bgm, bgm_start)
     out = limited(mix)
     if np.abs(mix).max() > 1e-6:
         # One gain for everything; the limiter takes off a little loudness, so measure again and correct.
