@@ -21,7 +21,8 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
    Nothing else is done to the song (its licence forbids arranging it: no change of speed or pitch).
 6. The whole sound (effects and music together, one gain, so their balance stays) brought to
    -14 LUFS, a limiter keeping the true peak under -1 dB.
-7. Two seconds of ending: the name large over the last scene blurred, the lines of promo/outro.yaml.
+7. The ending (1.5 s unless promo/outro.yaml says otherwise): the name large over the last scene blurred,
+   the lines under it; the captions file's own outro: (title, lines, ...) in place of promo/outro.yaml's.
 """
 import argparse
 import json
@@ -351,6 +352,8 @@ def main():
     bgm = caption_doc.get("bgm", script.get("bgm"))
     bgm_start = float(caption_doc.get("bgm_start", script.get("bgm_start", 0.0)) or 0.0)
     outro = yaml.safe_load((ROOT / "promo/outro.yaml").read_text(encoding="utf-8"))
+    # A video's own ending (the captions file's outro:) over the shared one, key by key.
+    outro = {**outro, **(caption_doc.get("outro") or {})}
 
     fps = cues["fps"]
     frames = sorted(recorded.glob("frame_*.png"))
@@ -359,7 +362,7 @@ def main():
     hook_frames = min(len(frames), round(float(script.get("hook_from_end", cues.get("hook_from_end", 0.0))) * fps))
     hook = hook_frames / fps
     body = len(frames) / fps
-    outro_seconds = float(outro.get("seconds", 2.0))
+    outro_seconds = float(outro.get("seconds", 1.5))
     total = hook + body + outro_seconds - OUTRO_FADE
 
     out_dir = ROOT / "docs/promo/tiktok"

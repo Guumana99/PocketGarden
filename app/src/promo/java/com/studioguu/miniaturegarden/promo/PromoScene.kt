@@ -1,7 +1,16 @@
 package com.studioguu.miniaturegarden.promo
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import com.studioguu.miniaturegarden.R
+import com.studioguu.miniaturegarden.ui.theme.GardenTheme
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -82,21 +91,45 @@ fun PromoScene(
                 drawCircle(Color(0x55000000).copy(alpha = 0.33f * alpha), radius + 2.dp.toPx(), centre, style = Stroke(width = 1.5.dp.toPx()))
             }
         }
-        scene.dayLabel?.let { label ->
-            Text(
-                text = label,
-                style = TextStyle(
-                    color = Color.White,
-                    fontSize = 30.sp,
+        // A harvest's coins, as the game floats them up from the middle of the screen
+        // (FloatingEffects.FloatingEffectText: the same words, look, rise and fade).
+        scene.coins?.let { coins ->
+            GardenTheme {
+                val t = LinearOutSlowInEasing.transform(scene.coinsProgress)
+                Text(
+                    text = stringResource(R.string.effect_harvest, coins),
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    shadow = Shadow(Color(0xCC3E2A14), Offset(0f, 3f), blurRadius = 10f),
-                ),
-                // Below the very top (TikTok's own row) and clear of its right-hand buttons.
-                modifier = Modifier
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .graphicsLayer {
+                            translationY = -(96.dp.toPx() * 0.8f * t)
+                            alpha = 1f - ((t - 0.72f) / (1f - 0.72f)).coerceIn(0f, 1f)
+                        }
+                        .background(MaterialTheme.colorScheme.surface, CircleShape)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+        scene.dayLabel?.let { label ->
+            // Two lines at most: the first large, the second (after a line break) smaller under it.
+            val first = label.substringBefore(NEWLINE)
+            val second = label.substringAfter(NEWLINE, "").takeIf { it.isNotBlank() }
+            val shadow = Shadow(Color(0xCC3E2A14), Offset(0f, 3f), blurRadius = 10f)
+            // Below the very top (TikTok's own row) and clear of its right-hand buttons.
+            Column(
+                Modifier
                     .align(Alignment.TopStart)
                     .padding(start = 28.dp, top = 120.dp)
                     .graphicsLayer { alpha = scene.dayLabelAlpha },
-            )
+            ) {
+                Text(first, style = TextStyle(color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, shadow = shadow))
+                if (second != null) {
+                    Text(second, style = TextStyle(color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, shadow = shadow))
+                }
+            }
         }
     }
 }
@@ -129,3 +162,5 @@ object PromoCamera {
         return GardenCamera.restored(view.scale, Offset(view.panX, view.panY), viewport, metrics).toTransform(metrics, viewport)
     }
 }
+
+private const val NEWLINE = '\n'

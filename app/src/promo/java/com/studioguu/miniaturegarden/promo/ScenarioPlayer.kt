@@ -6,6 +6,7 @@ import com.studioguu.miniaturegarden.domain.model.CreatureDirection
 import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
 import com.studioguu.miniaturegarden.domain.model.CreatureVisit
 import com.studioguu.miniaturegarden.domain.model.CreatureVisits
+import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
@@ -233,6 +234,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
     private var label: Pair<Double, String?> = 0.0 to null
     private var marker = scenario.start.tapMarker
     private var next = 0
+    /** Each harvest so far: when, and the coins it paid. */
+    private val harvests = mutableListOf<Pair<Double, Int>>()
     private var serial = 0
 
     /** What there is to draw at [seconds] into the recording; asked for in order. */
@@ -245,6 +248,9 @@ class ScenarioPlayer(private val scenario: Scenario) {
             val p = (seconds - t) / RING_SECONDS
             if (p in 0.0..1.0) cell to p.toFloat() else null
         }
+        // The coins of the latest harvest, floating up as long as the game's do (one at a time: a
+        // later harvest takes the place of the one before, FloatingEffects.plusEffect).
+        val coins = harvests.lastOrNull()?.takeIf { (t, _) -> seconds - t < COINS_SECONDS }
         val glint = glints.firstNotNullOfOrNull { (t, over) -> ((seconds - t) / over).takeIf { it in 0.0..1.0 }?.toFloat() } ?: 0f
         // A label there from the very start is simply there; a later one fades in.
         val labelAlpha = label.second?.let { if (label.first <= 0.0) 1f else ((seconds - label.first) / LABEL_FADE_SECONDS).coerceIn(0.0, 1.0).toFloat() } ?: 0f
@@ -263,6 +269,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
             rings = rings,
             dayLabel = label.second,
             dayLabelAlpha = labelAlpha,
+            coins = coins?.second,
+            coinsProgress = coins?.let { ((seconds - it.first) / COINS_SECONDS).toFloat() } ?: 0f,
         )
     }
 
@@ -293,7 +301,19 @@ class ScenarioPlayer(private val scenario: Scenario) {
                     if (stage == stages && stages > 1 && step.bloomSound != null && step.at >= 0.0) rawSoundsLate += Sound(step.at, step.bloomSound, "bloom")
                 }
             }
-            is Reap -> plantAt(step.cell)?.let { objects.remove(it.instanceId) }
+            // As the game does (GardenActionUseCases.afterHarvest / endsAtHarvest): a crop that bears
+            // again stays, back at its second stage, while it is in season; any other goes. Its coins
+            // float up as the game's do.
+            is Reap -> plantAt(step.cell)?.let { plant ->
+                val species = PlantSpecies.forObjectId(plant.objectId)
+                harvests += step.at to species.harvestReward(plant.harvestCount).coins
+                val inSeason = GardenItem.entries.firstOrNull { it.objectId == plant.objectId }?.isInSeason(season) != false
+                if (species.isRepeatable && inSeason) {
+                    put(plant.copy(growthProgress = species.regrowFrom, harvestCount = plant.harvestCount + 1))
+                } else {
+                    objects.remove(plant.instanceId)
+                }
+            }
             is Place -> put(step.obj)
             is Remove -> objects.values.filter { it.gridX == step.cell.x && it.gridY == step.cell.y && !it.isSoil }.forEach { objects.remove(it.instanceId) }
             is SetWeather -> weather = step.weather
@@ -392,6 +412,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
         private const val BED_AFTER = 0.25
 
         private const val RING_SECONDS = 0.45
+        /** As long as the game's harvest sum is up (FloatingEffects: 2.6 s). */
+        private const val COINS_SECONDS = 2.6
         private const val LABEL_FADE_SECONDS = 0.25
         private const val GLINT_SECONDS = 1.2
         private const val STAGGER_SECONDS = 0.5
@@ -465,4 +487,7 @@ class Scene(
     val rings: List<Pair<GridCell, Float>>,
     val dayLabel: String?,
     val dayLabelAlpha: Float,
+    /** The coins of the latest harvest while they float up (null when none), and how far on they are (0 to 1). */
+    val coins: Int? = null,
+    val coinsProgress: Float = 0f,
 )

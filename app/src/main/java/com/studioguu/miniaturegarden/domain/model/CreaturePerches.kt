@@ -286,7 +286,7 @@ object CreaturePerches {
 
     /** Heights set by hand, in tile widths (a height step is an eighth of one). */
     const val WELL_RIM_HEIGHT = 0.3f
-    const val COTTAGE_RIDGE_HEIGHT = 1.83f
+    const val COTTAGE_RIDGE_HEIGHT = 1.75f
     const val HUT_RIDGE_HEIGHT = 1.52f
     const val BENCH_SEAT_HEIGHT = 0.1f
     const val WEATHERVANE_TIP_HEIGHT = 0.6f
