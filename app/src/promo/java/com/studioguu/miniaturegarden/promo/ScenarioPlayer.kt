@@ -72,6 +72,18 @@ class ScenarioPlayer(private val scenario: Scenario) {
     val warnings = mutableListOf<String>()
 
     init {
+        // `setup:` first: its steps are done before 0 s, without a sound, a tap ring or a sparkle.
+        for (cue in scenario.setup) {
+            if (cue.action in NOT_IN_SETUP) {
+                warn("${cue.action} is not done in setup; put it in the timeline")
+                continue
+            }
+            val (tapCount, soundCount, glintCount) = Triple(taps.size, rawSounds.size, glints.size)
+            expand(cue)
+            while (taps.size > tapCount) taps.removeAt(taps.lastIndex)
+            while (rawSounds.size > soundCount) rawSounds.removeAt(rawSounds.lastIndex)
+            while (glints.size > glintCount) glints.removeAt(glints.lastIndex)
+        }
         for (cue in scenario.timeline) expand(cue)
         steps.sortBy { it.at }
         sounds = thinned(rawSounds.sortedBy { it.at })
@@ -260,7 +272,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
                 val progress = if (stages <= 1) 1f else (stage - 1).toFloat() / (stages - 1)
                 if (progress > plant.growthProgress) {
                     put(plant.copy(growthProgress = progress))
-                    if (stage == stages && stages > 1 && step.bloomSound != null) rawSoundsLate += Sound(step.at, step.bloomSound, "bloom")
+                    if (stage == stages && stages > 1 && step.bloomSound != null && step.at >= 0.0) rawSoundsLate += Sound(step.at, step.bloomSound, "bloom")
                 }
             }
             is Reap -> plantAt(step.cell)?.let { objects.remove(it.instanceId) }
@@ -371,6 +383,9 @@ class ScenarioPlayer(private val scenario: Scenario) {
         private const val POP_MILLIS = 400L
         private const val SETTLE_MILLIS = 700L
         private const val VISIT_LEAD_MILLIS = 500L
+
+        /** What `setup:` does not take: what only means something while it is seen. */
+        private val NOT_IN_SETUP = setOf("creature", "sparkle", "sound", "end")
 
         private val MIN_GAP = mapOf("se_tap" to 0.12, "se_plant" to 0.15, "se_water" to 0.4, "se_harvest" to 0.15, "se_coin" to 0.3)
 

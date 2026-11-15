@@ -39,6 +39,15 @@
 
 - 上の作物の入れ替え（T-004 は いちご＋ミント、T-003 はチューリップの色違い）。
 
+## ② `setup:`（済）
+
+- `Scenario.kt`：`setup:` の各行を `at = SETUP_AT（-2 秒）`、`over: 0` にして読む。
+- `ScenarioPlayer.kt`：timeline より先に展開し、その分のタップの丸・効果音・きらっは捨てる。咲いたときの音（`sound:`）も 0 秒より前なら鳴らさない。
+  生き物・きらっ・効果音だけ・終わりは setup では警告を出して飛ばす。
+- `assemblePromo` は通った。実際の見え方は ⑤ T-003 で確かめる（0 秒のコマに出てくるアニメーションが無いか）。
+- `promo/README.md` に「録画の前に済ませておく（`setup:`）」を追記。
+- promo のコードにユニットテストは無い（`app/src/test` から promo の source set は見えない）。
+
 ## 次にやること
 
-② `setup:` の機能（`Scenario.kt` で読む、`ScenarioPlayer` で 0 秒の前に適用、音・タップの丸なし）。
+③ T-004：台本・字幕を作る（作物は `[strawberry, mint]`）→ `python tools/promo_shoot.py T-004 --install` → `python tools/promo_render.py T-004` → 切り抜き一覧で確認。

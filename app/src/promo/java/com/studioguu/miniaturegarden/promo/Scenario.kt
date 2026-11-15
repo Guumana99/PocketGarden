@@ -26,6 +26,8 @@ class Scenario(
     val camera: CameraMove,
     val timeline: List<Cue>,
     val hookFromEnd: Double,
+    /** What is done before the recording starts (`setup:`), all at [SETUP_AT]: the garden as it is at 0 seconds. */
+    val setup: List<Cue> = emptyList(),
 ) {
     /** How long the recording runs, in seconds: up to `end`, or a second after the last cue. */
     val duration: Double = timeline.firstOrNull { it.action == "end" }?.at
@@ -84,6 +86,9 @@ class Scenario(
         /** `zoom: max`: as close as the game's camera comes ([com.studioguu.miniaturegarden.ui.render.GardenCamera.MAX_SCALE]). */
         const val MAX_ZOOM = -1.0
 
+        /** When the `setup:` lines are done: before the recording, all at once (their `over` is dropped). */
+        const val SETUP_AT = -2.0
+
         fun parse(text: String): Scenario {
             val root = json.parseToJsonElement(text) as JsonObject
             val start = root["start"] as? JsonObject ?: JsonObject(emptyMap())
@@ -94,6 +99,13 @@ class Scenario(
                 val (action, args) = line.entries.firstOrNull { it.key != "at" } ?: return@mapNotNull null
                 Cue(at, action, args)
             }.sortedBy { it.at }
+            // `setup:` takes the timeline's lines without `at`, done at once before 0 s.
+            val setup = (root["setup"] as? JsonArray).orEmpty().mapNotNull { entry ->
+                val line = entry as? JsonObject ?: return@mapNotNull null
+                val (action, args) = line.entries.firstOrNull { it.key != "at" } ?: return@mapNotNull null
+                val atOnce = (args as? JsonObject)?.let { JsonObject(it + ("over" to JsonPrimitive(0.0))) } ?: args
+                Cue(SETUP_AT, action, atOnce)
+            }
             return Scenario(
                 id = root.str("id", "T-000"),
                 title = root.str("title", ""),
@@ -110,6 +122,7 @@ class Scenario(
                 camera = cameraOf(root["camera"]) ?: CameraMove(1.0, null, 0.0),
                 timeline = cues,
                 hookFromEnd = (root["hook_from_end"] as? JsonPrimitive)?.doubleOrNull ?: 0.0,
+                setup = setup,
             )
         }
 
