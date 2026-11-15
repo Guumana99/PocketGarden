@@ -14,7 +14,7 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
 4. The sound effects go in where cues.json says.
 5. Music, if the script or the captions file names it (bgm: <file in tools/bgm>, bgm_start: <second
    of the song to start from>): cut from there, faded in over 0.2 s and out over the last 1.5 s,
-   set 9 dB under the sound effects and dipped a little while one sounds. Nothing else is done to
+   set 5 dB under the sound effects and dipped a little while one sounds. Nothing else is done to
    the song (its licence forbids arranging it: no change of speed or pitch).
 6. The whole sound (effects and music together, one gain, so their balance stays) brought to
    -14 LUFS, a limiter keeping the true peak under -1 dB.
@@ -54,8 +54,8 @@ OUTRO_FADE = 0.4
 RATE = 44100
 BGM_FADE_IN = 0.2
 BGM_FADE_OUT = 1.5
-BGM_UNDER_SE_DB = 9.0     # the music this far under the sound effects
-DUCK_DB = 4.0             # and this much more while one sounds
+BGM_UNDER_SE_DB = 5.0     # the music this far under the sound effects
+DUCK_DB = 3.0             # and this much more while one sounds
 DUCK_ATTACK = 0.03
 DUCK_RELEASE = 0.35
 TARGET_LUFS = -14.0       # the whole sound, integrated loudness (TikTok's level)
