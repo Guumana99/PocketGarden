@@ -48,6 +48,12 @@
 - `promo/README.md` に「録画の前に済ませておく（`setup:`）」を追記。
 - promo のコードにユニットテストは無い（`app/src/test` から promo の source set は見えない）。
 
+## ③ T-004（済）
+
+- 台本・字幕は指示どおり。作物だけ `[tomato, strawberry, carrot]` → `[strawberry, mint]`。
+- 撮影 408 コマ。`docs/promo/tiktok/T-004_veggie_garden.mp4`（15.2 秒、4.9MB、-14.1 LUFS・ピーク -2.0dBTP）、`T-004_sheet.jpg`。Drive に同期済み。
+- 切り抜き一覧で確認：耕す→植える→水→育つ→寄り→実る（いちごの赤い実とミントが列ごとに交互）→収穫で畝だけに戻る。
+
 ## 次にやること
 
-③ T-004：台本・字幕を作る（作物は `[strawberry, mint]`）→ `python tools/promo_shoot.py T-004 --install` → `python tools/promo_render.py T-004` → 切り抜き一覧で確認。
+④ T-002：台本・字幕を作る → `python tools/promo_shoot.py T-002`（promo APK はもう入っている）→ `python tools/promo_render.py T-002` → 切り抜き一覧で、ことりが耕した土（5,7）に降りるか確認。
