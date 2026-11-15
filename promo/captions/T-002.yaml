@@ -1,0 +1,7 @@
+bgm: Cat_life.mp3
+bgm_start: 0.3
+captions:
+  - { from: 0.0, to: 3.0,  text: "ポケ庭日記 1日目\n荒れ地から始めます" }
+  - { from: 3.0, to: 5.4,  text: "まずは小さな畑を耕して" }
+  - { from: 5.4, to: 8.2,  text: "ことりが見に来た" }
+  - { from: 8.2, to: 12.0, text: "最初に何を植える？\nコメントで決めます" }

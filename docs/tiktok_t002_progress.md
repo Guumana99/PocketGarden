@@ -54,6 +54,14 @@
 - 撮影 408 コマ。`docs/promo/tiktok/T-004_veggie_garden.mp4`（15.2 秒、4.9MB、-14.1 LUFS・ピーク -2.0dBTP）、`T-004_sheet.jpg`。Drive に同期済み。
 - 切り抜き一覧で確認：耕す→植える→水→育つ→寄り→実る（いちごの赤い実とミントが列ごとに交互）→収穫で畝だけに戻る。
 
+## ④ T-002（済）
+
+- 台本・字幕は指示のまま（直した所なし。耕すだけなので作物の問題なし）。
+- 撮影 360 コマ。`docs/promo/tiktok/T-002_diary_01.mp4`（13.6 秒、4.4MB、-14.1 LUFS・ピーク -3.8dBTP）、`T-002_sheet.jpg`。Drive に同期済み。
+- 切り抜き一覧で確認：手前 3×3 を耕す → 寄る → ことりが 6 秒ごろ耕した土に降り、最大の寄りで土の上を歩く。
+  最大の寄りでは画面のほとんどが土で、ことりは画面の中ほどに小さめに映る（台本どおり。気になれば zoom を 0.6〜0.7 倍に下げる案）。
+
 ## 次にやること
 
-④ T-002：台本・字幕を作る → `python tools/promo_shoot.py T-002`（promo APK はもう入っている）→ `python tools/promo_render.py T-002` → 切り抜き一覧で、ことりが耕した土（5,7）に降りるか確認。
+⑤ T-003：`ScenarioPlayer.roofAt`（ことりの land_on のマスにコテージ・小屋が置いてあれば host にする）を書いた所（未コミット・未ビルドの可能性あり。`git status` で確認）。
+→ `assemblePromo` → `python tools/promo_shoot.py T-003 --install` → render → 屋根に止まるか・0 秒のコマにアニメーションが無いか確認 → カメラの高さ（center の 3 つ目）を屋根に合わせる。
