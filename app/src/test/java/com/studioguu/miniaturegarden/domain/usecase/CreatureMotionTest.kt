@@ -783,7 +783,7 @@ class CreatureMotionTest {
         val GOLDEN_PRINTS: List<Long> = listOf(
             7835538569491737339L, 9184390232171254900L, // squirrel, frog: re-taken for the moods (#fb-1110)
             4956434130467034714L, -7566325524328723953L, // butterfly: re-taken for its ways between flowers (#fb-1113)
-            -408090663045976775L, 4581749925029504915L, -8119653952837104962L,
+            -408090663045976775L, 8140728012961434129L, -8119653952837104962L, // bird on the cottage: re-taken for the lower ridge (1.83 -> 1.75, TikTok T-003)
         )
     }
 

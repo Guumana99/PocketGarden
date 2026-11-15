@@ -1,17 +1,20 @@
 id: T-003
-name: visitor_bird_roof
-title: 今日来た子（ことりが屋根に）
+name: guest_bird
+title: お客さん図鑑 ことり
 fps: 30
 seed: 11
+hook_from_end: 0
 start: { garden: new_game, season: spring, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: false }
 setup:
-  - { place: { item: struct_cottage, at: [4,2] } }               # 奥の真ん中（3×3：x 4〜6、y 2〜4）
-  # 春の最初に買える花はチューリップだけ（コスモスは秋、ひまわりは Lv.3 の夏）。色を混ぜる
+  - { place: { item: struct_cottage, at: [4,2] } }
   - { plant: { crop: tulip, area: [2,6,8,8], colours: [red, pink, yellow, white, purple] } }
-  - { grow: { area: [2,6,8,8], to_stage: 3 } }                    # 手前に咲いた花
-camera: { zoom: 2.4, center: [5,4] }                              # コテージと手前の花が入る寄り
+  - { grow: { area: [2,6,8,8], to_stage: 3 } }
+camera: { zoom: 1.6, center: [5,4] }
 timeline:
-  # land_on のマスにコテージがあると、ことりは屋根の棟（コテージの左上から 1.4〜2.0, 1.5、高さ 1.83）に止まる
-  - { at: 3.2, creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,3]], stay: 7.0 } }   # コテージの屋根
-  - { at: 3.4, camera: { zoom: max, center: [5.2,3,1.83], over: 2.6 } }  # 屋根の上のことりに寄る（高さは棟の高さ）
-  - { at: 9.5, end: true }
+  - { at: 0.0, day_label: "お客さん図鑑 ことり\n春・朝" }
+  - { at: 0.0, camera: { zoom: 2.2, center: [5,3.5], over: 3.0 } }
+  # land_on のマスにコテージがあると、ゲームと同じ棟の点（コテージの左上から (1.4〜2.0, 1.5)、高さ 1.75）に止まる
+  - { at: 5.5, creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,3]], stay: 8.0 } }
+  # ことりの止まる点（棟の 2 点の真ん中、高さは棟）を画面の中央に。屋根と空が入る寄り
+  - { at: 5.7, camera: { zoom: 3.5, center: [5.2,3,1.75], over: 2.0 } }
+  - { at: 15.0, end: true }

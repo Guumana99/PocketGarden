@@ -1,7 +1,9 @@
 bgm: パステルハウス.mp3
 bgm_start: 4.0
 captions:
-  - { from: 0.0,  to: 2.6,  text: "荒れ地を畑にして" }
-  - { from: 2.6,  to: 6.5,  text: "苗を植えて、水をあげて" }
-  - { from: 6.5,  to: 10.6, text: "数日たつと…" }
-  - { from: 10.6, to: 13.6, text: "一気に収穫！" }
+  - { from: 0.0,  to: 2.2,  text: "畝を作って" }
+  - { from: 2.2,  to: 4.2,  text: "いちごの苗を植えます" }
+  - { from: 4.2,  to: 8.2,  text: "お水をあげて" }
+  - { from: 8.2,  to: 12.4, text: "お世話すると" }
+  - { from: 12.4, to: 16.0, text: "赤い実がなった！" }
+  - { from: 16.0, to: 20.5, text: "収穫！\nまた実ります" }

@@ -1,14 +1,18 @@
 id: T-002
 name: diary_01
-title: ポケ庭日記 第1話（荒れ地から始める）
+title: ポケ庭日記 第1話（チューリップを植える）
 fps: 30
 seed: 7
+hook_from_end: 0
 start: { garden: new_game, season: spring_early, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: true }
 camera: { zoom: fit }
 timeline:
-  - { at: 0.0, day_label: "1日目" }
-  - { at: 0.3, till: { area: [4,6,6,8], over: 2.4 } }          # 手前の 3×3 を耕す
-  - { at: 3.0, camera: { zoom: 2.0, center: [5,7], over: 1.2 } }
-  - { at: 5.2, creature: { kind: bird, count: 1, from: outside_right, land_on: [[5,7]], stay: 6.0 } }
-  - { at: 5.4, camera: { zoom: max, center: [5,7,0.2], over: 2.2 } }   # 耕した土に降りたことりに寄る
-  - { at: 12.0, end: true }
+  - { at: 0.0,  day_label: "ポケ庭日記 1日目\n春のはじめ・晴れ" }
+  - { at: 3.0,  camera: { zoom: 1.8, center: [5,7], over: 1.2 } }
+  - { at: 5.5,  till: { area: [4,6,6,8], over: 2.0 } }
+  - { at: 8.0,  plant: { crop: tulip, area: [4,6,6,8], over: 1.2, colours: [red, pink, yellow] } }
+  - { at: 10.0, camera: { zoom: 3.2, center: [5,7], over: 1.5 } }
+  - { at: 11.5, water: { area: [4,6,6,8], over: 1.5 } }
+  - { at: 14.5, time_of_day: { to: evening, over: 2.5 } }
+  - { at: 17.0, camera: { zoom: fit, over: 1.5 } }
+  - { at: 23.0, end: true }

@@ -1,17 +1,25 @@
 id: T-004
-name: veggie_garden
-title: 家庭菜園（荒れ地から一斉に収穫まで）
+name: strawberry
+title: いちごができるまで
 fps: 30
 seed: 21
+hook_from_end: 0
 start: { garden: new_game, season: spring_early, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: true }
-camera: { zoom: fit }
+camera: { zoom: 2.6, center: [5,6] }
+# いちごはゲームで 6 時間で実る（1 日かからない）。日をまたがず、朝 7 時半 → 10 時半 → 13 時半と時間帯だけ進める
 timeline:
-  - { at: 0.3,  till: { area: [2,2,8,8], over: 2.2, ridged: true } }
-  # 春の最初に買える野菜はいちごとミントだけ（トマトは夏、にんじんは Lv.2）。2 種類なので列ごとに交互
-  - { at: 2.6,  plant: { crops: [strawberry, mint], area: [2,2,8,8], over: 2.0 } }
-  - { at: 4.7,  water: { area: [2,2,8,8], over: 1.6 } }
-  - { at: 6.5,  grow: { area: [2,2,8,8], to_stage: 2, over: 1.2 } }
-  - { at: 7.0,  camera: { zoom: 2.2, center: [6.5,6.5], over: 1.2 } }
-  - { at: 8.0,  grow: { area: [2,2,8,8], to_stage: 3, over: 1.6 } }   # 実った姿
-  - { at: 10.6, harvest: { area: [2,2,8,8], over: 2.6 } }             # 一気に収穫 → 畝に戻る（頭の場面へループ）
-  - { at: 13.6, end: true }
+  - { at: 0.0,  day_label: "いちごができるまで\n春のはじめ・朝" }
+  - { at: 0.3,  till: { area: [4,5,6,7], over: 1.5, ridged: true } }
+  - { at: 2.2,  plant: { crop: strawberry, area: [4,5,6,7], over: 1.5 } }
+  - { at: 4.2,  water: { area: [4,5,6,7], over: 1.2 } }
+  - { at: 5.6,  time_of_day: { to: 10.5, over: 2.4 } }
+  - { at: 8.2,  day_label: "いちごができるまで\n3時間後" }
+  - { at: 8.2,  grow: { area: [4,5,6,7], to_stage: 2, over: 0.8 } }
+  - { at: 9.2,  water: { area: [4,5,6,7], over: 1.0 } }
+  - { at: 10.4, time_of_day: { to: 13.5, over: 1.8 } }
+  - { at: 12.4, day_label: "いちごができるまで\n6時間後" }
+  - { at: 12.4, camera: { zoom: 3.6, center: [5,6.5], over: 1.2 } }
+  - { at: 12.6, grow: { area: [4,5,6,7], to_stage: 3, over: 1.4 } }
+  # 収穫：ゲームと同じく、株は残って段階 2 に戻り、画面の真ん中にコインが浮かぶ
+  - { at: 16.0, harvest: { area: [4,5,6,7], over: 2.4 } }
+  - { at: 20.5, end: true }
