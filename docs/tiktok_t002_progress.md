@@ -100,7 +100,12 @@
 - T-002：指示のまま。T-003：カメラの寄り先を「ことりの止まる点」→ `[5.2,3,1.75]`（棟の 2 点の真ん中・棟の高さ）。
 - T-004：いちごはゲームで 6 時間で実る（1 日かからない）ので、日をまたがず時間帯だけ進める（朝 7.5 時 → 10.5 時 → 13.5 時）。札の 2 行目は「春のはじめ・朝」→「3時間後」→「6時間後」。字幕「毎日お世話すると」→「お世話すると」。
 
+## 3. T-002（済）
+
+- 撮影・書き出し：`docs/promo/tiktok/T-002_diary_01.mp4`（24.1 秒、6.2MB、-14.0 LUFS・ピーク -1.5dBTP）、`T-002_sheet.jpg`。Drive 同期済み。台本は指示のまま。
+- 報告用のコマ：`docs/promo/tiktok/frames/T-002_label.jpg`（札 2 行、1 秒）、`T-002_outro.jpg`（締め「つづく」、23.8 秒）。
+
 ## 次にやること
 
-T-002 → T-003 → T-004 の順に `python tools/promo_shoot.py T-00x --install`（1 本目だけ --install）→ `python tools/promo_render.py T-00x` → 切り抜きで確認。
+T-003 → T-004 の順に `python tools/promo_shoot.py T-00x --install`（1 本目だけ --install）→ `python tools/promo_render.py T-00x` → 切り抜きで確認。
 報告用のコマ：札（2 行）・日記の締め・屋根の上のことり・水やり・収穫を 1 枚ずつ。最後に main へマージ・push・Drive。
