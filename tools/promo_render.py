@@ -16,7 +16,9 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
    of the song to start from>): cut from there, faded in over 0.2 s and out over the last 1.5 s,
    set 9 dB under the sound effects and dipped a little while one sounds. Nothing else is done to
    the song (its licence forbids arranging it: no change of speed or pitch).
-6. Two seconds of ending: the name large over the last scene blurred, the lines of promo/outro.yaml.
+6. The whole sound (effects and music together, one gain, so their balance stays) brought to
+   -14 LUFS, a limiter keeping the true peak under -1 dB.
+7. Two seconds of ending: the name large over the last scene blurred, the lines of promo/outro.yaml.
 """
 import argparse
 import json
@@ -56,7 +58,9 @@ BGM_UNDER_SE_DB = 9.0     # the music this far under the sound effects
 DUCK_DB = 4.0             # and this much more while one sounds
 DUCK_ATTACK = 0.03
 DUCK_RELEASE = 0.35
-LIMIT = 0.9
+TARGET_LUFS = -14.0       # the whole sound, integrated loudness (TikTok's level)
+PEAK_CEILING_DB = -1.0    # true peak of the finished mp4 at most this
+LIMIT_DB = -2.0           # the limiter's ceiling: under the above, leaving room for AAC and inter-sample peaks
 
 
 def ffmpeg_exe():
@@ -232,14 +236,48 @@ def add_music(effects, total, bgm, bgm_start):
     return effects + (song * envelope[:, None]).astype(np.float32)
 
 
+def loudness(path_or_samples):
+    """(integrated LUFS, true peak dBTP) of a file or of float stereo samples at RATE."""
+    if isinstance(path_or_samples, np.ndarray):
+        source, stdin = ["-f", "f32le", "-ac", "2", "-ar", str(RATE), "-i", "-"], np.ascontiguousarray(path_or_samples, dtype=np.float32).tobytes()
+    else:
+        source, stdin = ["-i", str(path_or_samples)], None
+    result = subprocess.run([ffmpeg_exe(), "-hide_banner", "-nostats", *source, "-vn",
+                             "-af", "ebur128=peak=true:framelog=quiet", "-f", "null", "-"],
+                            input=stdin, capture_output=True, check=True)
+    text = result.stderr.decode("utf-8", "replace")
+    summary = text[text.rindex("Summary:"):]
+    lufs = float(summary.split("I:")[1].split("LUFS")[0])
+    peak = float(summary.split("Peak:")[1].split("dBFS")[0])
+    return lufs, peak
+
+
+def limited(samples):
+    raw = run_ffmpeg(["-f", "f32le", "-ac", "2", "-ar", str(RATE), "-i", "-",
+                      "-af", f"alimiter=limit={10 ** (LIMIT_DB / 20):.4f}:level=disabled:attack=2:release=50",
+                      "-f", "f32le", "-"], stdin=np.ascontiguousarray(samples, dtype=np.float32).tobytes())
+    return np.frombuffer(raw, dtype=np.float32).reshape(-1, 2)
+
+
 def make_sound(sound_cues, hook, total, path, bgm=None, bgm_start=0.0):
-    """The sound effects (and the song, if any) as one WAV [total] seconds long."""
+    """The sound effects (and the song, if any) as one WAV [total] seconds long, at TARGET_LUFS."""
     mix = make_effects(sound_cues, hook, total)
     if bgm:
         mix = add_music(mix, total, bgm, bgm_start)
-    run_ffmpeg(["-f", "f32le", "-ac", "2", "-ar", str(RATE), "-i", "-",
-                "-af", f"alimiter=limit={LIMIT}", "-c:a", "pcm_s16le", str(path)],
-               stdin=np.ascontiguousarray(mix, dtype=np.float32).tobytes())
+    out = limited(mix)
+    if np.abs(mix).max() > 1e-6:
+        # One gain for everything; the limiter takes off a little loudness, so measure again and correct.
+        gain_db = 0.0
+        for _ in range(3):
+            lufs, _ = loudness(out)
+            if abs(lufs - TARGET_LUFS) < 0.2:
+                break
+            gain_db += TARGET_LUFS - lufs
+            out = limited(mix * 10 ** (gain_db / 20))
+        lufs, peak = loudness(out)
+        print(f"  loudness: {lufs:.1f} LUFS, true peak {peak:.1f} dBTP (gain {gain_db:+.1f} dB)")
+    run_ffmpeg(["-f", "f32le", "-ac", "2", "-ar", str(RATE), "-i", "-", "-c:a", "pcm_s16le", str(path)],
+               stdin=np.ascontiguousarray(out, dtype=np.float32).tobytes())
 
 
 def contact_sheet(frames, fps, hook, path, columns=6):
@@ -343,6 +381,10 @@ def main():
     size = target.stat().st_size / 1e6
     print(f"{target} ({total:.2f}s, about {round(total * fps)} frames, {size:.1f} MB)")
     print(f"{sheet}")
+    lufs, peak = loudness(target)
+    print(f"  mp4 sound: {lufs:.1f} LUFS, true peak {peak:.1f} dBTP")
+    if peak > PEAK_CEILING_DB:
+        print(f"  warning: true peak over {PEAK_CEILING_DB} dB; lower LIMIT_DB")
     if size > 15:
         print("  warning: over 15 MB; try a larger --crf")
 
