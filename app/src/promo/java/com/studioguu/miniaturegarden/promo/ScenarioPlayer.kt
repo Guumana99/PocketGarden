@@ -12,6 +12,7 @@ import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantGround
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.VisitRule
@@ -46,7 +47,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
 
     private data class Strike(override val at: Double, val cell: GridCell) : Step
     private data class Bed(override val at: Double, val cell: GridCell, val ridged: Boolean) : Step
-    private data class Sow(override val at: Double, val cell: GridCell, val species: PlantSpecies, val colour: String?) : Step
+    private data class Sow(override val at: Double, val cell: GridCell, val species: PlantSpecies, val colour: String?, val dry: Boolean = false) : Step
+    private data class Water(override val at: Double, val cell: GridCell) : Step
     private data class Grow(override val at: Double, val cell: GridCell, val stage: Int, val bloomSound: String?) : Step
     private data class Reap(override val at: Double, val cell: GridCell) : Step
     private data class Place(override val at: Double, val obj: GridObject) : Step
@@ -125,12 +127,14 @@ class ScenarioPlayer(private val scenario: Scenario) {
                     val species = if (mixed.isNotEmpty()) mixed[Math.floorMod(cell.x + 2 * cell.y, mixed.size)] else single!!
                     val colours = colourMap[species.objectId.removePrefix("plant_")] ?: colourList
                     val n = used.merge(species, 1, Int::plus)!! - 1
-                    steps += Sow(t, cell, species, colours.getOrNull(n % maxOf(colours.size, 1)))
+                    // `dry: true`: sown thirsty, with the game's blue drop over it until it is watered.
+                    steps += Sow(t, cell, species, colours.getOrNull(n % maxOf(colours.size, 1)), cue.bool("dry") ?: false)
                     taps += t to cell
                     sound("se_plant", t)
                 }
             }
             "water" -> for ((t, cell) in spread(cue.cells(), cue.overOr(0.0))) {
+                steps += Water(t, cell)
                 taps += t to cell
                 sound("se_water", t)
             }
@@ -232,6 +236,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
     private var weather = weatherOf(scenario.start.weather)
     private var season = seasonOf(scenario.start.season)
     private var label: Pair<Double, String?> = 0.0 to null
+    /** The label before the latest, for the second line's change ([Scene.dayLabelBefore]). */
+    private var labelBefore: String? = null
     private var marker = scenario.start.tapMarker
     private var next = 0
     /** Each harvest so far: when, and the coins it paid. */
@@ -253,7 +259,12 @@ class ScenarioPlayer(private val scenario: Scenario) {
         val coins = harvests.lastOrNull()?.takeIf { (t, _) -> seconds - t < COINS_SECONDS }
         val glint = glints.firstNotNullOfOrNull { (t, over) -> ((seconds - t) / over).takeIf { it in 0.0..1.0 }?.toFloat() } ?: 0f
         // A label there from the very start is simply there; a later one fades in.
-        val labelAlpha = label.second?.let { if (label.first <= 0.0) 1f else ((seconds - label.first) / LABEL_FADE_SECONDS).coerceIn(0.0, 1.0).toFloat() } ?: 0f
+        // Only the second line changing (the same first line: the time of day, the hours gone by):
+        // the board stays and that line cross-fades instead.
+        val firstLine = { text: String? -> text?.lineSequence()?.firstOrNull() }
+        val swapping = label.first > 0.0 && label.second != null && labelBefore != null && firstLine(labelBefore) == firstLine(label.second)
+        val labelChange = ((seconds - label.first) / (if (swapping) LABEL_SWAP_SECONDS else LABEL_FADE_SECONDS)).coerceIn(0.0, 1.0).toFloat()
+        val labelAlpha = label.second?.let { if (label.first <= 0.0 || swapping) 1f else labelChange } ?: 0f
         return Scene(
             nowMillis = now,
             objects = objects.values.toList(),
@@ -269,6 +280,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
             rings = rings,
             dayLabel = label.second,
             dayLabelAlpha = labelAlpha,
+            dayLabelBefore = if (swapping && labelChange < 1f) labelBefore else null,
+            dayLabelSwap = if (swapping) labelChange else 1f,
             coins = coins?.second,
             coinsProgress = coins?.let { ((seconds - it.first) / COINS_SECONDS).toFloat() } ?: 0f,
         )
@@ -281,7 +294,13 @@ class ScenarioPlayer(private val scenario: Scenario) {
             is Strike -> if (soilAt(step.cell) == null) broken += step.cell
             is Bed -> {
                 broken -= step.cell
-                if (soilAt(step.cell) == null) put(soil(step.cell, step.ridged))
+                // The hoe over turned earth again makes it a ridged bed (the earth stays as it is otherwise).
+                val there = soilAt(step.cell)
+                if (there == null || (step.ridged && there.isLooseSoil)) put(soil(step.cell, step.ridged))
+            }
+            // Watered: the drop over a thirsty plant goes, as in the game.
+            is Water -> plantAt(step.cell)?.let { plant ->
+                if (plant.status == PlantStatus.THIRSTY) put(plant.copy(moistureLevel = 1f, status = PlantStatus.HEALTHY))
             }
             is Sow -> {
                 if (plantAt(step.cell) != null) return
@@ -290,6 +309,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
                 put(GridObject(
                     instanceId = "promo_plant_${serial++}", gridX = step.cell.x, gridY = step.cell.y, objectId = step.species.objectId,
                     growthProgress = 0f, lastUpdatedTimestamp = baseMillis, bloomColour = step.colour,
+                    moistureLevel = if (step.dry) DRY_MOISTURE else 1f,
+                    status = if (step.dry) PlantStatus.THIRSTY else PlantStatus.HEALTHY,
                 ))
             }
             is Grow -> plantAt(step.cell)?.let { plant ->
@@ -318,7 +339,10 @@ class ScenarioPlayer(private val scenario: Scenario) {
             is Remove -> objects.values.filter { it.gridX == step.cell.x && it.gridY == step.cell.y && !it.isSoil }.forEach { objects.remove(it.instanceId) }
             is SetWeather -> weather = step.weather
             is SetSeason -> season = step.season
-            is SetLabel -> label = step.at to step.text
+            is SetLabel -> {
+                labelBefore = label.second
+                label = step.at to step.text
+            }
             is SetMarker -> marker = step.shown
         }
     }
@@ -412,9 +436,12 @@ class ScenarioPlayer(private val scenario: Scenario) {
         private const val BED_AFTER = 0.25
 
         private const val RING_SECONDS = 0.45
+        /** A plant sown `dry: true`: under the game's thirsty line (CalculateOfflineProgressUseCase.THIRSTY_THRESHOLD, 0.2). */
+        private const val DRY_MOISTURE = 0.15f
         /** As long as the game's harvest sum is up (FloatingEffects: 2.6 s). */
         private const val COINS_SECONDS = 2.6
         private const val LABEL_FADE_SECONDS = 0.25
+        private const val LABEL_SWAP_SECONDS = 0.6
         private const val GLINT_SECONDS = 1.2
         private const val STAGGER_SECONDS = 0.5
         private const val POP_MILLIS = 400L
@@ -487,6 +514,9 @@ class Scene(
     val rings: List<Pair<GridCell, Float>>,
     val dayLabel: String?,
     val dayLabelAlpha: Float,
+    /** While only the label's second line changes: the label before, fading out under the new one ([dayLabelSwap], 0 to 1). */
+    val dayLabelBefore: String? = null,
+    val dayLabelSwap: Float = 1f,
     /** The coins of the latest harvest while they float up (null when none), and how far on they are (0 to 1). */
     val coins: Int? = null,
     val coinsProgress: Float = 0f,
