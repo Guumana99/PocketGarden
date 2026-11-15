@@ -288,7 +288,13 @@ class CreatureMotionTest {
                 assertEquals(v.cell, pose.cell)
                 assertFalse(pose.grounded)
                 if (pose.action == CreatureAction.FLY) continue
-                assertTrue(points.any { abs(pose.x - it.x) <= 0.25f && abs(pose.y - it.y) <= 0.25f && pose.surface == it.height })
+                // On a roof it hops along the ridge, between its points (TikTok T-003): on that line, never off it.
+                val onRidge = host == cottage && points.size >= 2 && run {
+                    val (a, b) = points.first() to points.last()
+                    val t = ((pose.x - a.x) * (b.x - a.x) + (pose.y - a.y) * (b.y - a.y)) / ((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y))
+                    t in -0.001f..1.001f && abs(pose.x - (a.x + (b.x - a.x) * t)) < 0.001f && abs(pose.y - (a.y + (b.y - a.y) * t)) < 0.001f && pose.surface == a.height
+                }
+                assertTrue(onRidge || points.any { abs(pose.x - it.x) <= 0.25f && abs(pose.y - it.y) <= 0.25f && pose.surface == it.height })
                 assertEquals(0f, pose.altitude)
             }
         }
@@ -783,7 +789,7 @@ class CreatureMotionTest {
         val GOLDEN_PRINTS: List<Long> = listOf(
             7835538569491737339L, 9184390232171254900L, // squirrel, frog: re-taken for the moods (#fb-1110)
             4956434130467034714L, -7566325524328723953L, // butterfly: re-taken for its ways between flowers (#fb-1113)
-            -408090663045976775L, 8140728012961434129L, -8119653952837104962L, // bird on the cottage: re-taken for the lower ridge (1.83 -> 1.75, TikTok T-003)
+            -408090663045976775L, 2578821905691815053L, -8119653952837104962L, // bird on the cottage: re-taken for the lower ridge (1.83 -> 1.75) and its hops along it (TikTok T-003)
         )
     }
 

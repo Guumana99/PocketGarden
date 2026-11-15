@@ -625,13 +625,31 @@ object CreatureRoutes {
         val (span, cyclic) = spanOf(length - 2 * (landing?.duration ?: POP_MILLIS))
         val plan = planner(random, manner, span, cyclic, homeX, homeY, landing)
         val reserve = if (cyclic) (manner.hostStepMillis * MAX_PACE).toLong() + manner.rest.first else 0L
+        // A roof's ridge: the two ends of the line through its points (the cottage's and the hut's).
+        val ridge = if (spot.kind == PerchKind.ROOF) {
+            spot.on?.let { CreaturePerches.pointsOf(it) }?.filter { it.kind == PerchKind.ROOF }?.takeIf { it.size >= 2 }?.let { it.first() to it.last() }
+        } else {
+            null
+        }
         plan.standFor(plan.between(manner.firstRest))
         while (true) {
             val rest = plan.between(manner.rest)
             val millis = plan.pace(manner.hostStepMillis.toFloat())
             if (plan.t + millis + rest + reserve > span) break
-            // Along a roof's ridge or over the moss it may wander; on a rim, a rail, a seat or a leaf, only shuffle.
-            val r = if (spot.kind == PerchKind.ROOF || spot.kind == PerchKind.MOSS) manner.hostReach else minOf(manner.hostReach, PERCH_REACH)
+            if (ridge != null) {
+                // On a roof, hop along its ridge only (between the roof's points), to the other half of
+                // it from where it stands, so that each hop shows and it never steps off into the air.
+                val (a, b) = ridge
+                val dx = b.x - a.x
+                val dy = b.y - a.y
+                val here = (((plan.x - a.x) * dx + (plan.y - a.y) * dy) / (dx * dx + dy * dy)).coerceIn(0f, 1f)
+                val t = if (here < 0.5f) 0.5f + random.nextFloat() * 0.5f else random.nextFloat() * 0.5f
+                plan.stepTo(a.x + dx * t, a.y + dy * t, millis)
+                plan.standFor(rest)
+                continue
+            }
+            // Over the moss it may wander; on a rim, a rail, a seat or a leaf, only shuffle.
+            val r = if (spot.kind == PerchKind.MOSS) manner.hostReach else minOf(manner.hostReach, PERCH_REACH)
             plan.stepTo(homeX + random.nextFloat() * 2f * r - r, homeY + random.nextFloat() * 2f * r - r, millis)
             plan.standFor(rest)
         }

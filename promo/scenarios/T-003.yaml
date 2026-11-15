@@ -13,8 +13,8 @@ camera: { zoom: 1.6, center: [5,4] }
 timeline:
   - { at: 0.0, day_label: "お客さん図鑑 ことり\n春・朝" }
   - { at: 0.0, camera: { zoom: 2.2, center: [5,3.5], over: 3.0 } }
-  # land_on のマスにコテージがあると、ゲームと同じ棟の点（コテージの左上から (1.4〜2.0, 1.5)、高さ 1.75）に止まる
-  - { at: 5.5, creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,3]], stay: 8.0 } }
-  # ことりの止まる点（棟の 2 点の真ん中、高さは棟）を画面の中央に。屋根と空が入る寄り
-  - { at: 5.7, camera: { zoom: 3.5, center: [5.2,3,1.75], over: 2.0 } }
-  - { at: 15.0, end: true }
+  # 棟に止まり（ゲームと同じ点、高さ 1.75）、棟の上をちょんちょんと横に動いて向きを変え、飛び立つ
+  - { at: 5.5, creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,3]], stay: 6.0 } }
+  - { at: 5.7, camera: { zoom: 5.0, center: [5.2,3,1.75], over: 2.0 } }   # ことりを画面の中央に
+  - { at: 11.6, camera: { zoom: 3.0, center: [5.2,3,1.75], over: 1.0 } }  # 飛び立つ先が見えるよう少し引く
+  - { at: 14.5, end: true }                                                # 画面の外に出て 0.5 秒後

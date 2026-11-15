@@ -3,6 +3,10 @@ package com.studioguu.miniaturegarden.promo
 import androidx.compose.foundation.Canvas
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
+import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -114,20 +118,34 @@ fun PromoScene(
             }
         }
         scene.dayLabel?.let { label ->
-            // Two lines at most: the first large, the second (after a line break) smaller under it.
+            // A board in the app's own colours (parchment, dark ink), not the captions' look: the
+            // first line large, the second (after a line break) smaller under it. When only the
+            // second line changes, it cross-fades.
             val first = label.substringBefore(NEWLINE)
             val second = label.substringAfter(NEWLINE, "").takeIf { it.isNotBlank() }
-            val shadow = Shadow(Color(0xCC3E2A14), Offset(0f, 3f), blurRadius = 10f)
+            val before = scene.dayLabelBefore?.substringAfter(NEWLINE, "")?.takeIf { it.isNotBlank() }
+            val board = RoundedCornerShape(14.dp)
             // Below the very top (TikTok's own row) and clear of its right-hand buttons.
             Column(
                 Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 28.dp, top = 120.dp)
-                    .graphicsLayer { alpha = scene.dayLabelAlpha },
+                    .padding(start = 24.dp, top = 112.dp)
+                    .graphicsLayer { alpha = scene.dayLabelAlpha }
+                    .shadow(6.dp, board)
+                    .background(GardenColors.Parchment, board)
+                    .border(2.dp, GardenColors.WoodLight, board)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
-                Text(first, style = TextStyle(color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, shadow = shadow))
-                if (second != null) {
-                    Text(second, style = TextStyle(color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, shadow = shadow))
+                Text(first, style = TextStyle(color = GardenColors.Ink, fontSize = 36.sp, fontWeight = FontWeight.Bold))
+                if (second != null || before != null) {
+                    Box {
+                        before?.let {
+                            Text(it, Modifier.graphicsLayer { alpha = 1f - scene.dayLabelSwap }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold))
+                        }
+                        second?.let {
+                            Text(it, Modifier.graphicsLayer { alpha = scene.dayLabelSwap }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold))
+                        }
+                    }
                 }
             }
         }
