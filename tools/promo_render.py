@@ -5,7 +5,9 @@
 In:  build/promo/<id>/frame_*.png and cues.json (tools/promo_shoot.py),
      promo/scenarios/<id>.yaml (name, hook_from_end), promo/captions/<id>.yaml, promo/outro.yaml.
 Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
-     docs/promo/tiktok/<id>_sheet.jpg (one frame a second, with the time under each).
+     docs/promo/tiktok/<id>_sheet.jpg (one frame a second, with the time under each),
+     both then copied to Google Drive, PocketGarden_Docs/promo/tiktok (rclone's "gdrive" remote,
+     as tools/sync_docs_to_drive.ps1; --no-sync to skip).
 
 1. The last [hook_from_end] seconds go first too, if asked (0, none, unless the script says).
 2. The frames become the video.
@@ -143,6 +145,34 @@ def outro_png(last_frame, outro, path):
         draw.text((centre - (b[2] - b[0]) // 2 - b[0], y - b[1]), line, font=small, fill="white", stroke_width=7, stroke_fill=(52, 36, 20))
         y += b[3] - b[1] + 34
     base.save(path)
+
+
+DRIVE_FOLDER = "gdrive:PocketGarden_Docs/promo/tiktok"
+
+
+def rclone_exe():
+    found = shutil.which("rclone")
+    if found:
+        return found
+    packages = pathlib.Path.home() / "AppData/Local/Microsoft/WinGet/Packages"
+    return next((str(p) for p in packages.glob("Rclone.Rclone*/*/rclone.exe")), None)
+
+
+def sync_to_drive(files):
+    """Copies [files] to DRIVE_FOLDER (changed ones only) and checks them there."""
+    rclone = rclone_exe()
+    if not rclone:
+        print("  warning: rclone not found; not copied to Drive (winget install --id Rclone.Rclone -e)")
+        return
+    folder = files[0].parent
+    names = [arg for f in files for arg in ("--include", f.name)]
+    for verb in (["copy", "--checksum"], ["check", "--one-way"]):
+        result = subprocess.run([rclone, verb[0], str(folder), DRIVE_FOLDER, *names, *verb[1:]],
+                                capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if result.returncode != 0:
+            print(f"  warning: rclone {verb[0]} failed; not on Drive: " + result.stderr.strip())
+            return
+    print(f"  on Drive: {DRIVE_FOLDER}/ ({', '.join(f.name for f in files)})")
 
 
 def run_ffmpeg(args, stdin=None):
@@ -308,6 +338,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("id")
     ap.add_argument("--crf", type=int, default=21)
+    ap.add_argument("--no-sync", action="store_true", help="do not copy the results to Google Drive")
     args = ap.parse_args()
 
     recorded = ROOT / "build/promo" / args.id
@@ -395,6 +426,8 @@ def main():
         print(f"  warning: true peak over {PEAK_CEILING_DB} dB; lower LIMIT_DB")
     if size > 15:
         print("  warning: over 15 MB; try a larger --crf")
+    if not args.no_sync:
+        sync_to_drive([target, sheet])
 
 
 if __name__ == "__main__":

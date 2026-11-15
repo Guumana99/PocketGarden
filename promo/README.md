@@ -167,3 +167,4 @@ bgm_start: 4.0            # 曲の何秒から使うか
 `docs/promo/tiktok/<id>_<name>.mp4`（1080×1920、30fps、H.264＋AAC 128kbps。BGM は指定したときだけ）と、
 1 秒ごとの切り抜き一覧 `docs/promo/tiktok/<id>_sheet.jpg`。15MB を超えたら `--crf` を大きくする。
 書き出した画像（`build/promo/`）は Git に入れない。
+書き出すたびに、mp4 と切り抜き一覧を Google ドライブの `PocketGarden_Docs/promo/tiktok/` にもコピーする（rclone の `gdrive`。`tools/sync_docs_to_drive.ps1` と同じ設定。`--no-sync` で止める）。`sync_docs_to_drive.ps1` も、このフォルダの mp4・jpg を一緒に送る。
