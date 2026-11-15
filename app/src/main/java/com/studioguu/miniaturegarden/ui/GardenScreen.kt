@@ -79,6 +79,7 @@ import com.studioguu.miniaturegarden.domain.model.GardenFeature
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
+import com.studioguu.miniaturegarden.domain.model.GreenhouseDoor
 import com.studioguu.miniaturegarden.domain.model.TutorialTool
 import com.studioguu.miniaturegarden.domain.usecase.GardenLayout
 import com.studioguu.miniaturegarden.domain.model.InventoryFilter
@@ -614,7 +615,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 onMove = viewModel::startMovingSelected,
                                 onDismiss = viewModel::clearSelection,
                                 onFlip = viewModel::flipSelected,
-                                canTurnDoor = editMode && gridObjects.any { glass -> glass.isGreenhouse && glass.gridX == it.gridX && glass.gridY == it.gridY },
+                                // FB1114b2: as a building turns, from its own panel; in the editor from what grows in it too.
+                                canTurnDoor = (editMode || it.isGreenhouse) && GreenhouseDoor.canTurnAt(it.gridX, it.gridY, gridObjects),
                                 onTurnDoor = viewModel::turnGreenhouseDoor,
                                 onPaint = { paintingBuilding = true },
                                 modifier = Modifier.fillMaxWidth(),

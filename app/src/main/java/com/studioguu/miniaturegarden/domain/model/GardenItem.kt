@@ -314,11 +314,12 @@ enum class GardenItem(
     /**
      * One cell of a glass greenhouse over a bed of soil; cells side by side are one greenhouse
      * (GreenhouseLayout). Seeds go into it as into tilled soil, and whatever the season.
-     * Paving-like: it lies in the cell's floor layer.
+     * Paving-like: it lies in the cell's floor layer. FB1114b2: it goes up over a while, as the
+     * other buildings do, a cell at a time.
      */
     FLOOR_GREENHOUSE(
         "floor_greenhouse", price = 1500, objectId = GridObject.GREENHOUSE_OBJECT_ID, category = ItemCategory.STRUCTURE,
-        unlock = UnlockCondition.PlayerLevel(18), placeXp = 40,
+        unlock = UnlockCondition.PlayerLevel(18), placeXp = 40, buildSeconds = 10 * MINUTE,
     ),
 
     /** The other kinds of rock: the shop keeps them with the first ([ROCK_KINDS]), under "石". */

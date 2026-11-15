@@ -165,8 +165,13 @@ object TapTargets {
     /** How tall the work site of [obj] is on screen: what its scaffolding reaches. */
     fun workSiteHeight(obj: GridObject, transform: IsometricTransform): Float {
         val structure = StructureData.fromObjectId(obj.objectId)
-        // A fence's site is a small box the height of a quarter tile's width.
-        return if (structure == null) transform.tileWidth * 0.24f else workSiteSteps(structure) * transform.heightStep
+        // A greenhouse's is as tall as its walls (FB1114b2); a fence's a small box the height of a
+        // quarter tile's width.
+        return when {
+            obj.isGreenhouse -> transform.tileWidth * GreenhouseLook.WALL_HEIGHT
+            structure == null -> transform.tileWidth * 0.24f
+            else -> workSiteSteps(structure) * transform.heightStep
+        }
     }
 
     /** The radius of the "✨ ！" bubble over a finished work site, in tile widths. */

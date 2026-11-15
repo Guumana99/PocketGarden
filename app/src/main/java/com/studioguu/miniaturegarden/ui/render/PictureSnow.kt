@@ -32,10 +32,13 @@ object PictureSnow {
 
     /**
      * The well's roof as measured on its picture (the outline kept for the old cover stopped a
-     * course of tiles short of the low edge): shares of its width and height.
+     * course of tiles short of the low edge): shares of its width and height. FB1114b2: only its
+     * tiles, from the left end of the ridge to the corner tile at the bottom; the outline before
+     * took in the far face's end, the beam and the post on the left, and the snow stood out there.
      */
     val WELL_ROOF: List<Pair<Float, Float>> = listOf(
-        0.023f to 0.243f, 0.614f to 0.012f, 0.795f to 0.209f, 0.801f to 0.238f, 0.392f to 0.370f, 0.242f to 0.348f,
+        0.165f to 0.156f, 0.614f to 0.010f, 0.801f to 0.212f, 0.795f to 0.239f, 0.466f to 0.352f,
+        0.392f to 0.368f, 0.341f to 0.326f, 0.270f to 0.287f, 0.182f to 0.199f,
     )
 
     /** How much a light dusting is at its most, for each small thing (#fb-1113 5: less than a roof). */

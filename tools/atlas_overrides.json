@@ -53,6 +53,6 @@
   "deco_scarecrow": {"anchorX": 0.5146, "anchorY": 0.9992},
   "deco_birdbath": {"anchorX": 0.4986, "anchorY": 0.8913},
   "plant_kabu_stage2": {"anchorX": 0.4883, "anchorY": 0.9988, "isFlippedAllowed": true},
-  "plant_kabu_stage3": {"anchorX": 0.4863, "anchorY": 0.9988, "isFlippedAllowed": true},
-  "plant_kabu_withered": {"anchorX": 0.4337, "anchorY": 0.9988, "isFlippedAllowed": true}
+  "plant_kabu_stage3": {"anchorX": 0.4863, "anchorY": 0.9989, "isFlippedAllowed": true},
+  "plant_kabu_withered": {"anchorX": 0.4354, "anchorY": 0.9988, "isFlippedAllowed": true}
 }

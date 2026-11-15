@@ -482,7 +482,7 @@ object CreatureRoutes {
     ): Pair<Float, Float>? {
         repeat(NEARBY_TRIES) {
             val angle = random.nextDouble() * 2 * PI
-            val reach = scale * (manner.stride.start + random.nextFloat() * (manner.stride.endInclusive - manner.stride.start))
+            val reach = (scale * (manner.stride.start + random.nextFloat() * (manner.stride.endInclusive - manner.stride.start))).coerceAtMost(manner.longest)
             val x = plan.x + cos(angle).toFloat() * reach
             val y = plan.y + sin(angle).toFloat() * reach
             if (isClearWay(plan.x, plan.y, x, y, region) && isClearOf(x, y, footings)) return x to y
@@ -983,6 +983,8 @@ internal class Manner(
     val firstRest: LongRange = 900L..1600L,
     val roam: Int = 2,
     val stride: ClosedFloatingPointRange<Float> = 0.4f..1f,
+    /** The furthest it goes in one go, in cells, whatever its mood (FB1114b2: the rabbit). */
+    val longest: Float = Float.MAX_VALUE,
     val lookChance: Float = 0f,
     val turnChance: Float = 0f,
     val hostStepMillis: Long = 600L,
@@ -1012,8 +1014,17 @@ internal class Manner(
             stepMillis = 220L, rest = 900L..2600L, flySpeed = 4f, reach = 1.4f, perch = 2500L..6500L, flightsBetweenPerches = 3..6, darts = true,
         )
 
-        /** #book60: hops about further than the squirrel, and sits up a while between. */
-        private val RABBIT = Manner(stepMillis = 520L, rest = 1800L..5200L, roam = 3, stride = 0.6f..1.6f, lookChance = 0.55f, turnChance = 0.3f)
+        /**
+         * #book60: hops about, and sits up a while between. FB1114b2: a cell at a time at most (it
+         * went up to three in one go, in hops a cell and a half long, like the frog's leaps).
+         */
+        private val RABBIT = Manner(
+            stepMillis = 520L, rest = 1800L..5200L, roam = 3, stride = 0.5f..1f, longest = RABBIT_LONGEST,
+            lookChance = 0.55f, turnChance = 0.3f,
+        )
+
+        /** The furthest the rabbit goes in one go, in cells (FB1114b2). */
+        const val RABBIT_LONGEST = 1f
 
         /** #book60: creeps, very slowly, a little way over its leaf or its moss. */
         private val SNAIL = Manner(

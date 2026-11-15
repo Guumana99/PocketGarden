@@ -69,8 +69,8 @@ fun DrawScope.drawSpriteSnow(pages: AtlasPages, asset: AssetManifest, anchor: Of
     drawSpriteSnow(pages[asset], asset, anchor, scale, lean, flipped)
 
 /** [drawSpriteShadow] from the page of [pages] that [asset] is on. */
-fun DrawScope.drawSpriteShadow(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, light: SunLight, flipped: Boolean = false) =
-    drawSpriteShadow(pages[asset], asset, anchor, scale, light, flipped)
+fun DrawScope.drawSpriteShadow(pages: AtlasPages, asset: AssetManifest, anchor: Offset, scale: Float, light: SunLight, flipped: Boolean = false, softFoot: Boolean = false) =
+    drawSpriteShadow(pages[asset], asset, anchor, scale, light, flipped, softFoot)
 
 /**
  * Draws one atlas sprite so that its anchor point lands on [anchor].
@@ -339,6 +339,7 @@ fun DrawScope.drawSpriteShadow(
     scale: Float,
     light: SunLight,
     flipped: Boolean = false,
+    softFoot: Boolean = false,
 ) {
     if (light.alpha <= 0f) return
     val rowsAboveAnchor = (asset.anchorY * asset.height).roundToInt().coerceIn(1, asset.height)
@@ -356,15 +357,47 @@ fun DrawScope.drawSpriteShadow(
         transform(shearAbout(anchor, light.dx, light.dy))
         scale(scaleX = mirror, scaleY = 1f, pivot = anchor)
     }) {
-        drawImage(
-            image = atlasImage,
-            srcOffset = IntOffset(asset.atlasX, asset.atlasY),
-            srcSize = IntSize(asset.width, rowsAboveAnchor),
-            dstOffset = dstOffset,
-            dstSize = dstSize,
-            alpha = light.alpha,
-            colorFilter = ColorFilter.tint(Color.Black, BlendMode.SrcIn),
-            filterQuality = FilterQuality.Low,
-        )
+        val shadow = {
+            drawImage(
+                image = atlasImage,
+                srcOffset = IntOffset(asset.atlasX, asset.atlasY),
+                srcSize = IntSize(asset.width, rowsAboveAnchor),
+                dstOffset = dstOffset,
+                dstSize = dstSize,
+                alpha = light.alpha,
+                colorFilter = ColorFilter.tint(Color.Black, BlendMode.SrcIn),
+                filterQuality = FilterQuality.Low,
+            )
+        }
+        if (!softFoot) {
+            shadow()
+        } else {
+            // FB1114b2: a crop whose leaves spread out below where it stands (the hakusai) was
+            // cut off along that row, a straight edge as wide as the plant: it fades out there instead.
+            val area = Rect(dstOffset.x.toFloat(), dstOffset.y.toFloat(), (dstOffset.x + dstSize.width).toFloat(), anchor.y)
+            drawContext.canvas.saveLayer(area, Paint())
+            shadow()
+            drawRect(
+                brush = Brush.verticalGradient(
+                    (1f - SOFT_FOOT_SHARE) to Color.Black,
+                    1f to Color.Transparent,
+                    startY = area.top,
+                    endY = area.bottom,
+                ),
+                topLeft = area.topLeft,
+                size = area.size,
+                blendMode = BlendMode.DstIn,
+            )
+            drawContext.canvas.restore()
+        }
     }
 }
+
+/** How much of a soft-footed shadow ([drawSpriteShadow]), from its foot up, fades out. */
+const val SOFT_FOOT_SHARE = 0.45f
+
+/**
+ * Whether a crop's picture stands on a point well inside it ([AssetManifest.anchorY] under this),
+ * its leaves spreading out below: its shadow is softened at its foot ([drawSpriteShadow]).
+ */
+const val SOFT_FOOT_BELOW = 0.9f

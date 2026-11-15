@@ -108,6 +108,7 @@ import com.studioguu.miniaturegarden.ui.render.GardenClip
 import com.studioguu.miniaturegarden.ui.render.FootprintOrder
 import com.studioguu.miniaturegarden.ui.render.LayerPipeline
 import com.studioguu.miniaturegarden.ui.render.PictureSnow
+import com.studioguu.miniaturegarden.ui.render.SOFT_FOOT_BELOW
 import com.studioguu.miniaturegarden.ui.render.RenderCommand
 import com.studioguu.miniaturegarden.ui.render.RenderLayer
 import com.studioguu.miniaturegarden.ui.render.AtlasPages
@@ -640,7 +641,19 @@ fun GardenCanvas(
             val tint = SceneTint.at(hour, season)
             if (tint.alpha > 0f) drawRect(tint)
             val lamps = SceneTint.lampsAt(hour, season)
-            if (lamps > 0f) drawLamps(gridObjects, transform, atlas, spriteScale, lamps, drawn, clip)
+            if (lamps > 0f) {
+                drawLamps(gridObjects, transform, atlas, spriteScale, lamps, drawn, clip) { obj, base ->
+                    // FB1114b2: the windmill's sails turn in front of its lit windows.
+                    if (obj.objectId == WindmillSails.MILL_OBJECT_ID) {
+                        val sails = atlas[WindmillSails.SAILS_ASSET_ID]
+                        val hub = atlas[obj.objectId]?.attachmentAt(base.x, base.y, spriteScale, obj.isFlipped)
+                        if (sails != null && hub != null && atlasImage != null) {
+                            val angle = WindmillSails.angleAt(ambience.windMillis, ambience.weather, obj.gridX, obj.gridY)
+                            drawSpriteOnWall(atlasImage, sails, Offset(hub.first, hub.second), spriteScale, angle, flipped = obj.isFlipped)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -827,6 +840,11 @@ private fun submitObjects(
                     }
                 }
             }
+            // A cell of greenhouse going up: its work site, one to the cell (FB1114b2).
+            if (obj.isGreenhouse && obj.isWorking) {
+                submit(obj, RenderLayer.GRID_OBJECTS, LayerPipeline.depthOf(obj.gridX, obj.gridY, 0)) {}
+                continue
+            }
             // The glass house of a greenhouse bed goes over whatever grows in it.
             if (obj.isGreenhouse && atlasImage != null) {
                 // Far walls, then what grows in the cell, then the near walls and the roof (see GreenhouseLook).
@@ -943,6 +961,9 @@ private fun submitObjects(
                 if (mossGrowth >= 1f) {
                     drawGroundTexture(cover, transform, obj.gridX, obj.gridY)
                 } else {
+                    // FB1114b2: from the moment it is laid, a bed of damp, dark earth, as a lawn
+                    // sown has, so that it shows where it is; the moss spreads over it.
+                    drawPath(transform.tilePath(obj.gridX, obj.gridY), MOSS_BED)
                     drawGroundTexture(cover, transform, obj.gridX, obj.gridY, mask = { canvas, cell -> drawMossMask(canvas, cell, obj.gridX, obj.gridY, mossGrowth) })
                 }
             }
@@ -960,8 +981,6 @@ private fun submitObjects(
             val post = run.postSpriteId?.let { atlas[it] }
             val rail = atlas[run.railSpriteId]
             val alone = mask == 0 && whole != null && atlasImage != null
-            val onLawn = ambience.bareGround == BareGround.LAWN || grid.lawnAt(obj.gridX, obj.gridY) != null
-            val grassy = run.isFence && grid.floorAt(obj.gridX, obj.gridY) == null && onLawn
             // A thin thing on open ground: darker at its foot than something broad, or it floats.
             val fenceLight = light.copy(alpha = light.alpha * FENCE_SHADOW_GAIN)
             // The wood and the bamboo are the colours of the ground: theirs reaches further out.
@@ -992,8 +1011,8 @@ private fun submitObjects(
                     val railTop = EdgeSnow.railTop(run)?.takeIf { ambience.edgeSnow > 0f }
                     submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.RAIL_DEPTH) {
                         drawRunPiece(atlasImage, rail, base, next, spriteScale, mirrored)
-                        // Snow along the top of the rail, from post to post.
-                        if (railTop != null) with(EdgeSnow) { drawBand(listOf(base, next).map { it - Offset(0f, railTop * unit) }, unit, ambience.edgeSnow, seed = obj.gridX * 3 + obj.gridY * 11) }
+                        // Snow along the top of the rail, from post to post: soft and patchy (FB1114b2).
+                        if (railTop != null) with(EdgeSnow) { drawSoftBand(listOf(base, next).map { it - Offset(0f, railTop * unit) }, unit, ambience.edgeSnow, seed = obj.gridX * 3 + obj.gridY * 11) }
                     }
                 }
             }
@@ -1005,20 +1024,19 @@ private fun submitObjects(
                 } else if (run.hasPosts) {
                     drawPlaceholder(obj, base, unit)
                 }
-                // Snow on its top: along the whole of one alone, a cap on a post.
+                // Snow on its top: along the whole of one alone, a cap on a post; soft and patchy
+                // (FB1114b2: the band drawn before read as a line drawn with a pen).
                 if (ambience.edgeSnow > 0f && !obj.isWorking && run.isFence) with(EdgeSnow) {
                     val aloneTop = EdgeSnow.aloneTop(run)
                     if (alone && aloneTop != null) {
                         val (half, top) = aloneTop
-                        drawBand(listOf(base + Offset(-half * unit, -top * unit), base + Offset(half * unit, -top * unit)), unit, ambience.edgeSnow)
+                        drawSoftBand(listOf(base + Offset(-half * unit, -top * unit), base + Offset(half * unit, -top * unit)), unit, ambience.edgeSnow, seed = obj.gridX * 5 + obj.gridY)
                     } else if (!alone && post != null) {
                         val cap = base - Offset(0f, EdgeSnow.POST_TOP * unit)
                         // A small mound on the post's head, wider than the post is, as snow sits.
-                        drawBand(listOf(cap - Offset(unit * POST_CAP_HALF, 0f), cap + Offset(unit * POST_CAP_HALF, 0f)), unit, ambience.edgeSnow, seed = obj.gridX * 5 + obj.gridY)
+                        drawSoftBand(listOf(cap - Offset(unit * POST_CAP_HALF, 0f), cap + Offset(unit * POST_CAP_HALF, 0f)), unit, ambience.edgeSnow, seed = obj.gridX * 5 + obj.gridY)
                     }
                 }
-                // Grass at its foot on open lawn, and on a lawn sown under it (#55).
-                if (grassy && !portrait) drawGrassAtFoot(base, unit, unit * (if (alone) 0.28f else 0.07f), sway, seed = obj.gridX * 31 + obj.gridY * 17)
             }
             continue
         }
@@ -1028,7 +1046,7 @@ private fun submitObjects(
             submit(obj, RenderLayer.SHADOWS, depth) {
                 if (sprite != null && atlasImage != null) {
                     drawContactShadow(base, min(sprite.drawnWidth(thingScale) * 0.62f, unit * 0.7f))
-                    drawSpriteShadow(atlasImage, sprite, base, thingScale, light, flipped = obj.isFlipped)
+                    drawSpriteShadow(atlasImage, sprite, base, thingScale, light, flipped = obj.isFlipped, softFoot = obj.isPlant && sprite.anchorY < SOFT_FOOT_BELOW)
                 } else if (structure != null) {
                     drawStructureShadow(transform, obj, structure, light)
                 } else {
@@ -3120,6 +3138,9 @@ private fun lawnBladesPath(transform: IsometricTransform, x: Int, y: Int, growth
     return path
 }
 
+/** Damp, dark earth under moss coming in (FB1114b2): a little darker than a lawn's seedbed. */
+private val MOSS_BED = Color(0xEA463A2A)
+
 /** Raked, damp earth under a lawn coming up: darker than the pale, dry wasteland, so a sown cell shows. */
 private val LAWN_SEEDBED = Color(0xE85A4630)
 
@@ -3296,6 +3317,8 @@ private fun DrawScope.drawLamps(
     strength: Float,
     drawn: List<RenderCommand> = emptyList(),
     clip: GardenClip? = null,
+    /** Draws what of [obj] itself (standing on its foot, the second argument) stands in front of its lights. */
+    ownFront: DrawScope.(obj: GridObject, base: Offset) -> Unit = { _, _ -> },
 ) {
     for (obj in objects) {
         if (obj.isWorking) continue
@@ -3335,11 +3358,10 @@ private fun DrawScope.drawLamps(
                 drawLightPool(Offset(pane.center.x, base.y), pool, strength * 0.8f)
                 drawGlow(pane, strength)
             }
-            if (inFront.isNotEmpty()) {
-                canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.DstOut })
-                for (command in inFront) LayerPipeline.draw(this, command, clip)
-                canvas.restore()
-            }
+            canvas.saveLayer(bounds, Paint().apply { blendMode = BlendMode.DstOut })
+            for (command in inFront) LayerPipeline.draw(this, command, clip)
+            ownFront(obj, base)
+            canvas.restore()
             canvas.restore()
         }
     }

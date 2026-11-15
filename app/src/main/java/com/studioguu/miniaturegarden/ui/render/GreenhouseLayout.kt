@@ -123,7 +123,8 @@ class GreenhouseLayout private constructor(
          * door can go ([GreenhouseDoor]).
          */
         fun of(objects: List<GridObject>, isInside: (Int, Int) -> Boolean): GreenhouseLayout {
-            val cells = objects.filter { it.isGreenhouse }.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) }
+            // A cell still going up is a work site, not yet part of a greenhouse (FB1114b2).
+            val cells = objects.filter { it.isGreenhouse && !it.isWorking }.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) }
             return of(cells, isInside) { group -> GreenhouseDoor.chosenIn(group, objects) }
         }
 

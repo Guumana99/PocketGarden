@@ -8,6 +8,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import com.studioguu.miniaturegarden.domain.model.RunKind
 import com.studioguu.miniaturegarden.domain.model.StructureData
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
@@ -239,6 +243,78 @@ object EdgeSnow {
         }
         drawPath(ridge, SNOW_LIGHT.copy(alpha = 0.75f * depth), style = Stroke(thick * 0.3f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
+
+    /**
+     * FB1114b2: the snow on the fences, as [drawBand] lays it but soft and patchy, like the snow
+     * read off the roofs and the benches (the band drawn along a rail read as a white line drawn
+     * with a pen): its height wanders a good deal along it and comes down to little here and there;
+     * its edges are blurred; it is lit white on top and goes blue-grey towards its foot; its shadow
+     * under it is blurred too.
+     */
+    fun DrawScope.drawSoftBand(points: List<Offset>, unit: Float, depth: Float, seed: Int = 0) {
+        if (depth <= 0f || points.size < 2) return
+        val thick = unit * BAND_WIDTH * (0.4f + 0.6f * depth)
+        val samples = sample(points, unit * LUMP_SPACING * 0.6f)
+        val total = samples.last().second
+        val tops = ArrayList<Offset>(samples.size)
+        val bottoms = ArrayList<Offset>(samples.size)
+        samples.forEachIndexed { i, (p, along) ->
+            val fromEnd = minOf(along, total - along)
+            val end = kotlin.math.sqrt((fromEnd / (thick * 1.3f)).coerceIn(0f, 1f))
+            // Lumps, and wider stretches where it lies thin: patchy, not a line.
+            val lump = 0.7f + 0.5f * noise(i + seed)
+            val k = i / PATCH_SAMPLES
+            val t = (i % PATCH_SAMPLES) / PATCH_SAMPLES.toFloat()
+            val wide = noise(k + seed * 3 + 101) * (1f - t) + noise(k + 1 + seed * 3 + 101) * t
+            val patch = 0.35f + 0.65f * smooth((wide * 1.4f - 0.2f).coerceIn(0f, 1f))
+            tops += p - Offset(0f, thick * lump * patch * end)
+            bottoms += p + Offset(0f, thick * 0.3f * end)
+        }
+        val body = Path().apply {
+            moveTo(tops[0].x, tops[0].y)
+            for (i in 1 until tops.size) {
+                val mid = (tops[i - 1] + tops[i]) / 2f
+                quadraticTo(tops[i - 1].x, tops[i - 1].y, mid.x, mid.y)
+            }
+            lineTo(tops.last().x, tops.last().y)
+            for (i in bottoms.indices.reversed()) lineTo(bottoms[i].x, bottoms[i].y)
+            close()
+        }
+        val top = tops.minOf { it.y }
+        val foot = bottoms.maxOf { it.y }
+        drawIntoCanvas { canvas ->
+            val native = canvas.nativeCanvas
+            val path = body.asAndroidPath()
+            // Its shadow on what it lies on, soft.
+            val shade = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = SNOW_SHADE.copy(alpha = 0.45f * depth).toArgb()
+                maskFilter = android.graphics.BlurMaskFilter(thick * 0.5f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            }
+            native.save()
+            native.translate(0f, thick * 0.45f)
+            native.drawPath(path, shade)
+            native.restore()
+            // The snow: white where it is lit on top, blue-grey towards its foot, its edges soft.
+            val snow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                shader = android.graphics.LinearGradient(
+                    0f, top, 0f, foot,
+                    intArrayOf(SNOW_LIGHT.copy(alpha = depth).toArgb(), SNOW.copy(alpha = 0.95f * depth).toArgb(), SNOW_FOOT.copy(alpha = 0.9f * depth).toArgb()),
+                    floatArrayOf(0f, 0.5f, 1f),
+                    android.graphics.Shader.TileMode.CLAMP,
+                )
+                maskFilter = android.graphics.BlurMaskFilter(thick * 0.22f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            }
+            native.drawPath(path, snow)
+        }
+    }
+
+    /** How many lumps along a fence's snow one stretch of thicker or thinner snow takes (FB1114b2). */
+    private const val PATCH_SAMPLES = 4
+
+    /** The foot of the snow on a fence, in its own shade (FB1114b2). */
+    private val SNOW_FOOT = Color(0xFFC4D0E2)
+
+    private fun smooth(t: Float) = t * t * (3f - 2f * t)
 
     /** Points along [line] about [step] apart (at least a few), each with how far along it is. */
     private fun sample(line: List<Offset>, step: Float): List<Pair<Offset, Float>> {
