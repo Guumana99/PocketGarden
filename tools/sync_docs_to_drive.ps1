@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Uploads the Markdown files in docs/ to the Google Drive folder PocketGarden_Docs.
+  Uploads the Markdown files in docs/ (and the promo videos in docs/promo/tiktok/) to the Google Drive folder PocketGarden_Docs.
 
 .DESCRIPTION
   Uses rclone and its "gdrive" remote. A file that changed locally replaces the one on Drive
@@ -47,7 +47,7 @@ if ($remotes -notcontains "${Remote}:") {
 }
 
 $verb = if ($Mirror) { "sync" } else { "copy" }
-$arguments = @($verb, "$docs", "${Remote}:$Folder", "--include", "*.md", "--checksum", "--stats-one-line", "-v")
+$arguments = @($verb, "$docs", "${Remote}:$Folder", "--include", "*.md", "--include", "/promo/tiktok/*.{mp4,jpg}", "--checksum", "--stats-one-line", "-v")
 if ($DryRun) { $arguments += "--dry-run" }
 
 Write-Host "Uploading $docs\*.md to ${Remote}:$Folder ($verb)"
@@ -55,4 +55,4 @@ Write-Host "Uploading $docs\*.md to ${Remote}:$Folder ($verb)"
 if ($LASTEXITCODE -ne 0) { throw "rclone $verb failed with exit code $LASTEXITCODE" }
 
 Write-Host "`nNow on Drive:"
-& $rclone lsl "${Remote}:$Folder" --include "*.md"
+& $rclone lsl "${Remote}:$Folder" --include "*.md" --include "/promo/tiktok/*.{mp4,jpg}"
