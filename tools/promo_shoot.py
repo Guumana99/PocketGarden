@@ -77,6 +77,9 @@ def main():
     print("pulling frames ...", flush=True)
     adb(args.serial, "pull", remote_out + "/.", str(local))
     print((local / "done").read_text().strip())
+    # The emulator's storage is small (a 20 s recording is about 0.7 GB): once the frames are
+    # here, they go from there.
+    adb(args.serial, "shell", "rm", "-rf", remote_out, check=False)
     print(f"frames in {local}")
 
 

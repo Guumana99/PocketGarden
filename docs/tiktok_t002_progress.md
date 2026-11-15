@@ -110,7 +110,12 @@
 - `docs/promo/tiktok/T-003_guest_bird.mp4`（16.1 秒、5.6MB、-14.0 LUFS・ピーク -3.4dBTP、効果音なし）、`T-003_sheet.jpg`。Drive 同期済み。
 - 棟の高さ 1.75 で、ことりは棟の瓦の上に乗って見える（`frames/T-003_bird_on_roof.jpg`・`_zoom.jpg`、11 秒）。画面のほぼ中央。3.5 倍の寄りなので、ことりは小さめ（約 60px）。
 
+## 5. T-004（済）
+
+- `docs/promo/tiktok/T-004_strawberry.mp4`（21.6 秒、6.2MB、-14.1 LUFS・ピーク -1.8dBTP）、`T-004_sheet.jpg`。Drive 同期済み。
+- 収穫：株は残って段階 2 に戻り、画面の真ん中に「+16 🪙」が浮かぶ（`frames/T-004_harvest.jpg`、16.7 秒）。水やり：タップの丸と音だけ、土の色は変わらない（`frames/T-004_water.jpg`、4.7 秒）。
+- 1 回目の撮影はエミュレーターの空き不足（`ENOSPC`）で 16 秒で落ちた。前の撮影の書き出しがエミュレーターに残っていたため。消して撮り直し、`promo_shoot.py` が取り込んだ後にエミュレーター側を消すようにした。
+
 ## 次にやること
 
-T-004 の順に `python tools/promo_shoot.py T-00x --install`（1 本目だけ --install）→ `python tools/promo_render.py T-00x` → 切り抜きで確認。
-報告用のコマ：札（2 行）・日記の締め・屋根の上のことり・水やり・収穫を 1 枚ずつ。最後に main へマージ・push・Drive。
+全部済み。main へマージ・push、docs の .md を Drive へ同期したら終わり。

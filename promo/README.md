@@ -42,6 +42,7 @@ adb -s emulator-5554 shell am start -n com.studioguu.miniaturegarden.promo/com.s
 
 adb でアプリのフォルダーにファイルを置く方法は使わない（そのファイルとフォルダーはシェルの持ち物になり、アプリが読めない・書けないことがある）。
 書き出し先は `/sdcard/Android/data/com.studioguu.miniaturegarden.promo/files/promo/out/<id>/`（`frame_00000.png` …、`cues.json`、最後に `done`）。失敗したときは `files/promo/error.txt`。
+PC に取り込んだら、エミュレーター側の `out/<id>/` は消す（エミュレーターの空きは少なく、20 秒の撮影で約 0.7GB。残っていると次の撮影の途中で `ENOSPC` で落ちる）。
 Git Bash から adb に `/sdcard/...` を渡すときは `MSYS_NO_PATHCONV=1` を付ける（付けないと Windows のパスに書き換わる）。
 
 ## 台本の書き方（`promo/scenarios/<id>.yaml`）
