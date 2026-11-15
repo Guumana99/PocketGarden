@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -130,7 +131,18 @@ fun PromoScene(
                 Modifier
                     .align(Alignment.TopStart)
                     .padding(start = 24.dp, top = 112.dp)
-                    .graphicsLayer { alpha = scene.dayLabelAlpha }
+                    // Full size at first and when its second line changes; otherwise 70 %, a little
+                    // faint (0.75) and drawn into the corner, so as not to take the eye.
+                    .graphicsLayer {
+                        val full = scene.dayLabelFull
+                        val scale = 0.7f + 0.3f * full
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = -12.dp.toPx() * (1f - full)
+                        translationY = -12.dp.toPx() * (1f - full)
+                        alpha = scene.dayLabelAlpha * (0.75f + 0.25f * full) * scene.dayLabelDim
+                    }
                     .shadow(6.dp, board)
                     .background(GardenColors.Parchment, board)
                     .border(2.dp, GardenColors.WoodLight, board)

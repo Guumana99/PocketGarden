@@ -14,6 +14,9 @@ timeline:
   - { at: 0.0, day_label: "お客さん図鑑 ことり\n春・朝" }
   - { at: 0.0, camera: { zoom: 2.2, center: [5,3.5], over: 3.0 } }
   # 棟に止まり（ゲームと同じ点、高さ 1.75）、棟の上をちょんちょんと横に動いて向きを変え、飛び立つ
+  # ことりは左の端（札の少し下）から入り、札のすぐ下をかすめて屋根へ来る：そのあいだ札を薄く
+  - { at: 3.7, label_opacity: { to: 0.3, over: 0.3 } }
+  - { at: 5.4, label_opacity: { to: 1.0, over: 0.4 } }
   - { at: 5.5, creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,3]], stay: 9.0 } }   # 9 秒：棟の上を 1〜2 回跳ねる時間
   - { at: 5.7, camera: { zoom: 5.0, center: [5.2,3,1.75], over: 2.0 } }   # ことりを画面の中央に
   - { at: 14.9, camera: { zoom: 3.0, center: [5.2,3,1.75], over: 1.0 } }  # 飛び立つ（約 15.4 秒）先が見えるよう少し引く
