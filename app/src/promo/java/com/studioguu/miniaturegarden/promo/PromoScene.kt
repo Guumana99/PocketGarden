@@ -63,7 +63,7 @@ fun PromoScene(
     val density = LocalDensity.current
     val view = PromoCamera.view(scene.zoom, scene.center, map.size, viewport, density, scene.lift)
     Box(modifier.fillMaxSize()) {
-        GardenBackdrop(scene.weather, Modifier.fillMaxSize(), season = scene.season, hourOfDay = scene.hour)
+        if (scene.backdrop) GardenBackdrop(scene.weather, Modifier.fillMaxSize(), season = scene.season, hourOfDay = scene.hour)
         GardenCanvas(
             gridObjects = scene.objects,
             selectedTile = null,

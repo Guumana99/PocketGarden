@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
  *         --es bird struct_well               # a bird comes now to the well (or struct_cottage, onto its roof)
  *         --ez side_only true --ez skip_ad true   # only the buttons down the right edge; the cloud's rain without the ad
  *         --es garden thirsty                 # ... [ShowcaseGarden] with every crop half watered (all glint after a rain), with load
+ *         --es garden spring                  # ... [ShowcaseGarden] with spring's crops (tulips, strawberries, mint), with load
  *         --es garden tulips                  # ... [ShowcaseGarden] with a bed of tulips in bloom (ordinary colours), with load
  *         --es garden soilrow                 # ... [ShowcaseGarden.soilRow], three empty beds of each grade side by side, with load
  *         --es garden birdcrops               # ... [ShowcaseGarden.birdCrops], a well among tomatoes, with load
@@ -202,6 +203,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     garden == "birdcrops" -> ShowcaseGarden.birdCrops(now)
                     garden == "soilrow" -> ShowcaseGarden.soilRow(now)
                     garden == "thirsty" -> ShowcaseGarden.objects(now, thirsty = true, roof = roof, wall = wall)
+                    garden == "spring" -> ShowcaseGarden.objects(now, spring = true, roof = roof, wall = wall)
                     garden == "tulips" -> ShowcaseGarden.objects(now, tulipBed = true, roof = roof, wall = wall)
                     garden == "till" -> ShowcaseGarden.objects(now, bare = ShowcaseGarden.OPEN_ROW, roof = roof, wall = wall)
                     garden == "soil" -> ShowcaseGarden.objects(now, emptyBeds = ShowcaseGarden.OPEN_ROW.mapIndexed { i, cell -> cell to i }.toMap(), roof = roof, wall = wall)

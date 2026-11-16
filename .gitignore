@@ -23,7 +23,8 @@ build/
 *.ap_
 *.dex
 
-# Keystores
+# Keystores, and the upload key's passwords (app/build.gradle.kts)
+/keystore.properties
 *.jks
 *.keystore
 

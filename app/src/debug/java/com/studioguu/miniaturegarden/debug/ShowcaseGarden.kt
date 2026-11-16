@@ -60,6 +60,18 @@ object ShowcaseGarden {
     private fun growthOf(index: Int, cell: GridCell): Float =
         if (cell == BUTTERFLY_FLOWER) 1f else STAGES[index % STAGES.size]
 
+    /**
+     * The spring garden (`--es garden spring`, the store's pictures): the crops of other seasons
+     * swapped for what a new player grows in spring (tulips, strawberries, mint, carrots).
+     */
+    private val SPRING_CROPS = mapOf(
+        PlantSpecies.SUNFLOWER to PlantSpecies.TULIP,
+        PlantSpecies.TOMATO to PlantSpecies.STRAWBERRY,
+        PlantSpecies.COSMOS to PlantSpecies.TULIP,
+        PlantSpecies.DAIKON to PlantSpecies.MINT,
+        PlantSpecies.SNOWDROP to PlantSpecies.STRAWBERRY,
+    )
+
     private val PATHS: List<GridCell> = cells(3..3, 0..10) + cells(4..9, 3..3) + cells(4..9, 6..6)
 
     private val FENCES: List<GridCell> = cells(4..10, 0..0) + cells(10..10, 1..6) + cells(0..0, 4..8)
@@ -82,6 +94,7 @@ object ShowcaseGarden {
         wall: String? = null,
         tulipBed: Boolean = false,
         thirsty: Boolean = false,
+        spring: Boolean = false,
     ): List<GridObject> {
         fun at(cell: GridCell, objectId: String, growth: Float = 0f, flipped: Boolean = false) = GridObject(
             instanceId = "showcase_${objectId}_${cell.x}_${cell.y}",
@@ -98,8 +111,13 @@ object ShowcaseGarden {
             val cell = bedCell
             if (cell in bare || cell in emptyBeds) return@mapIndexedNotNull null
             // The tulip bed: the mint's row turned to tulips too, and every tulip open.
-            val species = if (tulipBed && bedSpecies == PlantSpecies.MINT) PlantSpecies.TULIP else bedSpecies
-            val growth = if (tulipBed && species == PlantSpecies.TULIP) 1f else growthOf(index, cell)
+            val species = when {
+                tulipBed && bedSpecies == PlantSpecies.MINT -> PlantSpecies.TULIP
+                spring -> SPRING_CROPS[bedSpecies] ?: bedSpecies
+                else -> bedSpecies
+            }
+            // The spring garden (store pictures): every flower open, the rest as usual.
+            val growth = if ((tulipBed || spring) && species == PlantSpecies.TULIP) 1f else growthOf(index, cell)
             at(cell, species.objectId, growth = growth, flipped = (cell.x * 3 + cell.y) % 2 == 0).let {
                 if (species == PlantSpecies.TULIP && growth >= 1f) it.copy(bloomColour = TULIP_COLOURS[(cell.x + cell.y) % TULIP_COLOURS.size]) else it
             }.let { if (thirsty) it.copy(moistureLevel = 0.5f) else it }

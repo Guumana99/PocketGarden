@@ -497,7 +497,8 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 SideButton("⚙️", stringResource(R.string.settings_title)) { showSettings = true }
                 if (BuildConfig.DEBUG && !sideOnly) {
                     SideButton("🛠", stringResource(R.string.debug_menu_title)) { showDebugMenu = true }
-                    if (debugZoom > 0f) DebugZoomReadout(debugZoom)
+                    // Not in the showcase's pictures (the store's screenshots show the game as a player sees it).
+                    if (debugZoom > 0f && showcase == null) DebugZoomReadout(debugZoom)
                 }
             }
 
