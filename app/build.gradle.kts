@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -15,6 +16,14 @@ plugins {
 val admobAppId = "ca-app-pub-3940256099942544~3347511713"
 val admobRewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
 
+// The upload key for Play (docs/release/README.md). keystore.properties sits at the project's root
+// and is never committed (.gitignore): storeFile, storePassword, keyAlias, keyPassword. Without it the
+// release build is simply left unsigned.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
+
 android {
     namespace = "com.studioguu.miniaturegarden"
     compileSdk = 35
@@ -30,8 +39,20 @@ android {
         buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", "\"$admobRewardedAdUnitId\"")
     }
 
+    signingConfigs {
+        if (keystoreProperties.getProperty("storeFile") != null) {
+            create("upload") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("upload")
             // R8 shrinks and obfuscates the release (2026-11-08); the mapping for Play Console is
             // build/outputs/mapping/release/mapping.txt. Unused resources go too.
             isMinifyEnabled = true

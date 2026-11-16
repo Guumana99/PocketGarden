@@ -155,15 +155,21 @@ class ScenarioPlayer(private val scenario: Scenario) {
             }
             "place" -> {
                 val objectId = cue.string("item") ?: return warn("place without item")
-                val cell = cue.element("at")?.let { Scenario.cellList(kotlinx.serialization.json.JsonArray(listOf(it))) }?.firstOrNull()
-                    ?: return warn("place without at")
-                // Made here, not when it is put down, so that a visitor can be sent to it (the bird to a roof).
-                steps += Place(at, GridObject(
-                    instanceId = "promo_obj_${placed++}", gridX = cell.x, gridY = cell.y, objectId = objectId,
-                    isFlipped = cue.bool("flip") ?: false, lastUpdatedTimestamp = baseMillis,
-                ))
-                taps += at to cell
-                sound("se_plant", at)
+                // One thing `at` a cell, or the same thing on each of `cells` / `area` (a lawn, a path).
+                val one = cue.element("at")?.let { Scenario.cellList(kotlinx.serialization.json.JsonArray(listOf(it))) }?.firstOrNull()
+                val cells = listOfNotNull(one) + cue.cells()
+                if (cells.isEmpty()) return warn("place without at")
+                for ((t, cell) in spread(cells, cue.overOr(0.0))) {
+                    // Made here, not when it is put down, so that a visitor can be sent to it (the bird to a roof).
+                    steps += Place(t, GridObject(
+                        instanceId = "promo_obj_${placed++}", gridX = cell.x, gridY = cell.y, objectId = objectId,
+                        isFlipped = cue.bool("flip") ?: false, lastUpdatedTimestamp = baseMillis,
+                        // Lawn is grown when it is put down, as the game's is (AppDatabase migration).
+                        growthProgress = if (objectId == "ground_grass") 1f else 0f,
+                    ))
+                    taps += t to cell
+                    sound("se_plant", t)
+                }
             }
             "remove" -> for ((t, cell) in spread(cue.cells(), cue.overOr(0.0))) {
                 steps += Remove(t, cell)
@@ -292,6 +298,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
             dayLabelDim = labelDimAt(seconds),
             coins = coins?.second,
             coinsProgress = coins?.let { ((seconds - it.first) / COINS_SECONDS).toFloat() } ?: 0f,
+            backdrop = scenario.start.backdrop != "none",
         )
     }
 
@@ -565,4 +572,6 @@ class Scene(
     /** The coins of the latest harvest while they float up (null when none), and how far on they are (0 to 1). */
     val coins: Int? = null,
     val coinsProgress: Float = 0f,
+    /** The sky behind the garden; false leaves the frame transparent there (`start.backdrop: none`). */
+    val backdrop: Boolean = true,
 )

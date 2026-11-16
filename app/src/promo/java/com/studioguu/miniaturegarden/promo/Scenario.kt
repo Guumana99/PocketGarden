@@ -40,6 +40,8 @@ class Scenario(
         val weather: String,
         val ui: String,
         val tapMarker: Boolean,
+        /** `backdrop: none`: no sky behind the garden, the frame transparent there (store art cut-outs). */
+        val backdrop: String = "sky",
     )
 
     /** One line of the timeline: at [at] seconds, [action] with [args] (the value under its key). */
@@ -118,6 +120,7 @@ class Scenario(
                     weather = start.str("weather", "sunny"),
                     ui = start.str("ui", "hidden"),
                     tapMarker = (start["tap_marker"] as? JsonPrimitive)?.booleanOrNull ?: true,
+                    backdrop = start.str("backdrop", "sky"),
                 ),
                 camera = cameraOf(root["camera"]) ?: CameraMove(1.0, null, 0.0),
                 timeline = cues,

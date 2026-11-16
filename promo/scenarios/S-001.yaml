@@ -1,0 +1,27 @@
+id: S-001
+name: store_garden
+title: ストア画像用の庭（春の朝・背景なし）
+fps: 10
+seed: 7
+hook_from_end: 0
+# backdrop: none — 空を描かず、庭の外を透明のまま書き出す（tools/store_art で切り抜いて使う）
+start: { garden: new_game, season: spring, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: false, backdrop: none }
+setup:
+  - { place: { item: ground_grass, cells: [[0, 0], [1, 0], [2, 0], [3, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [0, 1], [10, 1], [0, 2], [10, 2], [0, 3], [10, 3], [0, 4], [1, 4], [2, 4], [3, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [1, 5], [2, 5], [3, 5], [0, 6], [2, 6], [3, 6], [10, 6], [0, 7], [1, 7], [2, 7], [3, 7], [10, 7], [0, 8], [1, 8], [3, 8], [10, 8], [0, 9], [2, 9], [5, 9], [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [1, 10], [2, 10], [3, 10], [5, 10], [7, 10], [8, 10], [10, 10]] } }
+  - { place: { item: floor_cobblestone, cells: [[4, 0], [4, 1], [4, 2], [4, 3], [4, 4], [4, 5], [4, 6], [4, 7], [4, 8], [4, 9], [4, 10], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5]] } }
+  - { place: { item: struct_fence, cells: [[5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [10, 1], [10, 2], [10, 3], [10, 4], [10, 5], [10, 6], [10, 7], [10, 8], [10, 9], [10, 10]] } }
+  - { place: { item: struct_cottage, at: [1,1] } }
+  - { place: { item: deco_pond, at: [1,6] } }
+  - { place: { item: struct_well, at: [2,8] } }
+  - { place: { item: deco_bench, at: [1,9] } }
+  - { place: { item: ground_flowers, cells: [[0, 5], [3, 9], [0, 10], [6, 10], [9, 10], [10, 5]] } }
+  - { plant: { crop: tulip, area: [5,1,9,3], colours: [red, pink, yellow] } }
+  - { plant: { crop: strawberry, area: [5,6,7,8] } }
+  - { plant: { crop: mint, area: [8,6,9,8] } }
+  - { grow: { area: [5,1,9,3], to_stage: 99 } }
+  - { grow: { area: [5,6,9,8], to_stage: 99 } }
+camera: { zoom: fit }
+timeline:
+  - { at: 4.0, creature: { kind: bird, count: 1, from: outside_left, land_on: [[2,2]], stay: 20.0 } }
+  - { at: 4.0, creature: { kind: butterfly, count: 2, from: outside_right, from_distance: 6, land_on: [[6,2],[8,3]], stay: 20.0 } }
+  - { at: 7.0, end: true }
