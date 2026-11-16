@@ -17,7 +17,7 @@ palette:
 
 # Game screens taken with capture.py (the real game, buttons and all).
 captures:
-  - { name: s01_spring_morning, garden: spring, season: SPRING, time: MORNING, scale: 0.37, cell: [5, 5], lift: 0 }
+  - { name: s01_spring_morning, garden: spring, season: SPRING, time: MORNING, scale: 0.40, cell: [5, 5], lift: 170 }
   - { name: s02_visitors, garden: spring, season: SPRING, time: MORNING, scale: 1.0, cell: [3.8, 1.6], lift: 370, butterfly: [5, 2], bird: struct_cottage, creatures: "butterfly,bird", record: { seconds: 28, pick: 10.0 } }
   - { name: s03_harvest, garden: spring, season: SPRING, time: DAY, scale: 0.85, cell: [4.5, 4.5], lift: 60, tap: [5, 4], press: [収穫, 閉じる], record: { seconds: 8, pick: 3.6 }, settle: 5 }
   - { name: s04_evening, garden: spring, season: SPRING, time: NIGHT, scale: 0.6, cell: [2.5, 3], lift: 160 }
@@ -26,9 +26,15 @@ captures:
 
 feature:
   title: ポケット庭園
-  tagline: 花を育てると、生き物が遊びに来る
+  # The bird on the roof and the butterflies are in the garden, but at this size only some 5 px
+  # across: too small to make out on a phone, so the line does not promise them.
+  tagline: 花を育てて、のんびり庭づくり
+  title_size: 40
+  tagline_size: 20
+  garden_width: 0.48
+  garden_overhang: 0.01
   # The garden cut out of a promo recording (promo/scenarios/S-001.yaml, backdrop: none).
-  garden: build/promo/S-001/frame_00065.png
+  garden: build/promo/S-001/frame_00070.png
   variants:
     A: { background: sky }
     B: { background: table }
@@ -38,10 +44,8 @@ screenshots:
   tints: ["#F7F1DF", "#F3F2D9", "#F6ECD6", "#F4E6D8", "#EEE9E4", "#E9EEF2"]
   items:
     - { n: 1, capture: s01_spring_morning, title: "花を植えて、育てて、収穫" }
-    - { n: 2, capture: s02_visitors, title: "花が咲くと、
-生き物が遊びに来る" }
+    - { n: 2, capture: s02_visitors, title: "花が咲くと、\n生き物が遊びに来る" }
     - { n: 3, capture: s03_harvest, title: "くり返し実る作物も" }
-    - { n: 4, capture: s04_evening, title: "朝・昼・夕方・夜、
-庭の時間がめぐる" }
+    - { n: 4, capture: s04_evening, title: "朝・昼・夕方・夜、\n庭の時間がめぐる" }
     - { n: 5, capture: s05_book, title: "図鑑を少しずつ埋めよう" }
     - { n: 6, capture: s06_winter, title: "自分らしく、庭を飾る" }
