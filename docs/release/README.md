@@ -3,7 +3,7 @@
 | もの | 場所 |
 |---|---|
 | データセーフティの一覧 | `data_safety.md` |
-| ストア画像 | `store/feature_graphic.png`、`store/screenshot_01〜06.png`（作り方は `tools/store_art/README.md`） |
+| ストア画像 | `store/feature_graphic.png`、`store/screenshot_01〜06.png`、`store/icon_512.png`（アプリのアイコン、`tools/prepare_app_icon.py` が `docs/store/` に書き出すものの写し）（作り方は `tools/store_art/README.md`） |
 | AAB | `app/build/outputs/bundle/release/app-release.aab`（`./gradlew bundleRelease`、コミットしない） |
 
 ## 署名（アップロード鍵）
