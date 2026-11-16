@@ -354,39 +354,55 @@ def feature(config: dict, variant: str) -> Image.Image:
     safe = (int(w * 0.20), int(h * 0.15), int(w * 0.80), int(h * 0.80))
 
     garden = cut_out_garden(ROOT / spec["garden"])
-    target_w = int(w * spec.get("garden_width", 0.30))
+    target_w = int(w * spec.get("garden_width", 0.48))
     garden = garden.resize((target_w, round(garden.height * target_w / garden.width)), Image.LANCZOS)
     if kind == "table":
         framed, (ox, oy) = with_shadow(garden, drop=0.02, blur=10, opacity=0.38, squash=0.55)
     else:
         framed, (ox, oy) = with_shadow(garden, drop=0.10, blur=16, opacity=0.22, squash=0.45, colour=(70, 80, 70))
-    gx = safe[2] - garden.width - int(w * 0.005)
-    gy = (safe[1] + safe[3]) // 2 - garden.height // 2 + int(h * 0.01)
+    # The garden low on the right: its right corner on the safe area's edge (a little over is allowed
+    # for its far corner, `garden_overhang`), its front corner on the safe area's bottom.
+    gx = safe[2] - garden.width + int(w * spec.get("garden_overhang", 0.0))
+    gy = safe[3] - garden.height
     img.alpha_composite(framed, (gx - ox, gy - oy))
 
-    # The name, large, with a little leaf over it; the line under it smaller, in two lines.
+    # The name and the line under it, top left in the room the diamond leaves there.
     ink, ink_soft = rgb(palette["ink"]), rgb(palette["ink_soft"])
     halo = rgb(palette["cream"])
     title = spec["title"]
-    title_font = font(config, 46, "Black")
+    title_font = font(config, spec.get("title_size", 40), "Black")
     tracking = 2
-    tx = safe[0] + 4
-    ty = safe[1] + int(h * 0.10)
+    tx = safe[0] + 2
+    ty = safe[1] + spec.get("title_top", 2)
     rgb_img = img.convert("RGB")
     draw_text(rgb_img, (tx, ty), title, title_font, ink, spacing=tracking, glow=halo, glow_radius=12)
+    title_w = text_width(title_font, title, tracking)
     leaf_layer = Image.new("RGBA", rgb_img.size, (0, 0, 0, 0))
-    draw_leaf(leaf_layer, tx + text_width(title_font, title, tracking) - 6, ty + 6, 34, 17, -0.9, rgb(palette["leaf"]), (235, 245, 220))
-    draw_leaf(leaf_layer, tx + text_width(title_font, title, tracking) - 6, ty + 6, 26, 13, -2.2, rgb(palette["leaf_dark"]), (225, 238, 210))
+    draw_leaf(leaf_layer, tx + title_w - 4, ty + 6, 28, 14, -0.9, rgb(palette["leaf"]), (235, 245, 220))
+    draw_leaf(leaf_layer, tx + title_w - 4, ty + 6, 21, 11, -2.2, rgb(palette["leaf_dark"]), (225, 238, 210))
     rgb_img = rgb_img.convert("RGBA")
     rgb_img.alpha_composite(leaf_layer)
     rgb_img = rgb_img.convert("RGB")
     lines = spec["tagline"].split("、", 1)
     lines = [lines[0] + "、", lines[1]] if len(lines) == 2 else lines
-    tag_font = font(config, 21, "Bold")
-    y = ty + 72
+    tag_size = spec.get("tagline_size", 20)
+    tag_font = font(config, tag_size, "Bold")
+    y = ty + int(title_font.size * 1.45)
+    right = tx + title_w
     for line in lines:
         draw_text(rgb_img, (tx + 2, y), line, tag_font, ink_soft, spacing=1, glow=halo, glow_radius=8)
-        y += 32
+        right = max(right, tx + 2 + text_width(tag_font, line, 1))
+        y += int(tag_size * 1.5)
+    # The words must not run into the garden, nor out of the safe area.
+    block = (tx, ty, int(right) + 1, y)
+    alpha = Image.new("L", FEATURE_SIZE, 0)
+    alpha.paste(garden.getchannel("A"), (gx, gy))
+    touching = alpha.crop((block[0] - 8, block[1] - 8, block[2] + 8, block[3] + 8)).point(lambda v: 255 if v > 24 else 0).getbbox()
+    if touching:
+        print(f"warning: the words {block} come within 8 px of the garden")
+    if block[0] < safe[0] or block[2] > safe[2] or block[1] < safe[1] or block[3] > safe[3]:
+        print(f"warning: the words {block} leave the safe area {safe}")
+    print(f"garden {gx},{gy} {garden.width}x{garden.height} ({garden.width / w:.0%} wide); words {block}")
     return rgb_img
 
 
@@ -516,6 +532,7 @@ def save(img: Image.Image, path: Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("what", choices=["feature", "shots"])
+    ap.add_argument("--out", help="feature: the file name for a single variant (default feature_graphic_<variant>.png)")
     ap.add_argument("--config", default=str(HERE / "config.yaml"))
     ap.add_argument("--variant", nargs="*", help="feature: A B (default all)")
     ap.add_argument("--frame", nargs="*", default=["A", "B"], help="shots: A (phone frame) and/or B (rounded screen)")
@@ -524,7 +541,7 @@ def main() -> None:
     config = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     if args.what == "feature":
         for v in args.variant or list(config["feature"]["variants"]):
-            save(feature(config, v), OUT / f"feature_graphic_{v}.png")
+            save(feature(config, v), OUT / (args.out or f"feature_graphic_{v}.png"))
         return
     items = config["screenshots"]["items"]
     count = max(6, max(it["n"] for it in items))
