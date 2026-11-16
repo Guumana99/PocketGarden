@@ -185,4 +185,64 @@ object ShowcaseGarden {
 
     /** The cells of [soilRow], left to right on the screen: each a step right and a step up from the last. */
     val SOIL_ROW: List<GridCell> = listOf(GridCell(4, 6), GridCell(5, 5), GridCell(6, 4))
+
+    /**
+     * A winter yard (`--es garden winter`, the store's screenshot of decorating): the things a
+     * player puts out as the stars (fences, benches, lanterns, rocks, the well, a pond) and only a
+     * few beds of what grows in winter, snowdrops and poinsettias. No hakusai (it is not shown
+     * before it is found).
+     *
+     *     y\x 0 1 2 3 4 5 6 7 8 9 10
+     *      0  C C C # F F F F F F F      C cottage, W well, P pond, b bench, l lantern, o rock,
+     *      1  C C C # W . . . . . F      r flat rock, N snowdrop, X poinsettia, # paving, F fence
+     *      2  C C C # . N N . X X F
+     *      3  l . . # . N N . X X F
+     *      4  F . P # # # # # # # F
+     *      5  F . . # l . b . l . F
+     *      6  F o . # . . . . . . F
+     *      7  F r . # b . X X . o F
+     *      8  F . . # . . X X . . F
+     *      9  F . o # l . . . . r F
+     *     10  F F F # F F F F F F F
+     */
+    fun winterYard(now: Long): List<GridObject> {
+        fun at(cell: GridCell, objectId: String, growth: Float = 0f, flipped: Boolean = false) = GridObject(
+            instanceId = "winter_${objectId}_${cell.x}_${cell.y}",
+            gridX = cell.x,
+            gridY = cell.y,
+            objectId = objectId,
+            growthProgress = growth,
+            isFlipped = flipped,
+            lastUpdatedTimestamp = now,
+        )
+        fun at(x: Int, y: Int, objectId: String, flipped: Boolean = false) = at(GridCell(x, y), objectId, flipped = flipped)
+        val beds = cells(5..6, 2..3).map { it to PlantSpecies.SNOWDROP } +
+            cells(8..9, 2..3).map { it to PlantSpecies.POINSETTIA } +
+            cells(6..7, 7..8).map { it to PlantSpecies.POINSETTIA }
+        val paths = cells(3..3, 0..10) + cells(4..9, 4..4)
+        val fences = cells(4..10, 0..0) + cells(10..10, 1..10) + cells(0..0, 4..10) + cells(1..9, 10..10).filter { it.x != 3 }
+        val things = listOf(
+            at(0, 0, StructureData.COTTAGE.objectId),
+            at(4, 1, StructureData.WELL.objectId),
+            at(2, 4, GridObject.POND_OBJECT_ID),
+            at(6, 5, "deco_bench"),
+            at(4, 7, "deco_bench", flipped = true),
+            at(0, 3, "deco_lantern"),
+            at(4, 5, "deco_lantern"),
+            at(8, 5, "deco_lantern"),
+            at(4, 9, "deco_lantern"),
+            at(1, 6, "deco_rock"),
+            at(9, 7, "deco_rock"),
+            at(2, 9, "deco_rock"),
+            at(1, 7, "deco_rock_flat"),
+            at(9, 9, "deco_rock_flat"),
+        )
+        val placed = paths.map { at(it, GridObject.COBBLESTONE_OBJECT_ID) } +
+            fences.map { at(it, GridObject.FENCE_OBJECT_ID) } +
+            beds.map { (cell, _) -> at(cell, GridObject.TILLED_SOIL_OBJECT_ID) } +
+            beds.map { (cell, species) -> at(cell, species.objectId, growth = 1f, flipped = (cell.x + cell.y) % 2 == 0) } +
+            things
+        val taken = placed.filter { it.objectId != GridObject.FENCE_OBJECT_ID }.flatMap { it.occupiedCells() }.toSet()
+        return placed + cells(0 until SIZE, 0 until SIZE).filter { it !in taken }.map { at(it, "ground_grass", growth = 1f) }
+    }
 }

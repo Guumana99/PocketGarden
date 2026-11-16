@@ -456,12 +456,21 @@ def panorama(config: dict, count: int) -> Image.Image:
         else:
             sprig(layer, x + 110, h * 0.97, math.pi + 0.55, 0.95 * sc, palette, rng, blur=1.2)
     petal = rgb(palette["petal"])
+    snowy = set(config["screenshots"].get("snow", []))
     for k in range(count):
         for _ in range(4):
             x = k * w + rng.choice([rng.uniform(10, 110), rng.uniform(w - 110, w - 10)])
-            draw_petal(layer, x, rng.uniform(h * 0.25, h * 0.95), rng.uniform(14, 22), rng.uniform(0, 6.28),
-                       mix(petal, (255, 255, 255), rng.uniform(0, 0.3)), blur=rng.choice([0, 1.5, 3]))
+            y = rng.uniform(h * 0.25, h * 0.95)
+            r, a, colour, blur = rng.uniform(14, 22), rng.uniform(0, 6.28), mix(petal, (255, 255, 255), rng.uniform(0, 0.3)), rng.choice([0, 1.5, 3])
+            # Winter's pictures (`screenshots.snow`) have no petals in the air.
+            if k + 1 not in snowy:
+                draw_petal(layer, x, y, r, a, colour, blur=blur)
     img.alpha_composite(layer)
+    # Snow on them instead: soft white flakes all over, a few large and out of focus.
+    for n in snowy:
+        area = ((n - 1) * w, 0, n * w, h)
+        light_specks(img, rng, 70, (255, 255, 255), (4, 9), area=area, alpha_range=(0.55, 0.9))
+        light_specks(img, rng, 14, (255, 255, 255), (14, 26), area=area, alpha_range=(0.25, 0.45))
     return img.convert("RGB")
 
 
