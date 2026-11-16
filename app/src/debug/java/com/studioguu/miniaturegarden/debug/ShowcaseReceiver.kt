@@ -6,6 +6,10 @@ import android.content.Intent
 import android.util.Log
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
 import com.studioguu.miniaturegarden.domain.model.CollectionRecord
+import com.studioguu.miniaturegarden.domain.model.GridCell
+import com.studioguu.miniaturegarden.domain.model.NatureNote
+import com.studioguu.miniaturegarden.domain.model.NatureNotes
+import com.studioguu.miniaturegarden.domain.model.VisitRule
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
@@ -63,7 +67,7 @@ import kotlinx.coroutines.launch
  *         --es cloud PARCHED --ef rain_glint 0.5    # what the rain cloud shows; the crops' glint
  *         --ei use_bonus 5 --ei use_rain 1    # only spends the day's rewards
  *         --ef scale 0.32 --ef pan_x 0 --ef pan_y 0 \
- *         --ez butterfly true                 # one comes now to ShowcaseGarden.BUTTERFLY_FLOWER
+ *         --ez butterfly true                 # one comes now to ShowcaseGarden.BUTTERFLY_FLOWER (or --ei butterfly_x 5 --ei butterfly_y 2)
  *
  * Every broadcast but a bare load sets the whole look afresh: what it leaves out goes back to the
  * garden's own. `--ez clear true` takes the look away altogether.
@@ -224,6 +228,14 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 // Some colours of the tulip grown and some not, for its page to show both.
                 listOf("red", "pink", "yellow").forEach { gardenRepository.upsertCollectionRecord(CollectionRecord(CollectionEntry.colourRecordId(CollectionEntry.TULIP.objectId, it), 1, now, revealed = true)) }
             }
+            // The spring garden's book a little filled in (the store's screenshot of it): what a
+            // new player has by then, nothing later.
+            if (garden == "spring") {
+                SPRING_PAGES.forEach { gardenRepository.upsertCollectionRecord(CollectionRecord(it.objectId, 1, now, revealed = true)) }
+                listOf("red", "pink", "yellow").forEach { gardenRepository.upsertCollectionRecord(CollectionRecord(CollectionEntry.colourRecordId(CollectionEntry.TULIP.objectId, it), 1, now, revealed = true)) }
+                (SPRING_CREATURES.map { NatureNotes.creatureKey(it.creature) } + SPRING_CREATURES.map(NatureNotes::ruleKey))
+                    .distinct().forEach { gardenRepository.upsertNatureNote(NatureNote(it, now, count = 1)) }
+            }
             if (bridgePlaces) gardenRepository.upsertInventorySlot(InventorySlot(0, GardenItem.STRUCT_BRIDGE.itemId, 5))
             val profile = gardenRepository.getUserProfile() ?: UserProfile()
             val level = if (expand) expandLevel else if (feedback) FeedbackGarden.PLAYER_LEVEL else PLAYER_LEVEL
@@ -243,6 +255,13 @@ class ShowcaseReceiver : BroadcastReceiver() {
         /** The level the showcase's player has: nothing from later levels is in the garden. */
         const val PLAYER_LEVEL = 5
 
+        /** The book's pages the spring garden comes with (`--es garden spring`). */
+        val SPRING_PAGES = listOf(
+            CollectionEntry.TULIP, CollectionEntry.STRAWBERRY, CollectionEntry.MINT, CollectionEntry.CARROT,
+            CollectionEntry.GRASS, CollectionEntry.FLOWERS, CollectionEntry.PEBBLE, CollectionEntry.ROCK, CollectionEntry.BENCH,
+        )
+        val SPRING_CREATURES = listOf(VisitRule.BUTTERFLY_BLOOMS, VisitRule.LADYBUG_SPRING, VisitRule.BIRD_COTTAGE)
+
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         fun showcaseOf(intent: Intent): Showcase {
@@ -259,7 +278,12 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     else -> kinds.split(',').map { id -> Creature.entries.first { it.id == id.trim() } }.toSet()
                 },
                 view = if (scale > 0f) GardenView(scale, intent.getFloatExtra("pan_x", 0f), intent.getFloatExtra("pan_y", 0f)) else null,
-                butterfly = if (intent.getBooleanExtra("butterfly", false)) ShowcaseGarden.BUTTERFLY_FLOWER else null,
+                // `--ei butterfly_x 5 --ei butterfly_y 2`: to another flower than the usual one.
+                butterfly = if (intent.getBooleanExtra("butterfly", false)) {
+                    GridCell(intent.getIntExtra("butterfly_x", ShowcaseGarden.BUTTERFLY_FLOWER.x), intent.getIntExtra("butterfly_y", ShowcaseGarden.BUTTERFLY_FLOWER.y))
+                } else {
+                    null
+                },
                 adReady = intent.takeIf { it.hasExtra("ad_ready") }?.getBooleanExtra("ad_ready", false),
                 bonusCoins = intent.takeIf { it.hasExtra("bonus_coins") }?.getIntExtra("bonus_coins", 0),
                 cloud = intent.getStringExtra("cloud")?.let(RainCloudState::valueOf),
