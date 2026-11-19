@@ -9,19 +9,20 @@ camera: { zoom: 2.6, center: [5,6] }
 # いちごはゲームで 6 時間で実る（段階 2 は 3 時間）。収穫しても株は残って段階 2 に戻り、3 時間でまた実る（春のあいだ）
 # 水やりは入れない：植えた直後は水が満タンで、3 時間後もまだ水分 0.8 以上（水やりできない）。いちごは 1 日のうちには乾かない
 timeline:
+  # 全体 25 秒以内のため、待ち時間を詰めた（冒頭に見せ場＋巻き戻し 2.6 秒が入る）
   - { at: 0.0,  day_label: "いちごができるまで\n春のはじめ・朝" }
   - { at: 0.3,  till: { area: [4,5,6,7], over: 1.5 } }                # ふつうの耕した土
   - { at: 2.2,  till: { area: [4,5,6,7], over: 1.5, ridged: true } }  # もう一度クワで畝に
   - { at: 4.0,  plant: { crop: strawberry, area: [4,5,6,7], over: 1.5 } }
-  - { at: 5.8,  time_of_day: { to: 10.5, over: 1.8 } }
-  - { at: 7.6,  day_label: "いちごができるまで\n3時間後" }
-  - { at: 7.6,  grow: { area: [4,5,6,7], to_stage: 2 } }              # 全部の株を同時に
-  - { at: 9.4,  time_of_day: { to: 13.5, over: 1.8 } }
-  - { at: 11.2, day_label: "いちごができるまで\n6時間後" }
-  - { at: 11.2, camera: { zoom: 3.6, center: [5,6.5], over: 1.0 } }
-  - { at: 11.6, grow: { area: [4,5,6,7], to_stage: 3 } }              # 赤い実は一度にパッと
-  - { at: 14.1, harvest: { area: [4,5,6,7], over: 2.4 } }             # 株は残って段階 2 に戻る
-  - { at: 17.1, time_of_day: { to: 16.5, over: 1.8 } }
-  - { at: 17.1, day_label: "いちごができるまで\n収穫の3時間後" }
-  - { at: 19.6, grow: { area: [4,5,6,7], to_stage: 3 } }              # もう一度一斉に実る
-  - { at: 24.1, end: true }
+  - { at: 5.7,  time_of_day: { to: 10.5, over: 1.5 } }
+  - { at: 7.2,  day_label: "いちごができるまで\n3時間後" }
+  - { at: 7.2,  grow: { area: [4,5,6,7], to_stage: 2 } }              # 全部の株を同時に
+  - { at: 8.4,  time_of_day: { to: 13.5, over: 1.5 } }
+  - { at: 9.9,  day_label: "いちごができるまで\n6時間後" }
+  - { at: 9.9,  camera: { zoom: 3.6, center: [5,6.5], over: 1.0 } }
+  - { at: 10.3, grow: { area: [4,5,6,7], to_stage: 3 } }              # 赤い実は一度にパッと
+  - { at: 12.3, harvest: { area: [4,5,6,7], over: 2.4 } }             # 株は残って段階 2 に戻る
+  - { at: 15.3, time_of_day: { to: 16.5, over: 1.5 } }
+  - { at: 15.3, day_label: "いちごができるまで\n収穫の3時間後" }
+  - { at: 17.3, grow: { area: [4,5,6,7], to_stage: 3 } }              # もう一度一斉に実る
+  - { at: 21.0, end: true }

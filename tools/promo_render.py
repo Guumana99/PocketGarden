@@ -9,7 +9,13 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
      both then copied to Google Drive, PocketGarden_Docs/promo/tiktok (rclone's "gdrive" remote,
      as tools/sync_docs_to_drive.ps1; --no-sync to skip).
 
-1. The last [hook_from_end] seconds go first too, if asked (0, none, unless the script says).
+1. The opening. The captions file's hook: (from, seconds, text, rewind, rewind_label) puts the
+   recording's high point first: [seconds] of it from [from] (its sounds too), a large caption over
+   it, then the recording from [from] back to 0 played backwards fast in [rewind] seconds (frames
+   skipped; no sound of its own, the music goes on) with a small board "<<  [rewind_label]" in the
+   middle, then the recording from the start. Captions and sounds move later by that much, and the
+   ending's blurred background is the high point's first frame (so the loop joins up).
+   Without hook:, the last [hook_from_end] seconds go first instead, if asked (0, none, unless the script says).
 2. The frames become the video.
 3. Captions are burnt in (Noto Sans JP Bold, white with a dark edge), at most 15 characters a line
    and 2 lines, kept out of TikTok's top edge, its bottom fifth and its right-hand buttons.
@@ -54,6 +60,9 @@ MAX_LINES = 2
 GAIN = {"se_tap": 0.80, "se_harvest": 0.80, "se_level_up": 0.90}
 
 OUTRO_FADE = 0.4
+
+HOOK_TOP = int(H * 0.31)   # the hook's large caption: its top this far down (about a third, under the full-size board)
+HOOK_SIZE = 104            # its letters (smaller if a line would not fit)
 
 RATE = 44100
 BGM_FADE_IN = 0.2
@@ -119,6 +128,59 @@ def caption_png(text, path):
         x = max(SAFE_LEFT, min(centre - width // 2, SAFE_RIGHT - width))
         draw.text((x - box[0], y - box[1]), line, font=f, fill=(255, 255, 255, 255), stroke_width=stroke, stroke_fill=(52, 36, 20, 255))
         y += h + gap
+    image.save(path)
+
+
+def hook_caption_png(text, path):
+    """The hook's caption: larger than the others, at most 2 lines, its top at HOOK_TOP."""
+    lines = text.split("\n")
+    if len(lines) > MAX_LINES:
+        print(f"  warning: hook caption over {MAX_LINES} lines: {text!r}")
+    image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    size = HOOK_SIZE
+    while True:
+        f = font(size, "Black")
+        stroke = max(6, size // 7)
+        widest = max(draw.textbbox((0, 0), line, font=f, stroke_width=stroke)[2] - draw.textbbox((0, 0), line, font=f, stroke_width=stroke)[0] for line in lines)
+        if widest <= SAFE_RIGHT - SAFE_LEFT or size <= 60:
+            break
+        size -= 2
+    gap = int(size * 0.24)
+    y = HOOK_TOP
+    centre = (SAFE_LEFT + SAFE_RIGHT) // 2
+    for line in lines:
+        box = draw.textbbox((0, 0), line, font=f, stroke_width=stroke)
+        width = box[2] - box[0]
+        x = max(SAFE_LEFT, min(centre - width // 2, SAFE_RIGHT - width))
+        draw.text((x - box[0], y - box[1]), line, font=f, fill=(255, 255, 255, 255), stroke_width=stroke, stroke_fill=(52, 36, 20, 255))
+        y += box[3] - box[1] + gap
+    image.save(path)
+
+
+def rewind_png(label, path):
+    """The small board in the middle while the rewind plays: a drawn rewind mark, then [label]."""
+    label = label.lstrip("⏪◀≪ ").strip()   # the mark is drawn, not typed (the font has no U+23EA)
+    image = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    f = font(56)
+    box = draw.textbbox((0, 0), label, font=f)
+    text_w, text_h = box[2] - box[0], box[3] - box[1]
+    mark_h = 40
+    mark_w = int(mark_h * 1.3)
+    pad_x, pad_y, gap = 34, 22, 20
+    board_w = pad_x * 2 + mark_w + gap + text_w
+    board_h = pad_y * 2 + max(text_h, mark_h)
+    left = (W - board_w) // 2
+    top = (H - board_h) // 2
+    draw.rounded_rectangle((left, top, left + board_w, top + board_h), radius=board_h // 2, fill=(40, 30, 20, 175))
+    cy = top + board_h // 2
+    x = left + pad_x
+    half = mark_w // 2
+    for dx in (0, half):   # two triangles pointing left
+        draw.polygon([(x + dx, cy), (x + dx + half, cy - mark_h // 2), (x + dx + half, cy + mark_h // 2)], fill=(255, 255, 255, 255))
+    tx = x + mark_w + gap
+    draw.text((tx - box[0], cy - text_h // 2 - box[1]), label, font=f, fill=(255, 255, 255, 255))
     image.save(path)
 
 
@@ -331,7 +393,7 @@ def contact_sheet(frames, fps, hook, path, columns=6):
         im = Image.open(frames[index]).convert("RGB").resize((thumb_w, thumb_h), Image.LANCZOS)
         x, y = (n % columns) * thumb_w, (n // columns) * (thumb_h + 30)
         sheet.paste(im, (x, y))
-        draw.text((x + 6, y + thumb_h + 2), (f"{index / fps:.0f}秒（動画 {index / fps + hook:.0f}秒）" if hook else f"{index / fps:.0f}秒"), font=label, fill="black")
+        draw.text((x + 6, y + thumb_h + 2), (f"{index / fps:.0f}秒（動画 {index / fps + hook:.1f}秒）" if hook else f"{index / fps:.0f}秒"), font=label, fill="black")
     sheet.save(path, quality=88)
 
 
@@ -359,7 +421,26 @@ def main():
     frames = sorted(recorded.glob("frame_*.png"))
     if len(frames) != cues["frames"]:
         sys.exit(f"{len(frames)} frames found, cues.json says {cues['frames']}")
-    hook_frames = min(len(frames), round(float(script.get("hook_from_end", cues.get("hook_from_end", 0.0))) * fps))
+    # The opening: (frame indices, in order) played before the recording from its start.
+    hook_spec = caption_doc.get("hook")
+    hook_sounds = []
+    if hook_spec:
+        start = min(len(frames) - 1, round(float(hook_spec["from"]) * fps))
+        shown = max(1, round(float(hook_spec.get("seconds", 1.6)) * fps))
+        rewind_n = round(float(hook_spec.get("rewind", 0.8)) * fps)
+        shown_frames = [min(len(frames) - 1, start + i) for i in range(shown)]
+        # From the high point back to the first frame, evenly skipped (the first frame itself last).
+        rewind_frames = [round(start * (1 - (i + 1) / rewind_n)) for i in range(rewind_n)] if rewind_n else []
+        opening = shown_frames + rewind_frames
+        # The high point's own sounds, at their place in it.
+        hook_sounds = [{**c, "t": c["t"] - start / fps} for c in cues["sounds"] if start / fps <= c["t"] < (start + shown) / fps]
+        rewind_from, rewind_to = len(shown_frames) / fps, len(opening) / fps
+        outro_frame = frames[start]
+    else:
+        n = min(len(frames), round(float(script.get("hook_from_end", cues.get("hook_from_end", 0.0))) * fps))
+        opening = list(range(len(frames) - n, len(frames)))
+        outro_frame = frames[-1]
+    hook_frames = len(opening)
     hook = hook_frames / fps
     body = len(frames) / fps
     outro_seconds = float(outro.get("seconds", 1.5))
@@ -373,23 +454,32 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         outro_path = tmp / "outro.png"
-        outro_png(frames[-1], outro, outro_path)
+        outro_png(outro_frame, outro, outro_path)
 
         caption_pictures = []
         for i, c in enumerate(captions):
             png = tmp / f"caption_{i}.png"
             caption_png(str(c["text"]), png)
             caption_pictures.append((float(c["from"]) + hook, float(c["to"]) + hook, Image.open(png).convert("RGBA")))
+        if hook_spec:
+            hook_png = tmp / "hook.png"
+            hook_caption_png(str(hook_spec.get("text", "")), hook_png)
+            if hook_spec.get("text"):
+                caption_pictures.append((0.0, rewind_from, Image.open(hook_png).convert("RGBA")))
+            if hook_spec.get("rewind_label") and rewind_to > rewind_from:
+                rewind_path = tmp / "rewind.png"
+                rewind_png(str(hook_spec["rewind_label"]), rewind_path)
+                caption_pictures.append((rewind_from, rewind_to, Image.open(rewind_path).convert("RGBA")))
         outro_picture = Image.open(outro_path).convert("RGB")
 
         # The sound first, on its own: each file once, split into as many copies as it is heard,
         # each delayed to its cue.
         audio = tmp / "sound.wav"
-        make_sound(cues["sounds"], hook, total, audio, bgm, bgm_start)
+        make_sound(hook_sounds + [{**c, "t": c["t"] + hook} for c in cues["sounds"]], 0.0, total, audio, bgm, bgm_start)
 
         # Then the picture, frame by frame: put together here and handed to ffmpeg as it goes
         # (ffmpeg's own filters stalled on reading the frames twice, for the hook).
-        order = list(range(len(frames) - hook_frames, len(frames))) + list(range(len(frames)))
+        order = opening + list(range(len(frames)))
         count = round(total * fps)
         encoder = subprocess.Popen(
             [ffmpeg_exe(), "-y", "-hide_banner", "-loglevel", "error",
