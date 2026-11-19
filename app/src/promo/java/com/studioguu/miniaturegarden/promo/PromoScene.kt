@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -148,14 +149,14 @@ fun PromoScene(
                     .border(2.dp, GardenColors.WoodLight, board)
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
-                Text(first, style = TextStyle(color = GardenColors.Ink, fontSize = 36.sp, fontWeight = FontWeight.Bold))
+                Text(first, style = TextStyle(color = GardenColors.Ink, fontSize = 36.sp, fontWeight = FontWeight.Bold, localeList = JAPANESE))
                 if (second != null || before != null) {
                     Box {
                         before?.let {
-                            Text(it, Modifier.graphicsLayer { alpha = 1f - scene.dayLabelSwap }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold))
+                            Text(it, Modifier.graphicsLayer { alpha = 1f - scene.dayLabelSwap }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold, localeList = JAPANESE))
                         }
                         second?.let {
-                            Text(it, Modifier.graphicsLayer { alpha = scene.dayLabelSwap }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold))
+                            Text(it, Modifier.graphicsLayer { alpha = scene.dayLabelSwap }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold, localeList = JAPANESE))
                         }
                     }
                 }
@@ -194,3 +195,6 @@ object PromoCamera {
 }
 
 private const val NEWLINE = '\n'
+
+/** Japanese glyph forms for kanji, whatever the device's language (else Android may pick Chinese ones). */
+private val JAPANESE = LocaleList("ja-JP")
