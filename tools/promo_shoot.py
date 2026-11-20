@@ -2,9 +2,14 @@
 
     python tools/promo_shoot.py T-001            # build-free: the promo APK must be installed
     python tools/promo_shoot.py T-001 --install  # assemblePromo's APK installed first
+    python tools/promo_shoot.py T-004 --hook     # the opening's own take (see below)
 
 Turns promo/scenarios/<id>.yaml into JSON, hands it (in the intent) to the promo build on the emulator, starts the
 recorder and waits for it, then brings the frames and cues.json back to build/promo/<id>/.
+--hook records the opening's own take into build/promo/<id>-hook/: the same script (same seed, so
+the same moves) without the label board (no day_label or label_opacity), ending just after the
+captions file's hook: (from + seconds). promo_render.py uses it for the high point when the hook
+says label: false, so the hook's large caption has the top of the screen to itself.
 Only ever talks to the emulator (emulator-5554 unless --serial says otherwise), never to a phone.
 """
 import argparse
@@ -36,6 +41,7 @@ def main():
     ap.add_argument("id", help="script id, e.g. T-001 (promo/scenarios/<id>.yaml)")
     ap.add_argument("--serial", default="emulator-5554")
     ap.add_argument("--install", action="store_true", help="install the promo APK first")
+    ap.add_argument("--hook", action="store_true", help="record the opening's take without the label board")
     ap.add_argument("--timeout", type=int, default=3600, help="seconds to wait for the recording")
     args = ap.parse_args()
     if not args.serial.startswith("emulator-"):
@@ -44,6 +50,13 @@ def main():
     script = ROOT / "promo/scenarios" / f"{args.id}.yaml"
     data = yaml.safe_load(script.read_text(encoding="utf-8"))
     local = ROOT / "build/promo" / data["id"]
+    if args.hook:
+        hook = yaml.safe_load((ROOT / "promo/captions" / f"{args.id}.yaml").read_text(encoding="utf-8"))["hook"]
+        end = float(hook["from"]) + float(hook.get("seconds", 1.6)) + 0.2
+        data["timeline"] = [cue for cue in data["timeline"]
+                            if not {"day_label", "label_opacity", "end"} & set(cue) and float(cue.get("at", 0)) < end]
+        data["timeline"].append({"at": end, "end": True})
+        local = local.with_name(data["id"] + "-hook")
     if local.exists():
         shutil.rmtree(local)
     local.mkdir(parents=True)

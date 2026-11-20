@@ -6,8 +6,9 @@ In:  build/promo/<id>/frame_*.png and cues.json (tools/promo_shoot.py),
      promo/scenarios/<id>.yaml (name, hook_from_end), promo/captions/<id>.yaml, promo/outro.yaml.
 Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
      docs/promo/tiktok/<id>_sheet.jpg (one frame a second, with the time under each),
-     both then copied to Google Drive, PocketGarden_Docs/promo/tiktok (rclone's "gdrive" remote,
-     as tools/sync_docs_to_drive.ps1; --no-sync to skip).
+     both then copied to Google Drive, PocketGarden_Docs/promo/tiktok: the mp4 to 完成/ (only the latest
+     mp4 of each video: an older one of the same id goes to the bin), the sheet to 確認用/
+     (rclone's "gdrive" remote, as tools/sync_docs_to_drive.ps1; --no-sync to skip).
 
 1. The opening. The captions file's hook: (from, seconds, text, rewind, rewind_label) puts the
    recording's high point first: [seconds] of it from [from] (its sounds too), a large caption over
@@ -15,6 +16,9 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
    skipped; no sound of its own, the music goes on) with a small board "<<  [rewind_label]" in the
    middle, then the recording from the start. Captions and sounds move later by that much, and the
    ending's blurred background is the high point's first frame (so the loop joins up).
+   With label: false, the high point comes from the take without the label board
+   (build/promo/<id>-hook/, tools/promo_shoot.py --hook), and the caption may sit higher
+   (text_top: its top as a part of the height, HOOK_TOP otherwise).
    Without hook:, the last [hook_from_end] seconds go first instead, if asked (0, none, unless the script says).
 2. The frames become the video.
 3. Captions are burnt in (Noto Sans JP Bold, white with a dark edge), at most 15 characters a line
@@ -28,9 +32,11 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
 6. The whole sound (effects and music together, one gain, so their balance stays) brought to
    -14 LUFS, a limiter keeping the true peak under -1 dB.
 7. The ending (1.5 s unless promo/outro.yaml says otherwise): the name large over the last scene blurred,
-   the lines under it; the captions file's own outro: (title, lines, ...) in place of promo/outro.yaml's.
+   the lines under it (see outro_png); the captions file's own outro: (title, lines, ...) in place of
+   promo/outro.yaml's. Its words live in promo/outro.yaml alone, for all the videos.
 """
 import argparse
+import io
 import json
 import pathlib
 import shutil
@@ -131,8 +137,8 @@ def caption_png(text, path):
     image.save(path)
 
 
-def hook_caption_png(text, path):
-    """The hook's caption: larger than the others, at most 2 lines, its top at HOOK_TOP."""
+def hook_caption_png(text, path, top=HOOK_TOP):
+    """The hook's caption: larger than the others, at most 2 lines, its top at [top]."""
     lines = text.split("\n")
     if len(lines) > MAX_LINES:
         print(f"  warning: hook caption over {MAX_LINES} lines: {text!r}")
@@ -147,7 +153,7 @@ def hook_caption_png(text, path):
             break
         size -= 2
     gap = int(size * 0.24)
-    y = HOOK_TOP
+    y = top
     centre = (SAFE_LEFT + SAFE_RIGHT) // 2
     for line in lines:
         box = draw.textbbox((0, 0), line, font=f, stroke_width=stroke)
@@ -184,33 +190,66 @@ def rewind_png(label, path):
     image.save(path)
 
 
+OUTRO_LINE_SIZE = 62   # a line of the ending given as plain text
+
+
 def outro_png(last_frame, outro, path):
-    """The ending: the last scene blurred and dimmed, the name large, the lines under it."""
+    """The ending: the last scene blurred and dimmed, the name large, the lines under it.
+
+    Each line is plain text (OUTRO_LINE_SIZE px, white with a dark edge) or
+    {text, size, pill: true}: [size] px at most (smaller if it would not fit the safe width),
+    and with pill: true on a dark rounded board, to stand out (the pre-registration line)."""
     base = Image.open(last_frame).convert("RGB").filter(ImageFilter.GaussianBlur(outro.get("blur", 18)))
     base = ImageEnhance.Brightness(base).enhance(0.78)
-    draw = ImageDraw.Draw(base)
+    draw = ImageDraw.Draw(base, "RGBA")
     centre = (SAFE_LEFT + SAFE_RIGHT) // 2
+    room = SAFE_RIGHT - SAFE_LEFT
     # The name as large as fits between the safe edges, up to 210 px.
     size = 210
     while True:
         title = font(size)
         stroke = max(6, size // 17)
         box = draw.textbbox((0, 0), outro["title"], font=title, stroke_width=stroke)
-        if box[2] - box[0] <= SAFE_RIGHT - SAFE_LEFT - 20 or size <= 60:
+        if box[2] - box[0] <= room - 20 or size <= 60:
             break
         size -= 4
     y = int(H * 0.36)
     draw.text((centre - (box[2] - box[0]) // 2 - box[0], y - box[1]), outro["title"], font=title, fill="white", stroke_width=stroke, stroke_fill=(52, 36, 20))
     y += box[3] - box[1] + 70
-    small = font(62)
     for line in outro.get("lines", []):
-        b = draw.textbbox((0, 0), line, font=small, stroke_width=7)
-        draw.text((centre - (b[2] - b[0]) // 2 - b[0], y - b[1]), line, font=small, fill="white", stroke_width=7, stroke_fill=(52, 36, 20))
-        y += b[3] - b[1] + 34
+        spec = line if isinstance(line, dict) else {"text": str(line)}
+        text = str(spec["text"])
+        pill = bool(spec.get("pill"))
+        size = int(spec.get("size", OUTRO_LINE_SIZE))
+        pad_x, pad_y = (30, 18) if pill else (0, 0)
+        while True:
+            f = font(size)
+            stroke = 0 if pill else 7
+            b = draw.textbbox((0, 0), text, font=f, stroke_width=stroke)
+            if (b[2] - b[0]) + 2 * pad_x <= room or size <= 30:
+                break
+            size -= 1
+        if (b[2] - b[0]) + 2 * pad_x > room:
+            print(f"  warning: ending line wider than the safe area: {text}")
+        w, h = b[2] - b[0], b[3] - b[1]
+        x = centre - w // 2
+        if pill:
+            y += 6
+            draw.rounded_rectangle((x - pad_x, y - pad_y, x + w + pad_x, y + h + pad_y), radius=(h + 2 * pad_y) // 2,
+                                   fill=(52, 36, 20, 225), outline=(255, 236, 190, 255), width=4)
+            draw.text((x - b[0], y - b[1]), text, font=f, fill=(255, 236, 190))
+            y += h + pad_y + 40
+        else:
+            draw.text((x - b[0], y - b[1]), text, font=f, fill="white", stroke_width=stroke, stroke_fill=(52, 36, 20))
+            y += h + 34
+        if y > SAFE_BOTTOM:
+            print(f"  warning: ending runs into the bottom fifth: {text}")
     base.save(path)
 
 
 DRIVE_FOLDER = "gdrive:PocketGarden_Docs/promo/tiktok"
+DRIVE_FINISHED = "完成"     # the mp4s to post, the latest of each only
+DRIVE_REVIEW = "確認用"     # the contact sheets and still frames (docs/promo/tiktok/frames/*), all in one folder
 
 
 def rclone_exe():
@@ -221,21 +260,38 @@ def rclone_exe():
     return next((str(p) for p in packages.glob("Rclone.Rclone*/*/rclone.exe")), None)
 
 
-def sync_to_drive(files):
-    """Copies [files] to DRIVE_FOLDER (changed ones only) and checks them there."""
+def drive_folder_of(path):
+    """Where a file of docs/promo/tiktok/ goes on Drive: mp4s to 完成/, pictures to 確認用/."""
+    return f"{DRIVE_FOLDER}/{DRIVE_FINISHED if path.suffix == '.mp4' else DRIVE_REVIEW}"
+
+
+def sync_to_drive(files, video_id=None):
+    """Copies [files] to Drive (changed ones only, each to drive_folder_of) and checks them there.
+    Other mp4s of [video_id] in 完成/ (an older name) go to Drive's bin."""
     rclone = rclone_exe()
     if not rclone:
         print("  warning: rclone not found; not copied to Drive (winget install --id Rclone.Rclone -e)")
         return
-    folder = files[0].parent
-    names = [arg for f in files for arg in ("--include", f.name)]
-    for verb in (["copy", "--checksum"], ["check", "--one-way"]):
-        result = subprocess.run([rclone, verb[0], str(folder), DRIVE_FOLDER, *names, *verb[1:]],
-                                capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+    def run(*args):
+        result = subprocess.run([rclone, *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
         if result.returncode != 0:
-            print(f"  warning: rclone {verb[0]} failed; not on Drive: " + result.stderr.strip())
+            print(f"  warning: rclone {args[0]} failed: " + result.stderr.strip())
+        return result.returncode == 0
+
+    by_folder = {}
+    for f in files:
+        by_folder.setdefault((f.parent, drive_folder_of(f)), []).append(f)
+    for (local, remote), group in by_folder.items():
+        names = [arg for f in group for arg in ("--include", f.name)]
+        if not (run("copy", str(local), remote, *names, "--checksum") and run("check", str(local), remote, *names, "--one-way")):
+            print(f"  not on Drive: {', '.join(f.name for f in group)}")
             return
-    print(f"  on Drive: {DRIVE_FOLDER}/ ({', '.join(f.name for f in files)})")
+        print(f"  on Drive: {remote}/ ({', '.join(f.name for f in group)})")
+    if video_id:
+        keep = [f.name for f in files if f.suffix == ".mp4"]
+        filters = [arg for name in keep for arg in ("--filter", f"- {name}")] + ["--filter", f"+ {video_id}_*.mp4", "--filter", "- *"]
+        run("delete", f"{DRIVE_FOLDER}/{DRIVE_FINISHED}", *filters)   # Drive keeps them in the bin
 
 
 def run_ffmpeg(args, stdin=None):
@@ -397,6 +453,27 @@ def contact_sheet(frames, fps, hook, path, columns=6):
     sheet.save(path, quality=88)
 
 
+def strip(video, times, path, height=770):
+    """Frames of [video] at [times] (seconds) side by side, each second written under it."""
+    pictures = []
+    for t in times:
+        raw = run_ffmpeg(["-ss", f"{t:.3f}", "-i", str(video), "-frames:v", "1", "-f", "image2pipe", "-vcodec", "png", "-"])
+        im = Image.open(io.BytesIO(raw)).convert("RGB")
+        pictures.append(im.resize((round(im.width * height / im.height), height), Image.LANCZOS))
+    gap, label_h = 12, 60
+    sheet = Image.new("RGB", (sum(p.width for p in pictures) + gap * (len(pictures) - 1), height + label_h), "white")
+    draw = ImageDraw.Draw(sheet)
+    label = font(30, "Regular")
+    x = 0
+    for t, p in zip(times, pictures):
+        sheet.paste(p, (x, 0))
+        text = f"{t:.1f} 秒"
+        b = draw.textbbox((0, 0), text, font=label)
+        draw.text((x + (p.width - (b[2] - b[0])) // 2, height + 12), text, font=label, fill="black")
+        x += p.width + gap
+    sheet.save(path, quality=90)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("id")
@@ -424,18 +501,28 @@ def main():
     # The opening: (frame indices, in order) played before the recording from its start.
     hook_spec = caption_doc.get("hook")
     hook_sounds = []
+    paths = list(frames)   # the picture of each frame of the video, by index (the hook's take after the recording's)
     if hook_spec:
         start = min(len(frames) - 1, round(float(hook_spec["from"]) * fps))
         shown = max(1, round(float(hook_spec.get("seconds", 1.6)) * fps))
         rewind_n = round(float(hook_spec.get("rewind", 0.8)) * fps)
         shown_frames = [min(len(frames) - 1, start + i) for i in range(shown)]
+        hook_cues = cues
+        if hook_spec.get("label", True) is False:
+            take = recorded.with_name(args.id + "-hook")
+            take_frames = sorted(take.glob("frame_*.png"))
+            if len(take_frames) < start + shown:
+                sys.exit(f"the hook's take ({take}) has {len(take_frames)} frames, {start + shown} needed: python tools/promo_shoot.py {args.id} --hook")
+            hook_cues = json.loads((take / "cues.json").read_text(encoding="utf-8"))
+            paths += take_frames[start:start + shown]
+            shown_frames = list(range(len(frames), len(frames) + shown))
         # From the high point back to the first frame, evenly skipped (the first frame itself last).
         rewind_frames = [round(start * (1 - (i + 1) / rewind_n)) for i in range(rewind_n)] if rewind_n else []
         opening = shown_frames + rewind_frames
         # The high point's own sounds, at their place in it.
-        hook_sounds = [{**c, "t": c["t"] - start / fps} for c in cues["sounds"] if start / fps <= c["t"] < (start + shown) / fps]
+        hook_sounds = [{**c, "t": c["t"] - start / fps} for c in hook_cues["sounds"] if start / fps <= c["t"] < (start + shown) / fps]
         rewind_from, rewind_to = len(shown_frames) / fps, len(opening) / fps
-        outro_frame = frames[start]
+        outro_frame = paths[shown_frames[0]]
     else:
         n = min(len(frames), round(float(script.get("hook_from_end", cues.get("hook_from_end", 0.0))) * fps))
         opening = list(range(len(frames) - n, len(frames)))
@@ -463,7 +550,8 @@ def main():
             caption_pictures.append((float(c["from"]) + hook, float(c["to"]) + hook, Image.open(png).convert("RGBA")))
         if hook_spec:
             hook_png = tmp / "hook.png"
-            hook_caption_png(str(hook_spec.get("text", "")), hook_png)
+            hook_caption_png(str(hook_spec.get("text", "")), hook_png,
+                             int(H * float(hook_spec["text_top"])) if "text_top" in hook_spec else HOOK_TOP)
             if hook_spec.get("text"):
                 caption_pictures.append((0.0, rewind_from, Image.open(hook_png).convert("RGBA")))
             if hook_spec.get("rewind_label") and rewind_to > rewind_from:
@@ -495,7 +583,7 @@ def main():
         for n in range(count):
             t = n / fps
             if n < len(order):
-                picture = Image.open(frames[order[n]]).convert("RGB")
+                picture = Image.open(paths[order[n]]).convert("RGB")
                 for start, end, caption in caption_pictures:
                     if start <= t < end:
                         picture.paste(caption, (0, 0), caption)
@@ -510,6 +598,14 @@ def main():
 
     sheet = out_dir / f"{args.id}_sheet.jpg"
     contact_sheet(frames, fps, hook, sheet)
+    # The opening (the high point, the rewind, the start) and the ending, to look over.
+    stills = out_dir / "frames"
+    stills.mkdir(exist_ok=True)
+    opening = stills / f"{args.id}_opening.jpg"
+    strip(target, [0.0, 0.8, rewind_from - 0.1, (rewind_from + hook) / 2, hook, hook + 1.0] if hook_spec else [0.0, 1.0, 2.0], opening)
+    ending = stills / f"{args.id}_ending.jpg"
+    end = hook + body - OUTRO_FADE
+    strip(target, [end - 0.5, end + 0.2, total - 0.6], ending)
     size = target.stat().st_size / 1e6
     print(f"{target} ({total:.2f}s, about {round(total * fps)} frames, {size:.1f} MB)")
     print(f"{sheet}")
@@ -520,7 +616,7 @@ def main():
     if size > 15:
         print("  warning: over 15 MB; try a larger --crf")
     if not args.no_sync:
-        sync_to_drive([target, sheet])
+        sync_to_drive([target, sheet, opening, ending], args.id)
 
 
 if __name__ == "__main__":
