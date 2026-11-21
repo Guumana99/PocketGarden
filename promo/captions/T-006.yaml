@@ -1,0 +1,14 @@
+bgm: Cat_life.mp3
+bgm_start: 0.3
+hook:
+  from: 5.2
+  seconds: 1.2
+  text: "今日来た子"
+  label: false
+  text_top: 0.13
+  rewind: 0.5
+  rewind_label: "⏪ 少し前"
+captions:
+  - { from: 0.0, to: 3.0, text: "今日のお客さん" }
+  - { from: 3.0, to: 6.5, text: "花が咲くと\n遊びに来てくれます" }
+  - { from: 6.5, to: 9.0, text: "何色の花が好き？" }

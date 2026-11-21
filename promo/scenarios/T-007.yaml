@@ -1,0 +1,21 @@
+id: T-007
+name: pink_garden
+title: ピンクだけの庭ができるまで
+fps: 30
+seed: 52
+hook_from_end: 0
+start: { garden: new_game, season: spring_early, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: true }
+camera: { zoom: fit }
+timeline:
+  - { at: 0.0,  day_label: "ピンクだけの庭\n1日目" }
+  - { at: 0.3,  till: { area: [2,2,8,8], over: 1.4 } }
+  - { at: 2.6,  plant: { crops: [cosmos, tulip], area: [2,2,8,8], over: 1.5, colours: { tulip: [pink] } } }
+  - { at: 4.3,  water: { area: [2,2,8,8], over: 1.0 } }
+  - { at: 5.5,  day_label: "ピンクだけの庭\n3日目" }
+  - { at: 5.5,  grow: { area: [2,2,8,8], to_stage: 2, over: 1.0 } }
+  - { at: 6.0,  camera: { zoom: 2.2, center: [7.5,7.5], over: 1.0 } }
+  - { at: 7.0,  grow: { area: [2,2,8,8], to_stage: 3, over: 1.4 } }
+  - { at: 9.5,  creature: { kind: butterfly, count: 1, from: outside_left,  from_distance: 7, land_on: [[8,5]], stay: 4.0 } }
+  - { at: 10.0, creature: { kind: butterfly, count: 1, from: outside_right, from_distance: 7, land_on: [[5,8]], stay: 4.0 } }
+  - { at: 10.1, camera: { zoom: max, center: [5,8,0.6], over: 2.0 } }
+  - { at: 13.8, end: true }
