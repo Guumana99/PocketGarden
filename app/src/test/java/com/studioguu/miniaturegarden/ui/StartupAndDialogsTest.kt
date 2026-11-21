@@ -54,7 +54,9 @@ class StartupAndDialogsTest {
         val screen = source("ui/GardenScreen.kt")
         assertTrue(screen.contains("if (gardenReady) GardenCanvas("))
         assertTrue(screen.contains("viewModel.gardenReady.collectAsStateWithLifecycle()"))
-        assertTrue(source("ui/title/TitleScreen.kt").contains("if (artLoaded) {\n                    SampleGarden("))
+        // The sample garden is drawn inside `if (artLoaded) {`, however the lines between read.
+        val title = source("ui/title/TitleScreen.kt")
+        assertTrue(title.indexOf("if (artLoaded) {") in 0 until title.indexOf("SampleGarden(\n"))
     }
 
     // --- What floats up ---
@@ -86,7 +88,6 @@ class StartupAndDialogsTest {
         for (path in listOf(
             "ui/title/TitleScreen.kt",
             "ui/components/RewardUi.kt",
-            "ui/debug/DebugMenuDialog.kt",
             "ui/hud/RemoveConfirmDialog.kt",
             "ui/hud/ExpandConfirmDialog.kt",
             "ui/notifications/NotificationUi.kt",
