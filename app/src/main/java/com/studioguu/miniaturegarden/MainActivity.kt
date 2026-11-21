@@ -7,6 +7,22 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.studioguu.miniaturegarden.ui.theme.GardenColors
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,10 +54,37 @@ class MainActivity : ComponentActivity() {
                 // The title comes first; once in, the garden stays (also across rotation). Going
                 // back from the garden leaves the app, as before.
                 var inGarden by rememberSaveable { mutableStateOf(false) }
-                Crossfade(targetState = inGarden, label = "screen") { garden ->
-                    if (garden) GardenScreen() else TitleScreen(onEnterGarden = { inGarden = true })
+                UprightColumn {
+                    Crossfade(targetState = inGarden, label = "screen") { garden ->
+                        if (garden) GardenScreen() else TitleScreen(onEnterGarden = { inGarden = true })
+                    }
                 }
             }
         }
     }
 }
+
+/**
+ * Android 16 ignores the portrait lock on windows 600dp wide or more (tablets, foldables,
+ * split screen), so the game can be handed a landscape window. Then the portrait screen sits in
+ * the middle at a phone's shape and the sides are filled with the dark wood. On a phone, or in a
+ * portrait window, the content simply fills it.
+ */
+@Composable
+internal fun UprightColumn(content: @Composable () -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(GardenColors.WoodDark)) {
+        val wide = maxWidth >= 600.dp && maxWidth.value / maxHeight.value > MAX_PORTRAIT_ASPECT
+        if (wide) {
+            Box(
+                Modifier.align(Alignment.Center).fillMaxHeight().width(maxHeight * UPRIGHT_ASPECT)
+                    // The bars at the sides of the window are not this column's.
+                    .consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+            ) { content() }
+        } else {
+            content()
+        }
+    }
+}
+
+private const val UPRIGHT_ASPECT = 9f / 19.5f
+private const val MAX_PORTRAIT_ASPECT = 0.75f
