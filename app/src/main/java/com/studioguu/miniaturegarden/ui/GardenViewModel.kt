@@ -429,11 +429,13 @@ class GardenViewModel @Inject constructor(
         _messages.trySend(message)
     }
 
+    private val _editMode = MutableStateFlow(false)
+
     private val _selectedTile = MutableStateFlow<TileCoord?>(null)
     val selectedTile: StateFlow<TileCoord?> = _selectedTile.asStateFlow()
 
     /** The object standing on the selected tile, if any. */
-    val selectedObject: StateFlow<GridObject?> = combine(gridObjects, _selectedTile) { objects, tile ->
+    val selectedObject: StateFlow<GridObject?> = combine(gridObjects, _selectedTile, _editMode) { objects, tile, _ ->
         objects.objectAt(tile)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -479,7 +481,6 @@ class GardenViewModel @Inject constructor(
             slots.firstOrNull { it.slotIndex == index && !it.isEmpty }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    private val _editMode = MutableStateFlow(false)
 
     /**
      * True in edit mode: the grid shows, and the garden is rearranged: things are moved, put back
@@ -1573,8 +1574,16 @@ class GardenViewModel @Inject constructor(
     }
 
     /** The object covering [tile]; for a structure that is any cell of its footprint. */
-    private fun List<GridObject>.objectAt(tile: TileCoord?): GridObject? =
-        if (tile == null) null else GardenGrid(gardenMap.value, this).objectAt(tile.x, tile.y)
+    private fun List<GridObject>.objectAt(tile: TileCoord?): GridObject? {
+        if (tile == null) return null
+        val found = GardenGrid(gardenMap.value, this).objectAt(tile.x, tile.y)
+        // FB1117: in edit mode a tap anywhere in a greenhouse picks the greenhouse, crop or no crop,
+        // so that its door can be turned; the crops are tended outside edit mode.
+        if (_editMode.value && found?.isPlant == true) {
+            firstOrNull { it.isGreenhouse && !it.isWorking && it.gridX == found.gridX && it.gridY == found.gridY }?.let { return it }
+        }
+        return found
+    }
 
     private companion object {
         /** How long a pulled plant is remembered as pulled: long enough for the garden to see it go. */

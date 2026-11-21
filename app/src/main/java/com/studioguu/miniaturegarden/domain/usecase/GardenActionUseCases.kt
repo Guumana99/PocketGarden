@@ -388,6 +388,7 @@ class PlaceItemUseCase @Inject constructor(
                     workEndsAt = if (item.buildSeconds > 0) now + item.buildSeconds * 1000L else 0L,
                 )
             )
+            if (item.objectId == GridObject.GREENHOUSE_OBJECT_ID && item.buildSeconds > 0) shareGreenhouseTime(gridX, gridY, now)
             val remaining = slot.amount - 1
             gardenRepository.upsertInventorySlot(
                 if (remaining > 0) slot.copy(amount = remaining) else InventorySlot(slotIndex)
@@ -402,6 +403,30 @@ class PlaceItemUseCase @Inject constructor(
             }
             ActionResult.SUCCESS
         }
+
+    /**
+     * FB1117: the greenhouse is laid a cell at a time, and the cells joined together are built
+     * together, in one time: [GREENHOUSE_CELL_SECONDS] a cell, [GREENHOUSE_MAX_SECONDS] at most,
+     * counted from the first cell of the group put down. Every cell of the group still being built
+     * ends at that moment (but never in less than a minute from now).
+     */
+    private suspend fun shareGreenhouseTime(gridX: Int, gridY: Int, now: Long) {
+        val building = gardenRepository.getGridObjects().filter { it.isGreenhouse && it.workKind == WorkKind.BUILDING }
+        val group = GreenhouseDoor.groups(building.mapTo(HashSet()) { GridCell(it.gridX, it.gridY) })
+            .firstOrNull { GridCell(gridX, gridY) in it } ?: return
+        val cells = building.filter { GridCell(it.gridX, it.gridY) in group }
+        val seconds = minOf(cells.size * GREENHOUSE_CELL_SECONDS, GREENHOUSE_MAX_SECONDS)
+        val end = maxOf(cells.minOf { it.workStartedAt } + seconds * 1000L, now + 60_000L)
+        for (cell in cells) gardenRepository.upsertGridObject(cell.copy(workEndsAt = end))
+    }
+
+    companion object {
+        /** FB1117: a greenhouse group takes this long a cell to build, together. */
+        const val GREENHOUSE_CELL_SECONDS = 10 * 60
+
+        /** FB1117: and never more than this, however many cells. */
+        const val GREENHOUSE_MAX_SECONDS = 60 * 60
+    }
 }
 
 /**

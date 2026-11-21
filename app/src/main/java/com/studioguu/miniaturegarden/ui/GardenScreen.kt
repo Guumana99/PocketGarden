@@ -619,6 +619,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                                 // FB1114b2: as a building turns, from its own panel; in the editor from what grows in it too.
                                 canTurnDoor = (editMode || it.isGreenhouse) && GreenhouseDoor.canTurnAt(it.gridX, it.gridY, gridObjects),
                                 onTurnDoor = viewModel::turnGreenhouseDoor,
+                                holdsCrop = it.isGreenhouse && gridObjects.any { o -> o.isPlant && o.gridX == it.gridX && o.gridY == it.gridY },
                                 onPaint = { paintingBuilding = true },
                                 modifier = Modifier.fillMaxWidth(),
                                 surroundings = remember(it, gridObjects) { PlantSurroundings.of(it, gridObjects) },

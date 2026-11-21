@@ -11,6 +11,12 @@ import com.studioguu.miniaturegarden.domain.model.LawnGrowth
 import com.studioguu.miniaturegarden.domain.model.Manner
 import com.studioguu.miniaturegarden.domain.model.VisitRule
 import kotlin.math.hypot
+import com.studioguu.miniaturegarden.domain.model.GardenItem
+import com.studioguu.miniaturegarden.domain.model.InventorySlot
+import com.studioguu.miniaturegarden.domain.model.PlantSpecies
+import com.studioguu.miniaturegarden.domain.model.UserProfile
+import com.studioguu.miniaturegarden.domain.model.WorkKind
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -58,5 +64,44 @@ class Fb1117Test {
         }
         assertTrue("some hops are shorter than a quarter cell", hopLengths.any { it < 0.25f })
         assertTrue("some hops are long", hopLengths.any { it > 0.4f })
+    }
+
+    // --- 2 / 3. The greenhouse ---
+
+    private val t0 = 1_700_000_000_000L
+    private val minute = 60_000L
+    private val repo = FakeGardenRepository().apply { profile = UserProfile(coins = 5000, playerLevel = 30) }
+    private val place = PlaceItemUseCase(repo, GardenMap.DEFAULT, RecordCollectionUseCase(repo))
+
+    @Test
+    fun `cells of a greenhouse laid together are built together, ten minutes a cell and an hour at most`() = runBlocking {
+        repo.putSlot(InventorySlot(0, GardenItem.FLOOR_GREENHOUSE.itemId, 8))
+        // One cell: ten minutes.
+        assertEquals(ActionResult.SUCCESS, place(0, 3, 3, t0))
+        assertEquals(t0 + 10 * minute, repo.objects.values.single().workEndsAt)
+        // Three more joined to it, a minute apart: one group of four, forty minutes from the first.
+        for ((i, cell) in listOf(3 to 4, 4 to 3, 4 to 4).withIndex()) assertEquals(ActionResult.SUCCESS, place(0, cell.first, cell.second, t0 + (i + 1) * minute))
+        assertEquals(setOf(t0 + 40 * minute), repo.objects.values.map { it.workEndsAt }.toSet())
+        // A cell apart from them keeps its own ten minutes.
+        assertEquals(ActionResult.SUCCESS, place(0, 8, 8, t0 + 5 * minute))
+        assertEquals(t0 + 15 * minute, repo.objects.values.first { it.gridX == 8 }.workEndsAt)
+        // Many cells: sixty at most.
+        for (x in 5..8) assertEquals(ActionResult.SUCCESS, place(0, x, 3, t0 + 6 * minute + x))
+        val group = repo.objects.values.filter { it.gridY == 3 || (it.gridX in 3..4 && it.gridY == 4) }
+        assertEquals(setOf(t0 + 60 * minute), group.map { it.workEndsAt }.toSet())
+    }
+
+    @Test
+    fun `a greenhouse's door turns with crops in every cell, and the crops are left as they were`() = runBlocking {
+        val cells = listOf(3 to 3, 3 to 4, 4 to 3, 4 to 4)
+        for ((x, y) in cells) {
+            repo.put(GridObject(instanceId = "g$x$y", gridX = x, gridY = y, objectId = GridObject.GREENHOUSE_OBJECT_ID, lastUpdatedTimestamp = t0))
+            repo.put(GridObject(instanceId = "c$x$y", gridX = x, gridY = y, objectId = PlantSpecies.TOMATO.objectId, growthProgress = 0.4f, moistureLevel = 0.7f, lastUpdatedTimestamp = t0))
+        }
+        val before = repo.objects.values.filter { it.isPlant }.associateBy { it.instanceId }
+        val turn = TurnGreenhouseDoorUseCase(repo, GardenMap.DEFAULT)
+        assertEquals(ActionResult.SUCCESS, turn(3, 3))
+        assertEquals(before, repo.objects.values.filter { it.isPlant }.associateBy { it.instanceId })
+        assertTrue(repo.objects.values.filter { it.isGreenhouse }.all { it.doorSide != null })
     }
 }

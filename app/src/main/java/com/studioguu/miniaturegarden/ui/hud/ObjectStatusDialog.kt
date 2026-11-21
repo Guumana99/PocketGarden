@@ -76,6 +76,8 @@ fun ObjectStatusDialog(
     onFlip: () -> Unit = {},
     /** In edit mode, on a cell of greenhouse: the door can be turned from here, crop or no crop. */
     canTurnDoor: Boolean = false,
+    /** A crop stands on this greenhouse floor: the glass is not cleared away from under it (FB1117). */
+    holdsCrop: Boolean = false,
     onTurnDoor: () -> Unit = {},
     /** Opens the choice of colours, for a building that can be painted. */
     onPaint: () -> Unit = {},
@@ -256,7 +258,7 @@ fun ObjectStatusDialog(
                 }
                 Spacer(Modifier.weight(1f))
                 // Anything is cleared away in edit mode only (#49).
-                if (!guiding && GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
+                if (!guiding && !holdsCrop && GardenLayout.check(LayoutAction.DISCARD, gridObject, editing) == LayoutCheck.OK) {
                     // The ground under a plant is turned back from here too, with or without it.
                     if (gridObject.isPlant && soil?.isHoedSoil == true) {
                         OutlinedButton(onClick = onTurnBackGround) { Text(stringResource(R.string.action_turn_back_ground)) }
