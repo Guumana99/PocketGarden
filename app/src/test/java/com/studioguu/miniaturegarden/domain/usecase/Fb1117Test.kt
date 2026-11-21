@@ -17,6 +17,8 @@ import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import kotlinx.coroutines.runBlocking
+import com.studioguu.miniaturegarden.domain.model.RunKind
+import com.studioguu.miniaturegarden.ui.render.FenceSnow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -75,7 +77,7 @@ class Fb1117Test {
 
     @Test
     fun `cells of a greenhouse laid together are built together, ten minutes a cell and an hour at most`() = runBlocking {
-        repo.putSlot(InventorySlot(0, GardenItem.FLOOR_GREENHOUSE.itemId, 8))
+        repo.putSlot(InventorySlot(0, GardenItem.FLOOR_GREENHOUSE.itemId, 10))
         // One cell: ten minutes.
         assertEquals(ActionResult.SUCCESS, place(0, 3, 3, t0))
         assertEquals(t0 + 10 * minute, repo.objects.values.single().workEndsAt)
@@ -103,5 +105,28 @@ class Fb1117Test {
         assertEquals(ActionResult.SUCCESS, turn(3, 3))
         assertEquals(before, repo.objects.values.filter { it.isPlant }.associateBy { it.instanceId })
         assertTrue(repo.objects.values.filter { it.isGreenhouse }.all { it.doorSide != null })
+    }
+
+    // --- 4 / 5. The snow on the fences ---
+
+    @Test
+    fun `the snow on a fence lies thin along its top edge and hats a point, rather than heaping over it`() {
+        // A 20 x 20 picture: a flat rail top at row 10, and a point rising to row 4 at column 10.
+        val w = 20
+        val h = 20
+        val argb = IntArray(w * h)
+        for (x in 0 until w) for (y in 10 until h) argb[y * w + x] = 0xFF804020.toInt()
+        for (y in 4 until 10) for (x in 9..10) argb[y * w + x] = 0xFFFFFFFF.toInt()
+        val look = FenceSnow.lookOf(RunKind.WHITE_FENCE, post = false)
+        val snow = FenceSnow.cap(argb, w, h, look, seed = 1)
+        fun alphaAt(x: Int, y: Int) = (snow[(y + FenceSnow.PAD) * w + x] ushr 24) and 0xFF
+        // Over the flat part: snow just at the top edge (row 10), none far below it, in the picture.
+        assertTrue(alphaAt(3, 10) > 100)
+        assertEquals(0, alphaAt(3, 18))
+        // Over the point: the snow stands above its tip (row 4), a hat, and not over the flat part's height.
+        assertTrue(alphaAt(10, 3) > 50)
+        assertEquals(0, alphaAt(3, 3))
+        // It is a thin layer: no more than ~12 rows deep anywhere in a column.
+        for (x in 0 until w) assertTrue((0 until h + FenceSnow.PAD).count { y -> (snow[y * w + x] ushr 24) > 0 } <= 12)
     }
 }
