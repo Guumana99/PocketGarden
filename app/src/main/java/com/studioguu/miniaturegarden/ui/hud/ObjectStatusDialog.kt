@@ -78,6 +78,8 @@ fun ObjectStatusDialog(
     canTurnDoor: Boolean = false,
     /** A crop stands on this greenhouse floor: the glass is not cleared away from under it (FB1117). */
     holdsCrop: Boolean = false,
+    /** In edit mode, a greenhouse with a crop in it offers to move the crop (FB1117). */
+    onMoveCrop: () -> Unit = {},
     onTurnDoor: () -> Unit = {},
     /** Opens the choice of colours, for a building that can be painted. */
     onPaint: () -> Unit = {},
@@ -253,6 +255,9 @@ fun ObjectStatusDialog(
                 if (gridObject.canFlip && !gridObject.isWorking && (!gridObject.isBridge || editing)) {
                     FilledTonalButton(onClick = onFlip) { Text(stringResource(R.string.action_flip)) }
                 }
+                if (editing && holdsCrop) {
+                    FilledTonalButton(onClick = onMoveCrop, modifier = Modifier.testTag(MOVE_CROP_TAG)) { Text(stringResource(R.string.action_move_crop)) }
+                }
                 if (canTurnDoor) {
                     FilledTonalButton(onClick = onTurnDoor, modifier = Modifier.testTag(TURN_DOOR_TAG)) { Text(stringResource(R.string.action_flip)) }
                 }
@@ -417,3 +422,6 @@ fun removeLabel(gridObject: GridObject): Int = when {
 
 /** Test tag of the button that turns a greenhouse's door. */
 const val TURN_DOOR_TAG = "turn_greenhouse_door"
+
+/** Test tag of the greenhouse panel's "move the crop" button (FB1117). */
+const val MOVE_CROP_TAG = "move_greenhouse_crop"

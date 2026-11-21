@@ -534,11 +534,11 @@ class GardenViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** While a crop is being replanted, the cells it could not go to: the garden darkens them. */
-    val closedCells: StateFlow<Set<GridCell>> = combine(movingObject, gridObjects, gardenMap) { moving, objects, map ->
+    val closedCells: StateFlow<Set<GridCell>> = combine(movingObject, gridObjects, gardenMap, season) { moving, objects, map, season ->
         if (moving?.isPlant != true) {
             emptySet()
         } else {
-            val open = MoveObjectUseCase.cellsFor(moving, objects, map)
+            val open = MoveObjectUseCase.cellsFor(moving, objects, map, season)
             (0 until map.size).flatMap { y -> (0 until map.size).map { x -> GridCell(x, y) } }.filterTo(HashSet()) { it !in open }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
@@ -1159,6 +1159,23 @@ class GardenViewModel @Inject constructor(
                 _placingSlotIndex.value = null
                 _selectedTile.value = null
                 _movingId.value = obj.instanceId
+            }
+        }
+    }
+
+    /**
+     * FB1117: in edit mode, from the panel of a greenhouse with a crop in it: the crop is what is
+     * moved (the greenhouse itself is turned by its own button).
+     */
+    fun startMovingCropOnSelected() = withSelectedObject { glass ->
+        val crop = gridObjects.value.firstOrNull { it.isPlant && it.gridX == glass.gridX && it.gridY == glass.gridY } ?: return@withSelectedObject
+        when {
+            refused(GardenLayout.check(LayoutAction.MOVE, crop, _editMode.value)) -> Unit
+            else -> {
+                _hoeActive.value = false
+                _placingSlotIndex.value = null
+                _selectedTile.value = null
+                _movingId.value = crop.instanceId
             }
         }
     }
