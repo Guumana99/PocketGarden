@@ -138,11 +138,9 @@ class SettingsContentTest {
         compose.onNodeWithText("v9.9.9", substring = true).assertIsDisplayed()
         compose.onAllNodesWithText("閉じる").onLast().performClick()
         compose.onNodeWithText("v9.9.9", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("オープンソースライセンス").performClick()
-        compose.onNodeWithText("このアプリは次のオープンソースソフトウェアを使用しています。").assertIsDisplayed()
-        // Two close buttons now: the licences' own, on top, closes only them.
-        compose.onAllNodesWithText("閉じる").onLast().performClick()
-        compose.onNodeWithText("このアプリは次のオープンソースソフトウェアを使用しています。").assertDoesNotExist()
+        // FB1117: the licences are the device's own screen, made by the oss-licenses plugin; this
+        // page only has the button for it.
+        compose.onNodeWithText("オープンソースライセンス").assertIsDisplayed()
         compose.onNodeWithText("バージョン").assertIsDisplayed()
         assertEquals(0, dismissed)
         // The disclaimer is part of the privacy policy now.
@@ -150,17 +148,10 @@ class SettingsContentTest {
     }
 
     @Test
-    fun `the licences are a short page by hand - the libraries, then the Apache licence once and SQLCipher's, and no word of the sounds`() {
+    fun `the about page has a line crediting the sound effects, beside the licences`() {
         show()
         compose.onNodeWithText("情報").performClick()
-        compose.onNodeWithText("オープンソースライセンス").performClick()
-        for (name in listOf("AndroidX", "Jetpack Compose", "Kotlin", "Dagger / Hilt", "SQLCipher for Android")) {
-            compose.onAllNodesWithText(name, substring = true).onFirst().assertExists()
-        }
-        compose.onAllNodesWithText("TERMS AND CONDITIONS FOR USE", substring = true).assertCountEquals(1)
-        compose.onAllNodesWithText("ZETETIC", substring = true).assertCountEquals(1)
-        compose.onNodeWithText("使用音源", substring = true).assertDoesNotExist()
-        compose.onNodeWithText("準備中", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("効果音：ポケットサウンド（https://pocket-se.info/）ほか").assertIsDisplayed()
     }
 
     @Test
@@ -174,7 +165,6 @@ class SettingsContentTest {
         compose.onNodeWithText("クレジット").performClick()
         compose.onNodeWithText("音源").assertIsDisplayed()
         for (name in listOf("ポケットサウンド", "タダノオト", "効果音ラボ")) compose.onNodeWithText("・$name").assertIsDisplayed()
-        compose.onNodeWithText("https://", substring = true).assertDoesNotExist()
         assertEquals(3, SOUND_CREDITS.size)
         compose.onAllNodesWithText("閉じる").onLast().performClick()
         compose.onNodeWithText("タダノオト", substring = true).assertDoesNotExist()

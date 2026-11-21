@@ -457,7 +457,11 @@ object CreatureRoutes {
             }
             val to = pointNearby(plan, region, footings, manner, random, mood.strideScale(random))
                 ?: pointNearby(plan, region, footings, manner, random) ?: break
-            val millis = plan.pace(hypot(to.first - plan.x, to.second - plan.y) * manner.stepMillis, wide = true)
+            val distance = hypot(to.first - plan.x, to.second - plan.y)
+            // A rabbit's go is a run of hops, none longer than [Manner.hopLength]; the picture
+            // counts them from the time ([Manner.hopMillis] each).
+            val millis = if (manner.hopLength > 0f) hopsFor(distance, manner) * manner.hopMillis
+            else plan.pace(distance * manner.stepMillis, wide = true)
             val rest = (plan.between(manner.rest) * mood.restScale(random)).toLong()
             if (plan.t + millis + rest + reserve > span) break
             plan.stepTo(to.first, to.second, millis)
@@ -525,7 +529,8 @@ object CreatureRoutes {
         var from = cellOf(plan.x, plan.y)
         if (from == home && hypot(plan.x - (home.x + 0.5f), plan.y - (home.y + 0.5f)) < 0.01f) return
         for (cell in pathBetween(from, home, region) + (if (from == home) listOf(home) else emptyList())) {
-            plan.stepTo(cell.x + 0.5f, cell.y + 0.5f, manner.stepMillis)
+            val millis = if (manner.hopLength > 0f) hopsFor(hypot(cell.x + 0.5f - plan.x, cell.y + 0.5f - plan.y), manner) * manner.hopMillis else manner.stepMillis
+            plan.stepTo(cell.x + 0.5f, cell.y + 0.5f, millis)
             from = cell
         }
     }
@@ -1003,6 +1008,10 @@ internal class Manner(
     val stride: ClosedFloatingPointRange<Float> = 0.4f..1f,
     /** The furthest it goes in one go, in cells, whatever its mood (FB1114b2: the rabbit). */
     val longest: Float = Float.MAX_VALUE,
+    /** For a hopper: the longest a single hop is, in cells (0 = not a hopper). */
+    val hopLength: Float = 0f,
+    /** For a hopper: how long one hop takes. */
+    val hopMillis: Long = 0L,
     val lookChance: Float = 0f,
     val turnChance: Float = 0f,
     val hostStepMillis: Long = 600L,
@@ -1037,12 +1046,18 @@ internal class Manner(
          * went up to three in one go, in hops a cell and a half long, like the frog's leaps).
          */
         private val RABBIT = Manner(
-            stepMillis = 520L, rest = 1800L..5200L, roam = 3, stride = 0.5f..1f, longest = RABBIT_LONGEST,
-            lookChance = 0.55f, turnChance = 0.3f,
+            stepMillis = 520L, rest = 1800L..5200L, roam = 3, stride = 0.15f..1f, longest = RABBIT_LONGEST,
+            hopLength = RABBIT_HOP_LENGTH, hopMillis = RABBIT_HOP_MILLIS, lookChance = 0.55f, turnChance = 0.3f,
         )
 
         /** The furthest the rabbit goes in one go, in cells (FB1114b2). */
         const val RABBIT_LONGEST = 1f
+
+        /** FB1117: one hop of the rabbit carries it half a cell at most; a go of a cell is two hops. */
+        const val RABBIT_HOP_LENGTH = 0.5f
+
+        /** How long one hop of the rabbit takes (the picture's hop count is the leg's time over this). */
+        const val RABBIT_HOP_MILLIS = 280L
 
         /** #book60: creeps, very slowly, a little way over its leaf or its moss. */
         private val SNAIL = Manner(
@@ -1277,3 +1292,7 @@ data class CreatureDirection(
     val stayMillis: Long? = null,
     val fromCells: Float? = null,
 )
+
+/** How many hops a go of [distance] cells takes a hopper: as few as keep every hop within its length. */
+internal fun hopsFor(distance: Float, manner: Manner): Int =
+    kotlin.math.ceil((distance / manner.hopLength - 1e-4f).toDouble()).toInt().coerceAtLeast(1)

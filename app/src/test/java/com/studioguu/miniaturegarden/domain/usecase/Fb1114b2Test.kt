@@ -153,10 +153,9 @@ class Fb1114b2Test {
         assertFalse(fence.contains("drawGrassAtFoot("))
         // The band as it was (a white line drawn with a pen) is gone from the fences, the soft one in its place.
         assertFalse(fence.contains("drawBand("))
-        assertEquals(3, Regex("drawSoftBand\\(").findAll(fence).count())
-        val snow = source("ui/render/EdgeSnow.kt")
-        assertTrue(snow.contains("BlurMaskFilter"))
-        assertTrue(snow.contains("LinearGradient"))
+        // FB1117: the snow lies along the pictures' own outlines (FenceSnow), not as soft bands.
+        assertFalse(fence.contains("drawSoftBand("))
+        assertEquals(3, Regex("FenceSnow\\.maskOf\\(").findAll(fence).count())
     }
 
     // --- 7. The well ---

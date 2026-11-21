@@ -60,6 +60,8 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -389,6 +391,12 @@ fun ShopStageContent(
     // own, drawn at the game's.
     val device = LocalDensity.current
     val shopDensity = remember(device) { Density(device.density, ShopText.SCALE) }
+    // FB1117: scrolled to the end, the shelves stop at the foot of the panelling (the band behind
+    // them), not down in the floorboards: the room's own measure (ShopRoom) against where the
+    // shelves' window ends.
+    val windowHeight = androidx.compose.ui.platform.LocalView.current.height
+    var shelvesBottom by remember { mutableStateOf(0) }
+    val belowPanelling = with(device) { ((shelvesBottom - windowHeight * ShopRoomShape.PANELLING_BOTTOM).coerceAtLeast(0f)).toDp() }
     CompositionLocalProvider(LocalDensity provides shopDensity) {
         Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {
             // The room: each shop has its own walls. The new room fades in quickly over the old one,
@@ -411,11 +419,11 @@ fun ShopStageContent(
                     targetState = stage,
                     // The old shelves go first, quickly, then the new ones come: never both at half.
                     transitionSpec = { ShopFades.shelves() },
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    modifier = Modifier.weight(1f).fillMaxWidth().onGloballyPositioned { shelvesBottom = (it.positionInRoot().y + it.size.height).toInt() },
                     label = "shelves",
                 ) { shown ->
                     Column(
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 12.dp),
+                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 12.dp + belowPanelling),
                         verticalArrangement = Arrangement.spacedBy(18.dp),
                     ) {
                         if (shown == ShopStage.SEEDS) {
@@ -450,6 +458,12 @@ fun ShopStageContent(
             }
         }
     }
+}
+
+/** Where the room's panelling (the band behind the shelves) lies, as shares of the screen's height; the floor is below it. */
+internal object ShopRoomShape {
+    const val PANELLING_TOP = 0.7f
+    const val PANELLING_BOTTOM = 0.82f
 }
 
 /** Test tag of the stage's outermost box. */
@@ -494,10 +508,10 @@ private fun ShopRoom(stage: ShopStage, modifier: Modifier) {
                 x += stripe
             }
             // Panelling, and the floor below it.
-            val panelTop = size.height * 0.7f
-            drawRect(colors.panel, Offset(0f, panelTop), Size(size.width, size.height * 0.12f))
+            val panelTop = size.height * ShopRoomShape.PANELLING_TOP
+            drawRect(colors.panel, Offset(0f, panelTop), Size(size.width, size.height * (ShopRoomShape.PANELLING_BOTTOM - ShopRoomShape.PANELLING_TOP)))
             drawRect(Color.Black.copy(alpha = 0.12f), Offset(0f, panelTop), Size(size.width, 4f))
-            val floorTop = size.height * 0.82f
+            val floorTop = size.height * ShopRoomShape.PANELLING_BOTTOM
             drawRect(Brush.verticalGradient(listOf(GardenColors.WoodGrain, GardenColors.Wood)), Offset(0f, floorTop), Size(size.width, size.height - floorTop))
             var plank = floorTop + (size.height - floorTop) / 4f
             while (plank < size.height) {

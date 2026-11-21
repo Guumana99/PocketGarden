@@ -218,13 +218,17 @@ private fun railAnchor(asset: AssetManifest, middle: Offset, scale: Float): Offs
  *
  * @param mirrored shown from its other side, for the slope that would otherwise lay it down.
  */
-fun DrawScope.drawRunPiece(pages: AtlasPages, asset: AssetManifest, from: Offset, to: Offset, scale: Float, mirrored: Boolean = false) {
+fun DrawScope.drawRunPiece(pages: AtlasPages, asset: AssetManifest, from: Offset, to: Offset, scale: Float, mirrored: Boolean = false) =
+    drawRunPiece(pages[asset], asset, from, to, scale, mirrored)
+
+/** [drawRunPiece] of [image] (the atlas page, or a picture made from it laid out as [asset] is), [alpha] opaque. */
+fun DrawScope.drawRunPiece(image: ImageBitmap, asset: AssetManifest, from: Offset, to: Offset, scale: Float, mirrored: Boolean = false, alpha: Float = 1f) {
     val middle = (from + to) / 2f
     withTransform({
         transform(alongRun(middle, (to.y - from.y) / (to.x - from.x), 0f, -1f))
         scale(scaleX = if (mirrored) -1f else 1f, scaleY = 1f, pivot = middle)
     }) {
-        drawSprite(pages[asset], asset, railAnchor(asset, middle, scale), scale)
+        drawSprite(image, asset, railAnchor(asset, middle, scale), scale, alpha = alpha)
     }
 }
 
