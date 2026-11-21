@@ -108,6 +108,9 @@ enum class ActionResult {
     /** A crop was to be planted where something else already stands. */
     NO_ROOM_TO_PLANT,
 
+    /** FB1117: a crop out of its season was to be taken out of the greenhouse it grows in. */
+    OUT_OF_SEASON_TO_LEAVE_GLASS,
+
     /** The hoe went on soil already worked (ridges, or loose soil with a crop in it): said nothing of. */
     ALREADY_TILLED,
 

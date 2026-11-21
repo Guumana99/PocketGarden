@@ -13,6 +13,7 @@ import com.studioguu.miniaturegarden.domain.model.PlacementCheck
 import com.studioguu.miniaturegarden.domain.model.PlacementKind
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
+import com.studioguu.miniaturegarden.domain.model.Season
 import com.studioguu.miniaturegarden.domain.model.WeatherForecast
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
@@ -232,6 +233,9 @@ class MoveObjectUseCase @Inject constructor(
             val others = GardenGrid(gardenMap.current(), garden.filter { it.instanceId != instanceId })
             val fit = others.fits(current.objectId, gridX, gridY)
             if (fit != ActionResult.SUCCESS) return@runInTransaction fit
+            // FB1117: out of a greenhouse only in its season (what grows there out of season stays under glass).
+            val season = gardenRepository.getProgress()?.season
+            if (staysUnderGlass(current, garden, others, gridX, gridY, gardenMap.current(), season)) return@runInTransaction ActionResult.OUT_OF_SEASON_TO_LEAVE_GLASS
             val soil = others.soilFor(PlantSpecies.forObjectId(current.objectId), gridX, gridY)
             val moved = Soil.withFoodOf(current.copy(gridX = gridX, gridY = gridY), soil)
             gardenRepository.upsertGridObject(
@@ -251,11 +255,30 @@ class MoveObjectUseCase @Inject constructor(
          */
         fun canMove(gridObject: GridObject): Boolean = GardenLayout.isMovable(gridObject)
 
-        /** The cells of [map] the crop [plant] could be replanted to, among [objects]; its own among them. */
-        fun cellsFor(plant: GridObject, objects: List<GridObject>, map: GardenMap): Set<GridCell> {
+        /**
+         * The cells of [map] the crop [plant] could be replanted to, among [objects]; its own among them.
+         * FB1117: with [season] given, a crop standing under glass out of its season is not let out
+         * of the greenhouse; from one greenhouse cell to another, or from outside to under glass, it goes.
+         */
+        fun cellsFor(plant: GridObject, objects: List<GridObject>, map: GardenMap, season: Season? = null): Set<GridCell> {
             val others = GardenGrid(map, objects.filter { it.instanceId != plant.instanceId })
             return (0 until map.size).flatMap { y -> (0 until map.size).map { x -> GridCell(x, y) } }
-                .filterTo(HashSet()) { others.fits(plant.objectId, it.x, it.y) == ActionResult.SUCCESS }
+                .filterTo(HashSet()) {
+                    others.fits(plant.objectId, it.x, it.y) == ActionResult.SUCCESS &&
+                        !staysUnderGlass(plant, objects, others, it.x, it.y, map, season)
+                }
+        }
+
+        /**
+         * Whether [plant], which stands under glass now and is out of season, would leave the
+         * greenhouse by going to ([x], [y]) of [others] (the garden without it): it may not.
+         */
+        private fun staysUnderGlass(plant: GridObject, objects: List<GridObject>, others: GardenGrid, x: Int, y: Int, map: GardenMap, season: Season?): Boolean {
+            if (season == null) return false
+            if (!GardenGrid(map, objects).isUnderGlass(plant.gridX, plant.gridY)) return false
+            if (others.isUnderGlass(x, y)) return false
+            val item = GardenItem.entries.firstOrNull { it.objectId == plant.objectId } ?: return false
+            return !item.isInSeason(season)
         }
     }
 }

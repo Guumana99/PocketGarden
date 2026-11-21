@@ -373,6 +373,7 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.ALREADY_TILLED -> null
     ActionResult.CANNOT_TILL -> R.string.msg_cannot_till
     ActionResult.NO_ROOM_TO_PLANT -> R.string.msg_no_room_to_plant
+    ActionResult.OUT_OF_SEASON_TO_LEAVE_GLASS -> R.string.msg_out_of_season_leave_glass
     ActionResult.NOT_SWITCHABLE -> R.string.msg_not_switchable
 }
 

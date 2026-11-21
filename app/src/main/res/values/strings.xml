@@ -182,6 +182,8 @@
     <string name="facing_flipped">反対</string>
     <string name="msg_busy">作業中です。\n終わるまでお待ちください</string>
     <string name="action_move">移動</string>
+    <string name="action_move_crop">作物を動かす</string>
+    <string name="msg_out_of_season_leave_glass">季節外れの作物は温室の外に移せません</string>
     <string name="move_banner">🚚 %1$s の移動先をタップ</string>
     <string name="edit_mode_button">編集モード</string>
     <string name="msg_needs_edit_mode">✏️ お庭の模様替えは編集モードで行えます</string>

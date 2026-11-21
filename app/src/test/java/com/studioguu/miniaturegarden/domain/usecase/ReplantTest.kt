@@ -101,12 +101,52 @@ class ReplantTest {
     }
 
     @Test
-    fun `a crop comes out from under glass and goes under it, out of season too`() = runBlocking {
-        // Tomatoes are not an autumn crop: they could not be sown out here now.
+    fun `an out of season crop goes from glass to glass and from outside under glass, but not out of the greenhouse`() = runBlocking {
+        // Tomatoes are not an autumn crop (FB1117: what grows under glass out of season stays there).
         assertFalse(GardenItem.SEED_TOMATO.isInSeason(Season.AUTUMN))
+        put(bed(1, 1, GridObject.GREENHOUSE_OBJECT_ID), bed(2, 2), bed(5, 5, GridObject.GREENHOUSE_OBJECT_ID), plant(1, 1))
+        // Out of the greenhouse: refused, and the crop is where it was.
+        assertEquals(ActionResult.OUT_OF_SEASON_TO_LEAVE_GLASS, replant(2, 2))
+        assertEquals(GridCell(1, 1), repo.objects.getValue("plant").let { GridCell(it.gridX, it.gridY) })
+        // To another greenhouse cell, far from the first: always.
+        assertEquals(ActionResult.SUCCESS, replant(5, 5))
+        val moved = repo.objects.getValue("plant")
+        assertEquals(0.6f, moved.growthProgress, 0f)
+        assertEquals(0.7f, moved.moistureLevel, 0f)
+        assertEquals("pink", moved.bloomColour)
+        assertEquals(2, moved.harvestCount)
+    }
+
+    @Test
+    fun `a crop in its season comes out of the greenhouse, and one outside goes in at any time`() = runBlocking {
+        repo.progress = GardenProgress(season = Season.SUMMER)
+        assertTrue(GardenItem.SEED_TOMATO.isInSeason(Season.SUMMER))
         put(bed(1, 1, GridObject.GREENHOUSE_OBJECT_ID), bed(2, 2), plant(1, 1))
         assertEquals(ActionResult.SUCCESS, replant(2, 2))
+        // And back in, once the season is no longer its own.
+        repo.progress = GardenProgress(season = Season.AUTUMN)
+        put(bed(1, 1, GridObject.GREENHOUSE_OBJECT_ID))
         assertEquals(ActionResult.SUCCESS, replant(1, 1))
+    }
+
+    @Test
+    fun `the cells shown dark follow the same rule, and only the season rule gives its own message`() {
+        val glass = bed(1, 1, GridObject.GREENHOUSE_OBJECT_ID)
+        val other = bed(5, 5, GridObject.GREENHOUSE_OBJECT_ID)
+        val outside = bed(2, 2)
+        val things = listOf(glass, other, outside, plant(1, 1))
+        val inSeason = MoveObjectUseCase.cellsFor(plant(1, 1), things, GardenMap.DEFAULT, Season.SUMMER)
+        assertTrue(GridCell(2, 2) in inSeason)
+        val outOfSeason = MoveObjectUseCase.cellsFor(plant(1, 1), things, GardenMap.DEFAULT, Season.AUTUMN)
+        assertFalse(GridCell(2, 2) in outOfSeason)
+        assertTrue(GridCell(5, 5) in outOfSeason)
+        assertTrue(GridCell(1, 1) in outOfSeason)
+        // Without a season given, as before.
+        assertTrue(GridCell(2, 2) in MoveObjectUseCase.cellsFor(plant(1, 1), things, GardenMap.DEFAULT))
+        assertEquals(
+            "季節外れの作物は温室の外に移せません",
+            java.io.File("src/main/res/values/strings.xml").readText().substringAfter("msg_out_of_season_leave_glass\">").substringBefore("<"),
+        )
     }
 
     @Test
@@ -137,5 +177,15 @@ class ReplantTest {
     fun `a crop moved like a piece of the layout does not skip the rules for planting`() = runBlocking {
         put(bed(1, 1), plant(1, 1))
         assertEquals(ActionResult.NOT_MOVABLE, move("plant", 2, 2))
+    }
+
+    @Test
+    fun `in edit mode a greenhouse with a crop in it offers to move the crop as well as to turn the door`() {
+        val panel = java.io.File("src/main/java/com/studioguu/miniaturegarden/ui/hud/ObjectStatusDialog.kt").readText().replace("\r\n", "\n")
+        assertTrue(panel.contains("if (editing && holdsCrop) {\n                    FilledTonalButton(onClick = onMoveCrop"))
+        val screen = java.io.File("src/main/java/com/studioguu/miniaturegarden/ui/GardenScreen.kt").readText()
+        assertTrue(screen.contains("onMoveCrop = viewModel::startMovingCropOnSelected"))
+        // The door button stays, crop or no crop.
+        assertTrue(panel.contains("if (canTurnDoor) {"))
     }
 }
