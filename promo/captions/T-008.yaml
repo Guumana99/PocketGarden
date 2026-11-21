@@ -1,0 +1,10 @@
+bgm: Cat_life.mp3
+bgm_start: 0.3
+captions:
+  - { from: 0.0,  to: 3.0,  text: "この中に1つだけ\nレアな色があります" }
+  - { from: 3.0,  to: 6.3,  text: "左からA・B・C・D\nどれだと思う？" }
+  - { from: 6.5,  to: 7.5,  text: "3" }
+  - { from: 7.5,  to: 8.5,  text: "2" }
+  - { from: 8.5,  to: 9.5,  text: "1" }
+  - { from: 9.5,  to: 12.5, text: "正解はC\n青いチューリップ！" }
+  - { from: 12.5, to: 15.0, text: "当たった？\nコメントで教えて" }

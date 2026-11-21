@@ -1,0 +1,29 @@
+id: T-005
+name: diary_02
+title: ポケ庭日記 2日目（ミントを植えて、チューリップが咲く）
+fps: 30
+seed: 31
+hook_from_end: 0
+start: { garden: new_game, season: spring_early, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: true }
+# 1日目（T-002）の花壇 [4,6,6,8] を、乾いた段階 2 の株で始める（チューリップは 24 時間で乾く＝1 日たった朝）
+setup:
+  - { plant: { crop: tulip, area: [4,6,6,8], colours: [red, pink, yellow], dry: true } }
+  - { grow: { area: [4,6,6,8], to_stage: 2 } }
+camera: { zoom: 1.8, center: [5,7] }
+timeline:
+  - { at: 0.0,  day_label: "ポケ庭日記 2日目\n春のはじめ・朝" }
+  - { at: 2.5,  water: { area: [4,6,6,8], over: 2.0 } }
+  # ミントは畝に植える作物：隣の [7,6,8,8] を耕してから植える（植えるだけでも畝は作られるが、耕す動きを見せる）
+  - { at: 5.5,  till: { area: [7,6,8,8], over: 1.2, ridged: true } }
+  - { at: 7.0,  plant: { crop: mint, area: [7,6,8,8], over: 1.2 } }
+  - { at: 9.0,  time_of_day: { to: day, over: 1.5 } }
+  - { at: 9.0,  day_label: "ポケ庭日記 2日目\n春のはじめ・昼" }
+  - { at: 11.0, grow: { area: [4,6,6,8], to_stage: 3 } }
+  - { at: 12.0, camera: { zoom: 2.5, center: [5,7], over: 1.0 } }
+  # 手前（左）のチューリップに、ちょうちょが画面の外から（at は止まる秒）
+  - { at: 13.5, creature: { kind: butterfly, count: 1, from: outside_left, from_distance: 6, land_on: [[5,8]], stay: 5.0 } }
+  - { at: 14.0, camera: { zoom: max, center: [5,8,0.6], over: 2.4 } }
+  - { at: 19.0, camera: { zoom: fit, over: 1.5 } }
+  - { at: 19.0, time_of_day: { to: evening, over: 2.0 } }
+  - { at: 19.0, day_label: "ポケ庭日記 2日目\n春のはじめ・夕方" }
+  - { at: 25.0, end: true }

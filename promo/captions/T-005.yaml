@@ -1,0 +1,22 @@
+bgm: Cat_life.mp3
+bgm_start: 0.3
+hook:
+  from: 16.5        # ちょうちょが止まって、最大まで寄りきった所
+  seconds: 1.6
+  text: "咲いた！\nちょうちょが来た！"
+  label: false
+  text_top: 0.13
+  rewind: 0.8
+  rewind_label: "⏪ 半日前"
+outro:
+  title: つづく
+  lines: [次回 ポケ庭日記 3日目, コメントで次の花を決めます, ポケット庭園（ポケ庭）]
+captions:
+  - { from: 0.0,  to: 2.5,  text: "1日目に植えた\nチューリップ" }
+  - { from: 2.5,  to: 5.5,  text: "お水をあげて" }
+  - { from: 5.5,  to: 9.0,  text: "隣にはミントを\n植えてみます" }
+  - { from: 9.0,  to: 11.0, text: "…あれ？" }
+  - { from: 11.0, to: 13.5, text: "咲いた！" }
+  - { from: 13.5, to: 17.0, text: "ちょうちょが\n来てくれた！" }
+  - { from: 17.0, to: 19.5, text: "目標、ひとつ達成" }
+  - { from: 22.0, to: 25.0, text: "次は何を植える？\nひまわり？ラベンダー？" }
