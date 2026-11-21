@@ -9,9 +9,9 @@ start: { garden: new_game, season: spring, time_of_day: day, weather: sunny, ui:
 setup:
   - { plant: { crop: tulip, cells: [[2,5],[4,5],[6,5],[8,5]], colours: [red, yellow, blue, pink] } }
   - { grow: { area: [2,5,8,5], to_stage: 3 } }
-camera: { zoom: 1.6, center: [5,5] }
+camera: { zoom: 2.6, center: [5,5,0.3] }
 timeline:
-  - { at: 1.5,  camera: { zoom: 3.0, center: [3,5], over: 0.8 } }
-  - { at: 2.4,  camera: { zoom: 3.0, center: [7,5], over: 4.4 } }
-  - { at: 9.0,  camera: { zoom: 7.0, center: [6,5,0.4], over: 1.0 } }
+  - { at: 3.0,  camera: { zoom: 3.6, center: [3,5,0.3], over: 0.7 } }
+  - { at: 3.8,  camera: { zoom: 3.6, center: [7,5,0.3], over: 3.0 } }
+  - { at: 9.0,  camera: { zoom: 8.0, center: [6,5,0.4], over: 1.0 } }
   - { at: 15.0, end: true }
