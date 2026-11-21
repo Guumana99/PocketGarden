@@ -34,16 +34,16 @@ object FenceSnow {
 
     /** How the snow lies on the pictures of [kind], and of its [post] or [rail]. */
     fun lookOf(kind: RunKind, post: Boolean): Look = when (kind) {
-        RunKind.WOOD_FENCE -> if (post) Look(1, 4f, 2f) else Look(2, 4.5f, 2f)
+        RunKind.WOOD_FENCE -> if (post) Look(1, 5.5f, 2.5f) else Look(2, 6f, 2.5f)
         // The white fence's points: a small hat on each tip, shoulders either side.
-        RunKind.WHITE_FENCE -> if (post) Look(2, 4f, 2.2f) else Look(3, 4.5f, 3f)
+        RunKind.WHITE_FENCE -> if (post) Look(2, 5.5f, 3f) else Look(3, 6f, 3.5f)
         // Bamboo: a thin layer over the ends of the sticks, not a spike each.
-        RunKind.BAMBOO_FENCE -> if (post) Look(1, 4f, 2f) else Look(6, 4f, 2f)
+        RunKind.BAMBOO_FENCE -> if (post) Look(1, 5f, 2.5f) else Look(6, 5f, 2.5f)
         RunKind.BRICK_EDGING -> Look(1, 3f, 1.5f)
     }
 
     /** Rows the mask has above the picture's own: the layer stands up over the highest point. */
-    const val PAD = 8
+    const val PAD = 10
 
     /** The snow's white, a touch blue, and its shade towards the foot of the layer. */
     private const val LIGHT = 0xFFFFFF
