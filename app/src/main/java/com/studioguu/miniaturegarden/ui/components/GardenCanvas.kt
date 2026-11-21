@@ -87,6 +87,7 @@ import com.studioguu.miniaturegarden.domain.model.WeatherType
 import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.ui.render.Daylight
 import com.studioguu.miniaturegarden.ui.render.EdgeSnow
+import com.studioguu.miniaturegarden.ui.render.FenceSnow
 import com.studioguu.miniaturegarden.ui.render.SceneTint
 import com.studioguu.miniaturegarden.ui.render.drawSpriteSnow
 import com.studioguu.miniaturegarden.ui.render.FenceAutotile
@@ -1011,8 +1012,10 @@ private fun submitObjects(
                     val railTop = EdgeSnow.railTop(run)?.takeIf { ambience.edgeSnow > 0f }
                     submit(obj, RenderLayer.GRID_OBJECTS, depth + FenceAutotile.RAIL_DEPTH) {
                         drawRunPiece(atlasImage, rail, base, next, spriteScale, mirrored)
-                        // Snow along the top of the rail, from post to post: soft and patchy (FB1114b2).
-                        if (railTop != null) with(EdgeSnow) { drawSoftBand(listOf(base, next).map { it - Offset(0f, railTop * unit) }, unit, ambience.edgeSnow, seed = obj.gridX * 3 + obj.gridY * 11) }
+                        // FB1117: snow lying thin and flat along the top of the rail, read off its outline.
+                        if (railTop != null) FenceSnow.maskOf(atlasImage[rail], rail, run, post = false)?.let { (mask, laid) ->
+                            drawRunPiece(mask, laid, base, next, spriteScale, mirrored, alpha = ambience.edgeSnow)
+                        }
                     }
                 }
             }
@@ -1024,17 +1027,17 @@ private fun submitObjects(
                 } else if (run.hasPosts) {
                     drawPlaceholder(obj, base, unit)
                 }
-                // Snow on its top: along the whole of one alone, a cap on a post; soft and patchy
-                // (FB1114b2: the band drawn before read as a line drawn with a pen).
-                if (ambience.edgeSnow > 0f && !obj.isWorking && run.isFence) with(EdgeSnow) {
-                    val aloneTop = EdgeSnow.aloneTop(run)
-                    if (alone && aloneTop != null) {
-                        val (half, top) = aloneTop
-                        drawSoftBand(listOf(base + Offset(-half * unit, -top * unit), base + Offset(half * unit, -top * unit)), unit, ambience.edgeSnow, seed = obj.gridX * 5 + obj.gridY)
+                // FB1117: snow on its top, thin and flat along the outline of the picture (FenceSnow):
+                // along the whole of one alone, a cap on a post.
+                if (ambience.edgeSnow > 0f && !obj.isWorking && run.isFence && atlasImage != null) {
+                    if (alone && whole != null) {
+                        FenceSnow.maskOf(atlasImage[whole], whole, run, post = false)?.let { (mask, laid) ->
+                            drawSprite(mask, laid, base, spriteScale, alpha = ambience.edgeSnow)
+                        }
                     } else if (!alone && post != null) {
-                        val cap = base - Offset(0f, EdgeSnow.POST_TOP * unit)
-                        // A small mound on the post's head, wider than the post is, as snow sits.
-                        drawSoftBand(listOf(cap - Offset(unit * POST_CAP_HALF, 0f), cap + Offset(unit * POST_CAP_HALF, 0f)), unit, ambience.edgeSnow, seed = obj.gridX * 5 + obj.gridY)
+                        FenceSnow.maskOf(atlasImage[post], post, run, post = true)?.let { (mask, laid) ->
+                            drawSprite(mask, laid, base, spriteScale, alpha = ambience.edgeSnow)
+                        }
                     }
                 }
             }

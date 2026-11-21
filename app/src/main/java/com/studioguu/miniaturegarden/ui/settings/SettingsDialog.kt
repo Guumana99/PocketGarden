@@ -162,6 +162,8 @@ private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onSh
         CarvedButton(text = stringResource(R.string.settings_version), onClick = onShowVersion, modifier = Modifier.fillMaxWidth())
         CarvedButton(text = stringResource(R.string.settings_credits), onClick = onShowCredits, modifier = Modifier.fillMaxWidth())
         CarvedButton(text = stringResource(R.string.settings_licenses), onClick = onShowLicenses, modifier = Modifier.fillMaxWidth())
+        // FB1117: the sound effects' credit, a line beside the licences.
+        Text(stringResource(R.string.credits_sound_line), style = MaterialTheme.typography.bodySmall, color = GardenColors.InkSoft)
     }
 }
 
