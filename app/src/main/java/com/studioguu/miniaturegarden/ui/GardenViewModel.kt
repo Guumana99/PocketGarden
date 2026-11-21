@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.BuildConfig
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.data.ads.AdAvailability
+import com.studioguu.miniaturegarden.data.ads.AdSlot
 import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.asset.AssetRepository
@@ -340,7 +341,7 @@ class GardenViewModel @Inject constructor(
      * What the cloud at the top shows. Worked out afresh every minute as well, so that a cloud
      * rests for the day only until the day is over, with the app open or not.
      */
-    val rainCloud: StateFlow<RainCloudState> = combine(rewardLimits.usage, gridObjects, rewardedAds.availability, ShowcaseControls.showcase, minutes) { usage, objects, ads, showcase, _ ->
+    val rainCloud: StateFlow<RainCloudState> = combine(rewardLimits.usage, gridObjects, rewardedAds.availability(AdSlot.RAIN), ShowcaseControls.showcase, minutes) { usage, objects, ads, showcase, _ ->
         showcase?.cloud ?: RainCloudState.of(
             rainsLeft = usage.remaining(RewardType.BLESSED_RAIN, todayEpochDay()),
             growing = objects.any(::rainHelps),
@@ -351,7 +352,7 @@ class GardenViewModel @Inject constructor(
 
     /** What to say instead of offering a rain while the next ad is still on its way; null if it is here. */
     fun adStillComing(): Int? =
-        R.string.msg_reward_loading.takeIf { ShowcaseControls.showcase.value.adsOr(rewardedAds.availability.value) == AdAvailability.LOADING }
+        R.string.msg_reward_loading.takeIf { ShowcaseControls.showcase.value.adsOr(rewardedAds.availability(AdSlot.RAIN).value) == AdAvailability.LOADING }
 
     /** Whether a blessed rain would do anything for [plant]. */
     private fun rainHelps(plant: GridObject): Boolean =
@@ -388,7 +389,7 @@ class GardenViewModel @Inject constructor(
         val show: (Activity, () -> Unit, (RewardedAdResult) -> Unit) -> Unit = if (skipAd) {
             { _, earned, closed -> earned(); closed(RewardedAdResult.EARNED) }
         } else {
-            { a, earned, closed -> rewardedAds.show(a, onEarned = earned, onClosed = closed) }
+            { a, earned, closed -> rewardedAds.show(AdSlot.RAIN, a, onEarned = earned, onClosed = closed) }
         }
         show(
             activity,

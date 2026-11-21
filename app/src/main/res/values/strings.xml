@@ -464,10 +464,6 @@
     <string name="privacy_policy_url" translatable="false">https://guumana99.github.io/privacy-policy_pocketgarden/</string>
     <!-- The libraries the app adds itself (app/build.gradle.kts), by name and licence; the texts
          follow from assets/licenses. Google's ads and review SDKs are not open source. -->
-    <string name="licenses_intro">このアプリは次のオープンソースソフトウェアを使用しています。</string>
-    <string name="licenses_list">・AndroidX（Core、Activity、Lifecycle、Navigation、Room、SQLite、DataStore、WorkManager、Hilt Navigation Compose）\nApache License 2.0\n\n・Jetpack Compose（UI、Material 3）\nApache License 2.0\n\n・Kotlin、kotlinx.coroutines、kotlinx.serialization\nApache License 2.0\n\n・Dagger / Hilt\nApache License 2.0\n\n・SQLCipher for Android\nBSD 形式のライセンス（下に全文）。中に含まれる SQLite はパブリックドメイン</string>
-    <string name="licenses_apache_heading">Apache License 2.0</string>
-    <string name="licenses_sqlcipher_heading">SQLCipher for Android のライセンス</string>
 
     <!-- Debug menu (debug builds only) -->
     <string name="debug_menu_title">開発者メニュー</string>

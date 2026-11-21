@@ -70,7 +70,7 @@ class DeviceFeedbackTest {
         val app = source("PocketGardenApplication.kt").substringAfter("override fun onCreate()")
         assertTrue(app.indexOf("titleArt.join()") in 0 until app.indexOf("rewardedAds.start()"))
         // And the ads SDK starts off the main thread.
-        assertTrue(source("data/ads/RewardedAdManager.kt").contains("Thread({ MobileAds.initialize(context) { handler.post(::load) } }, \"ads-init\").start()"))
+        assertTrue(source("data/ads/RewardedAdManager.kt").contains("Thread({ MobileAds.initialize(context) { handler.post { AdSlot.entries.forEach(::load) } } }, \"ads-init\").start()"))
     }
 
     // --- 1.4 Growing the garden ---

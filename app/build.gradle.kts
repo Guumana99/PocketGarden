@@ -8,13 +8,18 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.oss.licenses)
 }
 
-// AdMob ids. These are Google's public TEST ids: they always serve test ads and never earn or
-// cost anything. Before publishing, replace both with the app's own ids from the AdMob console.
+// AdMob ids: the one place they live. debug and promo (the recorder) keep Google's public TEST ids,
+// which always serve test ads and never earn or cost anything. Only release uses the app's own ids;
+// the release build stops if they are blank or still the test ones (see the check below).
 // Never tap real ads in a development build.
-val admobAppId = "ca-app-pub-3940256099942544~3347511713"
-val admobRewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
+val testAdmobAppId = "ca-app-pub-3940256099942544~3347511713"
+val testAdUnitId = "ca-app-pub-3940256099942544/5224354917"
+val prodAdmobAppId = "ca-app-pub-4613906044576751~9445204503"
+val prodRainAdUnitId = "ca-app-pub-4613906044576751/9329654437"
+val prodCoinAdUnitId = "ca-app-pub-4613906044576751/1471345716"
 
 // The upload key for Play (docs/release/README.md). keystore.properties sits at the project's root
 // and is never committed (.gitignore): storeFile, storePassword, keyAlias, keyPassword. Without it the
@@ -35,8 +40,9 @@ android {
         versionCode = 2
         versionName = "0.1.1"
 
-        manifestPlaceholders["admobAppId"] = admobAppId
-        buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", "\"$admobRewardedAdUnitId\"")
+        manifestPlaceholders["admobAppId"] = testAdmobAppId
+        buildConfigField("String", "ADMOB_RAIN_AD_UNIT_ID", "\"$testAdUnitId\"")
+        buildConfigField("String", "ADMOB_COIN_AD_UNIT_ID", "\"$testAdUnitId\"")
     }
 
     signingConfigs {
@@ -53,10 +59,16 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("upload")
+            manifestPlaceholders["admobAppId"] = prodAdmobAppId
+            buildConfigField("String", "ADMOB_RAIN_AD_UNIT_ID", "\"$prodRainAdUnitId\"")
+            buildConfigField("String", "ADMOB_COIN_AD_UNIT_ID", "\"$prodCoinAdUnitId\"")
             // R8 shrinks and obfuscates the release (2026-11-08); the mapping for Play Console is
             // build/outputs/mapping/release/mapping.txt. Unused resources go too.
             isMinifyEnabled = true
             isShrinkResources = true
+            // Debug symbols of the native libraries (SQLCipher ...) go into the AAB, so that Play
+            // Console can read native crashes and stops warning about their absence.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -92,6 +104,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+
+// A release that would ship Google's test ads (or none) is a mistake: stop it.
+gradle.taskGraph.whenReady {
+    val building = allTasks.any { it.project == project && it.name.matches(Regex("(assemble|bundle|package)Release")) }
+    if (building) {
+        val ids = listOf(prodAdmobAppId, prodRainAdUnitId, prodCoinAdUnitId)
+        check(ids.none { it.isBlank() || it.startsWith("ca-app-pub-3940256099942544") }) {
+            "release needs the production AdMob ids (blank or Google test ids found); see the top of app/build.gradle.kts"
         }
     }
 }
@@ -152,6 +175,8 @@ dependencies {
     // Rewarded ads
     implementation(libs.play.services.ads)
     implementation(libs.play.review)
+    // The open-source licence list in settings, written at build time by the oss-licenses plugin.
+    implementation(libs.play.services.oss.licenses)
     implementation(libs.androidx.media3.exoplayer)
 
     // Notifications posted while the app is away

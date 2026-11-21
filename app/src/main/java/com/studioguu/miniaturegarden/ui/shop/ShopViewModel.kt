@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.data.ads.AdAvailability
+import com.studioguu.miniaturegarden.data.ads.AdSlot
 import com.studioguu.miniaturegarden.data.ads.RewardedAdManager
 import com.studioguu.miniaturegarden.data.ads.RewardedAdResult
 import com.studioguu.miniaturegarden.data.audio.AudioManager
@@ -170,7 +171,7 @@ class ShopViewModel @Inject constructor(
     val bonusRemaining: StateFlow<Int> = combine(rewardLimits.usage, everyMinute()) { usage, _ -> usage.remaining(RewardType.COIN_BONUS, todayEpochDay()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    val ads: StateFlow<AdAvailability> = rewardedAds.availability
+    val ads: StateFlow<AdAvailability> = rewardedAds.availability(AdSlot.COIN)
 
     private val _notice = MutableStateFlow<ShopNotice?>(null)
 
@@ -186,6 +187,7 @@ class ShopViewModel @Inject constructor(
         _notice.value = null
         var grant: Deferred<CoinBonus>? = null
         rewardedAds.show(
+            AdSlot.COIN,
             activity,
             onEarned = { grant = viewModelScope.async { grantReward.coinBonus(todayEpochDay()) } },
             onClosed = { result ->
