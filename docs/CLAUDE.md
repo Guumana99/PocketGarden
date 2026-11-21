@@ -72,7 +72,7 @@ timeout 560 ./gradlew testDebugUnitTest --console=plain
 - 絵や音を足す・差し替える・コード描画を絵にする・使わなくするときは、同じコミットで `ASSET_LEDGER.md` を直す（作物は段階・枯れ・アイコンの枠ごと）。`AssetLedgerTest` で実物と食い違っていないか確かめる。
 - UI 文言に「動画」という語を使わない（広告まわり）。
 - 接続中の実機（USB）には触らない。確認はエミュレータ `emulator-5554` のみ（`adb -s emulator-5554`）。
-- AdMob はテスト用 ID のまま。本番 ID への差し替えは `app/build.gradle.kts` の 2 つの定数。
+- AdMob：debug・promo はテスト用 ID、release だけ本番 ID（`app/build.gradle.kts` 先頭の定数 5 つ。雨乞い `AdSlot.RAIN`・コイン `AdSlot.COIN` の 2 枠）。release の本番 ID が空かテスト用だとビルドが止まる。開発中に本番の広告を押さないこと。
 
 ## よく触る場所
 

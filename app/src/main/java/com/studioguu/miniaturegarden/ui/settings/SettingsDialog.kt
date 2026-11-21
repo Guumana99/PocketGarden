@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.ui.settings
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import com.google.android.gms.oss.licenses.OssLicensesMenuActivity
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -86,8 +88,8 @@ internal fun SettingsContent(
         NotificationSettingRow(enabledInGame = enabled, onEnabledChange = onChange)
     },
 ) {
+    val context = LocalContext.current
     var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
-    var showLicenses by rememberSaveable { mutableStateOf(false) }
     var showVersion by rememberSaveable { mutableStateOf(false) }
     var showCredits by rememberSaveable { mutableStateOf(false) }
     val close = DialogAction(stringResource(R.string.action_close), onDismiss)
@@ -112,7 +114,7 @@ internal fun SettingsContent(
                 SettingsPage.ABOUT -> AboutPage(
                     onShowVersion = { showVersion = true },
                     onShowCredits = { showCredits = true },
-                    onShowLicenses = { showLicenses = true },
+                    onShowLicenses = { runCatching { context.startActivity(Intent(context, OssLicensesMenuActivity::class.java)) } },
                 )
                 SettingsPage.OTHER -> OtherPage(versionName = versionName, onReplayTutorial = onReplayTutorial)
             }
@@ -127,7 +129,6 @@ internal fun SettingsContent(
         )
     }
     if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
-    if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
 }
 
 @Composable
@@ -152,8 +153,8 @@ private fun SoundPage(current: AppSettings, actions: SettingsActions) {
 }
 
 /**
- * The version, the credits and the open-source licences (which have to be shown), each on a
- * sheet of its own. The disclaimer that used to be here is part of the privacy policy now.
+ * The version and the credits, each on a sheet of its own, and the open-source licences (which
+ * have to be shown): a list the oss-licenses plugin writes at build time, in the device's own screen. The disclaimer that used to be here is part of the privacy policy now.
  */
 @Composable
 private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onShowLicenses: () -> Unit) {
@@ -163,40 +164,6 @@ private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onSh
         CarvedButton(text = stringResource(R.string.settings_licenses), onClick = onShowLicenses, modifier = Modifier.fillMaxWidth())
     }
 }
-
-/**
- * The open-source software the app adds itself (app/build.gradle.kts), by name and licence, and
- * then each licence's text once: Apache License 2.0, and SQLCipher's (BSD-style). Short and
- * written by hand, not a generated list of everything every library pulls in.
- */
-@Composable
-private fun LicensesDialog(onDismiss: () -> Unit) {
-    val assets = LocalContext.current.assets
-    val texts = remember(assets) { LICENCE_TEXTS.map { (heading, file) -> heading to runCatching { assets.open(file).bufferedReader().use { it.readText() } }.getOrDefault("") } }
-    ParchmentDialog(
-        onDismissRequest = onDismiss,
-        title = stringResource(R.string.settings_licenses),
-        actions = listOf(DialogAction(stringResource(R.string.action_close), onDismiss)),
-    ) {
-        Column(
-            modifier = Modifier.heightIn(max = INFO_MAX_HEIGHT).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(stringResource(R.string.licenses_intro), style = MaterialTheme.typography.bodyMedium, color = GardenColors.Ink)
-            Text(stringResource(R.string.licenses_list), style = MaterialTheme.typography.bodyMedium, color = GardenColors.Ink)
-            for ((heading, text) in texts) {
-                Text(stringResource(heading), style = MaterialTheme.typography.titleSmall, color = GardenColors.Ink)
-                Text(text.trim(), style = MaterialTheme.typography.bodySmall, color = GardenColors.Ink)
-            }
-        }
-    }
-}
-
-/** Each licence's text, once, with its heading: in assets/licenses. */
-private val LICENCE_TEXTS = listOf(
-    R.string.licenses_apache_heading to "licenses/apache-2.0.txt",
-    R.string.licenses_sqlcipher_heading to "licenses/sqlcipher.txt",
-)
 
 /** Where the sounds may come from, by the sites' names; which file is whose is not known for each (ASSETS.md). */
 internal val SOUND_CREDITS = listOf("ポケットサウンド", "タダノオト", "効果音ラボ")

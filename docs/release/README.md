@@ -14,7 +14,21 @@
 - **バックアップはまだ無い**（PC の中だけ）。jks とパスワードの控えを、PC の外（USB メモリ・パスワード管理アプリなど）に保管すること。
 - Play アプリ署名を使う（初回アップロードで既定）ので、この鍵は「アップロード鍵」。なくしても Play Console から再設定を申請できるが、時間がかかる。
 
+## 広告（AdMob）
+
+- ID は `app/build.gradle.kts` の先頭（debug・promo＝Google のテスト用、release＝本番）。release は本番 ID が空・テスト用だとビルドが止まる。
+- 雨乞い・コインの 2 枠（`AdSlot`）。AdMob から返る報酬の数は使わず、量はアプリ側の決まりのまま。
+- 自分の端末をテスト端末にする：AdMob 管理画面の「設定 → テストデバイス」に、logcat に出る `Use RequestConfiguration.Builder().setTestDeviceIds(Arrays.asList("…"))` の ID を登録する（アプリのコードは変えなくてよい）。
+- app-ads.txt：https://guumana99.github.io/app-ads.txt（Guumana99.github.io の直下。公開済み）。
+
+## ネイティブのデバッグシンボル
+
+release の `ndk { debugSymbolLevel = "SYMBOL_TABLE" }` で AAB に入る（Play Console の警告対策）。
+
+## ライセンス
+
+設定の「情報」→「ライセンス」は oss-licenses プラグインが作る一覧（`OssLicensesMenuActivity`）。手書きの一覧は廃止。
+
 ## まだのこと
 
-- AdMob の本番 ID（`app/build.gradle.kts` の 2 つの定数。今はテスト用）
-- `versionCode 1` / `versionName 0.1.0`
+- 効果音の出所の確定（`docs/ASSETS.md` の「音」）

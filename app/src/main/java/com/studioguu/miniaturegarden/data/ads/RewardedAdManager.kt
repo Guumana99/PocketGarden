@@ -31,9 +31,18 @@ enum class RewardedAdResult {
     UNAVAILABLE,
 }
 
+/** The two places an ad is offered; each has its own AdMob ad unit (ids in app/build.gradle.kts). */
+enum class AdSlot(val unitId: String) {
+    /** The rain cloud ("amagoi"). */
+    RAIN(BuildConfig.ADMOB_RAIN_AD_UNIT_ID),
+
+    /** The shop's coin bonus. */
+    COIN(BuildConfig.ADMOB_COIN_AD_UNIT_ID),
+}
+
 /**
- * Keeps one rewarded ad loaded and shows it on request. Both rewards share the same ad unit,
- * whose id comes from app/build.gradle.kts.
+ * Keeps one rewarded ad loaded per [AdSlot] and shows it on request. The reward itself is
+ * whatever the game says; the amount AdMob returns with the ad is never read.
  *
  * Call from the main thread.
  */
@@ -42,16 +51,19 @@ class RewardedAdManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
     private val handler = Handler(Looper.getMainLooper())
-    private var ad: RewardedAd? = null
     private var started = false
-    private var loading = false
-    private var retryDelayMillis = FIRST_RETRY_MILLIS
-    private var failuresInARow = 0
+    private val states = AdSlot.entries.associateWith { SlotState() }
 
-    private val _availability = MutableStateFlow(AdAvailability.LOADING)
+    private class SlotState {
+        var ad: RewardedAd? = null
+        var loading = false
+        var retryDelayMillis = FIRST_RETRY_MILLIS
+        var failuresInARow = 0
+        val availability = MutableStateFlow(AdAvailability.LOADING)
+    }
 
-    /** Whether there is an ad to show; buttons that need one follow this. */
-    val availability: StateFlow<AdAvailability> = _availability.asStateFlow()
+    /** Whether there is an ad to show for [slot]; buttons that need one follow this. */
+    fun availability(slot: AdSlot): StateFlow<AdAvailability> = states.getValue(slot).availability.asStateFlow()
 
     /**
      * Initializes the ads SDK and loads the first ad. Safe to call more than once.
@@ -63,7 +75,7 @@ class RewardedAdManager @Inject constructor(
     fun start() {
         if (started) return
         started = true
-        Thread({ MobileAds.initialize(context) { handler.post(::load) } }, "ads-init").start()
+        Thread({ MobileAds.initialize(context) { handler.post { AdSlot.entries.forEach(::load) } } }, "ads-init").start()
     }
 
     /**
@@ -75,27 +87,28 @@ class RewardedAdManager @Inject constructor(
      *   the place for anything the player should see. [RewardedAdResult.EARNED] means
      *   [onEarned] ran.
      */
-    fun show(activity: Activity, onEarned: () -> Unit, onClosed: (RewardedAdResult) -> Unit) {
-        val current = ad
+    fun show(slot: AdSlot, activity: Activity, onEarned: () -> Unit, onClosed: (RewardedAdResult) -> Unit) {
+        val state = states.getValue(slot)
+        val current = state.ad
         if (current == null) {
             onClosed(RewardedAdResult.UNAVAILABLE)
-            load()
+            load(slot)
             return
         }
-        ad = null
-        publish()
+        state.ad = null
+        publish(slot)
 
         var earned = false
         current.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 onClosed(if (earned) RewardedAdResult.EARNED else RewardedAdResult.CANCELLED)
-                load()
+                load(slot)
             }
 
             override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                Log.w(TAG, "Rewarded ad failed to show (${error.code}): ${error.message}")
+                Log.w(TAG, "Rewarded ad ($slot) failed to show (${error.code}): ${error.message}")
                 onClosed(RewardedAdResult.UNAVAILABLE)
-                load()
+                load(slot)
             }
         }
         current.show(activity) {
@@ -104,37 +117,39 @@ class RewardedAdManager @Inject constructor(
         }
     }
 
-    private fun load() {
-        if (loading || ad != null) return
-        loading = true
+    private fun load(slot: AdSlot) {
+        val state = states.getValue(slot)
+        if (state.loading || state.ad != null) return
+        state.loading = true
         RewardedAd.load(
             context,
-            BuildConfig.ADMOB_REWARDED_AD_UNIT_ID,
+            slot.unitId,
             AdRequest.Builder().build(),
             object : RewardedAdLoadCallback() {
                 override fun onAdLoaded(loaded: RewardedAd) {
-                    loading = false
-                    ad = loaded
-                    retryDelayMillis = FIRST_RETRY_MILLIS
-                    failuresInARow = 0
-                    publish()
+                    state.loading = false
+                    state.ad = loaded
+                    state.retryDelayMillis = FIRST_RETRY_MILLIS
+                    state.failuresInARow = 0
+                    publish(slot)
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
-                    loading = false
-                    failuresInARow++
-                    publish()
-                    Log.w(TAG, "Rewarded ad failed to load (${error.code}): ${error.message}")
+                    state.loading = false
+                    state.failuresInARow++
+                    publish(slot)
+                    Log.w(TAG, "Rewarded ad ($slot) failed to load (${error.code}): ${error.message}")
                     // Offline or no fill: try again later, backing off so as not to hammer the network.
-                    handler.postDelayed(::load, retryDelayMillis)
-                    retryDelayMillis = (retryDelayMillis * 2).coerceAtMost(MAX_RETRY_MILLIS)
+                    handler.postDelayed({ load(slot) }, state.retryDelayMillis)
+                    state.retryDelayMillis = (state.retryDelayMillis * 2).coerceAtMost(MAX_RETRY_MILLIS)
                 }
             },
         )
     }
 
-    private fun publish() {
-        _availability.value = AdAvailability.of(ad != null, failuresInARow)
+    private fun publish(slot: AdSlot) {
+        val state = states.getValue(slot)
+        state.availability.value = AdAvailability.of(state.ad != null, state.failuresInARow)
     }
 
     private companion object {
