@@ -122,7 +122,8 @@ fun PromoScene(
         scene.dayLabel?.let { label ->
             // A board in the app's own colours (parchment, dark ink), not the captions' look: the
             // first line large, the second (after a line break) smaller under it. When only the
-            // second line changes, it cross-fades.
+            // second line changes, the old one fades out over the first half of the change and the
+            // new one fades in over the second half, so the two are never seen on top of each other.
             val first = label.substringBefore(NEWLINE)
             val second = label.substringAfter(NEWLINE, "").takeIf { it.isNotBlank() }
             val before = scene.dayLabelBefore?.substringAfter(NEWLINE, "")?.takeIf { it.isNotBlank() }
@@ -153,10 +154,10 @@ fun PromoScene(
                 if (second != null || before != null) {
                     Box {
                         before?.let {
-                            Text(it, Modifier.graphicsLayer { alpha = 1f - scene.dayLabelSwap }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold, localeList = JAPANESE))
+                            Text(it, Modifier.graphicsLayer { alpha = (1f - 2f * scene.dayLabelSwap).coerceIn(0f, 1f) }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold, localeList = JAPANESE))
                         }
                         second?.let {
-                            Text(it, Modifier.graphicsLayer { alpha = scene.dayLabelSwap }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold, localeList = JAPANESE))
+                            Text(it, Modifier.graphicsLayer { alpha = (2f * scene.dayLabelSwap - 1f).coerceIn(0f, 1f) }, style = TextStyle(color = GardenColors.InkSoft, fontSize = 22.sp, fontWeight = FontWeight.Bold, localeList = JAPANESE))
                         }
                     }
                 }

@@ -4,6 +4,7 @@ hook:
   from: 10.5        # ことりが棟の上で正面を向いている所（10.5〜12.0 秒。寄りは 5 倍のまま）
   seconds: 1.5
   text: "家を建てたら、\nことりが来てくれた"
+  label: false      # 見せ場は札なしのテイク（promo_shoot.py --hook）
   rewind: 0.8
   rewind_label: "⏪ 少し前"
 captions:

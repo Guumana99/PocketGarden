@@ -4,6 +4,8 @@ hook:
   from: 10.8        # 赤い実が一斉になった所（10.3 秒に実る） → 1 つ収穫して「+16」が出る所
   seconds: 1.8
   text: "ゲームでいちご、\n何回でも収穫できる"
+  label: false      # 見せ場は札なしのテイク（promo_shoot.py --hook）。字幕を上へ寄せて実にかからないように
+  text_top: 0.13
   rewind: 0.8
   rewind_label: "⏪ 6時間前"
 captions:

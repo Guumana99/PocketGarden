@@ -19,10 +19,11 @@ timeline:
   - { at: 7.2,  grow: { area: [4,5,6,7], to_stage: 2 } }              # 全部の株を同時に
   - { at: 8.4,  time_of_day: { to: 13.5, over: 1.5 } }
   - { at: 9.9,  day_label: "いちごができるまで\n6時間後" }
-  - { at: 9.9,  camera: { zoom: 3.6, center: [5,6.5], over: 1.0 } }
+  - { at: 9.9,  camera: { zoom: 9.0, center: [5,6,0.3], over: 1.0 } }  # 赤い実を主役に（前の 3.6 の 2.5 倍。冒頭の見せ場もここから）
   - { at: 10.3, grow: { area: [4,5,6,7], to_stage: 3 } }              # 赤い実は一度にパッと
   - { at: 12.3, harvest: { area: [4,5,6,7], over: 2.4 } }             # 株は残って段階 2 に戻る
   - { at: 15.3, time_of_day: { to: 16.5, over: 1.5 } }
+  - { at: 15.3, camera: { zoom: 3.6, center: [5,6.5], over: 1.2 } }  # 畝全体に引いて、もう一度実るところ
   - { at: 15.3, day_label: "いちごができるまで\n収穫の3時間後" }
   - { at: 17.3, grow: { area: [4,5,6,7], to_stage: 3 } }              # もう一度一斉に実る
   - { at: 21.0, end: true }
