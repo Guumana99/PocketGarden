@@ -16,6 +16,7 @@ import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
 import com.studioguu.miniaturegarden.domain.model.Creature
 import com.studioguu.miniaturegarden.domain.model.CreatureAction
 import com.studioguu.miniaturegarden.domain.model.CreaturePose
+import com.studioguu.miniaturegarden.domain.model.Manner
 import com.studioguu.miniaturegarden.domain.model.CreatureRoutes
 import com.studioguu.miniaturegarden.domain.model.Facing
 import kotlin.math.PI
@@ -137,7 +138,7 @@ data class VisitorLook(
             // Lopes in hops (#book60): crouched in its sitting picture on the ground, stretched out
             // in its leaping one in the air, nose up to leap and down to land.
             CreatureAction.STEP -> {
-                val hops = (pose.duration / RABBIT_HOP_MILLIS).toInt().coerceAtLeast(1)
+                val hops = ((pose.duration + RABBIT_HOP_MILLIS / 2) / RABBIT_HOP_MILLIS).toInt().coerceAtLeast(1)
                 val hop = (p * hops) % 1f
                 val a = arc(hop)
                 val crouch = 1f - a
@@ -390,7 +391,7 @@ data class VisitorLook(
         private const val BIRD_FLUTTER_MILLIS = 380L
 
         /** #book60: how long a hop of the rabbit's takes, and how high in it (0 to 1) it is still in its sitting picture. */
-        private const val RABBIT_HOP_MILLIS = 330L
+        private const val RABBIT_HOP_MILLIS = Manner.RABBIT_HOP_MILLIS
         private const val RABBIT_SITS_BELOW = 0.3f
 
         /** #book60: how much longer the snail's body gets as it creeps. */
