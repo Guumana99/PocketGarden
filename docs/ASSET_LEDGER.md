@@ -80,7 +80,7 @@
 | 竹垣（`struct_fence_bamboo`） | ✅ | Recraft | `struct_fence_bamboo` `struct_fence_bamboo_post` `struct_fence_bamboo_rail`（#85、原画 `struct_fence_bamboo.png`。つなぎは原画の密度のまま 2 回並べる（#86））。11/1 に取り込みの色を調整（`Grade`、絵は同じ） |
 | レンガの縁石（`struct_edging_brick`） | 📦 | Recraft | **#86 で取り下げ（ショップ・図鑑から外した）**。 `struct_edging_brick` `struct_edging_brick_rail`（#85、原画 `struct_edging_brick.png`。歯を 1 マス 7 本に並べ直す。右下がりの辺は反転して描く。杭は無い） |
 | 井戸（`struct_well`） | ✅ | Recraft | `struct_well`（原画 `building_well.png`、Recraft（#74。C2PA を grep で確認））。#74 で 1×2 から 1×1 に。丸い石の井戸に屋根と桶。屋根の色は `mask_struct_well`（#92、`tools/prepare_building_art.py`） |
-| 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた） |
+| 風車（`struct_windmill`） | ✅ | Google→Recraft | 本体 `struct_windmill`・羽根 `struct_windmill_blades`（原画は JPEG。描き込まれた市松模様を抜いた。FB1122b：その抜き跡の穴（壁の板の下の楔形・屋根の下の段の欠け）を、周りの板・屋根板の模様で塗りつぶした。`prepare_building_art.fill_holes`） |
 | 小屋（`struct_hut`） | ✅ | Recraft | `struct_hut`（原画 `building_hut.png`を差し替え：片流れのトタン屋根・板壁・観音開きの戸）。色変えのマスクは `mask_struct_hut`。土台の石が明るいクリーム色なので、真っ白だけを抜いて切り抜いた |
 | コテージ（`struct_cottage`） | ✅ | Recraft | `struct_cottage`（原画 `building_cottage.png`）。土台の下の帯をマスの角まで伸ばしている。色変えのマスクは `mask_struct_cottage` |
 | 温室（`floor_greenhouse`） | ✅ | Recraft | 連結式（#90）：`struct_greenhouse_wall` `struct_greenhouse_door` `struct_greenhouse_post`（原画 `struct_greenhouse_wall.png` `struct_greenhouse_door.png`、`tools/prepare_greenhouse_art.py`）。ガラス・屋根の枠はコード描画（`GreenhousePainter`）、床は耕した土のコード描画。1 枚絵の `floor_greenhouse` は使わなくなったがアトラスに残してある |

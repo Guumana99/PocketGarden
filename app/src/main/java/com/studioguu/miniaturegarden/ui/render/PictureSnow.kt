@@ -25,16 +25,23 @@ object PictureSnow {
     private val VARIANT_AMOUNT = floatArrayOf(1.1f, 1.5f, 1.9f)
 
     /**
-     * The windmill's roof face as measured on its picture: shares of its width and height. FB1114:
-     * out to the ends of its lowest course of shingles and the end of its ridge board.
+     * The windmill's roof as taken off its picture (FB1122b): the whole of it, out to the eave's
+     * lower edge where the roof meets the wall (a line along the foot of the lowest course of
+     * shingles, measured on the picture), with the other sides drawn wide of the roof's outline
+     * because the picture's own outline ends the snow there. Shares of its width and height.
      */
-    val WINDMILL_ROOF: List<Pair<Float, Float>> = listOf(0.329f to 0f, 0.76f to 0.137f, 0.587f to 0.396f, 0.138f to 0.358f)
+    val WINDMILL_ROOF: List<Pair<Float, Float>> = listOf(
+        0.256f to -0.017f, 0.768f to 0.101f, 0.759f to 0.128f, 0.708f to 0.164f, 0.661f to 0.227f, 0.618f to 0.289f, 0.608f to 0.305f, 0.559f to 0.394f, 0.520f to 0.477f, 0.482f to 0.460f, 0.426f to 0.441f, 0.384f to 0.424f, 0.341f to 0.411f, 0.299f to 0.401f, 0.256f to 0.388f, 0.213f to 0.367f, 0.171f to 0.356f, 0.128f to 0.356f, 0.107f to 0.356f, 0.107f to -0.017f,
+    )
 
     /**
      * FB1122: the board over the roof's far end, which runs down to the sails' axle (measured on the
      * picture): the first outline left it out, so the snow stopped short of the roof's end there.
      */
     val WINDMILL_ROOF_END: List<Pair<Float, Float>> = listOf(0.745f to 0.14f, 0.77f to 0.113f, 0.84f to 0.185f, 0.80f to 0.195f, 0.775f to 0.16f)
+
+    /** FB1122b: the windmill's snow thins along its eave, as the others' does at the edge of their roofs. */
+    private const val WINDMILL_EAVE_THIN = 0.7f
 
     /**
      * The well's roof as measured on its picture (the outline kept for the old cover stopped a
@@ -149,7 +156,7 @@ object PictureSnow {
             measured.map { face -> face.points.map { (across, up) -> shareOf(asset, tileWidth, across, up) } }
         }
         val solid = objectId in EdgeSnow.SOLID_ROOFS
-        return SnowCover.Spec(SnowCover.Kind.ROOF, amount = if (solid) 0.97f else 0.92f, faces = faces, floor = if (solid) 0.72f else 0.45f, solid = solid, fillHoles = objectId == StructureData.WINDMILL.objectId)
+        return SnowCover.Spec(SnowCover.Kind.ROOF, amount = if (solid) 0.97f else 0.92f, faces = faces, floor = if (solid) 0.72f else 0.45f, solid = solid, eaveThin = if (objectId == StructureData.WINDMILL.objectId) WINDMILL_EAVE_THIN else 1f)
     }
 
     /** An offset from the ground point under a picture (tile widths across and up) as shares of the picture. */
