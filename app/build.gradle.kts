@@ -37,8 +37,8 @@ android {
         applicationId = "com.studioguu.miniaturegarden"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.1.4"
+        versionCode = 6
+        versionName = "0.1.5"
 
         manifestPlaceholders["admobAppId"] = testAdmobAppId
         buildConfigField("String", "ADMOB_RAIN_AD_UNIT_ID", "\"$testAdUnitId\"")
@@ -176,7 +176,6 @@ dependencies {
     implementation(libs.play.services.ads)
     implementation(libs.play.review)
     // The open-source licence list in settings, written at build time by the oss-licenses plugin.
-    implementation(libs.play.services.oss.licenses)
     implementation(libs.androidx.media3.exoplayer)
 
     // Notifications posted while the app is away

@@ -47,6 +47,12 @@ object SnowCover {
         val caps: List<List<Pair<Float, Float>>> = emptyList(),
         /** How thick the snow on [caps] is at the least (0 to 1; at the most it is solid): where it lies thinnest. */
         val capFloor: Float = 0f,
+        /**
+         * For a roof, whether snow also lies on the see-through gaps of the picture inside its faces
+         * (FB1122: the windmill's roof has holes along its lowest course, which left the snow
+         * notched): the roof is covered in its whole shape.
+         */
+        val fillHoles: Boolean = false,
     )
 
     /** How far down from open air a dusting reaches, as a share of the picture's height. */
@@ -70,9 +76,11 @@ object SnowCover {
         var count = 0
         for (y in 0 until h) for (x in 0 until w) {
             val i = y * w + x
-            if (alpha(argb[i]) < OPAQUE) continue
+            val hole = alpha(argb[i]) < OPAQUE
+            if (hole && !spec.fillHoles) continue
             if (faces.none { contains(it, x + 0.5f, y + 0.5f) }) continue
             inside[i] = true
+            if (hole) continue
             sum += lum[i]
             count++
         }
@@ -83,10 +91,11 @@ object SnowCover {
         for (y in 0 until h) for (x in 0 until w) {
             val i = y * w + x
             if (!inside[i]) continue
+            val hole = alpha(argb[i]) < OPAQUE
             val above = if (y >= step && alpha(argb[i - step * w]) >= OPAQUE) lum[i - step * w] else lum[i]
             // Lighter than a few rows above: just under a course's dark edge, on the step where snow sits.
-            val ledge = ((lum[i] - above) * 5f).coerceIn(-1f, 1f)
-            val lit = ((lum[i] - mean) * 2.5f).coerceIn(-1f, 1f)
+            val ledge = if (hole) 0f else ((lum[i] - above) * 5f).coerceIn(-1f, 1f)
+            val lit = if (hole) 0f else ((lum[i] - mean) * 2.5f).coerceIn(-1f, 1f)
             // Wide soft patches where it lies thinner, and a finer grain over them.
             val thin = smooth(valueNoise(x / patch, y / patch, seed))
             val grain = valueNoise(x / (patch * 0.3f), y / (patch * 0.3f), seed + 101)

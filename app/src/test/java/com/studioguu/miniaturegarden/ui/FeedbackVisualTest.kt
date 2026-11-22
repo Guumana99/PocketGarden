@@ -93,15 +93,14 @@ class FeedbackVisualTest {
     // --- 4. The frame ---
 
     @Test
-    fun `things of the garden are kept inside its frame, the ground to its diamond, what stands to above it`() {
+    fun `the ground of the garden is kept inside its frame, to its diamond, and what stands on it is not cut (FB1122)`() {
         val ground = Path()
-        val standing = Path()
-        val clip = GardenClip(ground, standing)
+        val clip = GardenClip(ground)
         fun command(layer: RenderLayer, inGarden: Boolean = true) = RenderCommand(layer, 0f, {}, inGarden)
         assertSame(ground, clip.pathFor(command(RenderLayer.BASE_TERRAIN)))
         assertSame(ground, clip.pathFor(command(RenderLayer.SHADOWS)))
         assertSame(ground, clip.pathFor(command(RenderLayer.BOTTOM_OBJECTS)))
-        assertSame(standing, clip.pathFor(command(RenderLayer.GRID_OBJECTS)))
+        assertNull(clip.pathFor(command(RenderLayer.GRID_OBJECTS)))
         // Bubbles and sparkles over it, and what is not of the garden (the frame, the visitors), are not.
         assertNull(clip.pathFor(command(RenderLayer.TOP_EFFECTS)))
         assertNull(clip.pathFor(command(RenderLayer.GRID_OBJECTS, inGarden = false)))

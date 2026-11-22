@@ -1047,7 +1047,17 @@ private fun submitObjects(
         // is there in any light, and the one the sun throws, which turns with the time of day.
         if (!isGroundCover) {
             submit(obj, RenderLayer.SHADOWS, depth) {
-                if (sprite != null && atlasImage != null) {
+                if (sprite != null && atlasImage != null && structure != null && structure.shadowUnderBase) {
+                    // FB1122 3: a building's shadow lies at its foot (its footprint, a short way
+                    // away from the light), not its whole picture laid down: that threw a dark
+                    // patch on empty ground, away from the building.
+                    drawContactShadow(base, min(sprite.drawnWidth(thingScale) * 0.62f, unit * 0.7f))
+                    drawStructureShadow(transform, obj, structure, light, maxReach = unit * BUILDING_SHADOW_REACH)
+                } else if (sprite != null && atlasImage != null && isRock(obj.objectId)) {
+                    // FB1122 3: a rock's shadow is a small dark patch right under it; the picture
+                    // sheared along the light left a dense shadow beside it.
+                    drawContactShadow(base, sprite.drawnWidth(thingScale) * ROCK_SHADOW_WIDTH, strength = 0.3f)
+                } else if (sprite != null && atlasImage != null) {
                     drawContactShadow(base, min(sprite.drawnWidth(thingScale) * 0.62f, unit * 0.7f))
                     drawSpriteShadow(atlasImage, sprite, base, thingScale, light, flipped = obj.isFlipped, softFoot = obj.isPlant && sprite.anchorY < SOFT_FOOT_BELOW)
                 } else if (structure != null) {
@@ -1940,7 +1950,7 @@ fun ObjectPreview(
             for (corner in corners.drop(1)) lineTo(corner.x, corner.y)
             close()
         }
-        pipeline.render(this, GardenClip(ground = top, standing = Path().apply { addRect(Rect(Offset.Zero, size)) }))
+        pipeline.render(this, GardenClip(ground = top))
     }
 }
 
@@ -2048,20 +2058,11 @@ private fun DrawScope.drawTerrain(
 }
 
 /**
- * What keeps the garden inside its frame ([GardenClip]): its diamond for what lies on the ground,
- * and for what stands on it the diamond with everything above it, up to the top of the screen.
+ * What keeps the garden inside its frame ([GardenClip]): its diamond, for what lies on the ground
+ * only. What stands on it is drawn whole (FB1122).
  */
-private fun gardenClip(transform: IsometricTransform, max: Float): GardenClip {
-    val right = transform.worldToScreen(max, 0f)
-    val bottom = transform.worldToScreen(max, max)
-    val left = transform.worldToScreen(0f, max)
-    val sky = -100_000f
-    val standing = Path().apply {
-        moveTo(left.x, left.y); lineTo(bottom.x, bottom.y); lineTo(right.x, right.y)
-        lineTo(right.x, sky); lineTo(left.x, sky); close()
-    }
-    return GardenClip(ground = gardenOutline(transform, max), standing = standing)
-}
+private fun gardenClip(transform: IsometricTransform, max: Float): GardenClip =
+    GardenClip(ground = gardenOutline(transform, max))
 
 /** The outline of the whole garden, a diamond [max] cells a side. */
 private fun gardenOutline(transform: IsometricTransform, max: Float): Path = Path().apply {
@@ -2325,6 +2326,7 @@ private fun DrawScope.drawStructureShadow(
     obj: GridObject,
     structure: StructureData,
     light: SunLight,
+    maxReach: Float = Float.MAX_VALUE,
 ) {
     if (light.alpha <= 0f) return
     val x0 = obj.gridX + STRUCTURE_INSET
@@ -2340,7 +2342,9 @@ private fun DrawScope.drawStructureShadow(
         StructureData.WINDMILL -> 8f
         StructureData.WELL -> 1.8f
     } * transform.heightStep
-    val reach = Offset(light.dx * height, light.dy * height)
+    val fullReach = Offset(light.dx * height, light.dy * height)
+    val reachLength = hypot(fullReach.x, fullReach.y)
+    val reach = if (reachLength > maxReach && reachLength > 0f) fullReach * (maxReach / reachLength) else fullReach
     val foot = listOf(
         transform.worldToScreen(x0, y0, ground),
         transform.worldToScreen(x1, y0, ground),
@@ -2354,6 +2358,19 @@ private fun DrawScope.drawStructureShadow(
     }
     drawPath(path, Color.Black.copy(alpha = light.alpha))
 }
+
+/** The buildings whose shadow stays at their foot ([drawStructureShadow] with a short reach). */
+private val StructureData.shadowUnderBase: Boolean
+    get() = this == StructureData.HUT || this == StructureData.COTTAGE || this == StructureData.WINDMILL
+
+/** How far (in tile widths) a building's shadow reaches from its foot at most (FB1122 3). */
+private const val BUILDING_SHADOW_REACH = 0.45f
+
+/** How wide a rock's shadow is, as a share of the rock's picture (FB1122 3). */
+private const val ROCK_SHADOW_WIDTH = 0.8f
+
+/** The rocks of the shop and the ones moss grows on (deco_rock, deco_rock_mossy, ...). */
+internal fun isRock(objectId: String): Boolean = objectId.startsWith("deco_rock")
 
 /** The smallest convex outline round [points], in order (Andrew's monotone chain). */
 internal fun convexHull(points: List<Offset>): List<Offset> {

@@ -176,6 +176,19 @@ object GroundGarden {
             "fb2_moss" -> listOf(0f, 0.05f, 0.3f, 0.6f, 1f).flatMapIndexed { i, g ->
                 place(now, LawnGrowth.MOSS_OBJECT_ID, listOf(GridCell(2 + i, 4), GridCell(2 + i, 5))).map { it.copy(growthProgress = g) }
             }
+            // FB1122 3: a cottage, a hut in front of it to the left, and two mossy rocks in front of the hut.
+            "fb22_shadow" -> place(now, "struct_cottage", listOf(GridCell(5, 1))) + place(now, "struct_hut", listOf(GridCell(3, 5))) +
+                place(now, "deco_rock_mossy", listOf(GridCell(2, 7), GridCell(4, 8))) + place(now, "struct_windmill", listOf(GridCell(7, 6))) +
+                place(now, "deco_rock", listOf(GridCell(8, 3))) +
+                place(now, "struct_hut", listOf(GridCell(8, 4))).map { it.copy(isFlipped = true) } +
+                place(now, "struct_windmill", listOf(GridCell(1, 1))).map { it.copy(isFlipped = true) }
+            // FB1122 5: the buildings and things on the edge cells, at the four corners and the four sides; some turned.
+            "fb22_edges" -> place(now, LAWN, cells(0..10, 0..10)) + place(now, "struct_cottage", listOf(GridCell(0, 0))) +
+                place(now, "struct_windmill", listOf(GridCell(9, 0))) + place(now, "struct_windmill", listOf(GridCell(0, 9))).map { it.copy(isFlipped = true) } +
+                place(now, "struct_hut", listOf(GridCell(9, 9))).map { it.copy(isFlipped = true) } + place(now, "struct_well", listOf(GridCell(5, 0), GridCell(0, 5))) +
+                place(now, "struct_cottage", listOf(GridCell(8, 4))).map { it.copy(isFlipped = true) } +
+                place(now, "struct_hut", listOf(GridCell(4, 9))) +
+                place(now, GridObject.FENCE_OBJECT_ID, cells(3..7, 10..10)) + place(now, "deco_lantern", listOf(GridCell(10, 3), GridCell(3, 0)))
             else -> emptyList()
         }
     }

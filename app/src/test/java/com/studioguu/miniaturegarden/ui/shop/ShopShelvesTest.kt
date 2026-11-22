@@ -160,6 +160,6 @@ class ShopShelvesTest {
         val shop = java.io.File(main, "java/com/studioguu/miniaturegarden/ui/shop/ShopStageScreen.kt").readText().replace("\r\n", "\n")
         // The whole stage is drawn at it, the shelf names measured at it too.
         assertTrue(shop.contains("val shopDensity = remember(device) { Density(device.density, ShopText.SCALE) }"))
-        assertTrue(shop.contains("CompositionLocalProvider(LocalDensity provides shopDensity) {\n        Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {"))
+        assertTrue(shop.contains("CompositionLocalProvider(LocalDensity provides shopDensity) {\n        Box(\n            modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG).onGloballyPositioned {"))
     }
 }
