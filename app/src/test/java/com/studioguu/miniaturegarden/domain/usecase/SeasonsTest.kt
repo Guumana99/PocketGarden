@@ -8,6 +8,7 @@ import com.studioguu.miniaturegarden.domain.model.Ground
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GardenMap
 import com.studioguu.miniaturegarden.domain.model.GardenProgress
+import com.studioguu.miniaturegarden.domain.model.WorkKind
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.InventorySlot
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
@@ -357,7 +358,8 @@ class SeasonsTest {
         assertEquals(ActionResult.IN_USE, removal("glass_5_5", toBag = false, t0))
         repo.objects.values.removeIf { it.isPlant }
         assertEquals(ActionResult.SUCCESS, removal("glass_5_5", toBag = true, t0))
-        assertTrue(repo.slots.values.any { it.itemId == GardenItem.FLOOR_GREENHOUSE.itemId })
+        // A greenhouse takes time to pack up (FB1114b2): it is being packed, and is in the bag when that is done.
+        assertEquals(WorkKind.PACKING, repo.objects["glass_5_5"]?.workKind)
     }
 
     @Test

@@ -59,7 +59,7 @@ class LevelDialogTest {
         compose.setContent { GardenTheme { LevelDialog(LevelInfo.of(level, LevelTable.xpForLevel(level)), onDismiss = {}) } }
         compose.onNodeWithText("Lv.$level").assertIsDisplayed()
         compose.onNodeWithTag(LEVEL_XP_TAG).assertIsDisplayed()
-        compose.onNodeWithText("経験値 0 / ${LevelTable.xpForLevel(level + 1) - LevelTable.xpForLevel(level)}（0％）").assertIsDisplayed()
+        compose.onNodeWithText("経験値 0 / ${LevelTable.xpForLevel(level + 1) - LevelTable.xpForLevel(level)}（0％）").assertIsDisplayed()
         compose.onNodeWithTag(LEVEL_NEXT_TAG).assertIsDisplayed()
         assertTrue(compose.onAllNodes(androidx.compose.ui.test.hasTestTag(LEVEL_MAX_TAG)).fetchSemanticsNodes().isEmpty())
     }

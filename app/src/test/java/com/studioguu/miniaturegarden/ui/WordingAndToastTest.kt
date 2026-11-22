@@ -41,7 +41,8 @@ class WordingAndToastTest {
         }
         assertTrue(texts.none { Regex("%\\d\\\$dG").containsMatchIn(it) })
         assertEquals("🎒 持ち物に戻しました", string("msg_stored"))
-        assertEquals("🔒 Lv.%1\$d で解放", string("shop_locked"))
+        // The space before で is a no-break space, so that the line does not break there.
+        assertEquals("🔒 Lv.%1\$d で解放", string("shop_locked"))
         assertTrue(string("level_up_unlocked")!!.contains("解放"))
     }
 
