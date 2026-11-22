@@ -439,7 +439,6 @@
     <string name="settings_review">レビューを書く</string>
     <string name="settings_credits">クレジット</string>
     <string name="credits_sounds">音源</string>
-    <string name="credits_sound_line" translatable="false">効果音：ポケットサウンド（https://pocket-se.info/）ほか</string>
     <string name="credits_item">・%1$s</string>
     <string name="settings_reset_volume">初期値に戻す</string>
     <string name="settings_bgm">BGM</string>

@@ -38,16 +38,15 @@ class RenderCommand(
 )
 
 /**
- * What keeps the things in the garden inside its wooden frame (device feedback, after #75): what
- * lies on the ground ([ground], the garden's diamond) and what stands on it ([standing]: the
- * diamond and everything straight above it, so that a tall thing still rises over the far edge
- * but nothing reaches out over the near boards or past the side corners). Effects over the
- * garden (bubbles, sparkles) and the visitors, who come from outside it, are not kept in.
+ * What keeps the ground of the garden inside its wooden frame (device feedback, after #75): what
+ * lies on the ground ([ground], the garden's diamond). FB1122: what stands on it (buildings, things,
+ * sails, creatures) is no longer cut at the frame's lines: it is drawn whole, even where it reaches
+ * out over the frame or past the top of the screen. Effects over the garden (bubbles, sparkles) and
+ * the visitors, who come from outside it, are not kept in either.
  */
-class GardenClip(val ground: Path, val standing: Path) {
+class GardenClip(val ground: Path) {
     fun pathFor(command: RenderCommand): Path? = when {
         !command.inGarden -> null
-        command.layer == RenderLayer.GRID_OBJECTS -> standing
         command.layer == RenderLayer.BASE_TERRAIN || command.layer == RenderLayer.SHADOWS ||
             command.layer == RenderLayer.BOTTOM_OBJECTS -> ground
         else -> null

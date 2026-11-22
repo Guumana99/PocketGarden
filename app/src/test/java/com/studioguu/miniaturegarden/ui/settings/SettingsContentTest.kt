@@ -148,10 +148,34 @@ class SettingsContentTest {
     }
 
     @Test
-    fun `the about page has a line crediting the sound effects, beside the licences`() {
+    fun `the about page has no line crediting the sound effects under the buttons (FB1122)`() {
         show()
         compose.onNodeWithText("情報").performClick()
-        compose.onNodeWithText("効果音：ポケットサウンド（https://pocket-se.info/）ほか").assertIsDisplayed()
+        compose.onNodeWithText("オープンソースライセンス").assertIsDisplayed()
+        compose.onNodeWithText("ポケットサウンド", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("pocket-se.info", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the licences button opens our own list instead of the library's screen, and a name shows its text (FB1122)`() {
+        show()
+        compose.onNodeWithText("情報").performClick()
+        compose.onNodeWithText("オープンソースライセンス").performClick()
+        compose.onNodeWithTag(LICENSES_LIST_TAG).assertIsDisplayed()
+        compose.onAllNodesWithText("閉じる").onLast().performClick()
+        compose.onNodeWithTag(LICENSES_LIST_TAG).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the generated licence list is read by offset and length, sorted, once for each name`() {
+        val text = "AAAA" + "BBBBBB"
+        val list = OssLicenses.parse("0:4 Zeta
+4:6 alpha
+0:4 Zeta
+bad line
+9:99 Out", text.toByteArray())
+        assertEquals(listOf("alpha", "Zeta"), list.map { it.name })
+        assertEquals(listOf("BBBBBB", "AAAA"), list.map { it.text })
     }
 
     @Test

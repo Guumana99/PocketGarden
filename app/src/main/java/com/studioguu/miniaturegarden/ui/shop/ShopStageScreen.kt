@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -76,6 +77,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -391,14 +393,23 @@ fun ShopStageContent(
     // own, drawn at the game's.
     val device = LocalDensity.current
     val shopDensity = remember(device) { Density(device.density, ShopText.SCALE) }
-    // FB1117: scrolled to the end, the shelves stop at the foot of the panelling (the band behind
-    // them), not down in the floorboards: the room's own measure (ShopRoom) against where the
-    // shelves' window ends.
-    val windowHeight = androidx.compose.ui.platform.LocalView.current.height
-    var shelvesBottom by remember { mutableStateOf(0) }
-    val belowPanelling = with(device) { ((shelvesBottom - windowHeight * ShopRoomShape.PANELLING_BOTTOM).coerceAtLeast(0f)).toDp() }
+    // FB1122: the shelves' window itself ends at the top edge of the brown panelling that runs along
+    // the foot of the wall (the room's own measure, ShopRoomShape.PANELLING_TOP of the stage's
+    // height), so nothing is drawn over the panelling or the floor, and scrolled to the end the last
+    // shelf is wholly above it. Measured on screen, not from a guess at
+    // the window's size, so it holds for every shop, every number of shelves and every type size.
+    var stageTop by remember { mutableStateOf(0f) }
+    var stageHeight by remember { mutableStateOf(0f) }
+    var shelvesTop by remember { mutableStateOf(0f) }
+    val windowMax = if (stageHeight <= 0f) Dp.Unspecified
+    else with(device) { (stageTop + stageHeight * ShopRoomShape.PANELLING_TOP - shelvesTop).coerceAtLeast(0f).toDp() }
     CompositionLocalProvider(LocalDensity provides shopDensity) {
-        Box(modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG)) {
+        Box(
+            modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG).onGloballyPositioned {
+                stageTop = it.positionInRoot().y
+                stageHeight = it.size.height.toFloat()
+            },
+        ) {
             // The room: each shop has its own walls. The new room fades in quickly over the old one,
             // which stays as it is until it is covered, so nothing behind the shop shows through.
             AnimatedContent(targetState = stage, transitionSpec = { ShopFades.room() }, label = "room") { shown ->
@@ -415,15 +426,16 @@ fun ShopStageContent(
                 }
                 // During the first steps there is one shop, and nothing to walk to.
                 if (!guiding) Signboards(stage, onGoTo, Modifier.fillMaxWidth().padding(top = 10.dp))
+                Box(Modifier.weight(1f).fillMaxWidth().onGloballyPositioned { shelvesTop = it.positionInRoot().y }) {
                 AnimatedContent(
                     targetState = stage,
                     // The old shelves go first, quickly, then the new ones come: never both at half.
                     transitionSpec = { ShopFades.shelves() },
-                    modifier = Modifier.weight(1f).fillMaxWidth().onGloballyPositioned { shelvesBottom = (it.positionInRoot().y + it.size.height).toInt() },
+                    modifier = Modifier.fillMaxWidth().then(if (windowMax.isSpecified) Modifier.height(windowMax) else Modifier.fillMaxHeight()),
                     label = "shelves",
                 ) { shown ->
                     Column(
-                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 12.dp + belowPanelling),
+                        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 12.dp, bottom = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(18.dp),
                     ) {
                         if (shown == ShopStage.SEEDS) {
@@ -437,6 +449,7 @@ fun ShopStageContent(
                             for (shelf in shelves) Shelf(shelf, inHand?.item, onInspect)
                         }
                     }
+                }
                 }
                 if (!guiding) {
                     Counter(

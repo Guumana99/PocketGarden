@@ -176,7 +176,6 @@ dependencies {
     implementation(libs.play.services.ads)
     implementation(libs.play.review)
     // The open-source licence list in settings, written at build time by the oss-licenses plugin.
-    implementation(libs.play.services.oss.licenses)
     implementation(libs.androidx.media3.exoplayer)
 
     // Notifications posted while the app is away

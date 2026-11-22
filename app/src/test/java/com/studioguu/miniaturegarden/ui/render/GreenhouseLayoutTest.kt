@@ -135,7 +135,7 @@ class GreenhouseLayoutTest {
         assertTrue(scene.contains("PlantGround.BED -> GridObject.TILLED_SOIL_OBJECT_ID"))
         assertTrue(scene.contains("PlantGround.FLOWER_BED -> GridObject.LOOSE_SOIL_OBJECT_ID"))
         assertTrue(scene.contains("PlantGround.LOG -> null"))
-        assertTrue(canvas.contains("pipeline.render(this, GardenClip(ground = top,"))
+        assertTrue(canvas.contains("pipeline.render(this, GardenClip(ground = top)"))
     }
 
     @Test

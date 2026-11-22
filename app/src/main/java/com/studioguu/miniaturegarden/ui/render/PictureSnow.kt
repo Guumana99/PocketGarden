@@ -31,6 +31,12 @@ object PictureSnow {
     val WINDMILL_ROOF: List<Pair<Float, Float>> = listOf(0.329f to 0f, 0.76f to 0.137f, 0.587f to 0.396f, 0.138f to 0.358f)
 
     /**
+     * FB1122: the board over the roof's far end, which runs down to the sails' axle (measured on the
+     * picture): the first outline left it out, so the snow stopped short of the roof's end there.
+     */
+    val WINDMILL_ROOF_END: List<Pair<Float, Float>> = listOf(0.745f to 0.14f, 0.77f to 0.113f, 0.84f to 0.185f, 0.80f to 0.195f, 0.775f to 0.16f)
+
+    /**
      * The well's roof as measured on its picture (the outline kept for the old cover stopped a
      * course of tiles short of the low edge): shares of its width and height. FB1114b2: only its
      * tiles, from the left end of the ridge to the corner tile at the bottom; the outline before
@@ -135,7 +141,7 @@ object PictureSnow {
             )
         }
         val faces = if (objectId == StructureData.WINDMILL.objectId) {
-            listOf(WINDMILL_ROOF)
+            listOf(WINDMILL_ROOF, WINDMILL_ROOF_END)
         } else if (objectId == StructureData.WELL.objectId) {
             listOf(WELL_ROOF)
         } else {
@@ -143,7 +149,7 @@ object PictureSnow {
             measured.map { face -> face.points.map { (across, up) -> shareOf(asset, tileWidth, across, up) } }
         }
         val solid = objectId in EdgeSnow.SOLID_ROOFS
-        return SnowCover.Spec(SnowCover.Kind.ROOF, amount = if (solid) 0.97f else 0.92f, faces = faces, floor = if (solid) 0.72f else 0.45f, solid = solid)
+        return SnowCover.Spec(SnowCover.Kind.ROOF, amount = if (solid) 0.97f else 0.92f, faces = faces, floor = if (solid) 0.72f else 0.45f, solid = solid, fillHoles = objectId == StructureData.WINDMILL.objectId)
     }
 
     /** An offset from the ground point under a picture (tile widths across and up) as shares of the picture. */

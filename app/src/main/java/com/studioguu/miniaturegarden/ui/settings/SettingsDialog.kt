@@ -1,15 +1,15 @@
 package com.studioguu.miniaturegarden.ui.settings
 
-import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import com.google.android.gms.oss.licenses.OssLicensesMenuActivity
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -88,10 +89,10 @@ internal fun SettingsContent(
         NotificationSettingRow(enabledInGame = enabled, onEnabledChange = onChange)
     },
 ) {
-    val context = LocalContext.current
     var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
     var showVersion by rememberSaveable { mutableStateOf(false) }
     var showCredits by rememberSaveable { mutableStateOf(false) }
+    var showLicenses by rememberSaveable { mutableStateOf(false) }
     val close = DialogAction(stringResource(R.string.action_close), onDismiss)
 
     ParchmentDialog(
@@ -114,7 +115,7 @@ internal fun SettingsContent(
                 SettingsPage.ABOUT -> AboutPage(
                     onShowVersion = { showVersion = true },
                     onShowCredits = { showCredits = true },
-                    onShowLicenses = { runCatching { context.startActivity(Intent(context, OssLicensesMenuActivity::class.java)) } },
+                    onShowLicenses = { showLicenses = true },
                 )
                 SettingsPage.OTHER -> OtherPage(versionName = versionName, onReplayTutorial = onReplayTutorial)
             }
@@ -129,6 +130,7 @@ internal fun SettingsContent(
         )
     }
     if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
+    if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
 }
 
 @Composable
@@ -154,7 +156,9 @@ private fun SoundPage(current: AppSettings, actions: SettingsActions) {
 
 /**
  * The version and the credits, each on a sheet of its own, and the open-source licences (which
- * have to be shown): a list the oss-licenses plugin writes at build time, in the device's own screen. The disclaimer that used to be here is part of the privacy policy now.
+ * have to be shown): the list the oss-licenses plugin writes at build time, shown on a sheet of our own
+ * ([LicensesDialog]; FB1122, the library's screen crashed with the game's theme). The disclaimer that
+ * used to be here is part of the privacy policy now.
  */
 @Composable
 private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onShowLicenses: () -> Unit) {
@@ -162,10 +166,46 @@ private fun AboutPage(onShowVersion: () -> Unit, onShowCredits: () -> Unit, onSh
         CarvedButton(text = stringResource(R.string.settings_version), onClick = onShowVersion, modifier = Modifier.fillMaxWidth())
         CarvedButton(text = stringResource(R.string.settings_credits), onClick = onShowCredits, modifier = Modifier.fillMaxWidth())
         CarvedButton(text = stringResource(R.string.settings_licenses), onClick = onShowLicenses, modifier = Modifier.fillMaxWidth())
-        // FB1117: the sound effects' credit, a line beside the licences.
-        Text(stringResource(R.string.credits_sound_line), style = MaterialTheme.typography.bodySmall, color = GardenColors.InkSoft)
     }
 }
+
+/** The open-source libraries by name; one tapped shows its licence, with a way back to the list. */
+@Composable
+private fun LicensesDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val libraries = remember { OssLicenses.load(context) }
+    var shown by rememberSaveable { mutableStateOf<String?>(null) }
+    val library = libraries.firstOrNull { it.name == shown }
+    ParchmentDialog(
+        onDismissRequest = { if (library != null) shown = null else onDismiss() },
+        title = library?.name ?: stringResource(R.string.settings_licenses),
+        actions = listOfNotNull(
+            library?.let { DialogAction(stringResource(R.string.settings_back), { shown = null }) },
+            DialogAction(stringResource(R.string.action_close), onDismiss),
+        ),
+    ) {
+        Column(
+            modifier = Modifier.heightIn(max = PAGE_MAX_HEIGHT).verticalScroll(rememberScrollState()).testTag(LICENSES_LIST_TAG),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (library != null) {
+                Text(library.text, style = MaterialTheme.typography.bodySmall, color = GardenColors.Ink)
+            } else {
+                for (item in libraries) {
+                    Text(
+                        item.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GardenColors.Ink,
+                        modifier = Modifier.fillMaxWidth().clickable { shown = item.name }.padding(vertical = 6.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Test tag of the licences' list (and of a licence's text, in its place). */
+internal const val LICENSES_LIST_TAG = "licenses_list"
 
 /** Where the sounds may come from, by the sites' names; which file is whose is not known for each (ASSETS.md). */
 internal val SOUND_CREDITS = listOf("ポケットサウンド", "タダノオト", "効果音ラボ")
