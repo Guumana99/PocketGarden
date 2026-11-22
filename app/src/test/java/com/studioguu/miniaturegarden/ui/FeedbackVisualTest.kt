@@ -93,7 +93,7 @@ class FeedbackVisualTest {
     // --- 4. The frame ---
 
     @Test
-    fun `the ground of the garden is kept inside its frame, to its diamond; what stands on it is not cut (FB1122)`() {
+    fun `the ground of the garden is kept inside its frame, to its diamond, and what stands on it is not cut (FB1122)`() {
         val ground = Path()
         val clip = GardenClip(ground)
         fun command(layer: RenderLayer, inGarden: Boolean = true) = RenderCommand(layer, 0f, {}, inGarden)

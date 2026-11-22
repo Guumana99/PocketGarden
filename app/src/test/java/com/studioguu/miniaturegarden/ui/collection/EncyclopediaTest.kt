@@ -136,7 +136,7 @@ class EncyclopediaTest {
         val canvas = source("ui/components/GardenCanvas.kt")
         assertTrue(canvas.contains("lawn = lawn, wholeBeds = true, river = river, portrait = true)"))
         // No blades at the foot of a fence, a lantern or a sprinkler, and no water thrown.
-        assertTrue(canvas.contains("if (grassy && !portrait) drawGrassAtFoot("))
+        assertTrue(canvas.contains("floor == null -> drawGrassAtFoot(base, unit, reach, sway"))
         assertTrue(canvas.contains("if (!portrait && !isGroundCover && structure == null && !obj.isPlant &&"))
         assertTrue(canvas.contains("if (obj.isSprinkler && obj.isOn && !obj.isWorking && !portrait) {"))
         // A building on its own patch: the well, one cell, no longer sits in the corner of two.

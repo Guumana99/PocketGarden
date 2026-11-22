@@ -169,11 +169,7 @@ class SettingsContentTest {
     @Test
     fun `the generated licence list is read by offset and length, sorted, once for each name`() {
         val text = "AAAA" + "BBBBBB"
-        val list = OssLicenses.parse("0:4 Zeta
-4:6 alpha
-0:4 Zeta
-bad line
-9:99 Out", text.toByteArray())
+        val list = OssLicenses.parse("0:4 Zeta\n4:6 alpha\n0:4 Zeta\nbad line\n9:99 Out", text.toByteArray())
         assertEquals(listOf("alpha", "Zeta"), list.map { it.name })
         assertEquals(listOf("BBBBBB", "AAAA"), list.map { it.text })
     }
