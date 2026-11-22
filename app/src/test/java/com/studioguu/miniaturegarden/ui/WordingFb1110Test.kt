@@ -29,12 +29,12 @@ class WordingFb1110Test {
     }
 
     @Test
-    fun `the book counts its pages and the creatures, 51 in all`() {
-        assertEquals(20, CollectionEntry.inCategory(CollectionCategory.CROPS).size)
-        assertEquals(7, CollectionEntry.inCategory(CollectionCategory.TERRAIN).size)
-        assertEquals(18, CollectionEntry.inCategory(CollectionCategory.STRUCTURES).size)
-        assertEquals(6, Creature.entries.size)
-        assertEquals(51, BookUnlocks.TOTAL_KINDS)
+    fun `the book counts its pages and the creatures, 60 in all`() {
+        assertEquals(24, CollectionEntry.inCategory(CollectionCategory.CROPS).size)
+        assertEquals(8, CollectionEntry.inCategory(CollectionCategory.TERRAIN).size)
+        assertEquals(20, CollectionEntry.inCategory(CollectionCategory.STRUCTURES).size)
+        assertEquals(8, Creature.entries.size)
+        assertEquals(60, BookUnlocks.TOTAL_KINDS)
         val progress = CollectionProgress(listOf(CollectionRecord(CollectionEntry.TULIP.objectId, 1, 0L, revealed = true)))
         assertEquals(1, BookUnlocks.kinds(progress, null))
         assertEquals(1, BookUnlocks.kinds(progress, NatureNotes(emptyList())))

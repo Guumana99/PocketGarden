@@ -152,7 +152,9 @@ class ConnectedGroundTest {
         assertEquals(
             setOf("plant_wheat_stage1", "plant_wheat_stage2", "plant_wheat_stage3", "plant_wheat_withered", "plant_tomato_stage3",
                 "plant_sunflower_stage1", "plant_shiitake_stage1", "plant_shiitake_stage2", "plant_shiitake_stage3",
-                "plant_shiitake_withered", "plant_hakusai_stage3", "plant_hakusai_withered") + EGGPLANT_BUSHES,
+                "plant_shiitake_withered", "plant_hakusai_stage3", "plant_hakusai_withered",
+                // The kabu (#book60) is stood by hand too, at the foot of its picture.
+                "plant_kabu_stage2", "plant_kabu_stage3", "plant_kabu_withered") + EGGPLANT_BUSHES,
             byHand,
         )
     }

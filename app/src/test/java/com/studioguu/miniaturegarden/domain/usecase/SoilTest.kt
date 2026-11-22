@@ -110,10 +110,11 @@ class SoilTest {
         val vegetables = listOf(
             PlantSpecies.TOMATO, PlantSpecies.STRAWBERRY, PlantSpecies.CARROT, PlantSpecies.DAIKON, PlantSpecies.EGGPLANT, PlantSpecies.WHEAT,
             PlantSpecies.WATERMELON, PlantSpecies.HAKUSAI, PlantSpecies.PAPRIKA, PlantSpecies.CORN, PlantSpecies.MINT,
+            PlantSpecies.KABU, PlantSpecies.SATSUMAIMO,
         )
         val flowers = listOf(
             PlantSpecies.TULIP, PlantSpecies.COSMOS, PlantSpecies.SNOWDROP, PlantSpecies.SUNFLOWER, PlantSpecies.LAVENDER, PlantSpecies.ROSE,
-            PlantSpecies.POINSETTIA, PlantSpecies.NANOHANA,
+            PlantSpecies.POINSETTIA, PlantSpecies.NANOHANA, PlantSpecies.SUISEN, PlantSpecies.HABOTAN,
         )
         assertEquals(PlantSpecies.entries.toSet() - PlantSpecies.SHIITAKE, (vegetables + flowers).toSet())
         for (crop in vegetables) {
