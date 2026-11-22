@@ -53,6 +53,8 @@ object SnowCover {
          * notched): the roof is covered in its whole shape.
          */
         val fillHoles: Boolean = false,
+        /** For a roof, how much of its thickness the snow keeps along the eave (where the roof ends against a wall). */
+        val eaveThin: Float = 1f,
     )
 
     /** How far down from open air a dusting reaches, as a share of the picture's height. */
@@ -88,6 +90,23 @@ object SnowCover {
         val mean = (sum / count).toFloat()
         val step = max(2, h / 160)
         val patch = max(4f, w * 0.07f)
+        // The eave: inside the roof and within a few pixels of picture that is not (the wall under it).
+        val reach = max(2, h / 200)
+        val atEave = BooleanArray(w * h)
+        for (y in 0 until h) for (x in 0 until w) {
+            val i = y * w + x
+            if (!inside[i]) continue
+            search@ for (dy in -reach..reach) for (dx in -reach..reach) {
+                val xx = x + dx
+                val yy = y + dy
+                if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue
+                val j = yy * w + xx
+                if (!inside[j] && alpha(argb[j]) >= OPAQUE) {
+                    atEave[i] = true
+                    break@search
+                }
+            }
+        }
         for (y in 0 until h) for (x in 0 until w) {
             val i = y * w + x
             if (!inside[i]) continue
@@ -106,6 +125,8 @@ object SnowCover {
                 1f + 0.25f * ledge + 0.08f * lit - 0.36f * max(0f, 0.55f - thin) * 2f - 0.08f * grain
             }
             a = a.coerceIn(spec.floor, 1f)
+            // Where the roof ends against the wall (its eave) the snow thins out, like the others'.
+            if (atEave[i]) a *= spec.eaveThin
             out[i] = a * spec.amount
         }
     }

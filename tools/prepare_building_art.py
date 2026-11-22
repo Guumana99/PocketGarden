@@ -704,6 +704,7 @@ def prepare_windmill() -> dict[str, tuple[np.ndarray, dict]]:
     hub_x, hub_y = 855 - xs.min(), 252 - ys.min()
     body = crop(body)
     body_rgba, body_override = prepare_building(body, tiles=2)
+    body_rgba = fill_holes(body_rgba, WINDMILL_HOLES)
     h, w = body_rgba.shape[:2]
     body_override["attachX"] = round(float(hub_x / w), 4)
     body_override["attachY"] = round(float(hub_y / h), 4)
@@ -720,6 +721,83 @@ def prepare_windmill() -> dict[str, tuple[np.ndarray, dict]]:
         "struct_windmill": (body_rgba, body_override),
         "struct_windmill_blades": (blades, blades_override),
     }
+
+
+#: FB1122b: where the windmill's picture has see-through holes that are not its outline: the notch in
+#: the roof's lowest course, and the wedges in the wall under the eave (the source came with a
+#: checkerboard drawn in, and these were keyed out with it). Outlines in pixels of the body picture
+#: as [prepare_windmill] makes it (469 x 596); only see-through pixels inside them are filled.
+WINDMILL_HOLES: list[list[tuple[int, int]]] = [
+    [(116, 188), (150, 188), (150, 228), (118, 227)],
+    [(118, 246), (250, 262), (250, 306), (156, 342), (118, 324)],
+]
+
+
+def fill_holes(rgba: np.ndarray, outlines: list[list[tuple[int, int]]], window: int = 70, stripe: int = 12) -> np.ndarray:
+    """
+    Paints the see-through pixels inside [outlines] with the picture's own texture. Each stripe of a
+    hole is filled from the part of the picture, [window] pixels round, whose surroundings look most
+    like the stripe's (the same pattern of planks or shingles, taken from next to it).
+    """
+    from PIL import ImageDraw
+
+    out = rgba.copy()
+    h, w = out.shape[:2]
+    region = Image.new("L", (w, h), 0)
+    for poly in outlines:
+        ImageDraw.Draw(region).polygon(poly, fill=255)
+    inside = np.array(region) > 0
+    near_hole = out[:, :, 3] < 250
+    hole = inside & near_hole
+    # Half-see-through pixels on the hole's edge are part of it, and so is one pixel more.
+    grown = hole.copy()
+    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        grown |= np.roll(np.roll(hole, dy, axis=0), dx, axis=1)
+    hole = grown & inside
+    known = (out[:, :, 3] >= 250) & ~hole
+    rgb = out[:, :, :3].astype(np.float32)
+    xs = np.where(hole.any(axis=0))[0]
+    if len(xs) == 0:
+        return out
+    for x0 in range(int(xs.min()), int(xs.max()) + 1, stripe):
+        target = np.zeros_like(hole)
+        target[:, x0:x0 + stripe] = hole[:, x0:x0 + stripe]
+        ty, tx = np.where(target)
+        if len(ty) == 0:
+            continue
+        # The ring of known pixels round the stripe that the source must resemble.
+        ring = np.zeros_like(hole)
+        for dy in range(-3, 4):
+            for dx in range(-3, 4):
+                ring |= np.roll(np.roll(target, dy, axis=0), dx, axis=1)
+        ring &= known & ~target
+        ry, rx = np.where(ring)
+        if len(ry) == 0:
+            continue
+        best, best_cost = None, 1e18
+        for dy in range(-window, window + 1):
+            for dx in range(-window, window + 1):
+                if abs(dy) + abs(dx) < 6:
+                    continue
+                sy, sx = ty + dy, tx + dx
+                qy, qx = ry + dy, rx + dx
+                if sy.min() < 0 or qy.min() < 0 or sx.min() < 0 or qx.min() < 0:
+                    continue
+                if sy.max() >= h or qy.max() >= h or sx.max() >= w or qx.max() >= w:
+                    continue
+                if not known[sy, sx].all() or not known[qy, qx].all():
+                    continue
+                cost = float(((rgb[qy, qx] - rgb[ry, rx]) ** 2).mean())
+                if cost < best_cost:
+                    best, best_cost = (dy, dx), cost
+        if best is None:
+            continue
+        dy, dx = best
+        out[ty, tx, :3] = out[ty + dy, tx + dx, :3]
+        out[ty, tx, 3] = 255
+        known[ty, tx] = True
+        rgb[ty, tx] = out[ty, tx, :3]
+    return out
 
 
 def hub_of(blades: np.ndarray) -> tuple[float, float]:

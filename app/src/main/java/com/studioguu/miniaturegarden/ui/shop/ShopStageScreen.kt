@@ -393,16 +393,16 @@ fun ShopStageContent(
     // own, drawn at the game's.
     val device = LocalDensity.current
     val shopDensity = remember(device) { Density(device.density, ShopText.SCALE) }
-    // FB1122: the shelves' window itself ends at the top edge of the brown panelling that runs along
-    // the foot of the wall (the room's own measure, ShopRoomShape.PANELLING_TOP of the stage's
-    // height), so nothing is drawn over the panelling or the floor, and scrolled to the end the last
-    // shelf is wholly above it. Measured on screen, not from a guess at
+    // FB1122b: the shelves' window itself ends at the top edge of the brown floor (the room's own
+    // measure, ShopRoomShape.FLOOR_TOP of the stage's height; there is no band between wall and
+    // floor), so nothing is drawn over the floor, and scrolled to the end the last shelf is wholly
+    // above it. Measured on screen, not from a guess at
     // the window's size, so it holds for every shop, every number of shelves and every type size.
     var stageTop by remember { mutableStateOf(0f) }
     var stageHeight by remember { mutableStateOf(0f) }
     var shelvesTop by remember { mutableStateOf(0f) }
     val windowMax = if (stageHeight <= 0f) Dp.Unspecified
-    else with(device) { (stageTop + stageHeight * ShopRoomShape.PANELLING_TOP - shelvesTop).coerceAtLeast(0f).toDp() }
+    else with(device) { (stageTop + stageHeight * ShopRoomShape.FLOOR_TOP - shelvesTop).coerceAtLeast(0f).toDp() }
     CompositionLocalProvider(LocalDensity provides shopDensity) {
         Box(
             modifier = modifier.fillMaxSize().testTag(SHOP_STAGE_TAG).onGloballyPositioned {
@@ -473,10 +473,9 @@ fun ShopStageContent(
     }
 }
 
-/** Where the room's panelling (the band behind the shelves) lies, as shares of the screen's height; the floor is below it. */
+/** Where the room's wall ends and the brown plank floor begins, as a share of the screen's height. */
 internal object ShopRoomShape {
-    const val PANELLING_TOP = 0.7f
-    const val PANELLING_BOTTOM = 0.82f
+    const val FLOOR_TOP = 0.82f
 }
 
 /** Test tag of the stage's outermost box. */
@@ -497,16 +496,16 @@ fun shopEmoji(stage: ShopStage): String = when (stage) {
     ShopStage.SUNDRIES -> "🪴"
 }
 
-/** The colours of a shop's room: wall from top to bottom, and the panelling along its foot. */
-private data class RoomColors(val wallTop: Color, val wallBottom: Color, val panel: Color)
+/** The colours of a shop's room: wall from top to bottom. */
+private data class RoomColors(val wallTop: Color, val wallBottom: Color)
 
 private fun roomColors(stage: ShopStage): RoomColors = when (stage) {
-    ShopStage.SEEDS -> RoomColors(Color(0xFFEFF3DC), Color(0xFFD9E6BC), Color(0xFF9DB872))
-    ShopStage.WORKSHOP -> RoomColors(Color(0xFFF2E2C4), Color(0xFFDDBF93), Color(0xFFB0835A))
-    ShopStage.SUNDRIES -> RoomColors(Color(0xFFEDEBF3), Color(0xFFD7D6E6), Color(0xFF9C9BB8))
+    ShopStage.SEEDS -> RoomColors(Color(0xFFEFF3DC), Color(0xFFD9E6BC))
+    ShopStage.WORKSHOP -> RoomColors(Color(0xFFF2E2C4), Color(0xFFDDBF93))
+    ShopStage.SUNDRIES -> RoomColors(Color(0xFFEDEBF3), Color(0xFFD7D6E6))
 }
 
-/** The room drawn behind the shelves: wall, a band of panelling, and a plank floor. */
+/** The room drawn behind the shelves: wall and a plank floor. */
 @Composable
 private fun ShopRoom(stage: ShopStage, modifier: Modifier) {
     val colors = roomColors(stage)
@@ -517,14 +516,12 @@ private fun ShopRoom(stage: ShopStage, modifier: Modifier) {
             val stripe = size.width / 14f
             var x = stripe / 2f
             while (x < size.width) {
-                drawRect(Color.White.copy(alpha = 0.18f), Offset(x, 0f), Size(stripe * 0.35f, size.height * 0.7f))
+                drawRect(Color.White.copy(alpha = 0.18f), Offset(x, 0f), Size(stripe * 0.35f, size.height * ShopRoomShape.FLOOR_TOP))
                 x += stripe
             }
-            // Panelling, and the floor below it.
-            val panelTop = size.height * ShopRoomShape.PANELLING_TOP
-            drawRect(colors.panel, Offset(0f, panelTop), Size(size.width, size.height * (ShopRoomShape.PANELLING_BOTTOM - ShopRoomShape.PANELLING_TOP)))
-            drawRect(Color.Black.copy(alpha = 0.12f), Offset(0f, panelTop), Size(size.width, 4f))
-            val floorTop = size.height * ShopRoomShape.PANELLING_BOTTOM
+            // The floor, straight below the wall.
+            val floorTop = size.height * ShopRoomShape.FLOOR_TOP
+            drawRect(Color.Black.copy(alpha = 0.12f), Offset(0f, floorTop), Size(size.width, 4f))
             drawRect(Brush.verticalGradient(listOf(GardenColors.WoodGrain, GardenColors.Wood)), Offset(0f, floorTop), Size(size.width, size.height - floorTop))
             var plank = floorTop + (size.height - floorTop) / 4f
             while (plank < size.height) {
