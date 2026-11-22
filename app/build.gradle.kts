@@ -37,8 +37,8 @@ android {
         applicationId = "com.studioguu.miniaturegarden"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.1.5"
+        versionCode = 7
+        versionName = "1.0.0"
 
         manifestPlaceholders["admobAppId"] = testAdmobAppId
         buildConfigField("String", "ADMOB_RAIN_AD_UNIT_ID", "\"$testAdUnitId\"")

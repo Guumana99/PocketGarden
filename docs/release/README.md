@@ -27,7 +27,7 @@ release の `ndk { debugSymbolLevel = "SYMBOL_TABLE" }` で AAB に入る（Play
 
 ## ライセンス
 
-設定の「情報」→「ライセンス」は oss-licenses プラグインが作る一覧（`OssLicensesMenuActivity`）。手書きの一覧は廃止。
+設定の「情報」→「ライセンス」は、自動で作った一覧を読む自前のダイアログ（FB1122 から。標準の画面は AppCompat のテーマが無く落ちたため）。
 
 ## まだのこと
 
