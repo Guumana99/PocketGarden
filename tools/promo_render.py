@@ -216,7 +216,11 @@ def outro_png(last_frame, outro, path):
     y = int(H * 0.36)
     draw.text((centre - (box[2] - box[0]) // 2 - box[0], y - box[1]), outro["title"], font=title, fill="white", stroke_width=stroke, stroke_fill=(52, 36, 20))
     y += box[3] - box[1] + 70
-    for line in outro.get("lines", []):
+    lines = list(outro.get("lines", []))
+    if outro.get("above"):   # one more line just above the pill (the first pill line), per video
+        at = next((i for i, l in enumerate(lines) if isinstance(l, dict) and l.get("pill")), len(lines))
+        lines.insert(at, {"text": str(outro["above"]), "size": 52})
+    for line in lines:
         spec = line if isinstance(line, dict) else {"text": str(line)}
         text = str(spec["text"])
         pill = bool(spec.get("pill"))

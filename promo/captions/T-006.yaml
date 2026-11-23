@@ -1,12 +1,12 @@
 bgm: Cat_life.mp3
 bgm_start: 0.3
 hook:
-  from: 5.2
+  from: 4.6         # 羽を開いて最大の寄り
   seconds: 1.2
-  text: "今日来た子"
+  text: "近すぎた"
   label: false
   text_top: 0.13
-  rewind: 0.5
+  rewind: 0.6
   rewind_label: "⏪ 少し前"
 captions:
   - { from: 0.0, to: 3.0, text: "今日のお客さん" }

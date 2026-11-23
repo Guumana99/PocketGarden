@@ -20,10 +20,12 @@ timeline:
   - { at: 9.0,  day_label: "ポケ庭日記 2日目\n春のはじめ・昼" }
   - { at: 11.0, grow: { area: [4,6,6,8], to_stage: 3 } }
   - { at: 12.0, camera: { zoom: 2.5, center: [5,7], over: 1.0 } }
-  # 手前（左）のチューリップに、ちょうちょが画面の外から（at は止まる秒）
-  - { at: 13.5, creature: { kind: butterfly, count: 1, from: outside_left, from_distance: 6, land_on: [[5,8]], stay: 5.0 } }
-  - { at: 14.0, camera: { zoom: max, center: [5,8,0.6], over: 2.4 } }
-  - { at: 19.0, camera: { zoom: fit, over: 1.5 } }
-  - { at: 19.0, time_of_day: { to: evening, over: 2.0 } }
-  - { at: 19.0, day_label: "ポケ庭日記 2日目\n春のはじめ・夕方" }
-  - { at: 25.0, end: true }
+  # 画面の外から飛び込んで、赤かピンクのチューリップに止まる（at は止まる秒）。止まる前に最大の寄りで待つ（冒頭の見せ場に使う）
+  - { at: 12.8, camera: { zoom: max, center: [5,8,0.6], over: 0.8 } }
+  - { at: 14.5, creature: { kind: butterfly, count: 1, from: outside_left, from_distance: 6, land_on: [[5,8]], stay: 4.0 } }
+  # 夕方の引きは寄ったまま（庭が小さくなりすぎない）
+  - { at: 18.8, camera: { zoom: 1.7, center: [5,7], over: 1.5 } }
+  - { at: 18.8, time_of_day: { to: evening, over: 2.0 } }
+  - { at: 18.8, day_label: "ポケ庭日記 2日目
+春のはじめ・夕方" }
+  - { at: 23.0, end: true }
