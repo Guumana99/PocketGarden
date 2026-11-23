@@ -1,14 +1,15 @@
 bgm: Cat_life.mp3
 bgm_start: 0.3
 hook:
-  from: 4.6         # 羽を開いて最大の寄り
-  seconds: 1.2
-  text: "近すぎた"
+  from: 4.4         # 羽を開いて最大の寄り（花の中の小さなちょうちょを探してもらう）
+  seconds: 1.6
+  text: "この子、\nどこにいるか分かる？"
   label: false
   text_top: 0.13
   rewind: 0.6
   rewind_label: "⏪ 少し前"
 captions:
-  - { from: 0.0, to: 3.0, text: "今日のお客さん" }
-  - { from: 3.0, to: 6.5, text: "花が咲くと\n遊びに来てくれます" }
+  - { from: 0.0, to: 2.0, text: "今日のお客さん" }
+  - { from: 2.0, to: 4.0, text: "いた！" }
+  - { from: 4.0, to: 6.5, text: "花が咲くと\n遊びに来てくれます" }
   - { from: 6.5, to: 9.0, text: "何色の花が好き？" }

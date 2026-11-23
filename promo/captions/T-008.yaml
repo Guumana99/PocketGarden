@@ -3,12 +3,12 @@ bgm_start: 0.3
 outro:
   above: "配信まであと3週"
 captions:
-  - { from: 0.0,  to: 2.4,  text: "3%しか\n咲かない色" }
-  - { from: 2.4,  to: 4.4,  text: "この中に1つだけ\nその色があります" }
-  - { from: 4.4,  to: 6.0,  text: "左からA・B・C・D\nどれだと思う？" }
+  - { from: 0.0,  to: 3.0,  text: "この中に1つだけ\nめったに咲かない色がある" }
+  - { from: 3.0,  to: 6.0,  text: "左からA・B・C・D\nどれだと思う？" }
   - { from: 6.0,  to: 7.0,  text: "3" }
   - { from: 7.0,  to: 8.0,  text: "2" }
   - { from: 8.0,  to: 9.0,  text: "1" }
-  - { from: 9.0,  to: 12.0, text: "正解はC\n青いチューリップ！" }
-  - { from: 12.0, to: 14.3, text: "青は条件が\nそろうと咲くよ" }
+  - { from: 9.0,  to: 10.8, text: "正解はC\n青いチューリップ！" }
+  - { from: 10.8, to: 12.5, text: "3%しか\n咲かない色" }
+  - { from: 12.5, to: 14.3, text: "青は条件が\nそろうと咲くよ" }
   - { from: 14.3, to: 16.5, text: "当たった？\nコメントで教えて" }
