@@ -173,6 +173,12 @@ hook:
 - `text_top: 0.13`：見せ場の字幕の上端（画面の高さに対する割合。省くと 0.31）。札なしのときは上へ寄せて、主役（実やことり）から離せる。
 - 全体の長さ ＝ `seconds` ＋ `rewind` ＋ 本編 ＋ 締め（1.5 秒、うち 0.4 秒は本編と重なる）。
 
+### 札（A〜D）と答えのコマ（字幕ファイルの `tags:` `answer_stills:`）
+
+`tags: { from, to, items: [{ text: A, colour: red }, ...], emphasize: { text: C, from: 9.0 } }` で、花の下に小さな札を付ける
+（花の色を 1 コマずつ探して付くので、カメラが動いても追いかける。`colour` は red / yellow / blue / pink。`emphasize` は答えの札を金色に）。
+`answer_stills: [9.6, 11.2]` は、答えのコマ（本編の秒）を `frames/<id>_answer.jpg` に並べる。切り抜き一覧 `_sheet.jpg` にも字幕と札が映る。
+
 ## BGM
 
 台本（`promo/scenarios/<id>.yaml`）か字幕ファイル（`promo/captions/<id>.yaml`）の一番上に書く（両方にあれば字幕ファイルが勝つ）。

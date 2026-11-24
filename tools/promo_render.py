@@ -441,7 +441,51 @@ def make_sound(sound_cues, hook, total, path, bgm=None, bgm_start=0.0):
                stdin=np.ascontiguousarray(out, dtype=np.float32).tobytes())
 
 
-def contact_sheet(frames, fps, hook, path, columns=6):
+# --- Letter tags under flowers (the captions file's tags:) -----------------------------------------
+# The picture has no marks for "A to D", so a tag is drawn under each flower. The flowers are found by
+# their bloom colour in each frame (the camera may be moving), so the tag follows the flower.
+BLOOM_MASKS = {
+    "red": lambda h, s, v: ((h < 12) | (h > 345)) & (s > 0.6) & (v > 0.55),
+    "yellow": lambda h, s, v: (h > 32) & (h < 50) & (s > 0.7) & (v > 0.75),
+    "blue": lambda h, s, v: (h > 210) & (h < 250) & (s > 0.6) & (v > 0.4),
+    "pink": lambda h, s, v: (h > 320) & (h < 350) & (s > 0.15) & (s < 0.55) & (v > 0.75),
+}
+
+
+def draw_tags(picture, spec, t):
+    """Draws the tags of [spec] (items: [{text, colour}], from, to, emphasize: {text, from}) on [picture] at body time [t]."""
+    if not spec or not (float(spec.get("from", 0.0)) <= t < float(spec.get("to", 1e9))):
+        return picture
+    small = picture.resize((W // 2, H // 2))
+    hsv = np.array(small.convert("HSV")).astype(float)
+    h, s, v = hsv[..., 0] * 360 / 255, hsv[..., 1] / 255, hsv[..., 2] / 255
+    draw = ImageDraw.Draw(picture, "RGBA")
+    emph = spec.get("emphasize") or {}
+    for item in spec["items"]:
+        mask = BLOOM_MASKS[item["colour"]](h, s, v)
+        area = int(mask.sum())
+        if area < 800:   # the flower is out of the picture (or only a scrap of it)
+            continue
+        ys, xs = np.nonzero(mask)
+        cx, cy = float(xs.mean()) * 2, float(ys.mean()) * 2
+        unit = (area ** 0.5) * 2   # about the bloom's size in the picture
+        size = int(max(34, min(78, unit * 0.62)))
+        f = font(size)
+        text = str(item["text"])
+        b = draw.textbbox((0, 0), text, font=f)
+        w, hh = b[2] - b[0], b[3] - b[1]
+        pad_x, pad_y = int(size * 0.5), int(size * 0.28)
+        yy = cy + unit * 1.55
+        xx = cx
+        chosen = bool(emph) and emph.get("text") == text and t >= float(emph.get("from", 0.0))
+        fill = (255, 214, 92, 245) if chosen else (253, 240, 205, 235)
+        box = (xx - w / 2 - pad_x, yy - hh / 2 - pad_y, xx + w / 2 + pad_x, yy + hh / 2 + pad_y)
+        draw.rounded_rectangle(box, radius=(hh + 2 * pad_y) // 2, fill=fill, outline=(120, 82, 44, 255), width=4)
+        draw.text((xx - w / 2 - b[0], yy - hh / 2 - b[1]), text, font=f, fill=(74, 50, 30))
+    return picture
+
+
+def contact_sheet(frames, fps, hook, path, columns=6, captions=(), tags=None):
     """One frame a second of the recording (the hook left out), the second written under each."""
     picks = list(range(0, len(frames), fps))
     thumb_w, thumb_h = 180, 320
@@ -450,7 +494,12 @@ def contact_sheet(frames, fps, hook, path, columns=6):
     label = font(22, "Regular")
     draw = ImageDraw.Draw(sheet)
     for n, index in enumerate(picks):
-        im = Image.open(frames[index]).convert("RGB").resize((thumb_w, thumb_h), Image.LANCZOS)
+        full = Image.open(frames[index]).convert("RGB")
+        full = draw_tags(full, tags, index / fps)
+        for start, end, caption in captions:   # the captions as they are in the video (body time)
+            if start <= index / fps < end:
+                full.paste(caption, (0, 0), caption)
+        im = full.resize((thumb_w, thumb_h), Image.LANCZOS)
         x, y = (n % columns) * thumb_w, (n // columns) * (thumb_h + 30)
         sheet.paste(im, (x, y))
         draw.text((x + 6, y + thumb_h + 2), (f"{index / fps:.0f}秒（動画 {index / fps + hook:.1f}秒）" if hook else f"{index / fps:.0f}秒"), font=label, fill="black")
@@ -588,6 +637,8 @@ def main():
             t = n / fps
             if n < len(order):
                 picture = Image.open(paths[order[n]]).convert("RGB")
+                if order[n] < len(frames) and n >= len(opening):   # the recording itself (not the hook's take)
+                    picture = draw_tags(picture, caption_doc.get("tags"), (n - len(opening)) / fps)
                 for start, end, caption in caption_pictures:
                     if start <= t < end:
                         picture.paste(caption, (0, 0), caption)
@@ -601,7 +652,7 @@ def main():
             sys.exit("ffmpeg failed")
 
     sheet = out_dir / f"{args.id}_sheet.jpg"
-    contact_sheet(frames, fps, hook, sheet)
+    contact_sheet(frames, fps, hook, sheet, captions=[(a - hook, b - hook, c) for a, b, c in caption_pictures[:len(captions)]], tags=caption_doc.get("tags"))
     # The opening (the high point, the rewind, the start) and the ending, to look over.
     stills = out_dir / "frames"
     stills.mkdir(exist_ok=True)
@@ -610,6 +661,10 @@ def main():
     ending = stills / f"{args.id}_ending.jpg"
     end = hook + body - OUTRO_FADE
     strip(target, [end - 0.5, end + 0.2, total - 0.6], ending)
+    answer_stills = caption_doc.get("answer_stills")
+    if answer_stills:
+        answer = stills / f"{args.id}_answer.jpg"
+        strip(target, [float(a) + hook for a in answer_stills], answer)
     size = target.stat().st_size / 1e6
     print(f"{target} ({total:.2f}s, about {round(total * fps)} frames, {size:.1f} MB)")
     print(f"{sheet}")
@@ -620,7 +675,7 @@ def main():
     if size > 15:
         print("  warning: over 15 MB; try a larger --crf")
     if not args.no_sync:
-        sync_to_drive([target, sheet, opening, ending], args.id)
+        sync_to_drive([target, sheet, opening, ending] + ([answer] if answer_stills else []), args.id)
 
 
 if __name__ == "__main__":
