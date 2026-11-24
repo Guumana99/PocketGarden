@@ -12,9 +12,9 @@ setup:
   - { plant: { crop: tulip, cells: [[3,5],[4,5],[5,5],[6,5]], colours: [red, yellow, blue, pink] } }
   - { grow: { area: [3,5,6,5], to_stage: 3 } }
 # 冒頭は 4 本が同じ大きさで並ぶ絵を、カメラがゆっくり横に流れる（答えの青には寄らない）
-camera: { zoom: 5.0, center: [3.8,5,0.3] }
+camera: { zoom: 4.5, center: [4.0,5,0.3] }
 timeline:
-  - { at: 0.0,  camera: { zoom: 5.0, center: [5.2,5,0.3], over: 3.0 } }
+  - { at: 0.0,  camera: { zoom: 4.5, center: [5.0,5,0.3], over: 3.0 } }
   - { at: 3.0,  camera: { zoom: 5.6, center: [4.5,5,0.3], over: 0.8 } }
   - { at: 8.8,  camera: { zoom: 8.0, center: [5,5,0.4], over: 1.0 } }
   - { at: 16.5, end: true }
