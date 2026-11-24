@@ -11,10 +11,10 @@ setup:
   - { till: { area: [0,3,10,7] } }
   - { plant: { crop: tulip, cells: [[3,5],[4,5],[5,5],[6,5]], colours: [red, yellow, blue, pink] } }
   - { grow: { area: [3,5,6,5], to_stage: 3 } }
-# 冒頭は青いチューリップの最大の寄り（風でゆれる）→ 引いて 4 本の出題へ
-camera: { zoom: max, center: [5,5,0.3] }
+# 冒頭は 4 本が同じ大きさで並ぶ絵を、カメラがゆっくり横に流れる（答えの青には寄らない）
+camera: { zoom: 4.5, center: [4.0,5,0.3] }
 timeline:
-  - { at: 0.0,  camera: { zoom: max, center: [5,5,0.6], over: 1.8 } }
-  - { at: 1.9,  camera: { zoom: 5.6, center: [4.5,5,0.3], over: 1.0 } }
+  - { at: 0.0,  camera: { zoom: 4.5, center: [5.0,5,0.3], over: 3.0 } }
+  - { at: 3.0,  camera: { zoom: 5.6, center: [4.5,5,0.3], over: 0.8 } }
   - { at: 8.8,  camera: { zoom: 8.0, center: [5,5,0.4], over: 1.0 } }
   - { at: 16.5, end: true }
