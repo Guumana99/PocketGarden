@@ -16,5 +16,6 @@ camera: { zoom: 4.5, center: [4.0,5,0.3] }
 timeline:
   - { at: 0.0,  camera: { zoom: 4.5, center: [5.0,5,0.3], over: 3.0 } }
   - { at: 3.0,  camera: { zoom: 5.6, center: [4.5,5,0.3], over: 0.8 } }
-  - { at: 8.8,  camera: { zoom: 8.0, center: [5,5,0.4], over: 1.0 } }
+  # 答えでも 4 本ぜんぶ入れる（並びの真ん中 [4.5,5] に寄る）
+  - { at: 8.8,  camera: { zoom: 6.0, center: [4.5,5,0.3], over: 1.0 } }
   - { at: 16.5, end: true }

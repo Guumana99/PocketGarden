@@ -2,6 +2,17 @@ bgm: Cat_life.mp3
 bgm_start: 0.3
 outro:
   above: "配信まであと3週"
+# 4 本の下に A〜D の札（花の色を追いかけて付く。tools/promo_render.py の draw_tags）。答えの C は金色に
+tags:
+  from: 0.0
+  to: 16.5
+  items:
+    - { text: A, colour: red }
+    - { text: B, colour: yellow }
+    - { text: C, colour: blue }
+    - { text: D, colour: pink }
+  emphasize: { text: C, from: 9.0 }
+answer_stills: [9.6, 11.2, 12.8]
 captions:
   - { from: 0.0,  to: 3.0,  text: "この中に1つだけ\nめったに咲かない色がある" }
   - { from: 3.0,  to: 6.0,  text: "左からA・B・C・D\nどれだと思う？" }
