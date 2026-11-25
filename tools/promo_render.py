@@ -657,7 +657,7 @@ def main():
     stills = out_dir / "frames"
     stills.mkdir(exist_ok=True)
     opening = stills / f"{args.id}_opening.jpg"
-    strip(target, [0.0, 0.8, rewind_from - 0.1, (rewind_from + hook) / 2, hook, hook + 1.0] if hook_spec else [0.0, 1.0, 2.0], opening)
+    strip(target, [0.0, 1.0, 2.0, 3.0], opening)   # the first three seconds (the decisive ones)
     ending = stills / f"{args.id}_ending.jpg"
     end = hook + body - OUTRO_FADE
     strip(target, [end - 0.5, end + 0.2, total - 0.6], ending)
