@@ -23,7 +23,10 @@
 
 ## ネイティブのデバッグシンボル
 
-release の `ndk { debugSymbolLevel = "SYMBOL_TABLE" }` で AAB に入る（Play Console の警告対策）。
+release の `ndk { debugSymbolLevel = "FULL" }`（FB1125 で SYMBOL_TABLE から変えた）。ただし入れているネイティブのライブラリ 3 つ
+（SQLCipher・androidx.graphics.path・datastore の共有カウンター）は、作者の側ですでにシンボルを取り除いてあり（`.dynsym` しか無い）、
+どちらの設定でも AAB（BUNDLE-METADATA）にシンボルは増えない。versionCode 8 → 9 で 52,527,264 → 52,552,134 バイト（+24,870）。
+Play Console の「デバッグ シンボルがアップロードされていません」は、サードパーティのライブラリのぶんで、公開はできる警告のまま残る。
 
 ## ライセンス
 
