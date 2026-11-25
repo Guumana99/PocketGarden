@@ -1,0 +1,25 @@
+bgm: Cat_life.mp3
+bgm_start: 0.3
+# 見せ場：雨粒の落ちる、咲いたチューリップの最大の寄り（3 秒）。巻き戻しはしない
+hook:
+  from: 9.0
+  seconds: 3.0
+  text: "雨の日の庭、好き？"
+  label: false
+  text_top: 0.13
+  rewind: 0
+outro:
+  title: つづく
+  lines:
+    - { text: 次回 ポケ庭日記 4日目, size: 62 }
+    - { text: コメントで次の一手を決めます, size: 54 }
+    - { text: 12/19 配信スタート, size: 64, pill: true }
+    - { text: Android・フォローで配信日にお知らせ, size: 44 }
+captions:
+  - { from: 0.0,  to: 3.0,  text: "3日目の朝は雨" }
+  - { from: 3.0,  to: 5.0,  text: "今日は雨。\n水やりはお休み" }
+  - { from: 5.0,  to: 8.0,  text: "手前の土を耕して\nラベンダーを植えます" }
+  - { from: 12.6, to: 14.4, text: "雨が上がった！" }
+  - { from: 14.6, to: 17.0, text: "ミントが\n少し育ってる" }
+  - { from: 17.6, to: 20.0, text: "次はことりも\n呼びたいな" }
+  - { from: 20.0, to: 22.5, text: "次は何を置く？\nベンチ？井戸？" }

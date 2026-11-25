@@ -43,6 +43,9 @@ import com.studioguu.miniaturegarden.domain.model.GardenView
 import com.studioguu.miniaturegarden.ui.components.BareGround
 import com.studioguu.miniaturegarden.ui.components.GardenCanvas
 import com.studioguu.miniaturegarden.ui.effects.GardenBackdrop
+import com.studioguu.miniaturegarden.ui.effects.RainField
+import com.studioguu.miniaturegarden.domain.model.WeatherType
+import androidx.compose.ui.graphics.StrokeCap
 import com.studioguu.miniaturegarden.ui.render.GardenCamera
 import com.studioguu.miniaturegarden.ui.render.IsometricMetrics
 import com.studioguu.miniaturegarden.ui.render.IsometricTransform
@@ -85,6 +88,23 @@ fun PromoScene(
             visitorDirections = player::directionOf,
             modifier = Modifier.fillMaxSize(),
         )
+        // Rain, as the game's RainOverlay draws it, but from the recording's own clock (frame by frame).
+        if (scene.weather == WeatherType.RAINY) {
+            Canvas(Modifier.fillMaxSize()) {
+                val stroke = 1.5.dp.toPx()
+                val at = scene.nowMillis % 1_000_000L   // small enough for the field's float seconds
+                for (drop in RainField.drops(at, size.width, size.height)) {
+                    if (drop.glint) continue
+                    drawLine(
+                        color = Color(0xFFF1F8FF).copy(alpha = drop.alpha),
+                        start = Offset(drop.x, drop.y),
+                        end = Offset(drop.x - drop.slant * drop.length, drop.y + drop.length),
+                        strokeWidth = stroke,
+                        cap = StrokeCap.Round,
+                    )
+                }
+            }
+        }
         val transform = remember(view, viewport, map.size, density) { PromoCamera.transform(view, map.size, viewport, density) }
         Canvas(Modifier.fillMaxSize()) {
             for ((cell, p) in scene.rings) {

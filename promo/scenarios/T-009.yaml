@@ -1,0 +1,27 @@
+id: T-009
+name: diary_03
+title: ポケ庭日記 3日目（雨の朝、手前にラベンダーを植える。ひまわりは夏の花なので春はラベンダー）
+fps: 30
+seed: 93
+hook_from_end: 0
+start: { garden: new_game, season: spring_early, time_of_day: morning, weather: rainy, ui: hidden, tap_marker: true }
+# 2日目（T-005）の庭：花壇 [4,6,6,8] のチューリップ（咲いている）と、隣 [7,6,8,8] のミント（芽）
+setup:
+  - { plant: { crop: tulip, area: [4,6,6,8], colours: [red, pink, yellow] } }
+  - { grow: { area: [4,6,6,8], to_stage: 3 } }
+  - { plant: { crop: mint, area: [7,6,8,8] } }
+camera: { zoom: 2.2, center: [5,7] }
+timeline:
+  - { at: 0.0,  day_label: "ポケ庭日記 3日目\n春のはじめ・雨" }
+  - { at: 3.0,  camera: { zoom: 1.8, center: [6,8.2], over: 1.0 } }
+  - { at: 5.0,  till: { area: [4,9,8,9], over: 1.2 } }
+  - { at: 6.5,  plant: { crop: lavender, area: [4,9,8,9], over: 1.2 } }
+  # 雨の中のチューリップへ最大まで寄る（冒頭の見せ場に使う：9.0〜12.0 秒）
+  - { at: 8.0,  camera: { zoom: max, center: [5,7,0.5], over: 0.9 } }
+  - { at: 12.5, weather: sunny }
+  - { at: 12.5, time_of_day: { to: day, over: 1.0 } }
+  - { at: 12.5, day_label: "ポケ庭日記 3日目\n春のはじめ・晴れ" }
+  - { at: 12.5, camera: { zoom: 1.8, center: [6,8], over: 1.3 } }
+  - { at: 14.5, grow: { area: [7,6,8,8], to_stage: 2, over: 1.0 } }
+  - { at: 17.5, camera: { zoom: 1.4, center: [6,8], over: 2.0 } }
+  - { at: 22.5, end: true }
