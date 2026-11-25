@@ -232,6 +232,18 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `closing the action window after a harvest starts off and is kept across a restart`() = runBlocking {
+        val (first, firstJob) = openRepository()
+        // A player from before the setting existed reads the default too: off.
+        assertFalse(first.settings.first().closePanelOnHarvest)
+        first.update { it.copy(closePanelOnHarvest = true) }
+        firstJob.cancelAndJoin()
+
+        val (second, _) = openRepository()
+        assertTrue(second.settings.first().closePanelOnHarvest)
+    }
+
+    @Test
     fun `a stored zoom that is not a usable number is not used`() {
         assertFalse(GardenView(0f, 0f, 0f).isUsable)
         assertFalse(GardenView(Float.NaN, 0f, 0f).isUsable)

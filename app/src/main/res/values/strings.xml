@@ -431,6 +431,9 @@
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_tab_sound">音量</string>
+    <string name="settings_tab_controls">操作</string>
+    <string name="settings_close_on_harvest">収穫したら操作ウィンドウを閉じる</string>
+    <string name="settings_close_on_harvest_caption">オフのときは、収穫したあともウィンドウを出したままにします。</string>
     <string name="settings_tab_notifications">通知</string>
     <string name="settings_tab_about">情報</string>
     <string name="settings_tab_other">その他</string>

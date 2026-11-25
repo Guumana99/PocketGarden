@@ -452,6 +452,10 @@ class GardenViewModel @Inject constructor(
     val inventorySort: StateFlow<InventorySort> = settingsRepository.settings.map { it.inventorySort }
         .stateIn(viewModelScope, SharingStarted.Eagerly, InventorySort.DEFAULT)
 
+    /** Whether a harvest closes the tile's action window (FB1125; off: it stays and shows the tile's new state). */
+    private val closePanelOnHarvest: StateFlow<Boolean> = settingsRepository.settings.map { it.closePanelOnHarvest }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
     fun setInventorySort(sort: InventorySort) {
         if (sort == inventorySort.value) return
         viewModelScope.launch { settingsRepository.update { it.copy(inventorySort = sort) } }
@@ -1294,7 +1298,8 @@ class GardenViewModel @Inject constructor(
         var bounty = false
         act(
             onSuccess = {
-                clearSelection()
+                // The window follows the tile: with the setting off it stays up, now showing what the tile holds.
+                if (closePanelOnHarvest.value) clearSelection()
                 audio.play(SoundEffect.HARVEST)
                 showEffect { GardenEffect.Harvest(it, coins, bounty) }
             }

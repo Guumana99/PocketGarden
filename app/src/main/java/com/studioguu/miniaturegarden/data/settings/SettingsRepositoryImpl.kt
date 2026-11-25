@@ -43,6 +43,7 @@ class SettingsRepositoryImpl @Inject constructor(
             prefs[NOTIFICATIONS_ENABLED] = updated.notificationsEnabled
             prefs[NOTIFICATION_INVITE_SHOWN] = updated.notificationInviteShown
             prefs[INVENTORY_SORT] = updated.inventorySort.name
+            prefs[CLOSE_PANEL_ON_HARVEST] = updated.closePanelOnHarvest
             prefs[SEEN_TIPS] = updated.seenTips
             prefs[PLAY_DAYS] = updated.playDays
             prefs[LAST_PLAY_DAY] = updated.lastPlayDay
@@ -73,6 +74,7 @@ class SettingsRepositoryImpl @Inject constructor(
             gardenView = prefs[VIEW_SCALE]?.let { scale -> GardenView(scale, prefs[VIEW_PAN_X] ?: 0f, prefs[VIEW_PAN_Y] ?: 0f) }
                 ?.takeIf { it.isUsable },
             inventorySort = InventorySort.fromName(prefs[INVENTORY_SORT]),
+            closePanelOnHarvest = prefs[CLOSE_PANEL_ON_HARVEST] ?: defaults.closePanelOnHarvest,
             seenTips = prefs[SEEN_TIPS] ?: defaults.seenTips,
             playDays = prefs[PLAY_DAYS] ?: defaults.playDays,
             lastPlayDay = prefs[LAST_PLAY_DAY] ?: defaults.lastPlayDay,
@@ -100,6 +102,7 @@ class SettingsRepositoryImpl @Inject constructor(
         private val VIEW_PAN_X = floatPreferencesKey("garden_view_pan_x")
         private val VIEW_PAN_Y = floatPreferencesKey("garden_view_pan_y")
         private val INVENTORY_SORT = stringPreferencesKey("inventory_sort")
+        private val CLOSE_PANEL_ON_HARVEST = booleanPreferencesKey("close_panel_on_harvest")
         private val SEEN_TIPS = stringSetPreferencesKey("seen_tips")
         private val PLAY_DAYS = intPreferencesKey("play_days")
         private val LAST_PLAY_DAY = longPreferencesKey("last_play_day")

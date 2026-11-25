@@ -44,6 +44,8 @@ class SettingsViewModel @Inject constructor(
 
     override fun setSoundEffectsEnabled(enabled: Boolean) = change { it.copy(soundEffectsEnabled = enabled) }
 
+    override fun setClosePanelOnHarvest(close: Boolean) = change { it.copy(closePanelOnHarvest = close) }
+
     /** Turning them off takes back everything already planned, at once. */
     override fun setNotificationsEnabled(enabled: Boolean) {
         change { it.copy(notificationsEnabled = enabled) }
