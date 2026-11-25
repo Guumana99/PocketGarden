@@ -105,6 +105,12 @@ enum class ActionResult {
     /** The garden is as large as it gets. */
     GARDEN_AT_MAX_SIZE,
 
+    /** The bag cannot be enlarged yet (BagExpansion.UNLOCK_LEVEL). */
+    BAG_LOCKED,
+
+    /** The bag is as large as it gets. */
+    BAG_AT_MAX,
+
     /** A crop was to be planted where something else already stands. */
     NO_ROOM_TO_PLANT,
 

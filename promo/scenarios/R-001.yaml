@@ -1,0 +1,19 @@
+id: R-001
+name: bird_tour
+title: 確認用（FB1125 5）：柵・井戸・ベンチのある庭で、ことり 1 羽が移り歩く（公開しない）
+fps: 4
+seed: 5
+hook_from_end: 0
+start: { garden: new_game, season: spring, time_of_day: day, weather: sunny, ui: hidden, tap_marker: false }
+setup:
+  - { place: { item: struct_fence, cells: [[3,2],[4,2],[5,2],[6,2]] } }
+  - { place: { item: struct_fence, cells: [[8,4],[8,5],[8,6]] } }
+  - { place: { item: struct_well, at: [4,6] } }
+  - { place: { item: deco_bench, at: [6,7] } }
+  - { place: { item: deco_bench, at: [2,5] } }
+camera: { zoom: fit }
+timeline:
+  - { at: 0.0, camera: { zoom: 1.7, center: [5.2,4.6] } }
+  # roam: true は、ゲームと同じ経路（stay は滞在の全部の秒数）
+  - { at: 2.0, creature: { kind: bird, count: 1, from: outside_left, land_on: [[4,7]], stay: 175.0, roam: true } }
+  - { at: 170.0, end: true }

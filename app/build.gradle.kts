@@ -37,7 +37,7 @@ android {
         applicationId = "com.studioguu.miniaturegarden"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
+        versionCode = 9
         versionName = "1.0.0"
 
         manifestPlaceholders["admobAppId"] = testAdmobAppId
@@ -68,7 +68,7 @@ android {
             isShrinkResources = true
             // Debug symbols of the native libraries (SQLCipher ...) go into the AAB, so that Play
             // Console can read native crashes and stops warning about their absence.
-            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
+            ndk { debugSymbolLevel = "FULL" }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

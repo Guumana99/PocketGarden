@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -43,6 +44,7 @@ import kotlin.math.roundToInt
 /** The pages of the settings, each a button on the first page, so new ones have somewhere to go. */
 internal enum class SettingsPage(val label: Int) {
     SOUND(R.string.settings_tab_sound),
+    CONTROLS(R.string.settings_tab_controls),
     NOTIFICATIONS(R.string.settings_tab_notifications),
     ABOUT(R.string.settings_tab_about),
     OTHER(R.string.settings_tab_other),
@@ -55,6 +57,7 @@ interface SettingsActions {
     fun setSoundEffectsEnabled(enabled: Boolean)
     fun setSoundEffectVolume(volume: Float)
     fun previewSoundEffect()
+    fun setClosePanelOnHarvest(close: Boolean)
     fun setNotificationsEnabled(enabled: Boolean)
 }
 
@@ -101,7 +104,8 @@ internal fun SettingsContent(
         actions = if (page == null) listOf(close) else listOf(DialogAction(stringResource(R.string.settings_back), { page = null }), close),
     ) {
         Column(
-            modifier = Modifier.heightIn(min = PAGE_MIN_HEIGHT, max = PAGE_MAX_HEIGHT).verticalScroll(rememberScrollState()),
+            // One height for every page, so the sheet does not change size from page to page (FB1125).
+            modifier = Modifier.height(SETTINGS_PAGE_HEIGHT).testTag(SETTINGS_PAGE_TAG).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             when (page) {
@@ -109,6 +113,7 @@ internal fun SettingsContent(
                     SettingsPage.entries.forEach { CarvedButton(text = stringResource(it.label), onClick = { page = it }, modifier = Modifier.fillMaxWidth()) }
                 }
                 SettingsPage.SOUND -> SoundPage(settings, actions)
+                SettingsPage.CONTROLS -> ControlsPage(settings, actions)
                 SettingsPage.NOTIFICATIONS -> WoodPanel {
                     notificationRow(settings.notificationsEnabled, actions::setNotificationsEnabled)
                 }
@@ -131,6 +136,29 @@ internal fun SettingsContent(
     }
     if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
     if (showLicenses) LicensesDialog(onDismiss = { showLicenses = false })
+}
+
+/** The controls: whether a harvest closes the tile's action window. */
+@Composable
+private fun ControlsPage(current: AppSettings, actions: SettingsActions) {
+    val label = stringResource(R.string.settings_close_on_harvest)
+    WoodPanel {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.bodyLarge, color = GardenColors.Ink)
+                Text(
+                    stringResource(R.string.settings_close_on_harvest_caption),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            WoodToggle(
+                checked = current.closePanelOnHarvest,
+                onCheckedChange = actions::setClosePanelOnHarvest,
+                modifier = Modifier.semantics { contentDescription = label },
+            )
+        }
+    }
 }
 
 @Composable
@@ -281,23 +309,25 @@ private fun VolumeControl(
                 modifier = Modifier.semantics { contentDescription = label },
             )
         }
-        // The slider speaks for itself: no number beside it.
-        WoodSlider(
-            value = volume,
-            onValueChange = onVolumeChange,
-            onValueChangeFinished = onVolumeChosen,
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = volumeDescription },
-        )
-        CarvedButton(
-            text = stringResource(R.string.settings_reset_volume),
-            onClick = {
-                onVolumeChange(defaultVolume)
-                onVolumeChosen()
-            },
-            enabled = !atDefault,
-            modifier = Modifier.align(Alignment.End),
-        )
+        // The slider speaks for itself: no number beside it. The reset button shares its row, so a
+        // board is two rows tall and both fit on a page of the common height (FB1125).
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            WoodSlider(
+                value = volume,
+                onValueChange = onVolumeChange,
+                onValueChangeFinished = onVolumeChosen,
+                enabled = enabled,
+                modifier = Modifier.weight(1f).semantics { contentDescription = volumeDescription },
+            )
+            CarvedButton(
+                text = stringResource(R.string.settings_reset_volume),
+                onClick = {
+                    onVolumeChange(defaultVolume)
+                    onVolumeChosen()
+                },
+                enabled = !atDefault,
+            )
+        }
     }
 }
 
@@ -318,6 +348,8 @@ private fun InfoDialog(title: String, body: String, onDismiss: () -> Unit) {
     }
 }
 
-private val PAGE_MIN_HEIGHT = 240.dp
+/** The height of every page of the settings (the one place it is set); a longer page scrolls inside it. */
+internal val SETTINGS_PAGE_HEIGHT = 300.dp
+internal const val SETTINGS_PAGE_TAG = "settings_page"
 private val PAGE_MAX_HEIGHT = 420.dp
 private val INFO_MAX_HEIGHT = 420.dp

@@ -20,6 +20,11 @@ data class AppSettings(
     val gardenView: GardenView? = null,
     /** The order the bag was last sorted in; kept for next time. */
     val inventorySort: InventorySort = InventorySort.DEFAULT,
+    /**
+     * Whether harvesting closes the tapped tile's action window. Off by default (FB1125): the window
+     * stays up and shows the tile's new state, so the next harvest or planting is a tap away.
+     */
+    val closePanelOnHarvest: Boolean = false,
     /** The first-meeting tips already given ([GardenTip]), by name. */
     val seenTips: Set<String> = emptySet(),
     /** How many different days the garden has been opened on. */

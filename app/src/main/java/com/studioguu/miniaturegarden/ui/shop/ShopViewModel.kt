@@ -15,7 +15,9 @@ import com.studioguu.miniaturegarden.data.audio.AudioManager
 import com.studioguu.miniaturegarden.data.audio.SoundEffect
 import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.BookUnlocks
+import com.studioguu.miniaturegarden.domain.model.BagOffer
 import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
+import com.studioguu.miniaturegarden.domain.model.UserProfile
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlayerStats
@@ -24,6 +26,7 @@ import com.studioguu.miniaturegarden.domain.model.RewardType
 import com.studioguu.miniaturegarden.domain.repository.RewardLimitRepository
 import com.studioguu.miniaturegarden.domain.repository.GardenRepository
 import com.studioguu.miniaturegarden.domain.usecase.ActionResult
+import com.studioguu.miniaturegarden.domain.usecase.ExpandBagUseCase
 import com.studioguu.miniaturegarden.domain.usecase.ExpandGardenUseCase
 import com.studioguu.miniaturegarden.domain.usecase.CoinBonus
 import com.studioguu.miniaturegarden.domain.usecase.FollowTutorialUseCase
@@ -69,6 +72,7 @@ class ShopViewModel @Inject constructor(
     private val rewardedAds: RewardedAdManager,
     rewardLimits: RewardLimitRepository,
     private val expandGarden: ExpandGardenUseCase,
+    private val expandBag: ExpandBagUseCase,
 ) : ViewModel() {
 
     private val _stage = MutableStateFlow(ShopStage.ENTRANCE)
@@ -136,6 +140,11 @@ class ShopViewModel @Inject constructor(
         combine(gardenRepository.observeProgress(), gardenRepository.observeUserProfile()) { progress, profile ->
             ExpansionOffer.of(progress?.gardenSize ?: GridObject.GRID_SIZE, profile?.playerLevel ?: 1, profile?.coins ?: 0L)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ExpansionOffer(ExpansionCheck.NEEDS_LEVEL))
+
+    /** Whether the bag can be enlarged now, and what it takes; offered in the workshop (FB1125 4). */
+    val bag: StateFlow<BagOffer> = gardenRepository.observeUserProfile().map { profile ->
+        BagOffer.of(profile?.inventoryCapacity ?: UserProfile.DEFAULT_INVENTORY_CAPACITY, profile?.playerLevel ?: 1, profile?.coins ?: 0L)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BagOffer(ExpansionCheck.NEEDS_LEVEL))
 
     /** Walks to another shop down the lane. Whatever was in hand there is put back on its shelf. */
     fun goTo(stage: ShopStage) {
@@ -239,6 +248,21 @@ class ShopViewModel @Inject constructor(
                 ActionResult.NOT_ENOUGH_COINS -> ShopNotice(R.string.msg_not_enough_coins)
                 ActionResult.GARDEN_AT_MAX_SIZE -> ShopNotice(R.string.msg_garden_at_max_size)
                 else -> ShopNotice(R.string.msg_expansion_locked)
+            }
+        }
+    }
+
+    /** Buys more room in the bag (asked about first, on the workshop board). */
+    fun enlargeBag() {
+        _feedback.value = null
+        viewModelScope.launch {
+            val result = expandBag()
+            audio.play(if (result == ActionResult.SUCCESS) SoundEffect.COIN else SoundEffect.ERROR)
+            _notice.value = when (result) {
+                ActionResult.SUCCESS -> ShopNotice(R.string.msg_bag_enlarged, good = true)
+                ActionResult.NOT_ENOUGH_COINS -> ShopNotice(R.string.msg_not_enough_coins)
+                ActionResult.BAG_AT_MAX -> ShopNotice(R.string.msg_bag_at_max)
+                else -> ShopNotice(R.string.msg_bag_locked)
             }
         }
     }

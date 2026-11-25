@@ -140,10 +140,11 @@ class CreatureMotionTest {
                     // The bird flies in and away (#71): over anything, from outside the garden.
                     if (pose.action == CreatureAction.FLY) continue
                     assertTrue("$rule at $now in ${pose.cell}", isInside(pose))
-                    // The bird come for the well may sit on its rim instead : not walking.
+                    // The bird come for the well may sit on its rim instead : not walking. It goes
+                    // from place to place now (FB1125), so any seat the garden has will do.
                     if (pose.surface > 0f) {
                         assertEquals(VisitRule.BIRD_WELL, rule)
-                        assertEquals(CreaturePerches.WELL_RIM_HEIGHT, pose.surface)
+                        assertTrue(CreaturePerches.inGarden(grid).any { it.height == pose.surface && abs(it.x - pose.x) < 0.3f && abs(it.y - pose.y) < 0.3f })
                         continue
                     }
                     val cell = GridCell(floor(pose.x).toInt(), floor(pose.y).toInt())
@@ -282,7 +283,8 @@ class CreatureMotionTest {
             val v = visit(rule, CreatureVisits.frontCell(host), host)
             val route = CreatureRoutes.plan(v, grid)
             val points = CreaturePerches.pointsOf(host)
-            val poses = posesOf(route)
+            // The bird moves on after 15 s (FB1125); the ladybird stays on its crop all along.
+            val poses = posesOf(route).filter { (now, _) -> host != cottage || now < v.arrivesAt + 15_000L }
             assertTrue(poses.any { it.second.action == CreatureAction.STEP })
             for ((_, pose) in poses) {
                 assertEquals(v.cell, pose.cell)
@@ -551,7 +553,8 @@ class CreatureMotionTest {
         val ridge = CreaturePerches.pointsOf(hut)
         for (arrival in 0 until 10L) {
             val v = visit(VisitRule.BIRD_HUT, CreatureVisits.frontCell(hut), hut, arrivesAt = 4_000_000L + arrival * 91_111L)
-            for ((_, pose) in posesOf(CreatureRoutes.plan(v, garden), 200L)) {
+            // For its first stay (15 s at least, FB1125: it moves on after that, to where the garden has a place).
+            for ((_, pose) in posesOf(CreatureRoutes.plan(v, garden), 200L).filter { (now, _) -> now < v.arrivesAt + 15_000L }) {
                 if (pose.action == CreatureAction.FLY) continue
                 assertEquals(CreaturePerches.HUT_RIDGE_HEIGHT, pose.surface)
                 assertFalse(pose.grounded)
@@ -789,7 +792,7 @@ class CreatureMotionTest {
         val GOLDEN_PRINTS: List<Long> = listOf(
             7835538569491737339L, 9184390232171254900L, // squirrel, frog: re-taken for the moods (#fb-1110)
             4956434130467034714L, -7566325524328723953L, // butterfly: re-taken for its ways between flowers (#fb-1113)
-            -408090663045976775L, -3592265616300484152L, -8119653952837104962L, // bird on the cottage: re-taken for the lower ridge (1.83 -> 1.75) and its hops along it (TikTok T-003)
+            -408090663045976775L, -9165982323347868005L, -8894216531319983328L, // the ladybird as before; the bird on the cottage and by the well: re-taken for its going from place to place (FB1125 5)
         )
     }
 

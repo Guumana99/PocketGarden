@@ -118,7 +118,8 @@ class CreatureCallTest {
         val visit = CreatureCalls.visitsAt(t0, listOf(Creature.BIRD), listOf(far, near, at(10, 0, "deco_bench")), map).single()
         assertEquals(near, visit.host)
         val route = CreatureRoutes.plan(visit, GardenGrid(map, listOf(far, near)))
-        val settled = (visit.arrivesAt until visit.leavesAt step 500L).mapNotNull { route.poseAt(it) }.filter { it.action != CreatureAction.FLY }
+        // On the rim for its first stay (it goes about the garden after 15 s, FB1125).
+        val settled = (visit.arrivesAt until visit.arrivesAt + 15_000L step 500L).mapNotNull { route.poseAt(it) }.filter { it.action != CreatureAction.FLY }
         assertTrue(settled.isNotEmpty())
         assertTrue(settled.all { it.surface == CreaturePerches.WELL_RIM_HEIGHT })
         // The ladybird on a fence, and nowhere else.

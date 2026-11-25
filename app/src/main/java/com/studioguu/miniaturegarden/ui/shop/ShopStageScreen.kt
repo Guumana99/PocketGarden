@@ -85,6 +85,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.studioguu.miniaturegarden.R
 import com.studioguu.miniaturegarden.data.ads.AdAvailability
 import com.studioguu.miniaturegarden.domain.model.CollectionEntry
+import com.studioguu.miniaturegarden.domain.model.BagExpansion
+import com.studioguu.miniaturegarden.domain.model.BagOffer
 import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
 import com.studioguu.miniaturegarden.domain.model.GardenItem
 import com.studioguu.miniaturegarden.domain.model.ItemCategory
@@ -151,6 +153,8 @@ fun ShopStageScreen(
     DisposableEffect(Unit) { onDispose(viewModel::leave) }
     var confirmBonus by rememberSaveable { mutableStateOf(false) }
     var confirmExpand by rememberSaveable { mutableStateOf(false) }
+    var confirmBag by rememberSaveable { mutableStateOf(false) }
+    val bag by viewModel.bag.collectAsStateWithLifecycle()
     /** The thing on the shelf whose kinds are being chosen from. */
     var choosingKind by rememberSaveable { mutableStateOf<GardenItem?>(null) }
     /** Price of the item the player could not afford, while that dialog is open. */
@@ -172,6 +176,9 @@ fun ShopStageScreen(
     val expandForLevel = stringResource(R.string.msg_expand_level)
     val expandForCoins = stringResource(R.string.msg_expand_coins)
     val atMax = stringResource(R.string.msg_garden_at_max_size)
+    val bagForLevel = stringResource(R.string.bag_board_needs_level, BagExpansion.UNLOCK_LEVEL)
+    val bagForCoins = stringResource(R.string.msg_bag_coins)
+    val bagAtMax = stringResource(R.string.msg_bag_at_max)
 
     val message = notice?.let { ShopMessage(it.text(), it.good) } ?: feedback?.let { purchase ->
         val failure = actionResultMessage(purchase.result)
@@ -197,6 +204,17 @@ fun ShopStageScreen(
         bonusEnabled = bonusAvailable,
         guiding = guiding,
         expansion = expansion,
+        bag = bag,
+        onBag = { confirmBag = true },
+        onBagResting = { check ->
+            toast.show(
+                when (check) {
+                    ExpansionCheck.NEEDS_LEVEL -> bagForLevel
+                    ExpansionCheck.AT_MAX_SIZE -> bagAtMax
+                    else -> bagForCoins
+                },
+            )
+        },
         onExpand = { confirmExpand = true },
         onExpandResting = { check ->
             toast.show(
@@ -253,6 +271,25 @@ fun ShopStageScreen(
             ),
         ) {
             Text(stringResource(R.string.shop_short_by, price - coins), color = GardenColors.Ink)
+        }
+    }
+
+    if (confirmBag) {
+        ParchmentDialog(
+            onDismissRequest = { confirmBag = false },
+            title = stringResource(R.string.bag_confirm_title),
+            actions = listOf(
+                DialogAction(stringResource(R.string.action_cancel), { confirmBag = false }),
+                DialogAction(
+                    stringResource(R.string.bag_confirm_ok),
+                    {
+                        confirmBag = false
+                        viewModel.enlargeBag()
+                    },
+                ),
+            ),
+        ) {
+            Text(stringResource(R.string.bag_confirm_text, bag.price, BagExpansion.STEP), color = GardenColors.Ink)
         }
     }
 
@@ -384,6 +421,9 @@ fun ShopStageContent(
     modifier: Modifier = Modifier,
     guiding: Boolean = false,
     expansion: ExpansionOffer? = null,
+    bag: BagOffer? = null,
+    onBag: () -> Unit = {},
+    onBagResting: (ExpansionCheck) -> Unit = {},
     onExpand: () -> Unit = {},
     onExpandResting: (ExpansionCheck) -> Unit = {},
     /** The purse was tapped: the coin bonus is offered (never during the first steps). */
@@ -443,6 +483,9 @@ fun ShopStageContent(
                         }
                         if (shown == ShopStage.WORKSHOP && expansion != null) {
                             ExpansionBoard(expansion, onExpand, onExpandResting)
+                        }
+                        if (shown == ShopStage.WORKSHOP && bag != null) {
+                            BagBoard(bag, onBag, onBagResting)
                         }
                         // Shelves belong to the shop on show; while one fades out, the other's are not drawn twice.
                         if (shown == stage) {
@@ -650,6 +693,69 @@ private fun ExpansionBoard(offer: ExpansionOffer, onExpand: () -> Unit, onRestin
     }
     }
 }
+
+/**
+ * The workshop board for more room in the bag (FB1125 4), made like [ExpansionBoard]: the level it
+ * opens at, or the price on a button, or "sold out" once all the purchases are made; a tap on it
+ * says why when it cannot be bought now. It shows how many purchases are left.
+ */
+@Composable
+private fun BagBoard(offer: BagOffer, onBuy: () -> Unit, onResting: (ExpansionCheck) -> Unit) {
+    val waiting = offer.check != ExpansionCheck.READY
+    AnswersWhenResting(
+        onTap = if (waiting) ({ onResting(offer.check) }) else null,
+        label = stringResource(R.string.bag_board_title),
+        modifier = Modifier.fillMaxWidth().testTag(BAG_BOARD_TAG),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = GardenColors.Parchment.copy(alpha = 0.95f),
+            shadowElevation = 2.dp,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text("🎒", fontSize = 26.sp)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.bag_board_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = GardenColors.Ink,
+                    )
+                    Text(
+                        text = if (offer.check == ExpansionCheck.AT_MAX_SIZE) stringResource(R.string.bag_board_sold_out)
+                        else stringResource(R.string.bag_board_caption, BagExpansion.STEP) + "（" + stringResource(R.string.bag_board_remaining, offer.remaining) + "）",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = GardenColors.InkSoft,
+                    )
+                }
+                when (offer.check) {
+                    ExpansionCheck.NEEDS_LEVEL -> Text(
+                        text = stringResource(R.string.bag_board_needs_level, offer.level),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = GardenColors.InkSoft,
+                    )
+                    ExpansionCheck.AT_MAX_SIZE -> Text(
+                        text = "✔ " + stringResource(R.string.bag_board_sold_out),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = GardenColors.InkSoft,
+                    )
+                    ExpansionCheck.NEEDS_COINS, ExpansionCheck.READY -> WoodButton(
+                        text = stringResource(R.string.expand_price, offer.price),
+                        onClick = onBuy,
+                        enabled = offer.check == ExpansionCheck.READY,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Test tag of the workshop board for more room in the bag. */
+const val BAG_BOARD_TAG = "shop_bag_board"
 
 /** Test tag of the workshop's board for growing the garden. */
 const val EXPANSION_BOARD_TAG = "shop_expansion_board"

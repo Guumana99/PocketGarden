@@ -221,9 +221,17 @@ class ScenarioPlayer(private val scenario: Scenario) {
             val arrives = baseMillis + ((cue.at + i * STAGGER_SECONDS) * 1000).roundToLong() - (if (flies) travelIn else 0L)
             // `coat: white` (#book60): the rabbit in its white winter coat.
             val variant = cue.string("coat")?.takeIf { it == CreatureVisits.WHITE_COAT && creature == Creature.RABBIT }
-            val visit = CreatureVisit(rule, cell, host = roofAt(creature, cell, cue.at), arrivesAt = arrives, leavesAt = arrives + travelIn + travelOut + stayMillis + SETTLE_MILLIS, variant = variant)
+            // `roam: true` (the bird only): the game's own route, with no direction, so that it goes from place to
+            // place as it does in the game (FB1125); `stay` is then how long the whole visit lasts, in seconds.
+            val roam = creature == Creature.BIRD && cue.bool("roam") == true
+            val visit = if (roam) {
+                val comes = baseMillis + ((cue.at + i * STAGGER_SECONDS) * 1000).roundToLong()
+                CreatureVisit(rule, cell, host = null, arrivesAt = comes, leavesAt = comes + stayMillis, variant = variant)
+            } else {
+                CreatureVisit(rule, cell, host = roofAt(creature, cell, cue.at), arrivesAt = arrives, leavesAt = arrives + travelIn + travelOut + stayMillis + SETTLE_MILLIS, variant = variant)
+            }
             visits += visit
-            directions[visit] = CreatureDirection(perches = if (landOn.isEmpty()) emptyList() else listOf(cell), fromAngle = angle, stayMillis = stayMillis, fromCells = fromCells)
+            if (!roam) directions[visit] = CreatureDirection(perches = if (landOn.isEmpty()) emptyList() else listOf(cell), fromAngle = angle, stayMillis = stayMillis, fromCells = fromCells)
         }
     }
 

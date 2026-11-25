@@ -49,6 +49,7 @@ class SettingsContentTest {
         override fun setSoundEffectsEnabled(enabled: Boolean) { calls += "se $enabled"; settings = settings.copy(soundEffectsEnabled = enabled) }
         override fun setSoundEffectVolume(volume: Float) { calls += "seVolume"; settings = settings.copy(soundEffectVolume = volume) }
         override fun previewSoundEffect() { calls += "preview" }
+        override fun setClosePanelOnHarvest(close: Boolean) { calls += "closePanel $close"; settings = settings.copy(closePanelOnHarvest = close) }
         override fun setNotificationsEnabled(enabled: Boolean) { calls += "notifications $enabled"; settings = settings.copy(notificationsEnabled = enabled) }
     }
 
@@ -74,10 +75,10 @@ class SettingsContentTest {
     }
 
     @Test
-    fun `it opens on the four pages to choose from, and a page goes back to them`() {
+    fun `it opens on the five pages to choose from, and a page goes back to them`() {
         show()
         compose.onNodeWithText("設定").assertIsDisplayed()
-        for (page in listOf("音量", "通知", "情報", "その他")) compose.onNodeWithText(page).assertIsDisplayed()
+        for (page in listOf("音量", "操作", "通知", "情報", "その他")) compose.onNodeWithText(page).assertIsDisplayed()
         compose.onNodeWithText("BGM").assertDoesNotExist()
         compose.onNodeWithText("音量").performClick()
         compose.onNodeWithText("BGM").assertIsDisplayed()
@@ -85,6 +86,29 @@ class SettingsContentTest {
         compose.onNodeWithText("BGM").assertDoesNotExist()
         compose.onNodeWithText("情報").assertIsDisplayed()
         assertEquals(0, dismissed)
+    }
+
+    @Test
+    fun `the controls page keeps the action window open after a harvest by default, and the switch changes it`() {
+        assertEquals(false, AppSettings().closePanelOnHarvest)
+        val recorder = show()
+        compose.onNodeWithText("操作").performClick()
+        compose.onNodeWithText("収穫したら操作ウィンドウを閉じる").assertIsDisplayed()
+        compose.onNodeWithContentDescription("収穫したら操作ウィンドウを閉じる").assertIsOff()
+        compose.onNodeWithContentDescription("収穫したら操作ウィンドウを閉じる").performClick()
+        assertEquals(listOf("closePanel true"), recorder.calls)
+        compose.onNodeWithContentDescription("収穫したら操作ウィンドウを閉じる").assertIsOn()
+    }
+
+    @Test
+    fun `every page of the settings is the same height, the sound page included`() {
+        show()
+        val first = compose.onNodeWithTag(SETTINGS_PAGE_TAG).fetchSemanticsNode().size.height
+        for (page in listOf("音量", "操作", "通知", "情報", "その他")) {
+            compose.onNodeWithText(page).performClick()
+            assertEquals(page, first, compose.onNodeWithTag(SETTINGS_PAGE_TAG).fetchSemanticsNode().size.height)
+            compose.onNodeWithText("← 戻る").performClick()
+        }
     }
 
     @Test

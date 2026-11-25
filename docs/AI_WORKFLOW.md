@@ -55,6 +55,8 @@
 | #book60 の作物 4 種・苔・かかし・バードバス・うさぎ（白い冬毛）・かたつむり | `Book60Test`（＋生き物の表 `CreatureVisitTest` `CreatureMotionTest`、数を見る 4 クラス、図鑑の試算 `BookUnlockPaceTest`） |
 | 通知の予約・設定の連動・権限の判定 | `NotificationsTest`（＋設定の保存 `SettingsRepositoryTest`） |
 | 生き物の来訪・組み合わせ表 | `CreatureVisitTest` |
+| ことりの移り歩き（FB1125：15〜40 秒ごとに柵の上・別の止まり場所・地面へ。`planBirdTour`） | `BirdTourTest`（＋`CreatureMotionTest` の金型 `GOLDEN_PRINTS`） |
+| 持ち物の枠を買って増やす（FB1125：`BagExpansion`、1 枠 99 個） | `BagExpansionTest`（＋`ConstructionTest` `StoreObjectTest` `GardenActionUseCasesTest`） |
 | 生き物の動き（経路・入れないマス・ポン・飛来）、止まる場所（`CreaturePerches` `PlantTops`）・描く順、`CreatureSprites`、生き物の絵（`creatures_0.png`） | `CreatureMotionTest` `CodeArtTest` `AssetLedgerTest` |
 | FB1114：白うさぎを呼ぶ・苔の育ち（`MossPatches`、DB v22）・作物の縮み・コテージの雪 | `Fb1114Test`（＋`CreatureCallTest` `MigrationSchemaTest` `CalculateOfflineProgressUseCaseTest` `EdgeSnowTest` `SnowCoverTest` `CropScaleTest`） |
 | 自然メモの記録・DB（v8 の SQL とスキーマの一致） | `NatureNotesTest` |

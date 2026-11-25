@@ -62,6 +62,7 @@ import kotlinx.coroutines.launch
  *         --es season AUTUMN --es time DAY --es weather SUNNY --ez hide_ui true \
  *         --es creatures none                 # none, all, or kinds such as butterfly,bird
  *         --ef clock_hour 22                  # what the device's clock is taken to say
+ *         --ei player_level 10 --ei player_coins 9000 --ei bag_capacity 56 --ez bag_fill true   # with load: the player's level, purse and bag (FB1125: the bag's shop and pages)
  *         --ez audit_text true                # only checks how all the strings wrap ([TextAudit])
  *         --ez perches true                   # only shows (or hides) where the visitors may settle ([PerchPreview])
  *         --ez ad_ready true --ei bonus_coins 120   # an ad waiting; a coin bonus just paid in the shop
@@ -125,6 +126,10 @@ class ShowcaseReceiver : BroadcastReceiver() {
                         intent.getIntExtra("expand_coins", GroundGarden.EXPAND_COINS),
                         intent.getStringExtra("roof"),
                         intent.getStringExtra("wall"),
+                        PlayerLook(
+                            intent.getIntExtra("player_level", -1), intent.getIntExtra("player_coins", -1),
+                            intent.getIntExtra("bag_capacity", -1), intent.getBooleanExtra("bag_fill", false),
+                        ),
                     )
                     Log.i(TAG, "showcase garden loaded")
                 } finally {
@@ -132,14 +137,17 @@ class ShowcaseReceiver : BroadcastReceiver() {
                 }
             }
         }
-        val keys = intent.extras?.keySet().orEmpty() - setOf(EXTRA_LOAD, EXTRA_GARDEN, "tutorial", "roof", "wall")
+        val keys = intent.extras?.keySet().orEmpty() - setOf(EXTRA_LOAD, EXTRA_GARDEN, "tutorial", "roof", "wall", "player_level", "player_coins", "bag_capacity", "bag_fill")
         if (keys.isEmpty()) return
         val showcase = showcaseOf(intent)
         ShowcaseControls.set(showcase)
         Log.i(TAG, "showcase set: $showcase")
     }
 
-    private suspend fun loadGarden(garden: String?, step: TutorialStep, expandSize: Int, expandLevel: Int, expandCoins: Int, roof: String?, wall: String?) {
+    /** FB1125: what to set on the player after the garden is loaded; -1 leaves a number as the garden had it. */
+    private class PlayerLook(val level: Int, val coins: Int, val bagCapacity: Int, val fillBag: Boolean)
+
+    private suspend fun loadGarden(garden: String?, step: TutorialStep, expandSize: Int, expandLevel: Int, expandCoins: Int, roof: String?, wall: String?, look: PlayerLook) {
         val art = garden == "art"
         val fences = garden == "fences"
         val bridges = garden == "bridges"
@@ -241,9 +249,23 @@ class ShowcaseReceiver : BroadcastReceiver() {
             if (bridgePlaces) gardenRepository.upsertInventorySlot(InventorySlot(0, GardenItem.STRUCT_BRIDGE.itemId, 5))
             val profile = gardenRepository.getUserProfile() ?: UserProfile()
             val level = if (expand) expandLevel else if (feedback) FeedbackGarden.PLAYER_LEVEL else PLAYER_LEVEL
+            val shownLevel = if (look.level > 0) look.level else level
+            val capacity = if (look.bagCapacity > 0) look.bagCapacity else profile.inventoryCapacity
             gardenRepository.saveUserProfile(
-                profile.copy(coins = if (expand) expandCoins.toLong() else 1_200L, playerLevel = level, currentXp = LevelTable.xpForLevel(level)),
+                profile.copy(
+                    coins = if (look.coins >= 0) look.coins.toLong() else if (expand) expandCoins.toLong() else 1_200L,
+                    playerLevel = shownLevel, currentXp = LevelTable.xpForLevel(shownLevel), inventoryCapacity = capacity,
+                ),
             )
+            // The slots the capacity says, and (bag_fill) each filled with a kind of its own, the first with 99.
+            if (look.bagCapacity > 0 || look.fillBag) {
+                val kinds = GardenItem.entries
+                for (index in 0 until capacity) {
+                    val slot = if (look.fillBag) InventorySlot(index, kinds[index % kinds.size].itemId, if (index == 0) InventorySlot.MAX_STACK else (index * 7) % 98 + 1, acquiredOrder = index.toLong())
+                    else InventorySlot(index)
+                    gardenRepository.upsertInventorySlot(slot)
+                }
+            }
         }
     }
 
