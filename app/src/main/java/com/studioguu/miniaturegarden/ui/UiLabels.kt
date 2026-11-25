@@ -362,6 +362,8 @@ fun actionResultMessage(result: ActionResult): Int? = when (result) {
     ActionResult.ONLY_ONE_SYMBOL -> R.string.msg_only_one_symbol
     ActionResult.EXPANSION_LOCKED -> R.string.msg_expansion_locked
     ActionResult.GARDEN_AT_MAX_SIZE -> R.string.msg_garden_at_max_size
+    ActionResult.BAG_LOCKED -> R.string.msg_bag_locked
+    ActionResult.BAG_AT_MAX -> R.string.msg_bag_at_max
     ActionResult.NOT_THIS_STEP -> R.string.msg_not_this_step
     ActionResult.ALREADY_FED -> R.string.msg_already_fed
     ActionResult.FEEDING -> R.string.msg_feeding

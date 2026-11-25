@@ -15,6 +15,6 @@ data class InventorySlot(
 
     companion object {
         const val EMPTY_ITEM_ID = ""
-        const val MAX_STACK = 64
+        const val MAX_STACK = 99
     }
 }

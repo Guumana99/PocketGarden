@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.domain.usecase
 
+import com.studioguu.miniaturegarden.domain.model.BagExpansion
 import com.studioguu.miniaturegarden.domain.model.ExpansionCheck
 import com.studioguu.miniaturegarden.domain.model.GardenExpansion
 import com.studioguu.miniaturegarden.domain.model.GardenItem
@@ -33,6 +34,31 @@ class ExpandGardenUseCase @Inject constructor(
         if (stage.price > 0) gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - stage.price))
         gardenRepository.upsertGridObjects(objects.map(GardenExpansion::shifted))
         gardenRepository.saveProgress(progress.copy(gardenSize = stage.size))
+        ActionResult.SUCCESS
+    }
+}
+
+/**
+ * Enlarges the bag by [BagExpansion.STEP] slots (see [BagExpansion]): the price is paid and the new
+ * slots are made, in one transaction. The new capacity is what remembers how many times it was done.
+ */
+class ExpandBagUseCase @Inject constructor(
+    private val gardenRepository: GardenRepository,
+) {
+    suspend operator fun invoke(): ActionResult = gardenRepository.runInTransaction {
+        val profile = gardenRepository.getUserProfile() ?: return@runInTransaction ActionResult.NOT_FOUND
+        when (BagExpansion.check(profile.inventoryCapacity, profile.playerLevel, profile.coins)) {
+            ExpansionCheck.AT_MAX_SIZE -> return@runInTransaction ActionResult.BAG_AT_MAX
+            ExpansionCheck.NEEDS_LEVEL -> return@runInTransaction ActionResult.BAG_LOCKED
+            ExpansionCheck.NEEDS_COINS -> return@runInTransaction ActionResult.NOT_ENOUGH_COINS
+            ExpansionCheck.READY -> Unit
+        }
+        val price = BagExpansion.nextPrice(profile.inventoryCapacity) ?: return@runInTransaction ActionResult.BAG_AT_MAX
+        val capacity = profile.inventoryCapacity + BagExpansion.STEP
+        // Slots below the old capacity already exist (and may hold things); only the new ones are made.
+        val have = gardenRepository.getInventory().map { it.slotIndex }.toSet()
+        gardenRepository.upsertInventorySlots((profile.inventoryCapacity until capacity).filter { it !in have }.map { InventorySlot(it) })
+        gardenRepository.saveUserProfile(profile.copy(coins = profile.coins - price, inventoryCapacity = capacity))
         ActionResult.SUCCESS
     }
 }
