@@ -211,7 +211,7 @@ class CreatureRoute internal constructor(
         return CreaturePose(
             x = x,
             y = y,
-            altitude = leg.fromAlt + (leg.toAlt - leg.fromAlt) * k,
+            altitude = leg.fromAlt + (leg.toAlt - leg.fromAlt) * k + leg.arc * 4f * f * (1f - f),
             facing = facing,
             action = leg.action,
             elapsed = elapsed,
@@ -221,8 +221,8 @@ class CreatureRoute internal constructor(
             heading = leg.headingAt(elapsed),
             setsOff = leg.setsOff,
             stops = leg.stops,
-            surface = surface,
-            grounded = grounded && leg.action != CreatureAction.FLY,
+            surface = leg.surface ?: surface,
+            grounded = (leg.grounded ?: grounded) && leg.action != CreatureAction.FLY,
             onPlant = onPlant && leg.action != CreatureAction.FLY && leg.action != CreatureAction.APPEAR && leg.action != CreatureAction.VANISH,
             turn = abs(turnOf(leg, elapsed)),
             turnPassed = turnOf(leg, elapsed) >= 0f,
@@ -283,8 +283,17 @@ internal class Leg(
     val turnedFrom: Float = heading,
     val darts: Boolean = false,
     /** The cell it is drawn in while on this leg: that of the flower it rests on. */
-    val cell: GridCell? = null,
+    var cell: GridCell? = null,
 ) {
+    /** FB1125: how high what it stands on is on this leg, where that differs from the route (the bird going from place to place); null: the route's. */
+    var surface: Float? = null
+
+    /** FB1125: whether it is on its feet on the ground on this leg, where that differs from the route; null: the route's. */
+    var grounded: Boolean? = null
+
+    /** FB1125: how much higher than the straight line from start to end a flight goes in the middle, in tile widths (a hop between two places). */
+    var arc: Float = 0f
+
     /** It starts facing the other way from the leg before ([CreaturePose.turn]). */
     var turnIn: Boolean = false
 
@@ -399,6 +408,8 @@ object CreatureRoutes {
         val random = Random(seedOf(visit))
         val length = visit.leavesAt - visit.arrivesAt
         val spots = CreaturePerches.forCreature(creature, perches)
+        // FB1125: the bird does not stay at one place all its visit (not in the promo build, whose scripts say where).
+        if (creature == Creature.BIRD && direction == null) planBirdTour(visit, grid, spots, Random(seedOf(visit)), length)?.let { return it }
         return when {
             flies(creature) -> planFlight(visit, grid, spots, random, length, direction)
             visit.host != null -> planOnHost(visit, grid, spots, random, length, direction?.fromAngle)
@@ -576,6 +587,252 @@ object CreatureRoutes {
         }
         return path.asReversed()
     }
+
+
+    // --- The bird goes from place to place (FB1125 5) ---
+
+    /** A place the bird stays at a while: a point to settle on, or a cell of the ground. */
+    private class BirdStop(val perch: Perch?, val cell: GridCell?) {
+        val key: String = if (perch != null) "${perch.kind}:${perch.x}:${perch.y}" else "g:${cell!!.x},${cell.y}"
+        val x: Float get() = perch?.x ?: (cell!!.x + 0.5f)
+        val y: Float get() = perch?.y ?: (cell!!.y + 0.5f)
+
+        /** How high its feet are there, in tile widths. */
+        val height: Float get() = perch?.height ?: 0f
+
+        /** The cell it is drawn in there, if it sits on something; null on the ground. */
+        val drawCell: GridCell? get() = perch?.cell
+    }
+
+    /** One way on from a stop: along the fence on foot, or a short flight to another stop. */
+    private class BirdMove(val weight: Float, val walk: List<List<Perch>>? = null, val to: BirdStop? = null)
+
+    /**
+     * The bird for a whole visit: where it comes down as before (a place it came for, the ground
+     * beside it), but it stays only 15 to 40 seconds at one place and then moves on, by one of:
+     * hopping along the fence it is on, flying to another place 1 to 4 cells away (a fence, the
+     * well, a bench, a roof, the bird bath, the scarecrow), flying down to the ground to walk a
+     * while, or, from the ground, up to a place. Now and then (one in twelve) it stays where it
+     * is for the rest of its visit. Where there is no other place within reach of where it comes
+     * down, null: it goes about as it always did ([planOnPerch], [planOnGround]).
+     */
+    private fun planBirdTour(visit: CreatureVisit, grid: GardenGrid, spots: List<Perch>, random: Random, length: Long): CreatureRoute? {
+        val manner = Manner.of(Creature.BIRD)
+        val size = grid.map.size
+        val seats = spots.filter { it.kind != PerchKind.GROUND }
+        val host = visit.host
+        val first: BirdStop = if (host != null) {
+            val on = CreaturePerches.on(host, seats)
+            if (on.isEmpty()) return null
+            BirdStop(on[random.nextInt(on.size)], null)
+        } else {
+            val home = visit.cell
+            val onAnchor = CreaturePerches.near(home.x + 0.5f, home.y + 0.5f, ANCHOR_PERCH_REACH, seats)
+                .filter { it.on != null && (visit.rule.anchor.matches(it.on) || it.kind in BIRD_ANYWAY) }
+            if (onAnchor.isNotEmpty() && random.nextFloat() < BIRD_PERCH_CHANCE) BirdStop(onAnchor[random.nextInt(onAnchor.size)], null) else BirdStop(null, home)
+        }
+        val footings = footingsOf(grid)
+        val fences = seats.filter { it.kind == PerchKind.FENCE }.associateBy { cellOf(it.x, it.y) }
+
+        fun seatsNear(from: BirdStop, avoid: String?): List<Perch> {
+            val near = seats.filter { hypot(it.x - from.x, it.y - from.y) in BIRD_MOVE_REACH }
+            return near.filter { BirdStop(it, null).key != avoid }.ifEmpty { near }
+        }
+
+        fun groundNear(from: BirdStop, avoid: String?): List<GridCell> {
+            val cells = ArrayList<GridCell>()
+            val at = cellOf(from.x, from.y)
+            val span = BIRD_MOVE_REACH.endInclusive.toInt() + 1
+            for (dy in -span..span) for (dx in -span..span) {
+                val cell = GridCell(at.x + dx, at.y + dy)
+                if (!isGroundFor(grid, cell)) continue
+                val d = hypot(cell.x + 0.5f - from.x, cell.y + 0.5f - from.y)
+                if (d !in BIRD_MOVE_REACH || !isClearOf(cell.x + 0.5f, cell.y + 0.5f, footings)) continue
+                cells += cell
+            }
+            return cells.filter { BirdStop(null, it).key != avoid }.ifEmpty { cells }
+        }
+
+        fun fenceRuns(from: BirdStop): List<List<Perch>> {
+            if (from.perch?.kind != PerchKind.FENCE) return emptyList()
+            val at = cellOf(from.x, from.y)
+            val region = fences.keys
+            val runs = ArrayList<List<Perch>>()
+            for (cell in region) {
+                val path = pathBetween(at, cell, region)
+                if (path.size in 1..BIRD_FENCE_RUN) runs += path.map { fences.getValue(it) }
+            }
+            return runs
+        }
+
+        fun movesFrom(from: BirdStop, avoid: String?): List<BirdMove> {
+            val moves = ArrayList<BirdMove>()
+            val runs = fenceRuns(from)
+            if (runs.isNotEmpty()) moves += BirdMove(3f, walk = runs)
+            val flights = seatsNear(from, avoid)
+            if (flights.isNotEmpty()) moves += BirdMove(if (from.perch == null) 4f else 3f, to = BirdStop(flights[random.nextInt(flights.size)], null))
+            if (from.perch != null) {
+                val ground = groundNear(from, avoid)
+                if (ground.isNotEmpty()) moves += BirdMove(2f, to = BirdStop(null, ground[random.nextInt(ground.size)]))
+            }
+            return moves
+        }
+        // Nowhere to go from where it comes down: as it always was.
+        if (movesFrom(first, null).isEmpty()) return null
+
+        val landing = flightIn(first.x, first.y, first.height, size, manner.flySpeed, random)
+        landing.surface = 0f
+        landing.grounded = false
+        landing.cell = first.drawCell
+        val (span, cyclic) = spanOf(length - 2 * landing.duration)
+        val plan = Planner(random, manner, span, cyclic, first.x, first.y, facing = landing.facing)
+
+        fun settle(stop: BirdStop) {
+            plan.alt = 0f
+            plan.legSurface = if (stop.perch != null) stop.height else 0f
+            plan.legGrounded = stop.perch == null
+            plan.legCell = stop.drawCell
+        }
+
+        fun stayOn(stop: BirdStop, until: Long) {
+            if (until <= plan.t) return
+            plan.standFor(minOf(plan.between(manner.firstRest), until - plan.t))
+            if (stop.perch != null) {
+                val spot = stop.perch
+                val ridge = if (spot.kind == PerchKind.ROOF) {
+                    spot.on?.let { CreaturePerches.pointsOf(it) }?.filter { it.kind == PerchKind.ROOF }?.takeIf { it.size >= 2 }?.let { it.first() to it.last() }
+                } else {
+                    null
+                }
+                while (true) {
+                    val rest = plan.between(manner.rest)
+                    val millis = plan.pace(manner.hostStepMillis.toFloat())
+                    if (plan.t + millis + rest > until) break
+                    if (ridge != null) {
+                        val (a, b) = ridge
+                        val dx = b.x - a.x
+                        val dy = b.y - a.y
+                        val here = (((plan.x - a.x) * dx + (plan.y - a.y) * dy) / (dx * dx + dy * dy)).coerceIn(0f, 1f)
+                        val t = if (here < 0.5f) 0.75f + random.nextFloat() * 0.25f else random.nextFloat() * 0.25f
+                        plan.stepTo(a.x + dx * t, a.y + dy * t, millis)
+                    } else {
+                        plan.stepTo(stop.x + random.nextFloat() * 2f * PERCH_REACH - PERCH_REACH, stop.y + random.nextFloat() * 2f * PERCH_REACH - PERCH_REACH, millis)
+                    }
+                    plan.standFor(rest)
+                }
+            } else {
+                val region = regionAround(Creature.BIRD, grid, stop.cell!!, manner.roam)
+                var last: Mood? = null
+                while (true) {
+                    val mood = Mood.next(random, last)
+                    last = mood
+                    if (mood == Mood.STILL) {
+                        val stay = (plan.between(manner.rest) * mood.restScale(random)).toLong()
+                        if (plan.t + stay + manner.rest.first > until) break
+                        plan.standFor(stay)
+                        continue
+                    }
+                    val to = pointNearby(plan, region, footings, manner, random, mood.strideScale(random)) ?: pointNearby(plan, region, footings, manner, random) ?: break
+                    val millis = plan.pace(hypot(to.first - plan.x, to.second - plan.y) * manner.stepMillis, wide = true)
+                    val rest = (plan.between(manner.rest) * mood.restScale(random)).toLong()
+                    if (plan.t + millis + rest > until) break
+                    plan.stepTo(to.first, to.second, millis)
+                    plan.standFor(rest)
+                }
+            }
+            plan.standUntil(until)
+        }
+
+        /** Flies from where it is to [to]; the heights are all altitude on the way, and it is drawn in the nearer cell. */
+        fun flyTo(from: BirdStop, to: BirdStop) {
+            val fromCell = from.drawCell ?: cellOf(plan.x, plan.y)
+            val toCell = to.drawCell ?: to.cell!!
+            val near = if (toCell.x + toCell.y >= fromCell.x + fromCell.y) toCell else fromCell
+            val d = hypot(to.x - plan.x, to.y - plan.y)
+            val millis = plan.pace(maxOf(d / manner.flySpeed * 1000f, BIRD_MIN_FLIGHT_MILLIS.toFloat()))
+            plan.flyTo(to.x, to.y, to.height, millis, fromAlt = from.height, hop = Hop(near, BIRD_HOP_ARC + BIRD_HOP_ARC_PER_CELL * d))
+            settle(to)
+        }
+
+        var current = first
+        settle(current)
+        var previous: String? = null
+        val horizon = if (cyclic) span - BIRD_RETURN_MILLIS else span
+        while (true) {
+            val stayFor = if (random.nextFloat() < BIRD_STAY_FOREVER_CHANCE) Long.MAX_VALUE / 4 else BIRD_STAY_MILLIS.first + random.nextLong(BIRD_STAY_MILLIS.last - BIRD_STAY_MILLIS.first + 1)
+            if (plan.t + stayFor > horizon - BIRD_MOVE_MARGIN_MILLIS) {
+                stayOn(current, horizon)
+                break
+            }
+            stayOn(current, plan.t + stayFor)
+            val moves = movesFrom(current, previous)
+            if (moves.isEmpty()) continue
+            var roll = random.nextFloat() * moves.sumOf { it.weight.toDouble() }.toFloat()
+            val move = moves.firstOrNull { roll -= it.weight; roll <= 0f } ?: moves.last()
+            val from = current
+            if (move.walk != null) {
+                // Hopping along the fence it is on: a run of its connected rails, one cell at a time.
+                val path = move.walk[random.nextInt(move.walk.size)]
+                for (rail in path) {
+                    plan.legCell = rail.cell
+                    plan.stepTo(rail.x, rail.y, plan.pace(manner.hostStepMillis * BIRD_RAIL_STEP))
+                    plan.standFor(300L + random.nextLong(500L))
+                }
+                current = BirdStop(path.last(), null)
+            } else {
+                val to = move.to!!
+                flyTo(from, to)
+                current = to
+            }
+            previous = from.key
+        }
+        // A visit that goes round and round ends where it began, to begin again from there.
+        if (cyclic && current.key != first.key) {
+            flyTo(current, first)
+            current = first
+        }
+        plan.standUntil(span)
+
+        landing.turnOut = plan.legs.firstOrNull()?.turnIn == true
+        val cameFrom = atan2((landing.fromY - landing.toY).toDouble(), (landing.fromX - landing.toX).toDouble())
+        val out = flightOut(size, landing.duration, cameFrom, random.nextDouble() * 1.2 - 0.6)
+        // Taking off from wherever it has got to: its height there is all altitude on the way out.
+        val closing = { from: CreaturePose ->
+            out(from.copy(altitude = from.altitude + from.surface, surface = 0f)).also {
+                it.surface = 0f
+                it.grounded = false
+                it.cell = from.cell
+            }
+        }
+        return CreatureRoute(visit, landing, plan.legs, maxOf(span, plan.t), plan.cyclic, landing.duration, closing, depthCell = null, ponds = emptySet(), surface = 0f, grounded = false)
+    }
+
+    /** Whether the bird may come down on (and walk) the cell: the ground, as [canWalk] has it. */
+    private fun isGroundFor(grid: GardenGrid, cell: GridCell): Boolean = canWalk(Creature.BIRD, grid, cell.x, cell.y)
+
+    /** How far the bird moves from one place to the next, in cells (centre to centre). */
+    private val BIRD_MOVE_REACH = 1.0f..4.0f
+
+    /** How long it stays at one place (a move on follows, now and then not). */
+    private val BIRD_STAY_MILLIS = 15_000L..40_000L
+
+    /** How likely it is to stay where it is for the rest of its visit, at each place. */
+    private const val BIRD_STAY_FOREVER_CHANCE = 1f / 12f
+
+    /** How many connected rails it hops along at most in one go. */
+    private const val BIRD_FENCE_RUN = 3
+
+    /** How long a hop from rail to rail takes, times its usual step on what it sits on. */
+    private const val BIRD_RAIL_STEP = 1.2f
+
+    /** The shortest flight from one place to another, and how high it arcs (tile widths, and more for each cell of the way). */
+    private const val BIRD_MIN_FLIGHT_MILLIS = 650L
+    private const val BIRD_HOP_ARC = 0.22f
+    private const val BIRD_HOP_ARC_PER_CELL = 0.06f
+
+    /** Room kept at the end of a visit that goes round, for the flight back to where it began; and before the end for a move. */
+    private const val BIRD_RETURN_MILLIS = 6_000L
+    private const val BIRD_MOVE_MARGIN_MILLIS = 3_500L
 
     // --- Those that walk on what they came for: a bird on a roof, a ladybird on a crop ---
 
@@ -1160,6 +1417,9 @@ internal enum class Mood(
     }
 }
 
+/** How a flight from one place to another goes ([Planner.flyTo]): the cell it is drawn in, and how high it arcs. */
+private class Hop(val cell: GridCell?, val arc: Float)
+
 /** Lays the legs of a route one after another, from (x, y). */
 private class Planner(
     val random: Random,
@@ -1178,6 +1438,11 @@ private class Planner(
 
     /** Which way it was last seen facing, at the end of the last leg laid. */
     private var shown: Facing = facing
+
+    /** FB1125: what the legs laid from now on stand on, when that is not the route's (see [Leg.surface], [Leg.grounded], [Leg.cell]). */
+    var legSurface: Float? = null
+    var legGrounded: Boolean? = null
+    var legCell: GridCell? = null
 
     /** When it last turned to face the other way. */
     private var lastTurn = Long.MIN_VALUE / 2
@@ -1201,6 +1466,9 @@ private class Planner(
 
     /** Lays [leg], marking where it turns to face the other way. */
     private fun add(leg: Leg) {
+        if (leg.surface == null) leg.surface = legSurface
+        if (leg.grounded == null) leg.grounded = legGrounded
+        if (leg.cell == null) leg.cell = legCell
         if (leg.facing != shown) {
             leg.turnIn = true
             legs.lastOrNull()?.turnOut = true
@@ -1230,11 +1498,19 @@ private class Planner(
         t += millis
     }
 
-    fun flyTo(toX: Float, toY: Float, toAlt: Float, millis: Long) {
+    fun flyTo(toX: Float, toY: Float, toAlt: Float, millis: Long, fromAlt: Float = alt, hop: Hop? = null) {
         facing = facingFor(toX - x, toY - y)
         val from = heading
         heading = CreatureRoutes.headingOf(toX - x, toY - y, heading)
-        add(Leg(t, millis, CreatureAction.FLY, x, y, alt, toX, toY, toAlt, facing = facing, heading = heading, turnedFrom = from, darts = manner.darts))
+        val leg = Leg(t, millis, CreatureAction.FLY, x, y, fromAlt, toX, toY, toAlt, facing = facing, heading = heading, turnedFrom = from, darts = manner.darts)
+        if (hop != null) {
+            // Flying from one place to another: heights are all in the altitude, and it is drawn in the nearer cell.
+            leg.surface = 0f
+            leg.grounded = false
+            leg.cell = hop.cell
+            leg.arc = hop.arc
+        }
+        add(leg)
         x = toX
         y = toY
         alt = toAlt

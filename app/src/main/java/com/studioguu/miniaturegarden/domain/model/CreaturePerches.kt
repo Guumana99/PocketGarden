@@ -166,7 +166,7 @@ object CreaturePerches {
     )
 
     /** Fence rails, of every kind of fence (not the kerb). */
-    private const val FENCE_TOP_HEIGHT = 0.2f
+    const val FENCE_TOP_HEIGHT = 0.2f
 
     /**
      * Every point to settle on in [grid] (not the ground, which is walked: [isGround]).
