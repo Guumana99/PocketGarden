@@ -1,0 +1,22 @@
+id: T-011
+name: yellow_garden
+title: 黄色だけの庭ができるまで（夏・ひまわり）
+fps: 30
+seed: 63
+hook_from_end: 0
+# ひまわりは夏の花（黄色だけ）。T-007 のピンクだけの庭と同じ作りで、夏の庭をひまわりの黄色だけにする
+start: { garden: new_game, season: summer, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: true }
+camera: { zoom: fit }
+timeline:
+  - { at: 0.0,  day_label: "黄色だけの庭\n夏・1日目" }
+  - { at: 0.3,  till: { area: [2,2,8,8], over: 1.4 } }
+  - { at: 2.6,  plant: { crop: sunflower, area: [2,2,8,8], over: 1.5 } }
+  - { at: 4.3,  water: { area: [2,2,8,8], over: 1.0 } }
+  - { at: 5.5,  day_label: "黄色だけの庭\n夏・3日目" }
+  - { at: 5.5,  grow: { area: [2,2,8,8], to_stage: 2, over: 1.0 } }
+  - { at: 6.0,  camera: { zoom: 2.2, center: [5,5], over: 1.0 } }
+  - { at: 7.0,  grow: { area: [2,2,8,8], to_stage: 3, over: 1.4 } }
+  # 奥の花に、画面の上の外から。先に最大まで寄って待つ（見せ場：10.0〜13.0 秒）
+  - { at: 8.6,  camera: { zoom: max, center: [6,4,1.0], over: 1.4 } }
+  - { at: 10.0, creature: { kind: butterfly, count: 1, from: outside_top, from_distance: 7, land_on: [[6,4]], stay: 4.5 } }
+  - { at: 14.8, end: true }
