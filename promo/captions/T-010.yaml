@@ -1,0 +1,24 @@
+bgm: Cat_life.mp3
+bgm_start: 0.3
+# 見せ場：ベンチに降りることりの寄り（3 秒）。巻き戻しはしない
+hook:
+  from: 7.5
+  seconds: 3.0
+  text: "ベンチを置いたら…"
+  label: false
+  text_top: 0.13
+  rewind: 0
+outro:
+  title: つづく
+  lines:
+    - { text: 次回 ポケ庭日記 5日目, size: 62 }
+    - { text: コメントで次の一手を決めます, size: 54 }
+    - { text: 12/19 配信スタート, size: 64, pill: true }
+    - { text: Android・フォローで配信日にお知らせ, size: 44 }
+captions:
+  - { from: 0.0,  to: 2.5,  text: "4日目の朝" }
+  - { from: 2.5,  to: 5.5,  text: "庭にベンチを\n置いてみた" }
+  - { from: 5.5,  to: 8.0,  text: "なにか\n飛んで来た…" }
+  - { from: 8.2,  to: 12.5, text: "ことりが\nベンチに来た！" }
+  - { from: 12.6, to: 16.5, text: "置く物で、来る子が\n変わります" }
+  - { from: 16.8, to: 20.0, text: "次は何を育てる？\nいちご？トマト？" }

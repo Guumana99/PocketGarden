@@ -59,6 +59,12 @@ SAFE_TOP = int(H * 0.12)
 SAFE_BOTTOM = int(H * 0.80)
 SAFE_LEFT = 70
 SAFE_RIGHT = W - 190
+# Instagram Reels covers the bottom 35% and a button column on the right: one mp4 for TikTok, Shorts and Reels.
+# Body captions and the ending sit above 65% and, below 40% of the height, keep 230 px clear of the right edge.
+SAFE_RIGHT_LOW = W - 230
+CAPTION_CENTRE_Y = int(H * 0.62)   # the body caption's vertical centre (y = 1190)
+CAPTION_BOTTOM = int(H * 0.672)    # its lower edge at most (y = 1290, 630 px from the bottom)
+OUTRO_BOTTOM = int(H * 0.65)       # the ending's lines stay above the bottom 35%
 MAX_CHARS = 15
 MAX_LINES = 2
 
@@ -104,7 +110,7 @@ def font(size, weight="Bold"):
 
 
 def caption_png(text, path):
-    """One caption on a clear 1080 x 1920 picture, centred in the safe area's lower part."""
+    """One caption on a clear 1080 x 1920 picture, centred at 62% of the height, clear of the right buttons."""
     lines = text.split("\n")
     for line in lines:
         if len(line) > MAX_CHARS:
@@ -119,19 +125,21 @@ def caption_png(text, path):
         f = font(size)
         stroke = max(5, size // 8)
         widest = max(draw.textbbox((0, 0), line, font=f, stroke_width=stroke)[2] - draw.textbbox((0, 0), line, font=f, stroke_width=stroke)[0] for line in lines)
-        if widest <= SAFE_RIGHT - SAFE_LEFT or size <= 40:
+        if widest <= SAFE_RIGHT_LOW - SAFE_LEFT or size <= 40:
             break
         size -= 2
     gap = int(size * 0.28)
     boxes = [draw.textbbox((0, 0), line, font=f, stroke_width=stroke) for line in lines]
     heights = [b[3] - b[1] for b in boxes]
     total = sum(heights) + gap * (len(lines) - 1)
-    # The block's bottom sits a little above the bottom fifth.
-    y = SAFE_BOTTOM - 40 - total
-    centre = (SAFE_LEFT + SAFE_RIGHT) // 2
+    # The block's vertical centre is at 62% of the height; its bottom stays above y = 1290.
+    y = min(CAPTION_CENTRE_Y - total // 2, CAPTION_BOTTOM - total)
+    if size < 56:
+        print(f"  warning: caption shrunk to {size}px to keep clear of the right buttons: {text!r}")
+    centre = (SAFE_LEFT + SAFE_RIGHT_LOW) // 2
     for line, box, h in zip(lines, boxes, heights):
         width = box[2] - box[0]
-        x = max(SAFE_LEFT, min(centre - width // 2, SAFE_RIGHT - width))
+        x = max(SAFE_LEFT, min(centre - width // 2, SAFE_RIGHT_LOW - width))
         draw.text((x - box[0], y - box[1]), line, font=f, fill=(255, 255, 255, 255), stroke_width=stroke, stroke_fill=(52, 36, 20, 255))
         y += h + gap
     image.save(path)
@@ -202,8 +210,8 @@ def outro_png(last_frame, outro, path):
     base = Image.open(last_frame).convert("RGB").filter(ImageFilter.GaussianBlur(outro.get("blur", 18)))
     base = ImageEnhance.Brightness(base).enhance(0.78)
     draw = ImageDraw.Draw(base, "RGBA")
-    centre = (SAFE_LEFT + SAFE_RIGHT) // 2
-    room = SAFE_RIGHT - SAFE_LEFT
+    centre = (SAFE_LEFT + SAFE_RIGHT_LOW) // 2
+    room = SAFE_RIGHT_LOW - SAFE_LEFT
     # The name as large as fits between the safe edges, up to 210 px.
     size = 210
     while True:
@@ -213,7 +221,7 @@ def outro_png(last_frame, outro, path):
         if box[2] - box[0] <= room - 20 or size <= 60:
             break
         size -= 4
-    y = int(H * 0.36)
+    y = int(H * 0.27)   # high enough that the last line stays above the bottom 35%
     draw.text((centre - (box[2] - box[0]) // 2 - box[0], y - box[1]), outro["title"], font=title, fill="white", stroke_width=stroke, stroke_fill=(52, 36, 20))
     y += box[3] - box[1] + 70
     lines = list(outro.get("lines", []))
@@ -246,8 +254,8 @@ def outro_png(last_frame, outro, path):
         else:
             draw.text((x - b[0], y - b[1]), text, font=f, fill="white", stroke_width=stroke, stroke_fill=(52, 36, 20))
             y += h + 34
-        if y > SAFE_BOTTOM:
-            print(f"  warning: ending runs into the bottom fifth: {text}")
+        if y > OUTRO_BOTTOM:
+            print(f"  warning: ending runs into the bottom 35%: {text}")
     base.save(path)
 
 
