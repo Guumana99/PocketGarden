@@ -8,6 +8,9 @@ hook:
   label: false
   text_top: 0.13
   rewind: 0
+  punch: { at: [536, 950], scale: 1.8 }   # a small visitor: enlarged about it
+punch:
+  - { from: 9.4, to: 13.0, at: [536, 950], scale: 1.8, ramp: 0.6 }
 captions:
   - { from: 0.0,  to: 1.6,  text: "黄色の花だけで\n庭を作ってみた" }
   - { from: 1.6,  to: 3.0,  text: "耕して" }

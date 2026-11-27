@@ -1,0 +1,23 @@
+id: T-012
+name: guest_dragonfly
+title: お客さん図鑑 No.3 とんぼ（初登場）
+fps: 30
+seed: 112
+hook_from_end: 0
+start: { garden: new_game, season: autumn, time_of_day: day, weather: sunny, ui: hidden, tap_marker: true }
+# 秋の昼：池（水 2 マス）とコスモスの花壇。とんぼは水のそばの庭に来て、花（咲いた株）に止まる（ゲームの CreaturePerches の仕様）
+setup:
+  - { place: { item: deco_pond, at: [2,5] } }
+  - { place: { item: deco_pond, at: [2,6] } }
+  - { plant: { crop: cosmos, area: [4,4,8,8] } }
+  - { grow: { area: [4,4,8,8], to_stage: 3 } }
+camera: { zoom: 2.6, center: [5,6] }
+timeline:
+  - { at: 0.0,  day_label: "お客さん図鑑 No.3\nとんぼ" }
+  # とんぼは左の空から来て、コスモスに止まる（at は止まる秒）。止まる前に最大の寄りで待つ（見せ場：5.2〜8.2 秒）
+  - { at: 5.0,  creature: { kind: dragonfly, count: 1, from: outside_left, land_on: [[6,6]], stay: 4.5 } }
+  - { at: 3.5,  camera: { zoom: max, center: [6.5,6.5,0.7], over: 1.5 } }
+  - { at: 10.5, camera: { zoom: 2.6, center: [5,6], over: 1.5 } }
+  - { at: 13.0, end: true }
+bgm: Cat_life.mp3
+bgm_start: 0.3

@@ -8,6 +8,7 @@ hook:
   label: false
   text_top: 0.13
   rewind: 0
+  punch: { at: [535, 895], scale: 2.2 }   # a small visitor: enlarged about it
 outro:
   title: つづく
   lines:
@@ -15,6 +16,8 @@ outro:
     - { text: コメントで次の一手を決めます, size: 54 }
     - { text: 12/19 配信スタート, size: 64, pill: true }
     - { text: Android・フォローで配信日にお知らせ, size: 44 }
+punch:
+  - { from: 7.4, to: 13.6, at: [535, 895], scale: 2.2, ramp: 0.6 }
 captions:
   - { from: 0.0,  to: 2.5,  text: "4日目の朝" }
   - { from: 2.5,  to: 5.5,  text: "庭にベンチを\n置いてみた" }

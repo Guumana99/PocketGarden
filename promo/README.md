@@ -197,6 +197,21 @@ hook:
 （花の色を 1 コマずつ探して付くので、カメラが動いても追いかける。`colour` は red / yellow / blue / pink。`emphasize` は答えの札を金色に）。
 `answer_stills: [9.6, 11.2]` は、答えのコマ（本編の秒）を `frames/<id>_answer.jpg` に並べる。切り抜き一覧 `_sheet.jpg` にも字幕と札が映る。
 
+### 小さな来客を大きく（`punch:`・11/28 から）
+
+ことり・とんぼは、ゲームの一番近い寄り（`zoom: max`）でも画面の幅の 1 割ほど。字幕ファイルで、書き出しのときに切り抜いて拡大する：
+
+```yaml
+punch:                                   # 本編の秒。ramp 秒かけて寄って、ramp 秒かけて戻る
+  - { from: 4.2, to: 9.4, at: [485, 655], scale: 2.1, ramp: 0.7 }   # at は 1080x1920 の絵の中の点（来客の位置）
+hook:
+  punch: { at: [485, 655], scale: 2.1 }  # 見せ場の間ずっと
+```
+
+撮影の絵を後から拡大するので、少し甘くなる（2 倍強まで）。`at` は撮った絵（`build/promo/<id>/frame_*.png`）で来客の位置を見て決める。
+撮影側の `zoom` を `max` より大きくしても、庭の描画（`GardenCanvas`）が `MAX_SCALE` で止めるので効かない。
+`creature: { kind: bird, land_on: [[x,y]] }` のマスにベンチ（`deco_bench`）が置いてあれば、ことりはその座面に止まる（なければベンチの下の地面に降りて、ベンチの絵に隠れる）。
+
 ## BGM
 
 台本（`promo/scenarios/<id>.yaml`）か字幕ファイル（`promo/captions/<id>.yaml`）の一番上に書く（両方にあれば字幕ファイルが勝つ）。

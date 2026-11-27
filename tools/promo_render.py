@@ -31,6 +31,8 @@ Out: docs/promo/tiktok/<id>_<name>.mp4 (1080 x 1920, 30 fps, H.264 + AAC) and
    Nothing else is done to the song (its licence forbids arranging it: no change of speed or pitch).
 6. The whole sound (effects and music together, one gain, so their balance stays) brought to
    -14 LUFS, a limiter keeping the true peak under -1 dB.
+   An enlarging for a small visitor: the captions file's punch: [{from, to, at: [x, y], scale, ramp}] (body seconds;
+   the picture is cropped about at and enlarged) and hook: punch: {at, scale} (held all through the hook).
    Every caption is cut off 0.3 s before the ending starts to fade in (CAPTION_OUTRO_GAP).
    The first line of the recording's day_label board can be the series name ("お客さん図鑑 No.3").
 7. The ending (1.5 s unless promo/outro.yaml says otherwise): the name large over the last scene blurred,
@@ -501,6 +503,28 @@ def draw_tags(picture, spec, t):
     return picture
 
 
+def punch_in(picture, at, scale):
+    """[picture] enlarged [scale] times about the point [at] (x, y in the 1080 x 1920 picture), the picture kept full:
+    for a small visitor the game's closest zoom still leaves small (a crop of the frame, softened a little by the enlarging)."""
+    if scale <= 1.001:
+        return picture
+    cw, ch = W / scale, H / scale
+    left = min(max(at[0] - cw / 2, 0), W - cw)
+    top = min(max(at[1] - ch / 2, 0), H - ch)
+    return picture.resize((W, H), Image.LANCZOS, box=(left, top, left + cw, top + ch))
+
+
+def punch_of(specs, t):
+    """The (at, scale) a list of {from, to, at, scale, ramp} says for body time [t] (None when none), the scale eased in and out over [ramp] s."""
+    for sp in specs or []:
+        a, b, ramp = float(sp["from"]), float(sp["to"]), float(sp.get("ramp", 0.5))
+        if a <= t < b:
+            k = min(1.0, (t - a) / ramp, (b - t) / ramp) if ramp > 0 else 1.0
+            k = k * k * (3 - 2 * k)
+            return sp["at"], 1.0 + (float(sp["scale"]) - 1.0) * k
+    return None
+
+
 def contact_sheet(frames, fps, hook, path, columns=6, captions=(), tags=None):
     """One frame a second of the recording (the hook left out), the second written under each."""
     picks = list(range(0, len(frames), fps))
@@ -655,6 +679,14 @@ def main():
             t = n / fps
             if n < len(order):
                 picture = Image.open(paths[order[n]]).convert("RGB")
+                if n < len(opening):   # the hook: its own enlarging (hook: punch: {at, scale}), held all through
+                    hp = (hook_spec or {}).get("punch")
+                    if hp:
+                        picture = punch_in(picture, hp["at"], float(hp["scale"]))
+                else:   # the body: punch: [{from, to, at, scale}] (body seconds)
+                    hp = punch_of(caption_doc.get("punch"), (n - len(opening)) / fps)
+                    if hp:
+                        picture = punch_in(picture, hp[0], hp[1])
                 if order[n] < len(frames) and n >= len(opening):   # the recording itself (not the hook's take)
                     picture = draw_tags(picture, caption_doc.get("tags"), (n - len(opening)) / fps)
                 for start, end, caption in caption_pictures:
