@@ -9,14 +9,30 @@ start: { garden: new_game, season: summer, time_of_day: morning, weather: sunny,
 camera: { zoom: fit }
 timeline:
   - { at: 0.0,  day_label: "黄色だけの庭\n夏・1日目" }
-  - { at: 0.3,  till: { area: [2,2,8,8], over: 1.4 } }
-  - { at: 2.6,  plant: { crop: sunflower, area: [2,2,8,8], over: 1.5 } }
-  - { at: 4.3,  water: { area: [2,2,8,8], over: 1.0 } }
+  - { at: 0.3,  till: { area: [2,2,8,9], over: 1.4 } }
+  # 真ん中の 1 列（x=5）と手前の 1 行（y=8）は植えずに土の通路にする（ことりはその手前の端に降りる）。左の 3 列と右の 3 列は少しずらして植える
+  - { at: 2.6,  plant: { crop: sunflower, area: [2,2,4,7], over: 1.0 } }
+  - { at: 3.2,  plant: { crop: sunflower, area: [6,2,8,7], over: 1.0 } }
+  - { at: 4.3,  water: { area: [2,2,4,7], over: 0.7 } }
+  - { at: 4.6,  water: { area: [6,2,8,7], over: 0.7 } }
   - { at: 5.5,  day_label: "黄色だけの庭\n夏・3日目" }
-  - { at: 5.5,  grow: { area: [2,2,8,8], to_stage: 2, over: 1.0 } }
+  # 列ごとに時間をずらして育つ・咲く
+  - { at: 5.5,  grow: { area: [2,2,2,7], to_stage: 2, over: 0.5 } }
+  - { at: 5.8,  grow: { area: [6,2,6,7], to_stage: 2, over: 0.5 } }
+  - { at: 6.1,  grow: { area: [3,2,3,7], to_stage: 2, over: 0.5 } }
+  - { at: 6.4,  grow: { area: [7,2,7,7], to_stage: 2, over: 0.5 } }
+  - { at: 6.7,  grow: { area: [4,2,4,7], to_stage: 2, over: 0.5 } }
+  - { at: 7.0,  grow: { area: [8,2,8,7], to_stage: 2, over: 0.5 } }
   - { at: 6.0,  camera: { zoom: 2.2, center: [5,5], over: 1.0 } }
-  - { at: 7.0,  grow: { area: [2,2,8,8], to_stage: 3, over: 1.4 } }
-  # 奥の花に、画面の上の外から。先に最大まで寄って待つ（見せ場：10.0〜13.0 秒）
-  - { at: 8.6,  camera: { zoom: max, center: [6,4,1.0], over: 1.4 } }
-  - { at: 10.0, creature: { kind: butterfly, count: 1, from: outside_top, from_distance: 7, land_on: [[6,4]], stay: 4.5 } }
-  - { at: 14.8, end: true }
+  - { at: 7.0,  grow: { area: [2,2,2,7], to_stage: 3, over: 0.8 } }
+  - { at: 7.4,  grow: { area: [6,2,6,7], to_stage: 3, over: 0.8 } }
+  - { at: 7.8,  grow: { area: [3,2,3,7], to_stage: 3, over: 0.8 } }
+  - { at: 8.2,  grow: { area: [7,2,7,7], to_stage: 3, over: 0.8 } }
+  - { at: 8.6,  grow: { area: [4,2,4,7], to_stage: 3, over: 0.8 } }
+  - { at: 9.0,  grow: { area: [8,2,8,7], to_stage: 3, over: 0.8 } }
+  # ことりは通路の土に降りる（見せ場：10.0〜13.0 秒）。先に最大まで寄って待つ
+  - { at: 8.6,  camera: { zoom: max, center: [4.9,7.9,0.3], over: 1.4 } }
+  - { at: 10.0, creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,8]], stay: 2.5 } }
+  - { at: 16.0, end: true }
+bgm: パステルハウス.mp3
+bgm_start: 4.0

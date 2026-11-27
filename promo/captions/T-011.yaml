@@ -1,6 +1,6 @@
 bgm: パステルハウス.mp3
 bgm_start: 4.0
-# 見せ場：ひまわりに止まるちょうちょ（3 秒）。巻き戻しはしない
+# 見せ場：ひまわりの間の地面に降りることり（3 秒）。巻き戻しはしない
 hook:
   from: 10.0
   seconds: 3.0
@@ -8,11 +8,16 @@ hook:
   label: false
   text_top: 0.13
   rewind: 0
+  punch: { at: [536, 950], scale: 1.8 }   # a small visitor: enlarged about it
+punch:
+  - { from: 9.4, to: 13.0, at: [536, 950], scale: 1.8, ramp: 0.6 }
 captions:
   - { from: 0.0,  to: 1.6,  text: "黄色の花だけで\n庭を作ってみた" }
   - { from: 1.6,  to: 3.0,  text: "耕して" }
   - { from: 3.0,  to: 5.5,  text: "ひまわりを植えて" }
   - { from: 5.5,  to: 7.5,  text: "3日後…" }
-  - { from: 7.5,  to: 8.8,  text: "ぜんぶ黄色！" }
-  - { from: 9.0,  to: 12.0, text: "ちょうちょが来た！" }
-  - { from: 12.0, to: 14.8, text: "次は何色の庭がいい？" }
+  - { from: 7.5,  to: 9.8,  text: "ぜんぶ黄色！" }
+  - { from: 10.0, to: 13.0, text: "ことりが来た！" }
+  - { from: 13.4, to: 16.0, text: "次は何色の庭がいい？" }
+outro:
+  extra: "次の色はコメントで決めます"
