@@ -505,7 +505,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
         private const val VISIT_LEAD_MILLIS = 500L
 
         /** What the bird can come down on the roof of ([com.studioguu.miniaturegarden.domain.model.PerchKind.ROOF]). */
-        private val ROOFED = setOf(StructureData.COTTAGE.objectId, StructureData.HUT.objectId)
+        private val ROOFED = setOf(StructureData.COTTAGE.objectId, StructureData.HUT.objectId, "deco_bench")
 
         /** What `setup:` does not take: what only means something while it is seen. */
         private val NOT_IN_SETUP = setOf("creature", "sparkle", "sound", "end")

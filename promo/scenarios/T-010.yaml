@@ -5,23 +5,25 @@ fps: 30
 seed: 104
 hook_from_end: 0
 start: { garden: new_game, season: spring_early, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: true }
-# 3日目（T-009）の庭：花壇 [4,6,6,8] のチューリップ（咲いている）、隣 [7,6,8,8] のミント（段階 2）、手前 [4,9,8,9] のラベンダー
+# 3日目（T-009）の花壇・ミント・ラベンダーの続き。11/27 の直し：ベンチの回りを花壇にして、寄ったとき荒れ地が映らないようにした
 setup:
-  - { plant: { crop: tulip, area: [4,6,6,8], colours: [red, pink, yellow] } }
-  - { grow: { area: [4,6,6,8], to_stage: 3 } }
-  - { plant: { crop: mint, area: [7,6,8,8] } }
-  - { grow: { area: [7,6,8,8], to_stage: 2 } }
-  - { plant: { crop: lavender, area: [4,9,8,9] } }
-camera: { zoom: 1.8, center: [4.5,8] }
+  - { plant: { crop: tulip, area: [1,6,5,9], colours: [red, pink, yellow] } }
+  - { grow: { area: [1,6,5,9], to_stage: 3 } }
+  - { plant: { crop: mint, area: [3,9,5,9] } }
+  - { plant: { crop: mint, cells: [[4,8]] } }
+  - { grow: { area: [3,9,5,9], to_stage: 2 } }
+  - { grow: { cells: [[4,8]], to_stage: 2 } }
+camera: { zoom: 3.5, center: [3,7.5] }
 timeline:
   - { at: 0.0,  day_label: "ポケ庭日記 4日目\n春のはじめ・朝" }
-  - { at: 2.5,  place: { item: deco_bench, at: [3,7] } }
-  - { at: 2.5,  camera: { zoom: 2.6, center: [3.8,7.8], over: 1.2 } }
-  # ことりは左の空から来て、ベンチに降りる（at は降りる秒）。降りる前に最大の寄りで待つ（冒頭の見せ場に使う：7.5〜10.5 秒。ベンチの隣のチューリップも画面に入れて、荒れ地が画面の半分以下になる寄り）
-  - { at: 8.0,  creature: { kind: bird, count: 1, from: outside_left, land_on: [[3,7]], stay: 7.0 } }
-  - { at: 6.0,  camera: { zoom: 6.5, center: [3.9,7.9,0.3], over: 1.5 } }
-  - { at: 13.5, camera: { zoom: 2.2, center: [4,7.5], over: 1.5 } }
-  - { at: 17.0, camera: { zoom: 1.5, center: [4.5,8], over: 1.5 } }
+  - { at: 2.4,  remove: { cells: [[3,8]] } }
+  - { at: 2.5,  place: { item: deco_bench, at: [3,8], flip: true } }
+  - { at: 2.5,  camera: { zoom: 8, center: [3.5,8.4,0.2], over: 1.2 } }
+  # ことりは左の空から来て、ベンチの座面に降りる（at は降りる秒）。降りる前に最大の寄りで待つ（冒頭の見せ場：7.5〜10.5 秒）
+  - { at: 8.0,  creature: { kind: bird, count: 1, from: outside_left, land_on: [[3,8]], stay: 7.0 } }
+  - { at: 6.0,  camera: { zoom: 40, center: [3.5,8.5,0.35], over: 1.5 } }
+  - { at: 13.5, camera: { zoom: 8, center: [3.5,8.4,0.2], over: 1.5 } }
+  - { at: 17.0, camera: { zoom: 3.5, center: [3,7.5], over: 1.5 } }
   - { at: 20.0, end: true }
 bgm: Cat_life.mp3
 bgm_start: 0.3
