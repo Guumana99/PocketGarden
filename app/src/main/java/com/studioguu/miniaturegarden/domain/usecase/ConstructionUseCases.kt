@@ -80,7 +80,10 @@ private fun carriesBridge(thing: GridObject, objects: List<GridObject>): Boolean
     objects.any { bridge -> bridge.isBridge && thing.occupiedCells().any { it in bridge.occupiedCells() } }
 
 /** A job on the garden that came to its end. */
-data class FinishedWork(val objectId: String, val kind: WorkKind)
+data class FinishedWork(val objectId: String, val kind: WorkKind) {
+    /** Where it was done, as it stood: for saying so on the spot (#fb1126). Not part of what the job was. */
+    var site: GridObject? = null
+}
 
 /**
  * Finishes every job whose time is up at [now]: one being demolished disappears, one being packed
@@ -111,13 +114,13 @@ class CompleteWorkUseCase @Inject constructor(
                 WorkKind.DEMOLISHING -> {
                     gardenRepository.upsertGridObject(standing)
                     if (removeObject(site.instanceId) == ActionResult.SUCCESS) {
-                        finished += FinishedWork(site.objectId, WorkKind.DEMOLISHING)
+                        finished += FinishedWork(site.objectId, WorkKind.DEMOLISHING).also { it.site = standing }
                     }
                 }
                 WorkKind.PACKING -> {
                     gardenRepository.upsertGridObject(standing)
                     if (storeObject(site.instanceId) == ActionResult.SUCCESS) {
-                        finished += FinishedWork(site.objectId, WorkKind.PACKING)
+                        finished += FinishedWork(site.objectId, WorkKind.PACKING).also { it.site = standing }
                     }
                 }
                 WorkKind.READY, WorkKind.NONE -> Unit

@@ -525,7 +525,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                 effects = effects,
                 onFinished = viewModel::onEffectFinished,
                 modifier = Modifier.matchParentSize(),
-                anchor = { effect -> gardenTransform?.let { overHarvest(effect, it, atlas) } },
+                anchor = { effect -> gardenTransform?.let { overSource(effect, it, atlas) } },
                 // Below the top bar, above whatever lies over the foot of the screen.
                 area = {
                     with(density) {
@@ -1058,13 +1058,15 @@ private fun ToolBanner(text: String, onCancel: (() -> Unit)? = null, extra: @Com
 }
 
 /**
- * Where a harvest's sum stands (#fb1126 3): just over the plant that was picked, as tall as its
- * picture was. Null for an effect of no cell, which stays in the middle of the screen.
+ * Where a label about a thing stands (#fb1126 3: a harvest's sum, a building's news): just over
+ * it, as tall as its picture was. Null for an effect of no thing, which stays in the middle of
+ * the screen.
  */
-private fun overHarvest(effect: GardenEffect, transform: IsometricTransform, atlas: SpriteAtlas): Offset? {
-    val plant = (effect as? GardenEffect.Harvest)?.source ?: return null
-    val base = transform.worldToScreen(plant.gridX + 0.5f, plant.gridY + 0.5f, plant.heightLevel.toFloat())
+private fun overSource(effect: GardenEffect, transform: IsometricTransform, atlas: SpriteAtlas): Offset? {
+    val thing = effect.source ?: return null
+    val footprint = thing.footprint
+    val base = transform.worldToScreen(thing.gridX + footprint.width / 2f, thing.gridY + footprint.height / 2f, thing.heightLevel.toFloat())
     val scale = transform.tileWidth / atlas.manifest.tileWidth
-    val tall = atlas[TileSetDefinition.assetIdFor(plant)]?.let { it.anchorY * it.drawnHeight(scale) } ?: (transform.tileWidth * 0.5f)
+    val tall = atlas[TileSetDefinition.assetIdFor(thing)]?.let { it.anchorY * it.drawnHeight(scale) } ?: (transform.tileWidth * 0.5f)
     return base - Offset(0f, tall)
 }

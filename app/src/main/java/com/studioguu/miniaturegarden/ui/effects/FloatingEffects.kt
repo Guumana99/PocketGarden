@@ -35,12 +35,15 @@ import kotlin.math.roundToInt
 sealed interface GardenEffect {
     val id: Long
 
+    /** What the effect is about, as it was; it floats up from there (#fb1126 3). Null: the middle of the screen. */
+    val source: GridObject?
+
     /**
      * The coins a harvest brought. Experience is not floated up, from a harvest or anything else:
      * it fills the gauge in the top bar instead (TopStatusBar). [bounty]: it was a good harvest.
      * [source]: the plant harvested, as it was, which the sum floats up from (#fb1126 3).
      */
-    data class Harvest(override val id: Long, val coins: Int, val bounty: Boolean = false, val source: GridObject? = null) : GardenEffect
+    data class Harvest(override val id: Long, val coins: Int, val bounty: Boolean = false, override val source: GridObject? = null) : GardenEffect
 
     /**
      * A building was finished, or taking one apart was. The experience its unveiling pays is not
@@ -51,6 +54,7 @@ sealed interface GardenEffect {
         override val id: Long,
         val objectId: String,
         val kind: WorkKind,
+        override val source: GridObject? = null,
     ) : GardenEffect
 }
 
