@@ -34,7 +34,7 @@ class FeedbackBatchTest {
     fun `an unveiled building's plaque says it is finished, without its experience`() {
         val viewModel = source("ui/GardenViewModel.kt")
         val unveil = viewModel.substringAfter("// A finished building under wraps: the tap unveils it.").substringBefore("} else if (_hoeActive.value)")
-        assertTrue(unveil.contains("GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING)"))
+        assertTrue(unveil.contains("GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING, source = site)"))
         assertFalse(unveil.contains("GardenEffect.Xp("))
         assertFalse(unveil.contains("xp = "))
         // "完成", the new page and "+XP" at once were too much: the plaque no longer carries the XP.

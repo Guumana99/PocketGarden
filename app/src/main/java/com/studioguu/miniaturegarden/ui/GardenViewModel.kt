@@ -996,7 +996,7 @@ class GardenViewModel @Inject constructor(
                 // tap that unveils it. What has been taken apart is done and is announced.
                 if (finished.any { it.kind == WorkKind.READY }) _messages.trySend(R.string.msg_work_ready)
                 finished.filter { it.kind != WorkKind.READY }
-                    .forEach { done -> showEffect { GardenEffect.WorkDone(it, done.objectId, done.kind) } }
+                    .forEach { done -> showEffect { GardenEffect.WorkDone(it, done.objectId, done.kind, source = done.site) } }
             }
         }
     }
@@ -1056,7 +1056,7 @@ class GardenViewModel @Inject constructor(
                     audio.play(SoundEffect.LEVEL_UP)
                     // Its experience comes now, not when the site went up (#50). The plaque says only
                     // that it is finished: no "+XP" on it or beside it.
-                    showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING) }
+                    showEffect { GardenEffect.WorkDone(it, site.objectId, WorkKind.BUILDING, source = site) }
                     happyMoment()
                 }
             ) { now, _ -> unveilBuilding(site.instanceId, now) }
