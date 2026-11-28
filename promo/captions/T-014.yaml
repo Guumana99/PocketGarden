@@ -1,0 +1,18 @@
+bgm: パステルハウス.mp3
+bgm_start: 4.0
+# 見せ場：一斉収穫の真ん中（実が消えてコインが出る 3 秒）。巻き戻しはしない
+hook:
+  from: 10.0
+  seconds: 3.0
+  text: "全部収穫したら\nいくらになる？"
+  label: false
+  text_top: 0.13
+  rewind: 0
+outro:
+  above: "配信まであと2週"
+captions:
+  - { from: 0.2,  to: 3.2,  text: "家庭菜園を作ります" }
+  - { from: 3.4,  to: 4.6,  text: "水をあげて" }
+  - { from: 4.8,  to: 9.2,  text: "少しずつ実ってきた" }
+  - { from: 9.4,  to: 13.4, text: "端から収穫！" }
+  - { from: 13.6, to: 16.5, text: "全部で576コイン！" }
