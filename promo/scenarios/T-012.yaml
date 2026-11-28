@@ -14,8 +14,9 @@ setup:
 camera: { zoom: 4.5, center: [5.2,5.8] }
 timeline:
   - { at: 0.0,  day_label: "お客さん図鑑 No.3\nとんぼ" }
-  # 引きは 2.6 だと とんぼが小さすぎて見えないので 4.5。とんぼは左の外から横切って来て、コスモスに止まる（at は止まる秒）。来る間は引きのまま、止まってから寄る（11/28）
-  - { at: 4.5,  creature: { kind: dragonfly, count: 1, from: outside_left, land_on: [[6,6]], stay: 6.0 } }
+  # とんぼは本編の始まる前（-0.5 秒）に花に止まり終わっていて、終わりまで同じ花にいる。飛んで来る所は見せない
+  # （引きでは小さすぎて、寄ったときに急に現れたように見えた・11/28 の直し 4）。引きは zoom 4.5
+  - { at: -0.5, creature: { kind: dragonfly, count: 1, from: outside_left, land_on: [[6,6]], stay: 15.0 } }
   - { at: 4.7,  camera: { zoom: max, center: [6.5,6.5,0.7], over: 1.2 } }
   # 冒頭の見せ場は止まった後の寄り（6.0〜9.0 秒）
   - { at: 10.0, camera: { zoom: 4.5, center: [5.2,5.8], over: 1.2 } }
