@@ -51,6 +51,7 @@ import kotlinx.coroutines.launch
  *         --ez side_only true --ez skip_ad true   # only the buttons down the right edge; the cloud's rain without the ad
  *         --es garden fb1126                  # ... [Fb1126Garden], a strawberry field with weak plants in front, with load
  *         --es garden fb1126night             # ... [Fb1126Garden.night], the lit buildings and lanterns, as built and turned, with load
+ *         --es garden fb1126work              # ... [Fb1126Garden.work], a building to unveil and one coming down, with load
  *         --es garden thirsty                 # ... [ShowcaseGarden] with every crop half watered (all glint after a rain), with load
  *         --es garden winter                  # ... [ShowcaseGarden.winterYard]: fences, benches, lanterns, rocks, a few winter beds, with load
  *         --es garden spring                  # ... [ShowcaseGarden] with spring's crops (tulips, strawberries, mint), with load
@@ -178,7 +179,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
         val ring = garden?.startsWith("ring_") == true
         val snowSet = garden?.startsWith("snow_") == true
         val book60 = garden?.startsWith("b60_") == true
-        val feedback = garden == "fb" || garden == "fb1126" || garden == "fb1126night" || book60 || banks || perches || birdWell || wellAlone || hungry || hutAlone || hutPair || millPair || millCottage || ring || snowSet || flowerBeds || art || fences || bridges || crops || roses || lineup || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
+        val feedback = garden == "fb" || garden == "fb1126" || garden == "fb1126night" || garden == "fb1126work" || book60 || banks || perches || birdWell || wellAlone || hungry || hutAlone || hutPair || millPair || millCottage || ring || snowSet || flowerBeds || art || fences || bridges || crops || roses || lineup || ground || fenceLook || lawnThings || heights || greenhouse || hakusai || nanohana || bridgePlaces || expand
         val now = clock.now()
         gardenRepository.deleteSavedGarden()
         gardenRepository.ensureInitialized()
@@ -216,6 +217,7 @@ class ShowcaseReceiver : BroadcastReceiver() {
                     expand -> FeedbackGarden.objects(now) + GroundGarden.joinedUp(now)
                     garden == "fb1126" -> Fb1126Garden.objects(now)
                     garden == "fb1126night" -> Fb1126Garden.night(now)
+                    garden == "fb1126work" -> Fb1126Garden.work(now)
                     feedback -> FeedbackGarden.objects(now)
                     garden == "birdcrops" -> ShowcaseGarden.birdCrops(now)
                     garden == "soilrow" -> ShowcaseGarden.soilRow(now)

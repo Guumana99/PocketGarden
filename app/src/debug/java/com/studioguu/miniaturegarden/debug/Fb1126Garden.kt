@@ -5,6 +5,7 @@ import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantSpecies
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.StructureData
+import com.studioguu.miniaturegarden.domain.model.WorkKind
 
 /**
  * The strawberry field of the device feedback of 11/26-27 (`--ez load true --es garden fb1126`):
@@ -42,6 +43,29 @@ object Fb1126Garden {
             .map { GridObject(instanceId = "fb1126_lawn_${it.x}_${it.y}", gridX = it.x, gridY = it.y, objectId = "ground_grass", growthProgress = 1f, lastUpdatedTimestamp = now) }
         return beds + crops + lawn
     }
+
+    /**
+     * The news of a building (`--es garden fb1126work`): a hut finished and waiting to be unveiled,
+     * and a well whose taking down ends [DEMOLISH_MILLIS] after loading.
+     */
+    fun work(now: Long): List<GridObject> {
+        val things = listOf(
+            GridObject(
+                instanceId = "fb1126w_hut", gridX = 3, gridY = 5, objectId = StructureData.HUT.objectId,
+                lastUpdatedTimestamp = now, workKind = WorkKind.READY, workStartedAt = now, workEndsAt = now,
+            ),
+            GridObject(
+                instanceId = "fb1126w_well", gridX = 7, gridY = 4, objectId = StructureData.WELL.objectId,
+                lastUpdatedTimestamp = now, workKind = WorkKind.DEMOLISHING, workStartedAt = now, workEndsAt = now + DEMOLISH_MILLIS,
+            ),
+        )
+        val taken = things.flatMap { it.occupiedCells() }.toSet()
+        return things + (0 until FeedbackGarden.SIZE).flatMap { y -> (0 until FeedbackGarden.SIZE).map { x -> GridCell(x, y) } }
+            .filter { it !in taken }
+            .map { GridObject(instanceId = "fb1126w_lawn_${it.x}_${it.y}", gridX = it.x, gridY = it.y, objectId = "ground_grass", growthProgress = 1f, lastUpdatedTimestamp = now) }
+    }
+
+    private const val DEMOLISH_MILLIS = 50_000L
 
     /**
      * The lit things for a look at night (`--es garden fb1126night`): each as built along the back,
