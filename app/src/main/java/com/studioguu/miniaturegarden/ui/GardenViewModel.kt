@@ -1301,7 +1301,7 @@ class GardenViewModel @Inject constructor(
                 // The window follows the tile: with the setting off it stays up, now showing what the tile holds.
                 if (closePanelOnHarvest.value) clearSelection()
                 audio.play(SoundEffect.HARVEST)
-                showEffect { GardenEffect.Harvest(it, coins, bounty) }
+                showEffect { GardenEffect.Harvest(it, coins, bounty, source = obj) }
             }
         ) { now, weather ->
             harvestPlant(

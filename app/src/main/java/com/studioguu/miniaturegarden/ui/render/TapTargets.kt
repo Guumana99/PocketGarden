@@ -2,6 +2,7 @@ package com.studioguu.miniaturegarden.ui.render
 
 import androidx.compose.ui.geometry.Offset
 import com.studioguu.miniaturegarden.domain.model.GardenGrid
+import com.studioguu.miniaturegarden.domain.model.GridCell
 import com.studioguu.miniaturegarden.domain.model.GridObject
 import com.studioguu.miniaturegarden.domain.model.PlantStatus
 import com.studioguu.miniaturegarden.domain.model.StructureData
@@ -11,31 +12,40 @@ import kotlin.math.abs
 /**
  * What a tap on the garden means when nothing is in hand.
  *
- * Taps are read on the ground ([TilePicker]), so that what stands behind a building stays
- * reachable (see [Occlusion]). But some things are drawn well above their own cells: the
- * "✨ ！" bubble over a finished work site, the little water and food bubbles over a crop, and
- * the walls and roof of a building. Read on the ground alone, a tap on any of them lands a row
- * or two further back, on bare lawn, and only clears the selection. So, in order:
+ * What is seen is what is meant (#fb1126 1). Reading the ground alone is not enough: crops and
+ * ornaments stand above their cells, over the ones behind. And a bubble must not take taps from
+ * round about it: a weak crop's food bubble hangs over the fruit of the crop behind, which could
+ * then not be picked at all. So, in order:
  *
- *  1. a bubble under the finger wins: it is there to be tapped;
+ *  1. a bubble with the finger right on it wins ([BUBBLE_CORE]): it is there to be tapped;
  *  2. a near wall of a greenhouse under the finger stands for its cell, what grows there being
  *     seen through it, unless the finger is on the middle of a cell further in ([CELL_MIDDLE]);
- *  3. otherwise, if the ground under the finger holds something, that is what is meant (a crop
- *     behind a cottage is still picked through its roof);
- *  4. otherwise, a far wall of a greenhouse stands for its cell, and if the finger is on a
+ *  3. otherwise the front-most picture under the finger ([PictureHit]) is what is meant; but a
+ *     building gives way to what the ground under the finger holds (a crop behind a cottage is
+ *     still picked through its roof);
+ *  4. on bare ground, a bubble near the finger counts as well, so that it stays easy to hit when
+ *     the garden is zoomed out;
+ *  5. otherwise, if the ground under the finger holds something, that is what is meant;
+ *  6. otherwise, a far wall of a greenhouse stands for its cell, and if the finger is on a
  *     building's walls or roof, or just beside them, the building is picked;
- *  5. otherwise it is the ground: an empty cell, or null off the grid, which clears the
+ *  7. otherwise it is the ground: an empty cell, or null off the grid, which clears the
  *     selection as before.
  *
  * While something is being placed or moved, or the hoe is in hand, the player is looking for a
- * cell and only step 5 applies.
+ * cell and only step 7 applies.
  *
  * Screen sizes here follow [IsometricTransform]: they already include the zoom.
  */
 object TapTargets {
 
-    /** How far round a bubble a tap still counts, as a share of a tile's width. */
+    /** How far round a bubble a tap on bare ground still counts, as a share of a tile's width. */
     const val BUBBLE_REACH = 0.3f
+
+    /** How far from a bubble's middle a tap is on the bubble itself, as a share of its drawn radius. */
+    const val BUBBLE_CORE = 1.4f
+
+    /** The radius of the little water or food bubble over a crop, in tile widths. */
+    const val STATUS_BUBBLE_RADIUS = 0.085f
 
     /** How far beside a building's outline a tap still counts, in half tile heights (see [Occlusion]). */
     const val BUILDING_MARGIN = 0.35f
@@ -68,14 +78,24 @@ object TapTargets {
         editing: Boolean,
         minReach: Float = 0f,
         plantTop: (GridObject) -> Float? = { null },
+        picture: (Offset) -> GridObject? = { null },
     ): TileCoord? {
         val ground = TilePicker.pick(screen, transform, grid.map.size)
         if (editing) return ground
-        bubbleAt(screen, transform, objects, minReach, plantTop)?.let { return TileCoord(it.gridX, it.gridY) }
+        bubbleUnder(screen, transform, objects, minReach, plantTop)?.let { return TileCoord(it.gridX, it.gridY) }
         val walls = GreenhouseLayout.of(objects, grid.map::isInside).walls
         greenhouseWallAt(screen, transform, walls.filter { it.side.isFront })?.let { wall ->
             val inside = ground?.takeIf { grid.isUnderGlass(it.x, it.y) && onCellMiddle(screen, transform, it) }
             return inside ?: TileCoord(wall.cell.x, wall.cell.y)
+        }
+        picture(screen)?.let { seen ->
+            val onItsOwnGround = ground != null && GridCell(ground.x, ground.y) in seen.occupiedCells()
+            val behindABuilding = StructureData.fromObjectId(seen.objectId) != null &&
+                ground != null && grid.occupantAt(ground.x, ground.y) != null
+            return if (onItsOwnGround || behindABuilding) ground else TileCoord(seen.gridX, seen.gridY)
+        }
+        if (ground == null || grid.occupantAt(ground.x, ground.y) == null) {
+            bubbleAt(screen, transform, objects, minReach, plantTop)?.let { return TileCoord(it.gridX, it.gridY) }
         }
         if (ground != null && grid.objectAt(ground.x, ground.y) != null) return ground
         greenhouseWallAt(screen, transform, walls)?.let { return TileCoord(it.cell.x, it.cell.y) }
@@ -120,6 +140,25 @@ object TapTargets {
             .minByOrNull { (_, distance) -> distance }
             ?.first
     }
+
+    /**
+     * The thing whose bubble [screen] is right on: within [BUBBLE_CORE] radii of its middle, or
+     * half of [minReach] where the bubble is drawn smaller than a finger.
+     */
+    fun bubbleUnder(
+        screen: Offset,
+        transform: IsometricTransform,
+        objects: List<GridObject>,
+        minReach: Float = 0f,
+        plantTop: (GridObject) -> Float? = { null },
+    ): GridObject? = objects
+        .mapNotNull { obj -> bubbleCentre(obj, transform, plantTop(obj))?.let { obj to (it - screen).getDistance() } }
+        .filter { (obj, distance) ->
+            val radius = if (obj.workKind == WorkKind.READY) READY_BUBBLE_RADIUS else STATUS_BUBBLE_RADIUS
+            distance <= maxOf(transform.tileWidth * radius * BUBBLE_CORE, minReach / 2f)
+        }
+        .minByOrNull { (_, distance) -> distance }
+        ?.first
 
     /**
      * Where [obj]'s bubble is drawn (at rest, without its bob), or null when it has none.

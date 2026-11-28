@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -120,6 +121,8 @@ import com.studioguu.miniaturegarden.ui.render.RiverScene
 import com.studioguu.miniaturegarden.ui.render.SoilTexture
 import com.studioguu.miniaturegarden.ui.render.SunLight
 import com.studioguu.miniaturegarden.ui.render.TileCoord
+import com.studioguu.miniaturegarden.ui.render.LampShapes
+import com.studioguu.miniaturegarden.ui.render.PictureHit
 import com.studioguu.miniaturegarden.ui.render.TapTargets
 import androidx.compose.ui.graphics.drawscope.clipPath
 import com.studioguu.miniaturegarden.ui.render.LawnShade
@@ -261,6 +264,9 @@ fun GardenCanvas(
     hourOfDay: Float? = null,
     lightByTimeOfDay: Boolean = false,
     clockOffset: Long = 0L,
+    // Told how the garden lies on screen whenever the view changes, for what is laid over it
+    // elsewhere to stay on its cell.
+    onTransformChanged: ((IsometricTransform) -> Unit)? = null,
     pulledIds: Set<String> = emptySet(),
     /** How much snow lies along the roofs and the fences, 0 to 1 ([EdgeSnow.depthAt]). */
     edgeSnow: Float = 0f,
@@ -311,7 +317,12 @@ fun GardenCanvas(
         delay(VIEW_SAVE_DELAY_MILLIS)
         report(GardenView(settled.scale, settled.pan.x, settled.pan.y))
     }
+    val currentOnTransformChanged by rememberUpdatedState(onTransformChanged)
     val currentOnZoomChanged by rememberUpdatedState(onZoomChanged)
+    SideEffect {
+        val view = camera ?: return@SideEffect
+        if (viewport != Size.Zero) currentOnTransformChanged?.invoke(view.toTransform(metrics, viewport))
+    }
     LaunchedEffect(camera?.scale) {
         camera?.let { currentOnZoomChanged?.invoke(it.scale) }
     }
@@ -349,6 +360,7 @@ fun GardenCanvas(
     val currentGrid by rememberUpdatedState(grid)
     val currentObjects by rememberUpdatedState(gridObjects)
     val currentEditing by rememberUpdatedState(editing)
+    val currentClockOffset by rememberUpdatedState(clockOffset)
     // The wind's clock. It is read while drawing only, so a new value redraws the garden without
     // recomposing anything. A breeze is slow: a modest frame rate is plenty and saves battery.
     // Held still while something covers the garden, so that a sheet sliding up over it has the
@@ -456,11 +468,24 @@ fun GardenCanvas(
                     // Read on the ground, unless the finger is on a bubble or a building (see TapTargets).
                     val sprites = currentAtlas
                     val scale = transform.tileWidth / sprites.manifest.tileWidth
+                    // As the garden shows them now: a crop just fed has lost its food bubble.
+                    val now = clock.nowMillis() + currentClockOffset
+                    val seen = currentObjects.map { if (it.isPlant && shownStatus(it, now) != it.status) it.copy(status = shownStatus(it, now)) else it }
                     val tile = TapTargets.resolve(
-                        position, transform, currentGrid, currentObjects, currentEditing, minReach = BUBBLE_MIN_REACH.toPx(),
+                        position, transform, currentGrid, seen, currentEditing, minReach = BUBBLE_MIN_REACH.toPx(),
                         plantTop = { obj ->
                             val shown = if (currentGrid.isUnderGlass(obj.gridX, obj.gridY)) scale * GreenhouseLook.CROP_SCALE else scale
                             sprites[TileSetDefinition.assetIdFor(obj)]?.let { it.anchorY * it.drawnHeight(shown) }
+                        },
+                        picture = { at ->
+                            PictureHit.frontMost(
+                                at, transform, currentGrid, seen,
+                                shown = { obj -> shownPicture(obj, currentGrid, sprites, scale) },
+                                opaque = { sprite, x, y ->
+                                    sprites.pages.getOrNull(sprite.page)
+                                        ?.let { (it.getPixel(sprite.atlasX + x, sprite.atlasY + y) ushr 24) >= PictureHit.OPAQUE } == true
+                                },
+                            )
                         },
                     )
                     currentOnTileTapped(tile)
@@ -1163,6 +1188,21 @@ private fun submitObjects(
             }
         }
     }
+}
+
+/** The picture [obj] stands in and its size, as the garden draws it, for reading taps off it ([PictureHit]). */
+private fun shownPicture(obj: GridObject, grid: GardenGrid, atlas: SpriteAtlas, spriteScale: Float): PictureHit.Shown? {
+    val run = obj.runKind
+    val sprite = if (run != null) {
+        val mask = FenceAutotile.maskAt(obj.gridX, obj.gridY) { x, y -> grid.occupantAt(x, y)?.let { it.runKind == run && !it.isWorking } == true }
+        if (mask == 0) atlas[run.objectId] else run.postSpriteId?.let { atlas[it] }
+    } else {
+        atlas[TileSetDefinition.assetIdFor(obj)]
+    } ?: return null
+    var scale = spriteScale
+    if (obj.isPlant && grid.isUnderGlass(obj.gridX, obj.gridY)) scale *= GreenhouseLook.CROP_SCALE
+    if (obj.isPlant && obj.status == PlantStatus.UNNOURISHED) scale *= WEAK_PLANT_SCALE
+    return PictureHit.Shown(sprite, scale)
 }
 
 /**
@@ -3200,7 +3240,7 @@ private fun DrawScope.drawPlant(obj: GridObject, base: Offset, unit: Float) {
 
 private fun DrawScope.drawStatusBubble(obj: GridObject, base: Offset, unit: Float, plantTop: Float?) {
     val center = TapTargets.statusBubbleCentre(base, obj, unit, plantTop)
-    val radius = unit * 0.085f
+    val radius = unit * TapTargets.STATUS_BUBBLE_RADIUS
     val icon = if (obj.status == PlantStatus.THIRSTY) Color(0xFF42A5F5) else Color(0xFFFFA726)
     drawCircle(Color.White, radius, center)
     drawCircle(icon, radius * 0.55f, center)
@@ -3342,7 +3382,7 @@ private fun DrawScope.drawLamps(
 ) {
     for (obj in objects) {
         if (obj.isWorking) continue
-        val lights = LAMPS[obj.objectId] ?: continue
+        val lights = LampShapes.BY_OBJECT[obj.objectId] ?: continue
         val sprite = atlas[obj.objectId] ?: continue
         val footprint = obj.footprint
         val base = transform.worldToScreen(obj.gridX + footprint.width / 2f, obj.gridY + footprint.height / 2f, obj.heightLevel.toFloat())
@@ -3352,14 +3392,7 @@ private fun DrawScope.drawLamps(
         val top = sprite.drawTop(base.y, spriteScale)
         // A building turned round shows its picture mirrored about its foot.
         val mirrored = obj.isFlipped && sprite.isFlippedAllowed
-        val panes = lights.map { light ->
-            val x = left + light.x * width
-            Pane(
-                center = Offset(if (mirrored) 2 * base.x - x else x, top + light.y * height),
-                size = Size(light.width * width, light.height * height),
-                skew = (if (mirrored) -light.skew else light.skew) * height,
-            )
-        }
+        val panes = lights.map { Pane(LampShapes.onScreen(it, Offset(left, top), width, height, base.x.takeIf { mirrored })) }
         val pool = width * 0.3f
         var bounds = Rect(base.x - pool, base.y - pool / 2f, base.x + pool, base.y + pool / 2f)
         for (pane in panes) {
@@ -3387,53 +3420,20 @@ private fun DrawScope.drawLamps(
     }
 }
 
-/**
- * A lit window or lantern fire, as a share of its picture: the middle of it ([x], [y] from the
- * picture's top left), its size, and how much lower its right side is than its left ([skew], a
- * share of the picture's height): a window in a wall that runs away from the viewer is slanted.
- */
-private class Lamp(val x: Float, val y: Float, val width: Float, val height: Float, val skew: Float = 0f)
+/** One lit opening ([LampShapes]) where it is drawn on screen; [halo] is the radius of its glow. */
+private class Pane(private val corners: List<Offset>) {
+    private val width = corners.maxOf { it.x } - corners.minOf { it.x }
+    private val height = corners.maxOf { it.y } - corners.minOf { it.y }
+    val center = Offset(corners.minOf { it.x } + width / 2f, corners.minOf { it.y } + height / 2f)
+    val halo: Float = maxOf(width, height) * 1.6f
 
-/** One lamp where it is drawn on screen, [skew] in pixels; [halo] is the radius of its glow. */
-private class Pane(val center: Offset, val size: Size, val skew: Float) {
-    val halo: Float get() = maxOf(size.width, size.height) * 1.6f
-
-    /** The pane's outline: a rectangle, its right side [skew] lower than its left. */
+    /** The opening's outline: the shape of the window as its picture has it. */
     fun outline(): Path = Path().apply {
-        val hw = size.width / 2f
-        val hh = size.height / 2f
-        val half = skew / 2f
-        moveTo(center.x - hw, center.y - hh - half)
-        lineTo(center.x + hw, center.y - hh + half)
-        lineTo(center.x + hw, center.y + hh + half)
-        lineTo(center.x - hw, center.y + hh - half)
+        moveTo(corners.first().x, corners.first().y)
+        for (corner in corners.drop(1)) lineTo(corner.x, corner.y)
         close()
     }
 }
-
-/**
- * Where the lights are in each picture that has some, measured off tools/raw_assets (device
- * feedback, after #75: the hut's light stood left of its window and square to it, and the
- * cottage's three were larger than their panes; each is now the glass inside the frame).
- */
-private val LAMPS: Map<String, List<Lamp>> = mapOf(
-    // The fire box under the lantern's roof.
-    "deco_lantern" to listOf(Lamp(0.505f, 0.39f, 0.3f, 0.09f)),
-    // The open window between the shutters, on its left face, which runs away down to the right.
-    StructureData.HUT.objectId to listOf(Lamp(0.3147f, 0.4703f, 0.1066f, 0.111f, skew = 0.0406f)),
-    // Two windows on the long face, one on the gable end (whose wall runs the other way).
-    StructureData.COTTAGE.objectId to listOf(
-        Lamp(0.243f, 0.4486f, 0.043f, 0.089f, skew = 0.01f),
-        Lamp(0.3695f, 0.4972f, 0.037f, 0.0835f, skew = 0.0064f),
-        Lamp(0.718f, 0.4909f, 0.046f, 0.0914f, skew = -0.0094f),
-    ),
-    // #fb-1113 9: the latticed window on its front face (which rises to the right) and the little
-    // one up in the gable, the glass inside each frame.
-    StructureData.WINDMILL.objectId to listOf(
-        Lamp(0.714f, 0.457f, 0.107f, 0.104f, skew = -0.023f),
-        Lamp(0.707f, 0.228f, 0.045f, 0.059f, skew = -0.005f),
-    ),
-)
 
 /** A [pane] glowing warm, in a soft halo. */
 private fun DrawScope.drawGlow(pane: Pane, strength: Float) {
