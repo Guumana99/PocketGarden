@@ -1,5 +1,6 @@
 package com.studioguu.miniaturegarden.ui
 
+import com.studioguu.miniaturegarden.ui.render.LampShapes
 import android.app.Application
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
@@ -60,13 +61,25 @@ class FeedbackVisualTest {
     }
 
     @Test
-    fun `the windows are lit where their glass is, slanted with their walls`() {
-        assertTrue(canvas.contains("StructureData.HUT.objectId to listOf(Lamp(0.3147f, 0.4703f, 0.1066f, 0.111f, skew = 0.0406f))"))
-        // The cottage's gable window is in the wall that runs the other way.
-        assertTrue(canvas.contains("Lamp(0.718f, 0.4909f, 0.046f, 0.0914f, skew = -0.0094f)"))
-        // #fb-1113 9: the windmill lights its two windows too.
-        assertTrue(canvas.contains("StructureData.WINDMILL.objectId to listOf("))
-        assertTrue(canvas.contains("Lamp(0.714f, 0.457f, 0.107f, 0.104f, skew = -0.023f)"))
+    fun `the windows are lit in the shape of their openings`() {
+        // #fb1126 2: the corners of each opening, inside its picture.
+        val counts = LampShapes.BY_OBJECT.mapValues { it.value.size }
+        assertEquals(
+            mapOf("deco_lantern" to 2, StructureData.HUT.objectId to 1, StructureData.COTTAGE.objectId to 3, StructureData.WINDMILL.objectId to 2),
+            counts,
+        )
+        for ((id, openings) in LampShapes.BY_OBJECT) for (opening in openings) {
+            assertTrue(id, opening.corners.size >= 4)
+            assertTrue(id, opening.corners.all { (x, y) -> x > 0f && x < 1f && y > 0f && y < 1f })
+        }
+        // Turned round, the building's openings are mirrored about its foot.
+        val first = LampShapes.BY_OBJECT.getValue(StructureData.HUT.objectId).first()
+        val plain = LampShapes.onScreen(first, Offset(0f, 0f), 100f, 100f, mirrorAbout = null)
+        val turned = LampShapes.onScreen(first, Offset(0f, 0f), 100f, 100f, mirrorAbout = 50f)
+        for ((a, b) in plain.zip(turned)) {
+            assertEquals(100f - a.x, b.x, 0.001f)
+            assertEquals(a.y, b.y, 0.001f)
+        }
     }
 
     @Test

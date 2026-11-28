@@ -1,5 +1,16 @@
 package com.studioguu.miniaturegarden.ui
 
+import com.studioguu.miniaturegarden.ui.effects.GardenEffect
+import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.data.asset.SpriteAtlas
+import com.studioguu.miniaturegarden.ui.render.IsometricTransform
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import android.content.pm.ActivityInfo
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
@@ -307,7 +318,14 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
         rainGlint.snapTo(0f)
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // How the garden lies on screen, and where the panel over its foot begins: what floats up
+    // from a cell stands by these (#fb1126 3).
+    var gardenTransform by remember { mutableStateOf<IsometricTransform?>(null) }
+    var bottomPanelTop by remember { mutableStateOf(0f) }
+    val safeTop = WindowInsets.safeDrawing.getTop(density)
+    var screenSize by remember { mutableStateOf(IntSize.Zero) }
+
+    Box(modifier = Modifier.fillMaxSize().onSizeChanged { screenSize = it }) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -331,6 +349,7 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             val perchesShown by PerchPreview.shown.collectAsStateWithLifecycle()
             val edgeSnow by viewModel.edgeSnow.collectAsStateWithLifecycle()
             if (gardenReady) GardenCanvas(
+                onTransformChanged = { gardenTransform = it },
                 gridObjects = gridObjects,
                 // In camera mode the garden is only looked at: no selection, no grid, and taps
                 // do nothing, though it can still be dragged and pinched into place.
@@ -505,7 +524,16 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
             FloatingEffectsHost(
                 effects = effects,
                 onFinished = viewModel::onEffectFinished,
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier.matchParentSize(),
+                anchor = { effect -> gardenTransform?.let { overHarvest(effect, it, atlas) } },
+                // Below the top bar, above whatever lies over the foot of the screen.
+                area = {
+                    with(density) {
+                        val margin = 8.dp.toPx()
+                        val bottom = if (bottomPanelTop > 0f) bottomPanelTop else screenSize.height.toFloat()
+                        Rect(margin, safeTop + 72.dp.toPx(), screenSize.width - margin, bottom - margin)
+                    }
+                },
             )
 
 
@@ -528,7 +556,9 @@ fun GardenScreen(viewModel: GardenViewModel = hiltViewModel()) {
                     .alpha(if (sideOnly) 0f else 1f)
                     .safeDrawingPadding()
                     .padding(horizontal = 12.dp, vertical = 12.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    // After the paddings: the top of the panels themselves.
+                    .onGloballyPositioned { bottomPanelTop = it.positionInRoot().y },
                 contentAlignment = Alignment.BottomCenter,
             ) {
                 val placing = placingSlot
@@ -1025,4 +1055,16 @@ private fun ToolBanner(text: String, onCancel: (() -> Unit)? = null, extra: @Com
             if (onCancel != null) TextButton(onClick = onCancel) { Text(stringResource(R.string.placing_cancel)) }
         }
     }
+}
+
+/**
+ * Where a harvest's sum stands (#fb1126 3): just over the plant that was picked, as tall as its
+ * picture was. Null for an effect of no cell, which stays in the middle of the screen.
+ */
+private fun overHarvest(effect: GardenEffect, transform: IsometricTransform, atlas: SpriteAtlas): Offset? {
+    val plant = (effect as? GardenEffect.Harvest)?.source ?: return null
+    val base = transform.worldToScreen(plant.gridX + 0.5f, plant.gridY + 0.5f, plant.heightLevel.toFloat())
+    val scale = transform.tileWidth / atlas.manifest.tileWidth
+    val tall = atlas[TileSetDefinition.assetIdFor(plant)]?.let { it.anchorY * it.drawnHeight(scale) } ?: (transform.tileWidth * 0.5f)
+    return base - Offset(0f, tall)
 }
