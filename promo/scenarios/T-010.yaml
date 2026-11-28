@@ -24,6 +24,9 @@ timeline:
   - { at: 6.0,  camera: { zoom: 40, center: [3.5,8.5,0.35], over: 1.5 } }
   - { at: 13.5, camera: { zoom: 8, center: [3.5,8.4,0.2], over: 1.5 } }
   - { at: 17.0, camera: { zoom: 3.5, center: [3,7.5], over: 1.5 } }
+  # 拡大している間は札が画面の外で切れるので消す
+  - { at: 7.1, label_opacity: { to: 0, over: 0.3 } }
+  - { at: 13.6, label_opacity: { to: 1, over: 0.3 } }
   - { at: 20.0, end: true }
 bgm: Cat_life.mp3
 bgm_start: 0.3

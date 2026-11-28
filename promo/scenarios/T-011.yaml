@@ -33,6 +33,9 @@ timeline:
   # ことりは通路の土に降りる（見せ場：10.0〜13.0 秒）。先に最大まで寄って待つ
   - { at: 8.6,  camera: { zoom: max, center: [4.9,7.9,0.3], over: 1.4 } }
   - { at: 10.0, creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,8]], stay: 2.5 } }
+  # 拡大している間は札が画面の外で切れるので消す
+  - { at: 9.1, label_opacity: { to: 0, over: 0.3 } }
+  - { at: 13.0, label_opacity: { to: 1, over: 0.3 } }
   - { at: 16.0, end: true }
 bgm: パステルハウス.mp3
 bgm_start: 4.0
