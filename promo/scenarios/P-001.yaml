@@ -1,0 +1,97 @@
+id: P-001
+name: store_preview
+title: Google Play ストアの掲載情報の宣伝動画
+fps: 30
+# 場面ごとに撮ってつなぐ（promo/README.md の parts:）。本編 28.6 秒＋締め 1.1 秒。
+# ネタバレの線（11/28）：小川・太鼓橋・温室・白菜・菜の花・風見鶏・竹垣・15×15・てんとうむし・りす・とんぼは映さない。
+# ちょうちょも使わない。指やタップの印は映さない。芝は作物のマスに敷かない
+parts:
+# 1（0〜9.3 秒）：荒れ地を耕す → 植える → 水 → 列ごとに咲く → ことりが花のそばに降りる
+- seed: 201
+  start: { garden: new_game, season: spring_early, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: false }
+  camera: { zoom: 3.2, center: [4.5,4.5] }
+  timeline:
+  - { at: 0.15, till: { area: [3,3,6,6], over: 2.6 } }
+  - { at: 3.0,  plant: { crops: [tulip, snowdrop], area: [3,3,6,6], over: 1.2, colours: { tulip: [red, pink, yellow] }, dry: true } }
+  - { at: 4.4,  water: { area: [3,3,6,6], over: 0.8 } }
+  - { at: 5.3,  grow: { area: [3,3,6,6], to_stage: 2, over: 0.5 } }
+  - { at: 5.9,  grow: { area: [3,3,6,3], to_stage: 3, over: 0.4 } }
+  - { at: 6.4,  grow: { area: [3,4,6,4], to_stage: 3, over: 0.4 } }
+  - { at: 6.9,  grow: { area: [3,5,6,5], to_stage: 3, over: 0.4 } }
+  - { at: 7.4,  grow: { area: [3,6,6,6], to_stage: 3, over: 0.4 } }
+  - { at: 7.0,  camera: { zoom: max, center: [5.7,6.5,0.25], over: 1.3 } }
+  - { at: 8.1,  creature: { kind: bird, count: 1, from: outside_left, land_on: [[6,7]], stay: 5.0 } }
+  - { at: 9.3,  end: true }
+# 2（9.3〜14.3 秒）：家のある庭。ことりが屋根の棟に降りる（家は初めから建っている：急に現れないように）
+- seed: 11
+  start: { garden: new_game, season: spring, time_of_day: day, weather: sunny, ui: hidden, tap_marker: false }
+  setup:
+  - { place: { item: struct_cottage, at: [4,2] } }
+  - { plant: { crop: tulip, area: [2,6,8,8], colours: [red, pink, yellow, white, purple] } }
+  - { grow: { area: [2,6,8,8], to_stage: 3 } }
+  - { place: { item: ground_grass, cells: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [0, 2], [1, 2], [2, 2], [3, 2], [7, 2], [8, 2], [9, 2], [10, 2], [0, 3], [1, 3], [2, 3], [3, 3], [7, 3], [8, 3], [9, 3], [10, 3], [0, 4], [1, 4], [2, 4], [3, 4], [7, 4], [8, 4], [9, 4], [10, 4], [0, 5], [1, 5], [2, 5], [3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [0, 6], [1, 6], [9, 6], [10, 6], [0, 7], [1, 7], [9, 7], [10, 7], [0, 8], [1, 8], [9, 8], [10, 8], [0, 9], [1, 9], [2, 9], [3, 9], [4, 9], [5, 9], [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [0, 10], [1, 10], [2, 10], [3, 10], [4, 10], [5, 10], [6, 10], [7, 10], [8, 10], [9, 10], [10, 10]] } }
+  camera: { zoom: 2.6, center: [5.2,3.6,0.8] }
+  timeline:
+  - { at: 0.4,  camera: { zoom: 6.5, center: [5.2,3,1.8], over: 1.8 } }
+  - { at: 2.7,  creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,3]], stay: 8.0 } }
+  - { at: 5.0,  end: true }
+# 3（14.3〜19.3 秒）：夏野菜（トマト・なす・パプリカ）を端から収穫。株は残って、列ごとにまた実る
+- seed: 114
+  start: { garden: new_game, season: summer, time_of_day: day, weather: sunny, ui: hidden, tap_marker: false }
+  setup:
+  - { place: { item: ground_grass, cells: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [7, 2], [8, 2], [9, 2], [10, 2], [0, 3], [1, 3], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3], [0, 4], [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [0, 5], [1, 5], [2, 5], [3, 5], [8, 5], [9, 5], [10, 5], [0, 6], [1, 6], [2, 6], [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [0, 7], [1, 7], [2, 7], [3, 7], [4, 7], [5, 7], [10, 7], [0, 8], [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 8], [7, 8], [8, 8], [9, 8], [10, 8], [0, 9], [1, 9], [2, 9], [3, 9], [4, 9], [5, 9], [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [0, 10], [1, 10], [2, 10], [3, 10], [4, 10], [5, 10], [6, 10], [7, 10], [8, 10], [9, 10], [10, 10]] } }
+  - { plant: { crop: tomato, area: [2,3,5,3] } }
+  - { plant: { crop: eggplant, area: [4,5,7,5] } }
+  - { plant: { crop: paprika, area: [6,7,9,7] } }
+  - { grow: { area: [2,3,5,3], to_stage: 3 } }
+  - { grow: { area: [4,5,7,5], to_stage: 3 } }
+  - { grow: { area: [6,7,9,7], to_stage: 3 } }
+  camera: { zoom: 4.8, center: [4.6,4.1,0.3] }
+  timeline:
+  - { at: 0.4,  harvest: { cells: [[2,3], [4,5], [6,7], [3,3], [5,5], [7,7], [4,3], [6,5], [8,7], [5,3], [7,5], [9,7]], over: 3.0 } }
+  - { at: 3.6,  grow: { area: [2,3,5,3], to_stage: 3, over: 0.4 } }
+  - { at: 4.0,  grow: { area: [4,5,7,5], to_stage: 3, over: 0.4 } }
+  - { at: 4.4,  grow: { area: [6,7,9,7], to_stage: 3, over: 0.4 } }
+  - { at: 5.0,  end: true }
+# 4（19.3〜25.1 秒）：同じ庭の朝 → 昼 → 夕方 → 夜（夜は窓と灯籠の明かり）
+- seed: 113
+  start: { garden: new_game, season: spring, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: false }
+  setup:
+  - { place: { item: struct_cottage, at: [4,2] } }
+  - { plant: { crop: tulip, area: [3,5,7,7], colours: [red, pink, yellow] } }
+  - { grow: { area: [3,5,7,7], to_stage: 3 } }
+  - { place: { item: ground_pebble, area: [2,8,8,8] } }
+  - { place: { item: deco_bench, at: [8,6], flip: true } }
+  - { place: { item: deco_lantern, at: [2,6] } }
+  - { place: { item: ground_grass, cells: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [0, 2], [1, 2], [2, 2], [3, 2], [7, 2], [8, 2], [9, 2], [10, 2], [0, 3], [1, 3], [2, 3], [3, 3], [7, 3], [8, 3], [9, 3], [10, 3], [0, 4], [1, 4], [2, 4], [3, 4], [7, 4], [8, 4], [9, 4], [10, 4], [0, 5], [1, 5], [2, 5], [8, 5], [9, 5], [10, 5], [0, 6], [1, 6], [9, 6], [10, 6], [0, 7], [1, 7], [2, 7], [8, 7], [9, 7], [10, 7], [0, 8], [1, 8], [9, 8], [10, 8], [0, 9], [1, 9], [2, 9], [3, 9], [4, 9], [5, 9], [6, 9], [7, 9], [8, 9], [9, 9], [10, 9], [0, 10], [1, 10], [2, 10], [3, 10], [4, 10], [5, 10], [6, 10], [7, 10], [8, 10], [9, 10], [10, 10]] } }
+  camera: { zoom: 2.4, center: [4.9,4.9,0.5] }
+  timeline:
+  - { at: 1.0,  time_of_day: { to: day, over: 0.6 } }
+  - { at: 2.2,  time_of_day: { to: evening, over: 0.8 } }
+  - { at: 3.4,  time_of_day: { to: night, over: 1.4 } }
+  - { at: 5.8,  end: true }
+# 5（25.1〜28.6 秒）：飾った庭の全体を、ゆっくり引きながら見せる
+- seed: 205
+  start: { garden: new_game, season: spring, time_of_day: day, weather: sunny, ui: hidden, tap_marker: false }
+  setup:
+  - { place: { item: struct_cottage, at: [4,2] } }
+  - { place: { item: struct_well, cells: [[8, 2]] } }
+  - { place: { item: deco_pond, cells: [[1, 6], [1, 7]] } }
+  - { place: { item: deco_lantern, cells: [[3, 4], [7, 4]] } }
+  - { place: { item: deco_bench, cells: [[8, 5]], flip: true } }
+  - { place: { item: deco_rock, cells: [[0, 6], [9, 1]] } }
+  - { place: { item: struct_fence_white, cells: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0]] } }
+  - { place: { item: ground_pebble, area: [5,5,5,10] } }
+  - { plant: { crop: tulip, area: [2,7,4,9], colours: [red, pink, yellow, white, purple] } }
+  - { plant: { crop: snowdrop, area: [6,7,8,9] } }
+  - { plant: { crop: tulip, area: [1,1,2,4], colours: [yellow, white] } }
+  - { plant: { crop: strawberry, area: [9,3,9,8] } }
+  - { grow: { area: [2,7,4,9], to_stage: 3 } }
+  - { grow: { area: [6,7,8,9], to_stage: 3 } }
+  - { grow: { area: [1,1,2,4], to_stage: 3 } }
+  - { grow: { area: [9,3,9,8], to_stage: 3 } }
+  - { place: { item: ground_grass, cells: [[0, 1], [3, 1], [4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [10, 1], [0, 2], [3, 2], [7, 2], [9, 2], [10, 2], [0, 3], [3, 3], [7, 3], [8, 3], [10, 3], [0, 4], [8, 4], [10, 4], [0, 5], [1, 5], [2, 5], [3, 5], [4, 5], [6, 5], [7, 5], [10, 5], [2, 6], [3, 6], [4, 6], [6, 6], [7, 6], [8, 6], [10, 6], [0, 7], [10, 7], [0, 8], [1, 8], [10, 8], [0, 9], [1, 9], [9, 9], [10, 9], [0, 10], [1, 10], [2, 10], [3, 10], [4, 10], [6, 10], [7, 10], [8, 10], [9, 10], [10, 10]] } }
+  camera: { zoom: 1.5, center: [5,5] }
+  timeline:
+  - { at: 0.0,  camera: { zoom: fit, center: [5,5], over: 3.5 } }
+  - { at: 3.5,  end: true }

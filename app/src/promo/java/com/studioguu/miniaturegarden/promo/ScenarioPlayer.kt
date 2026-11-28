@@ -260,8 +260,8 @@ class ScenarioPlayer(private val scenario: Scenario) {
     private val labelShows = mutableListOf<Pair<Double, Boolean>>()
     private var marker = scenario.start.tapMarker
     private var next = 0
-    /** Each harvest so far: when, and the coins it paid. */
-    private val harvests = mutableListOf<Pair<Double, Int>>()
+    /** Each harvest so far: when, the coins it paid and the plant as it was. */
+    private val harvests = mutableListOf<Triple<Double, Int, GridObject>>()
     private var serial = 0
 
     /** What there is to draw at [seconds] into the recording; asked for in order. */
@@ -276,7 +276,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
         }
         // The coins of the latest harvest, floating up as long as the game's do (one at a time: a
         // later harvest takes the place of the one before, FloatingEffects.plusEffect).
-        val coins = harvests.lastOrNull()?.takeIf { (t, _) -> seconds - t < COINS_SECONDS }
+        val coins = harvests.lastOrNull()?.takeIf { (t, _, _) -> seconds - t < COINS_SECONDS }
         val glint = glints.firstNotNullOfOrNull { (t, over) -> ((seconds - t) / over).takeIf { it in 0.0..1.0 }?.toFloat() } ?: 0f
         // A label there from the very start is simply there; a later one fades in.
         // Only the second line changing (the same first line: the time of day, the hours gone by):
@@ -305,6 +305,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
             dayLabelFull = labelFullAt(seconds),
             dayLabelDim = labelDimAt(seconds),
             coins = coins?.second,
+            coinsSource = coins?.third,
             coinsProgress = coins?.let { ((seconds - it.first) / COINS_SECONDS).toFloat() } ?: 0f,
             backdrop = scenario.start.backdrop != "none",
         )
@@ -350,7 +351,7 @@ class ScenarioPlayer(private val scenario: Scenario) {
             // float up as the game's do.
             is Reap -> plantAt(step.cell)?.let { plant ->
                 val species = PlantSpecies.forObjectId(plant.objectId)
-                harvests += step.at to species.harvestReward(plant.harvestCount).coins
+                harvests += Triple(step.at, species.harvestReward(plant.harvestCount).coins, plant)
                 val inSeason = GardenItem.entries.firstOrNull { it.objectId == plant.objectId }?.isInSeason(season) != false
                 if (species.isRepeatable && inSeason) {
                     put(plant.copy(growthProgress = species.regrowFrom, harvestCount = plant.harvestCount + 1))
@@ -580,6 +581,8 @@ class Scene(
     /** The coins of the latest harvest while they float up (null when none), and how far on they are (0 to 1). */
     val coins: Int? = null,
     val coinsProgress: Float = 0f,
+    /** The plant that harvest was from, which the sum stands over (as the game's does, FB1126). */
+    val coinsSource: GridObject? = null,
     /** The sky behind the garden; false leaves the frame transparent there (`start.backdrop: none`). */
     val backdrop: Boolean = true,
 )

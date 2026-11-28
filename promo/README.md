@@ -91,7 +91,7 @@ setup:
 | 植える | `plant: { crop: cosmos, cells/area, over, colour / colours: [...], dry: true }` または `plant: { crops: [cosmos, tulip, lavender, sunflower], area, colours: { tulip: [red, pink, yellow] } }` | 土が無ければ作る（花は耕した土、ほかは畝）。`crops` は混ぜて植える：マス (x, y) は crops[(x + 2y) % 種類数]（隣どうしが別の花になる）。色は順に使う。`dry: true` で乾いた株にする（ゲームで乾いた株に出る青いしずくの印が出て、水やりで消える。ゲームでは植えた直後の株は水が満タンなので、印は出ない） |
 | 水やり | `water: { area, over }` | タップの丸と音。乾いた株（しずくの印）は印が消える（ゲームと同じ。土の色は変わらない） |
 | 育てる | `grow: { area, to_stage: 2, over }` | 段階は 1 から。最後の段階が咲いた・実った姿。咲いても音は鳴らない（`sound: se_xxx` で付けられる） |
-| 収穫 | `harvest: { cells/area, over }` | ゲームと同じ：1 回だけの作物は株が浮いて消える。くり返し実る作物（いちご・トマトなど）は、旬のあいだは株が残って段階 2 に戻る（旬を過ぎていれば消える）。画面の真ん中に「+16 🪙」（その収穫のコイン）が浮かぶ（2.6 秒、次の収穫で入れ替わる） |
+| 収穫 | `harvest: { cells/area, over }` | ゲームと同じ：1 回だけの作物は株が浮いて消える。くり返し実る作物（いちご・トマトなど）は、旬のあいだは株が残って段階 2 に戻る（旬を過ぎていれば消える）。収穫した株の上に「+16 🪙」（その収穫のコイン）が浮かぶ（ゲームと同じ位置・FB1126）（2.6 秒、次の収穫で入れ替わる） |
 | 置く | `place: { item: deco_bench, at: [x,y], flip: false }` | 物の id は `GardenItem` のもの |
 | 取り除く | `remove: { cells/area, over }` | 土以外 |
 | 生き物 | `creature: { kind: butterfly, count: 2, from: outside_left, land_on: [[4,3],[6,4]], stay: 3.0 }` | kind：butterfly / ladybug / bird / squirrel / frog / dragonfly / rabbit / snail（#book60）。うさぎは `coat: white` で白い冬毛。from：outside_left / outside_right / outside_top / outside_bottom / 角度。land_on の n 番目のマスに n 匹目が止まる（0.5 秒ずつ遅れて来る）。**at は降り立つ秒**：飛ぶもの（ちょうちょ・とんぼ・ことり）は庭の外の空からその分前に飛び始める（ちょうちょは約 7.4 秒、ことり約 3.9 秒、とんぼ約 3 秒前。画面に入るのは 1〜2 秒前）。`roam: true`（ことりのみ）で、ゲームと同じ経路（方向を渡さない）：止まり場所を移り歩く（FB1125）。この時 `stay` は滞在の全部の秒数。`from_distance: 6`（ちょうちょ・とんぼのみ）で、何マス先から飛び始めるかを短くできる（速さはそのまま。6 マスでちょうちょ約 3.8 秒）。引きの画面では遠くからの飛来が空に小さく長く見えるので、寄った画面に画面の外から入らせたいときに使う。stay の後は庭の外へ飛び去る（ゲームと同じ距離・速さ）。ことり（bird）の land_on のマスにコテージか小屋が置いてあれば、その屋根の棟に止まる（ゲームでその建物目当てに来たときと同じ。コテージの棟は高さ 1.75 なので、寄るときは center の 3 つ目を 1.75 に）。屋根の上では、棟の 2 点のあいだを横にちょんちょんと動いて向きを変える（ゲームと同じ）。飛び方・羽ばたき・振り向きはゲームのまま |
@@ -217,6 +217,16 @@ hook:
 芝は作物（耕した土）と同じマスには置けない（ゲームの `GardenGrid`）。`place: { item: ground_grass, cells: [...] }` で、花壇・畝・小道のマスを外して敷く。
 撮影側の `zoom` を `max` より大きくしても、庭の描画（`GardenCanvas`）が `MAX_SCALE` で止めるので効かない。
 `creature: { kind: bird, land_on: [[x,y]] }` のマスにベンチ（`deco_bench`）が置いてあれば、ことりはその座面に止まる（なければベンチの下の地面に降りて、ベンチの絵に隠れる）。
+
+### 場面ごとに撮ってつなぐ（`parts:`・P-001 から）
+
+台本に `parts:` を書くと、1 つずつ別に撮って（`build/promo/<id>-<番号>/`）、順につないだ物が `build/promo/<id>/` になる。
+各 part は `seed` `start` `setup` `camera` `timeline` を持つ（`at` は part の中の秒）。つなぎ目はそのまま切り替わる。
+`--part 2` でその場面だけ撮り直してつなぎ直す。
+
+ストアの掲載情報の動画（P-001）は、字幕ファイルの `out:`（書き出し先）、`drive:`（Drive のフォルダ）、
+`effects: false`（効果音を入れない）、`caption_y`（字幕の縦の中心。画面の高さに対する割合。字幕 1 つだけは `y:`）、`caption_x`・`outro: { title_top, centre_x }`（字幕と締めの名前の位置）、`sheet_every: 2`（出来上がった mp4 から 2 秒おきの切り抜き一覧）を使う。
+`bgm:` は `/` を含めばリポジトリからのパス（アプリの曲）。
 
 ## BGM
 

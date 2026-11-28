@@ -23,6 +23,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.layout
+import com.studioguu.miniaturegarden.data.asset.TileSetDefinition
+import com.studioguu.miniaturegarden.ui.effects.anchoredTopLeft
+import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -117,9 +122,16 @@ fun PromoScene(
                 drawCircle(Color(0x55000000).copy(alpha = 0.33f * alpha), radius + 2.dp.toPx(), centre, style = Stroke(width = 1.5.dp.toPx()))
             }
         }
-        // A harvest's coins, as the game floats them up from the middle of the screen
-        // (FloatingEffects.FloatingEffectText: the same words, look, rise and fade).
+        // A harvest's coins, as the game floats them up from over the plant harvested
+        // (GardenScreen.overSource and FloatingEffects: the same words, look, place, rise and fade).
         scene.coins?.let { coins ->
+            val point = scene.coinsSource?.let { thing ->
+                val footprint = thing.footprint
+                val base = transform.worldToScreen(thing.gridX + footprint.width / 2f, thing.gridY + footprint.height / 2f, thing.heightLevel.toFloat())
+                val scale = transform.tileWidth / atlas.manifest.tileWidth
+                val tall = atlas[TileSetDefinition.assetIdFor(thing)]?.let { it.anchorY * it.drawnHeight(scale) } ?: (transform.tileWidth * 0.5f)
+                base - Offset(0f, tall)
+            }
             GardenTheme {
                 val t = LinearOutSlowInEasing.transform(scene.coinsProgress)
                 Text(
@@ -130,8 +142,21 @@ fun PromoScene(
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
                         .align(Alignment.Center)
+                        .layout { measurable, constraints ->
+                            val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                            if (point == null) {
+                                layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                            } else {
+                                layout(constraints.maxWidth, constraints.maxHeight) {
+                                    val margin = 8.dp.toPx()
+                                    val area = Rect(margin, 72.dp.toPx(), viewport.width - margin, viewport.height - margin)
+                                    val at = anchoredTopLeft(point, placeable.width.toFloat(), placeable.height.toFloat(), area, 40.dp.toPx() * t)
+                                    placeable.place(at.x.roundToInt(), at.y.roundToInt())
+                                }
+                            }
+                        }
                         .graphicsLayer {
-                            translationY = -(96.dp.toPx() * 0.8f * t)
+                            translationY = if (point != null) 0f else -(96.dp.toPx() * 0.8f * t)
                             alpha = 1f - ((t - 0.72f) / (1f - 0.72f)).coerceIn(0f, 1f)
                         }
                         .background(MaterialTheme.colorScheme.surface, CircleShape)

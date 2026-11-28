@@ -1,0 +1,26 @@
+# Google Play のストアの掲載情報の動画（YouTube に限定公開で上げる）。秒は本編（＝動画）の秒
+out: docs/promo/store
+drive: gdrive:PocketGarden_Docs/promo/store
+sheet_every: 2
+effects: false                                     # 効果音は入れない
+bgm: app/src/main/res/raw/bgm_spring.ogg           # アプリの曲だけ（OpenTracks の曲は使わない）
+bgm_start: 0.0
+caption_y: 0.17                                    # 字幕は上の空の所（下の主役にかけない）
+caption_x: 540                                     # 横も真ん中（TikTok の右のボタンの列は無い）
+# 締めは名前だけ（札も配信の行も出さない）
+outro:
+  title: ポケット庭園
+  title_top: 0.42
+  centre_x: 540
+  lines: []
+# ことりは小さいので拡大する。つなぎ目まで拡大したままにする（ramp_out: 0）
+punch:
+  - { from: 8.0,  to: 9.3,  at: [480, 980], scale: 1.4, ramp: 0.6, ramp_out: 0 }
+  - { from: 11.8, to: 14.3, at: [600, 970],  scale: 1.7, ramp: 0.8, ramp_out: 0 }
+captions:
+  - { from: 0.2,  to: 3.0,  text: "小さな荒れ地から" }
+  - { from: 3.1,  to: 9.3,  text: "花を育てると、\nお客さんがやってくる" }
+  - { from: 9.4,  to: 14.3, text: "家を建てたら、ことりも" }
+  - { from: 14.4, to: 19.3, text: "何度でも収穫", y: 0.10 }   # 収穫の「+n」にかからないように上へ
+  - { from: 19.4, to: 25.1, text: "季節と時間がめぐる" }
+  - { from: 25.2, to: 28.6, text: "自分だけの箱庭を" }

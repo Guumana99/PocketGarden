@@ -114,7 +114,7 @@ def font(size, weight="Bold"):
     return f
 
 
-def caption_png(text, path):
+def caption_png(text, path, centre_y=CAPTION_CENTRE_Y, centre=(SAFE_LEFT + SAFE_RIGHT_LOW) // 2):
     """One caption on a clear 1080 x 1920 picture, centred at 62% of the height, clear of the right buttons."""
     lines = text.split("\n")
     for line in lines:
@@ -138,13 +138,12 @@ def caption_png(text, path):
     heights = [b[3] - b[1] for b in boxes]
     total = sum(heights) + gap * (len(lines) - 1)
     # The block's vertical centre is at 62% of the height; its bottom stays above y = 1290.
-    y = min(CAPTION_CENTRE_Y - total // 2, CAPTION_BOTTOM - total)
+    y = min(centre_y - total // 2, CAPTION_BOTTOM - total)
     if size < 56:
         print(f"  warning: caption shrunk to {size}px to keep clear of the right buttons: {text!r}")
-    centre = (SAFE_LEFT + SAFE_RIGHT_LOW) // 2
     for line, box, h in zip(lines, boxes, heights):
         width = box[2] - box[0]
-        x = max(SAFE_LEFT, min(centre - width // 2, SAFE_RIGHT_LOW - width))
+        x = max(SAFE_LEFT, min(centre - width // 2, W - SAFE_LEFT - width))
         draw.text((x - box[0], y - box[1]), line, font=f, fill=(255, 255, 255, 255), stroke_width=stroke, stroke_fill=(52, 36, 20, 255))
         y += h + gap
     image.save(path)
@@ -215,7 +214,7 @@ def outro_png(last_frame, outro, path):
     base = Image.open(last_frame).convert("RGB").filter(ImageFilter.GaussianBlur(outro.get("blur", 18)))
     base = ImageEnhance.Brightness(base).enhance(0.78)
     draw = ImageDraw.Draw(base, "RGBA")
-    centre = (SAFE_LEFT + SAFE_RIGHT_LOW) // 2
+    centre = int(outro.get("centre_x", (SAFE_LEFT + SAFE_RIGHT_LOW) // 2))
     room = SAFE_RIGHT_LOW - SAFE_LEFT
     # The name as large as fits between the safe edges, up to 210 px.
     size = 210
@@ -226,7 +225,7 @@ def outro_png(last_frame, outro, path):
         if box[2] - box[0] <= room - 20 or size <= 60:
             break
         size -= 4
-    y = int(H * 0.27)   # high enough that the last line stays above the bottom 35%
+    y = int(H * float(outro.get("title_top", 0.27)))   # high enough that the last line stays above the bottom 35%
     draw.text((centre - (box[2] - box[0]) // 2 - box[0], y - box[1]), outro["title"], font=title, fill="white", stroke_width=stroke, stroke_fill=(52, 36, 20))
     y += box[3] - box[1] + 70
     lines = list(outro.get("lines", []))
@@ -379,7 +378,7 @@ def power_mean_db(levels):
 def add_music(effects, clear, total, bgm, bgm_start):
     """[effects] with the song [bgm] over it, from [bgm_start] s of the song (see the module notes);
     [clear] is the clear effects alone, whose loudness sets the song's."""
-    path = BGM_DIR / bgm
+    path = ROOT / bgm if "/" in bgm else BGM_DIR / bgm   # a path from the root: the app's own tunes
     if not path.exists():
         sys.exit(f"no such song: {path}")
     samples = len(effects)
@@ -519,7 +518,9 @@ def punch_of(specs, t):
     for sp in specs or []:
         a, b, ramp = float(sp["from"]), float(sp["to"]), float(sp.get("ramp", 0.5))
         if a <= t < b:
-            k = min(1.0, (t - a) / ramp, (b - t) / ramp) if ramp > 0 else 1.0
+            # ramp_out: 0 holds the enlarging up to a cut (the next part must not be seen zooming back).
+            out = float(sp.get("ramp_out", ramp))
+            k = min(1.0, (t - a) / ramp if ramp > 0 else 1.0, (b - t) / out if out > 0 else 1.0)
             k = k * k * (3 - 2 * k)
             return sp["at"], 1.0 + (float(sp["scale"]) - 1.0) * k
     return None
@@ -565,6 +566,37 @@ def strip(video, times, path, height=770):
         draw.text((x + (p.width - (b[2] - b[0])) // 2, height + 12), text, font=label, fill="black")
         x += p.width + gap
     sheet.save(path, quality=90)
+
+
+def video_sheet(video, times, path, columns=5):
+    """Frames of the finished [video] at [times], as it plays (captions and ending in), [columns] to a row."""
+    thumb_w, thumb_h = 216, 384
+    rows = (len(times) + columns - 1) // columns
+    sheet = Image.new("RGB", (columns * thumb_w, rows * (thumb_h + 30)), "white")
+    draw = ImageDraw.Draw(sheet)
+    label = font(22, "Regular")
+    for n, t in enumerate(times):
+        raw = run_ffmpeg(["-ss", f"{t:.3f}", "-i", str(video), "-frames:v", "1", "-f", "image2pipe", "-vcodec", "png", "-"])
+        x, y = (n % columns) * thumb_w, (n // columns) * (thumb_h + 30)
+        sheet.paste(Image.open(io.BytesIO(raw)).convert("RGB").resize((thumb_w, thumb_h), Image.LANCZOS), (x, y))
+        draw.text((x + 6, y + thumb_h + 2), f"{t:g}秒", font=label, fill="black")
+    sheet.save(path, quality=90)
+
+
+def sync_folder(files, remote):
+    """Copies [files] to the one Drive folder [remote] and checks them there."""
+    rclone = rclone_exe()
+    if not rclone:
+        print("  warning: rclone not found; not copied to Drive")
+        return
+    for f in files:
+        for verb, extra in (("copy", "--checksum"), ("check", "--one-way")):
+            result = subprocess.run([rclone, verb, str(f.parent), remote, "--include", f.name, extra],
+                                    capture_output=True, text=True, encoding="utf-8", errors="replace")
+            if result.returncode != 0:
+                print(f"  not on Drive: {f.name}: " + result.stderr.strip())
+                return
+        print(f"  on Drive: {remote}/{f.name}")
 
 
 def main():
@@ -626,7 +658,13 @@ def main():
     outro_seconds = float(outro.get("seconds", 1.5))
     total = hook + body + outro_seconds - OUTRO_FADE
 
-    out_dir = ROOT / "docs/promo/tiktok"
+    # The captions file may send the video elsewhere (out:, drive:), leave the effects out (effects: false)
+    # and have the sheet taken from the finished video every so many seconds (sheet_every:).
+    out_dir = ROOT / caption_doc.get("out", "docs/promo/tiktok")
+    sheet_every = caption_doc.get("sheet_every")
+    if caption_doc.get("effects", True) is False:
+        cues = {**cues, "sounds": []}
+        hook_sounds = []
     out_dir.mkdir(parents=True, exist_ok=True)
     name = script.get("name") or "promo"
     target = out_dir / f"{args.id}_{name}.mp4"
@@ -641,7 +679,9 @@ def main():
         caption_limit = hook + body - OUTRO_FADE - CAPTION_OUTRO_GAP
         for i, c in enumerate(captions):
             png = tmp / f"caption_{i}.png"
-            caption_png(str(c["text"]), png)
+            caption_png(str(c["text"]), png, # a caption's own y: wins over the file's caption_y:
+                        int(H * float(c.get("y", caption_doc.get("caption_y")))) if c.get("y", caption_doc.get("caption_y")) is not None else CAPTION_CENTRE_Y,
+                        int(caption_doc.get("caption_x", (SAFE_LEFT + SAFE_RIGHT_LOW) // 2)))
             caption_pictures.append((float(c["from"]) + hook, min(float(c["to"]) + hook, caption_limit), Image.open(png).convert("RGBA")))
         if hook_spec:
             hook_png = tmp / "hook.png"
@@ -702,6 +742,15 @@ def main():
             sys.exit("ffmpeg failed")
 
     sheet = out_dir / f"{args.id}_sheet.jpg"
+    if sheet_every:
+        video_sheet(target, [float(sheet_every) * i for i in range(int((total - 0.05) / float(sheet_every)) + 1)], sheet)
+        print(f"{target} ({total:.2f}s, {target.stat().st_size / 1e6:.1f} MB)")
+        print(f"{sheet}")
+        lufs, peak = loudness(target)
+        print(f"  mp4 sound: {lufs:.1f} LUFS, true peak {peak:.1f} dBTP")
+        if not args.no_sync and caption_doc.get("drive"):
+            sync_folder([target, sheet], caption_doc["drive"])
+        return
     contact_sheet(frames, fps, hook, sheet, captions=[(a - hook, b - hook, c) for a, b, c in caption_pictures[:len(captions)]], tags=caption_doc.get("tags"))
     # The opening (the high point, the rewind, the start) and the ending, to look over.
     stills = out_dir / "frames"
