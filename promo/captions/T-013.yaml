@@ -1,0 +1,19 @@
+bgm: Cat_life.mp3
+bgm_start: 0.3
+# 見せ場：夕方から夜へ色が変わる 3 秒。巻き戻しはしない
+hook:
+  from: 6.0
+  seconds: 3.0
+  text: "このゲーム、\n夜になります"
+  label: false
+  text_top: 0.13
+  rewind: 0
+outro:
+  extra: "ほかのひみつもフォローで"
+captions:
+  - { from: 0.0,  to: 2.0,  text: "朝" }
+  - { from: 2.2,  to: 4.0,  text: "昼" }
+  - { from: 4.4,  to: 6.0,  text: "夕方" }
+  - { from: 7.2,  to: 8.8,  text: "夜" }
+  - { from: 9.0,  to: 11.0, text: "スマホの時計と\n同じ時間が流れます" }
+  - { from: 11.2, to: 13.0, text: "何時に遊ぶ派？\n朝？夜？" }
