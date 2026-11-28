@@ -13,12 +13,14 @@ setup:
   - { plant: { crop: mint, cells: [[4,8]] } }
   - { grow: { area: [3,9,5,9], to_stage: 2 } }
   - { grow: { cells: [[4,8]], to_stage: 2 } }
+  # ベンチを置くマス [3,8] は耕した土のまま空けておく（録画の中で花を消さない・11/28）
+  - { remove: { cells: [[3,8]] } }
 camera: { zoom: 3.5, center: [3,7.5] }
 timeline:
   - { at: 0.0,  day_label: "ポケ庭日記 4日目\n春のはじめ・朝" }
-  - { at: 2.4,  remove: { cells: [[3,8]] } }
+  # 置く間はカメラを止める：タップ → ベンチが出る → 0.8 秒そのまま → 寄る（ゲームに設置の演出は無いので足さない）
   - { at: 2.5,  place: { item: deco_bench, at: [3,8], flip: true } }
-  - { at: 2.5,  camera: { zoom: 8, center: [3.5,8.4,0.2], over: 1.2 } }
+  - { at: 3.3,  camera: { zoom: 8, center: [3.5,8.4,0.2], over: 1.2 } }
   # ことりは左の空から来て、ベンチの座面に降りる（at は降りる秒）。降りる前に最大の寄りで待つ（冒頭の見せ場：7.5〜10.5 秒）
   - { at: 8.0,  creature: { kind: bird, count: 1, from: outside_left, land_on: [[3,8]], stay: 7.0 } }
   - { at: 6.0,  camera: { zoom: 40, center: [3.5,8.5,0.35], over: 1.5 } }

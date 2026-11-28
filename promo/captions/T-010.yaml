@@ -19,8 +19,8 @@ outro:
 punch:
   - { from: 7.4, to: 13.6, at: [535, 895], scale: 2.2, ramp: 0.6 }
 captions:
-  - { from: 0.0,  to: 2.5,  text: "4日目の朝" }
-  - { from: 2.5,  to: 5.5,  text: "庭にベンチを\n置いてみた" }
+  - { from: 0.0,  to: 2.3,  text: "4日目の朝" }
+  - { from: 2.3,  to: 5.5,  text: "庭にベンチを\n置いてみた" }
   - { from: 5.5,  to: 8.0,  text: "なにか\n飛んで来た…" }
   - { from: 8.2,  to: 12.5, text: "ことりが\nベンチに来た！" }
   - { from: 12.6, to: 16.5, text: "置く物で、来る子が\n変わります" }

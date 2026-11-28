@@ -1,23 +1,20 @@
 bgm: パステルハウス.mp3
 bgm_start: 4.0
-# 見せ場：ひまわりの間の地面に降りることり（3 秒）。巻き戻しはしない
+# 見せ場：ひまわりが列ごとに順番に咲く（3 秒・中くらいの寄り）。巻き戻しはしない
 hook:
-  from: 10.0
+  from: 7.2
   seconds: 3.0
-  text: "黄色だけにしたら\n…何が来る？"
+  text: "庭を黄色だけにしたら…"
   label: false
   text_top: 0.13
   rewind: 0
-  punch: { at: [536, 950], scale: 1.8 }   # a small visitor: enlarged about it
-punch:
-  - { from: 9.4, to: 13.0, at: [536, 950], scale: 1.8, ramp: 0.6 }
 captions:
   - { from: 0.0,  to: 1.6,  text: "黄色の花だけで\n庭を作ってみた" }
-  - { from: 1.6,  to: 3.0,  text: "耕して" }
-  - { from: 3.0,  to: 5.5,  text: "ひまわりを植えて" }
+  - { from: 1.6,  to: 2.4,  text: "耕して" }
+  - { from: 2.4,  to: 5.5,  text: "ひまわりを植えて" }
   - { from: 5.5,  to: 7.5,  text: "3日後…" }
-  - { from: 7.5,  to: 9.8,  text: "ぜんぶ黄色！" }
-  - { from: 10.0, to: 13.0, text: "ことりが来た！" }
-  - { from: 13.4, to: 16.0, text: "次は何色の庭がいい？" }
+  - { from: 8.0,  to: 10.2, text: "つぎつぎ咲いて…" }
+  - { from: 10.4, to: 13.8, text: "ひまわりは\n夏だけの花です" }
+  - { from: 14.0, to: 16.5, text: "次は何色の庭がいい？\n白？赤？" }
 outro:
   extra: "次の色はコメントで決めます"

@@ -4,38 +4,37 @@ title: 黄色だけの庭ができるまで（夏・ひまわり）
 fps: 30
 seed: 63
 hook_from_end: 0
-# ひまわりは夏の花（黄色だけ）。T-007 のピンクだけの庭と同じ作りで、夏の庭をひまわりの黄色だけにする
+# 色の庭シリーズは色を見せる動画（生き物は出さない・11/28）。ひまわりは夏の花
 start: { garden: new_game, season: summer, time_of_day: morning, weather: sunny, ui: hidden, tap_marker: true }
-camera: { zoom: fit }
+# 引きで荒れ地が目立たないように、花壇の外は芝（芝は作物と同じマスに置けないので花壇は外す）
+setup:
+  - { place: { item: ground_grass, cells: [[0,0], [1,0], [2,0], [3,0], [4,0], [5,0], [6,0], [7,0], [8,0], [9,0], [10,0], [0,1], [1,1], [2,1], [3,1], [4,1], [5,1], [6,1], [7,1], [8,1], [9,1], [10,1], [0,2], [1,2], [9,2], [10,2], [0,3], [1,3], [9,3], [10,3], [0,4], [1,4], [9,4], [10,4], [0,5], [1,5], [9,5], [10,5], [0,6], [1,6], [9,6], [10,6], [0,7], [1,7], [9,7], [10,7], [0,8], [1,8], [9,8], [10,8], [0,9], [1,9], [9,9], [10,9], [0,10], [1,10], [2,10], [3,10], [4,10], [5,10], [6,10], [7,10], [8,10], [9,10], [10,10]] } }
+camera: { zoom: 1.5, center: [5.9,6.4] }
 timeline:
   - { at: 0.0,  day_label: "黄色だけの庭\n夏・1日目" }
   - { at: 0.3,  till: { area: [2,2,8,9], over: 1.4 } }
-  # 真ん中の 1 列（x=5）と手前の 1 行（y=8）は植えずに土の通路にする（ことりはその手前の端に降りる）。左の 3 列と右の 3 列は少しずらして植える
-  - { at: 2.6,  plant: { crop: sunflower, area: [2,2,4,7], over: 1.0 } }
-  - { at: 3.2,  plant: { crop: sunflower, area: [6,2,8,7], over: 1.0 } }
-  - { at: 4.3,  water: { area: [2,2,4,7], over: 0.7 } }
-  - { at: 4.6,  water: { area: [6,2,8,7], over: 0.7 } }
+  - { at: 2.4,  plant: { crop: sunflower, area: [2,2,8,9], over: 2.0 } }
+  - { at: 4.5,  water: { area: [2,2,8,9], over: 0.9 } }
   - { at: 5.5,  day_label: "黄色だけの庭\n夏・3日目" }
-  # 列ごとに時間をずらして育つ・咲く
-  - { at: 5.5,  grow: { area: [2,2,2,7], to_stage: 2, over: 0.5 } }
-  - { at: 5.8,  grow: { area: [6,2,6,7], to_stage: 2, over: 0.5 } }
-  - { at: 6.1,  grow: { area: [3,2,3,7], to_stage: 2, over: 0.5 } }
-  - { at: 6.4,  grow: { area: [7,2,7,7], to_stage: 2, over: 0.5 } }
-  - { at: 6.7,  grow: { area: [4,2,4,7], to_stage: 2, over: 0.5 } }
-  - { at: 7.0,  grow: { area: [8,2,8,7], to_stage: 2, over: 0.5 } }
-  - { at: 6.0,  camera: { zoom: 2.2, center: [5,5], over: 1.0 } }
-  - { at: 7.0,  grow: { area: [2,2,2,7], to_stage: 3, over: 0.8 } }
-  - { at: 7.4,  grow: { area: [6,2,6,7], to_stage: 3, over: 0.8 } }
-  - { at: 7.8,  grow: { area: [3,2,3,7], to_stage: 3, over: 0.8 } }
-  - { at: 8.2,  grow: { area: [7,2,7,7], to_stage: 3, over: 0.8 } }
-  - { at: 8.6,  grow: { area: [4,2,4,7], to_stage: 3, over: 0.8 } }
-  - { at: 9.0,  grow: { area: [8,2,8,7], to_stage: 3, over: 0.8 } }
-  # ことりは通路の土に降りる（見せ場：10.0〜13.0 秒）。先に最大まで寄って待つ
-  - { at: 8.6,  camera: { zoom: max, center: [4.9,7.9,0.3], over: 1.4 } }
-  - { at: 10.0, creature: { kind: bird, count: 1, from: outside_left, land_on: [[5,8]], stay: 2.5 } }
-  # 拡大している間は札が画面の外で切れるので消す
-  - { at: 9.1, label_opacity: { to: 0, over: 0.3 } }
-  - { at: 13.0, label_opacity: { to: 1, over: 0.3 } }
-  - { at: 16.0, end: true }
+  # 列ごとに順番に育つ・咲く（冒頭の見せ場：7.2〜10.2 秒。ひまわりが画面の幅の約 1/4 の寄り）
+  - { at: 5.50,  grow: { area: [2,2,2,9], to_stage: 2, over: 0.3 } }
+  - { at: 5.68,  grow: { area: [3,2,3,9], to_stage: 2, over: 0.3 } }
+  - { at: 5.86,  grow: { area: [4,2,4,9], to_stage: 2, over: 0.3 } }
+  - { at: 6.04,  grow: { area: [5,2,5,9], to_stage: 2, over: 0.3 } }
+  - { at: 6.22,  grow: { area: [6,2,6,9], to_stage: 2, over: 0.3 } }
+  - { at: 6.40,  grow: { area: [7,2,7,9], to_stage: 2, over: 0.3 } }
+  - { at: 6.58,  grow: { area: [8,2,8,9], to_stage: 2, over: 0.3 } }
+  - { at: 5.6,  camera: { zoom: 9.0, center: [5,5.5,0.6], over: 1.2 } }
+  - { at: 6.80,  grow: { area: [2,2,2,9], to_stage: 3, over: 0.5 } }
+  - { at: 7.20,  grow: { area: [3,2,3,9], to_stage: 3, over: 0.5 } }
+  - { at: 7.60,  grow: { area: [4,2,4,9], to_stage: 3, over: 0.5 } }
+  - { at: 8.00,  grow: { area: [5,2,5,9], to_stage: 3, over: 0.5 } }
+  - { at: 8.40,  grow: { area: [6,2,6,9], to_stage: 3, over: 0.5 } }
+  - { at: 8.80,  grow: { area: [7,2,7,9], to_stage: 3, over: 0.5 } }
+  - { at: 9.20,  grow: { area: [8,2,8,9], to_stage: 3, over: 0.5 } }
+  # 全部咲いた庭を引きで見せる（締めの前の見せ場：11.8〜）
+  - { at: 10.2, camera: { zoom: 1.5, center: [5.9,6.4], over: 1.6 } }
+  - { at: 11.8, camera: { zoom: 1.62, center: [5.9,6.4], over: 4.7 } }
+  - { at: 16.5, end: true }
 bgm: パステルハウス.mp3
 bgm_start: 4.0

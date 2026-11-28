@@ -2,7 +2,7 @@ bgm: Cat_life.mp3
 bgm_start: 0.3
 # 見せ場：コスモスに止まって羽を広げているとんぼ（3 秒）。巻き戻しはしない
 hook:
-  from: 5.2
+  from: 6.0
   seconds: 3.0
   text: "この子、初登場です"
   label: false
@@ -12,7 +12,7 @@ hook:
 outro:
   extra: "次のお客さんは来週\nフォローで見逃さない"
 punch:
-  - { from: 4.2, to: 9.4, at: [485, 655], scale: 2.1, ramp: 0.7 }
+  - { from: 4.7, to: 11.2, at: [485, 655], scale: 2.1, ramp: 1.2 }
 captions:
   - { from: 2.0,  to: 6.5,  text: "とんぼが\n遊びに来ました" }
   - { from: 6.8,  to: 10.5, text: "置く物や季節で、\n来る子が変わります" }
