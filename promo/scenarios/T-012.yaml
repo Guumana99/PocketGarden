@@ -11,16 +11,17 @@ setup:
   - { place: { item: deco_pond, at: [2,6] } }
   - { plant: { crop: cosmos, area: [4,4,8,8] } }
   - { grow: { area: [4,4,8,8], to_stage: 3 } }
-camera: { zoom: 2.6, center: [5,6] }
+camera: { zoom: 4.5, center: [5.2,5.8] }
 timeline:
   - { at: 0.0,  day_label: "お客さん図鑑 No.3\nとんぼ" }
-  # とんぼは左の空から来て、コスモスに止まる（at は止まる秒）。止まる前に最大の寄りで待つ（見せ場：5.2〜8.2 秒）
-  - { at: 5.0,  creature: { kind: dragonfly, count: 1, from: outside_left, land_on: [[6,6]], stay: 4.5 } }
-  - { at: 3.5,  camera: { zoom: max, center: [6.5,6.5,0.7], over: 1.5 } }
-  - { at: 10.5, camera: { zoom: 2.6, center: [5,6], over: 1.5 } }
+  # 引きは 2.6 だと とんぼが小さすぎて見えないので 4.5。とんぼは左の外から横切って来て、コスモスに止まる（at は止まる秒）。来る間は引きのまま、止まってから寄る（11/28）
+  - { at: 4.5,  creature: { kind: dragonfly, count: 1, from: outside_left, land_on: [[6,6]], stay: 6.0 } }
+  - { at: 4.7,  camera: { zoom: max, center: [6.5,6.5,0.7], over: 1.2 } }
+  # 冒頭の見せ場は止まった後の寄り（6.0〜9.0 秒）
+  - { at: 10.0, camera: { zoom: 4.5, center: [5.2,5.8], over: 1.2 } }
   # 拡大している間は札が画面の外で切れるので消す
-  - { at: 3.9, label_opacity: { to: 0, over: 0.3 } }
-  - { at: 9.4, label_opacity: { to: 1, over: 0.3 } }
+  - { at: 4.5, label_opacity: { to: 0, over: 0.3 } }
+  - { at: 10.9, label_opacity: { to: 1, over: 0.3 } }
   - { at: 13.0, end: true }
 bgm: Cat_life.mp3
 bgm_start: 0.3
